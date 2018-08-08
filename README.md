@@ -1,4 +1,4 @@
-# cs README
+# ChoiceScript VSCode README
 
 This is a syntax highlighter extension for the interactive fiction/multiple choice language, ChoiceScript.
 
