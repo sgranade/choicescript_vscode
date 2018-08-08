@@ -1,0 +1,26 @@
+{
+    "name": "cs",
+    "displayName": "ChoiceScript",
+    "description": "ChoiceScript syntax highlighting",
+    "version": "0.0.1",
+    "publisher": "KLNeidecker",
+    "engines": {
+        "vscode": "^1.25.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "cs",
+            "aliases": ["CS", "cs"],
+            "extensions": [".txt"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "cs",
+            "scopeName": "source.cs",
+            "path": "./syntaxes/CS.tmLanguage"
+        }]
+    }
+}
