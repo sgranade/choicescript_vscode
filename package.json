@@ -10,6 +10,11 @@
     "categories": [
         "Programming Languages"
     ],
+    "icon": "images/ChoiceOfGames.png",
+    "galleryBanner": {
+        "color": "#C80000",
+        "theme": "dark"
+    },
     "contributes": {
         "languages": [{
             "id": "cs",
