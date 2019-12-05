@@ -43,4 +43,4 @@ Your majesty, your people are starving in the streets, and threaten revolution.
       *elseif 
       *else 
 
-      @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"}
+      @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"} asdasd @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"}
