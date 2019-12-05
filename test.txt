@@ -44,3 +44,12 @@ Your majesty, your people are starving in the streets, and threaten revolution.
       *else 
 
       @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"} asdasd @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"}
+
+
+      *choice, *fake_choice, *disable_reuse, *hide_reuse, *allow_reuse, *selectable_if
+      	*create, *temp, *set, Arithmetic operators, *delete, *input_number, *input_text, *print, *rand
+        *if, *elseif, *else, Multireplace
+        	*label, *goto, *goto_scene, *goto_random_scene, *gosub, *gosub_scene, *finish
+          *image, *line_break, *page_break, *link, *stat_chart
+          	*comment,
+             *scene_list, *title, *author, *achieve, *achievement, *check_achievements, *bug, *ending, *more_games, *share_this_game, *show_password, *script, Implicit Control Flow
