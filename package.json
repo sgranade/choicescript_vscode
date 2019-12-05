@@ -1,40 +1,45 @@
 {
-  "name": "choicescript-vscode",
-  "displayName": "ChoiceScript VSCode",
-  "description": "ChoiceScript syntax highlighting",
-  "version": "0.0.3",
-  "publisher": "KLNeidecker",
-  "engines": {
-    "vscode": "^1.25.0"
-  },
-  "categories": [
-    "Programming Languages"
-  ],
-  "icon": "images/ChoiceOfGames.png",
-  "galleryBanner": {
-    "color": "#C80000",
-    "theme": "dark"
-  },
-  "contributes": {
-    "languages": [
-      {
-        "id": "cs",
-        "aliases": [
-          "CS",
-          "cs"
-        ],
-        "extensions": [
-          ".txt"
-        ],
-        "configuration": "./language-configuration.json"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "cs",
-        "scopeName": "source.cs",
-        "path": "./syntaxes/CS.tmLanguage"
-      }
-    ]
-  }
+	"name": "choicescript-vscode",
+	"displayName": "ChoiceScript VSCode",
+	"description": "ChoiceScript syntax highlighting",
+	"version": "0.0.4",
+	"publisher": "KLNeidecker",
+	"engines": {
+		"vscode": "^1.25.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"icon": "images/ChoiceOfGames.png",
+	"galleryBanner": {
+		"color": "#C80000",
+		"theme": "dark"
+	},
+	"contributes": {
+		"languages": [
+			{
+				"id": "cs",
+				"aliases": [
+					"CS",
+					"cs"
+				],
+				"extensions": [
+					".txt"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "cs",
+				"scopeName": "source.cs",
+				"path": "./syntaxes/CS.tmLanguage"
+			}
+		]
+	},
+	"__metadata": {
+		"id": "7ea4fade-d4bd-40b0-a1b6-ff4e57a15079",
+		"publisherDisplayName": "KLNeidecker",
+		"publisherId": "f3bb5996-197b-4db3-8bc9-36a9d01defcc"
+	}
 }

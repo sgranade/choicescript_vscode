@@ -38,7 +38,15 @@
 			<key>comment</key>
 			<string>variables</string>
 			<key>match</key>
-			<string>\${.+}</string>
+			<string>\$?!*{\w+}</string>
+			<key>name</key>
+			<string>constant.language.cs</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>multiselect stage 1</string>
+			<key>match</key>
+			<string>\@{1}{.+}</string>
 			<key>name</key>
 			<string>constant.language.cs</string>
 		</dict>
@@ -46,7 +54,7 @@
 			<key>comment</key>
 			<string>keywords</string>
 			<key>match</key>
-			<string>\*(allow_reuse|choice|create|delete|disable_reuse|else|elseif|elsif|ending|finish|fake_choice|gosub|goto_scene|goto|goto_random_scene|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|set|share_this_game|star_chart|selectable_if|temp)</string>
+			<string>\*(allow_reuse|choice|create|delete|disable_reuse|elseif|elsif|else|ending|finish|fake_choice|gosub|goto_scene|goto|goto_random_scene|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|set|share_this_game|stat_chart|selectable_if|temp|bug|redirect_scene)</string>
 			<key>name</key>
 			<string>keyword.control.cs</string>
 		</dict>

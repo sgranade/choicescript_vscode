@@ -10,7 +10,8 @@ Your majesty, your people are starving in the streets, and threaten revolution.
       *choice
         #Drive the peasants like slaves; if we work hard enough, we'll win.
           Unfortunately, morale doesn't work like that.  Your army soon turns against you
-          and the kingdom falls to the western barbarians. ${tester}
+          and the kingdom falls to the western barbarians. ${tester_3} asd ${tester2} asdf $!{test} 
+          asd $!!{allcaps} asd {variable_1} !{variable2}
         *finish
         #Appoint charismatic knights and give them land, peasants, and resources.
           Your majesty's people are eminently resourceful.  Your knights win the day,
@@ -35,3 +36,11 @@ Your majesty, your people are starving in the streets, and threaten revolution.
       The kingdom descends into chaos, but you manage to escape with your own hide.
       Perhaps in time you can return to restore order to this fair land.
       *finish
+
+      *bug
+      *redirect_scene
+      *stat_chart
+      *elseif 
+      *else 
+
+      @{var1 "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"}
