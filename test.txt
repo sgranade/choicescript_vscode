@@ -47,8 +47,8 @@ Your majesty, your people are starving in the streets, and threaten revolution.
 
 
       *choice, *fake_choice, *disable_reuse, *hide_reuse, *allow_reuse, *selectable_if
-      	*create, *temp, *set, Arithmetic operators, *delete, *input_number, *input_text, *print, *rand
-        *if, *elseif, *else, Multireplace
+      	*create, *temp, *set,  *delete, *input_number, *input_text, *print, *rand
+        *if, *elseif, *else,
         	*label, *goto, *goto_scene, *goto_random_scene, *gosub, *gosub_scene, *finish
           *image, *line_break, *page_break, *link, *stat_chart
           	*comment,
