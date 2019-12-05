@@ -43,3 +43,6 @@ Basic syntax highlighting.
 - Recognizes the new variable format that drops the $ symbol, {variable}.
 - Correctly highlights uppercase variable syntax of $!{variable}, $!!{variable}, !{variable}, and !!{variable}.
 - An initial multireplace highlight. It's a greedy highlight and I will break it down so it doesn't highlight the entire line in one color later (as in the variables will stand out versus the multireplace text), but for now it will at least show a multireplace text exists and stands out from other commands.
+
+## [0.0.5]
+### Additional keywords added
