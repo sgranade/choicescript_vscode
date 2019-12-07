@@ -29,10 +29,8 @@
 	],
 	"repository": {
 		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.cs",
-				"match": "(?<!\\*)\\*(check_achievements|achievement|achieve|allow_reuse|author|choice|create|delete|disable_reuse|elseif|elsif|else|ending|finish|fake_choice|gosub_scene|gosub|goto_scene|goto_random_scene|goto|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|scene_list|script|set|share_this_game|show_password|stat_chart|selectable_if|title|temp|bug|redirect_scene)\\b"
-			}]
+			"name": "keyword.control.cs",
+			"match": "(?<!\\*)\\*(check_achievements|achievement|achieve|allow_reuse|author|choice|create|delete|disable_reuse|elseif|elsif|else|ending|finish|fake_choice|gosub_scene|gosub|goto_scene|goto_random_scene|goto|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|scene_list|script|set|share_this_game|show_password|stat_chart|selectable_if|title|temp|bug|redirect_scene)\\b"
 		},
 		"comments": {
 			"name": "comment.line.cs",
