@@ -33,7 +33,7 @@
 			{
 				"language": "cs",
 				"scopeName": "source.cs",
-				"path": "./syntaxes/CS.tmLanguage"
+				"path": "./syntaxes/CS.tmLanguage.json"
 			}
 		]
 	},
