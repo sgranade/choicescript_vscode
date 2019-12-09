@@ -25,7 +25,7 @@
         ["'", "'"]
     ],
     "indentationRules": {
-        "increaseIndentPattern": "(#.+?|\\*((fake_)?choice|((else)?if [^\\*]+?|else)\\s*))$",
+        "increaseIndentPattern": "(#.+?|\\*(scene_list|stat_chart|(fake_)?choice|else|((else)?if|achievement) [^\\*]+?)\\s*)$",
         "decreaseIndentPattern": "\\*else(if)?"
     }
 }
