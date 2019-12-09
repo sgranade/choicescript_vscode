@@ -1,8 +1,8 @@
 {
 	"name": "choicescript-vscode",
 	"displayName": "ChoiceScript VSCode",
-	"description": "ChoiceScript syntax highlighting",
-	"version": "0.0.5",
+	"description": "ChoiceScript syntax highlighting and Intellisense",
+	"version": "0.0.6",
 	"publisher": "KLNeidecker",
 	"engines": {
 		"vscode": "^1.25.0"
@@ -15,6 +15,10 @@
 		"color": "#C80000",
 		"theme": "dark"
 	},
+	"activationEvents": [
+		"onLanguage:choicescript"
+	],
+	"main": "./out/extension.js",
 	"contributes": {
 		"languages": [
 			{
@@ -37,6 +41,24 @@
 				"path": "./syntaxes/cs.tmLanguage.json"
 			}
 		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^5.2.7",
+		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.40.0",
+		"glob": "^7.1.5",
+		"mocha": "^6.2.2",
+		"typescript": "^3.6.4",
+		"tslint": "^5.20.0",
+		"vscode-test": "^1.2.2"
 	},
 	"__metadata": {
 		"id": "7ea4fade-d4bd-40b0-a1b6-ff4e57a15079",

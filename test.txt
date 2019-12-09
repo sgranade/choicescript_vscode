@@ -48,21 +48,15 @@ You can include a dereference inside it as well: ${{var}}
 *choice
 # This is a sample choice with a ${variable} substitution
 
-      *bug
-      *redirect_scene
-      *stat_chart
-      *elseif 
-      *else 
-
       @{var_1 The dragon is blue and ${var2}|The dragon is red and ${var2}|The dragon is green and ${var2}}.
       asdasd @{(var1) "The dragon is blue and ${var2}"|"The dragon is red and ${var2}"|"The dragon is green and ${var2}"}
       The dragon is @{(var1 + 1) blue|green|red}
 
 
-      *choice, *fake_choice, *disable_reuse, *hide_reuse, *allow_reuse, *selectable_if
-      	*create, *temp, *set,  *delete, *input_number, *input_text, *print, *rand
-        *if, *elseif, *else,
-        	*label, *goto, *goto_scene, *goto_random_scene, *gosub, *gosub_scene, *finish
-          *image, *line_break, *page_break, *link, *stat_chart
-          	*comment,
-             *scene_list, *title, *author, *achieve, *achievement, *check_achievements, *bug, *ending, *more_games, *share_this_game, *show_password, *script, Implicit Control Flow
+      *choice, *fake_choice, *create, *temp, *delete, *set, *if, *elseif, *elsif, *else,
+      *selectable_if, *disable_reuse, *hide_reuse, *allow_reuse, *label, *goto, *goto_scene,
+      *goto_random_scene, *gosub, *gosub_scene, *redirect_scene, *finish, *ending,
+      *page_break, *line_break, *title, *author, *input_text, *input_number,
+      *rand, *image, *link, *bug, *stat_chart, *scene_list, *achievement, *check_achievements,
+      *script
+      *comment
