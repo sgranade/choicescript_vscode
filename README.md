@@ -46,3 +46,8 @@ Basic syntax highlighting.
 
 ## [0.0.5]
 ### Additional keywords added
+
+## [0.1.0]
+### New Features
+- IntelliSense automatic code completion of keywords like *choice
+- Auto-indention after keywords that require it, like *choice and *if

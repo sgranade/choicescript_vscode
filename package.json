@@ -2,7 +2,7 @@
 	"name": "choicescript-vscode",
 	"displayName": "ChoiceScript VSCode",
 	"description": "ChoiceScript syntax highlighting and Intellisense",
-	"version": "0.0.6",
+	"version": "0.1.0",
 	"publisher": "KLNeidecker",
 	"engines": {
 		"vscode": "^1.25.0"
