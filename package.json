@@ -18,9 +18,10 @@
 	"contributes": {
 		"languages": [
 			{
-				"id": "cs",
+				"id": "choicescript",
 				"aliases": [
-					"CS",
+					"ChoiceScript",
+					"choicescript",
 					"cs"
 				],
 				"extensions": [
@@ -31,9 +32,9 @@
 		],
 		"grammars": [
 			{
-				"language": "cs",
+				"language": "choicescript",
 				"scopeName": "source.cs",
-				"path": "./syntaxes/CS.tmLanguage.json"
+				"path": "./syntaxes/cs.tmLanguage.json"
 			}
 		]
 	},
