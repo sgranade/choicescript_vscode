@@ -48,8 +48,16 @@
 		},
 		"choices": {
 			"name": "entity.name.function",
-			"begin": "^\\s*#",
-			"end": "(?=$)"
+			"begin": "(^|\\s+)#",
+			"end": "(?=$)",
+			"patterns": [
+				{
+					"include": "#multireplace"
+				},
+				{
+					"include": "#variable-display"
+				}
+			]
 		},
 		"variable-display": {
 			"name": "constant.language.cs",
