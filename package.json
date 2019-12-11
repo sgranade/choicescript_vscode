@@ -40,6 +40,12 @@
 				"scopeName": "source.cs",
 				"path": "./syntaxes/cs.tmLanguage.json"
 			}
+		],
+		"snippets": [
+			{
+				"language": "choicescript",
+				"path": "./snippets.json"
+			}
 		]
 	},
 	"scripts": {

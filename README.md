@@ -51,3 +51,6 @@ Basic syntax highlighting.
 ### New Features
 - IntelliSense automatic code completion of keywords like *choice
 - Auto-indention after keywords that require it, like *choice and *if
+- Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography
+
+The easy way to use snippets is to [enable snippet tab completion](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_creating-your-own-snippets). Then type three periods and hit tab to turn them into an ellipsis.
