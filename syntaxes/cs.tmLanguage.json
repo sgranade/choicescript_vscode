@@ -69,11 +69,11 @@
 		},
 		"variable-substitution": {
 			"name": "variable.other",
-			"begin": "(?<!\\$|\\$!|\\$!!|@)\\{",
+			"begin": "(?<![$@]|[$@]!|[$@]!!){",
 			"end": "\\}"
 		},
 		"multireplace": {
-			"begin": "(@\\{)",
+			"begin": "(@!?!?\\{)",
 			"end": "(\\})",
 			"beginCaptures": {
 				"1": {
