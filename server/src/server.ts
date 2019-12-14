@@ -12,7 +12,29 @@ import {
 	TextDocumentPositionParams,
 	Position
 } from 'vscode-languageserver';
-import { formatWithOptions } from 'util';
+import { ProjectIndex, IdentifierIndex, updateProjectIndex } from './indexer';
+
+class Index implements ProjectIndex {
+	_globalVariables: IdentifierIndex;
+	_localVariables: Map<string, IdentifierIndex>;
+	_localLabels: Map<string, IdentifierIndex>;
+
+	constructor() {
+		this._globalVariables = new Map();
+		this._localVariables = new Map();
+		this._localLabels = new Map();
+	}
+
+	updateGlobalVariables(newIndex: IdentifierIndex) {
+		this._globalVariables = newIndex;
+	}
+	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
+		this._localVariables.set(textDocument.uri, newIndex);
+	}
+	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
+		this._localLabels.set(textDocument.uri, newIndex);
+	}
+}
 
 /**
  * Commands that can only be used in startup.txt
@@ -108,8 +130,13 @@ connection.onInitialized(() => {
 		});
 	}
 
-	// Try to find the startup.txt file
-	// vscode.workspace.findFiles('**/setup.txt', undefined, 10).then(processStartups);
+	// TODO if there are workspaces, search them for startup.txt
+	// connection.workspace.getWorkspaceFolders().then(workspaces => {
+	// 	if (workspaces && workspaces.length > 0)
+	// 		workspaces.forEach(workspace => {
+	// 			searchWorkspaceForStartupFile(workspace.uri);
+	// 		});
+	// })
 });
 
 // function processStartups(uris: vscode.Uri[]) {
@@ -171,6 +198,9 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
  * URI to the startup file, or null if it hasn't been loaded.
  */
 let startupFileUri: string | null = null;
+
+let workspaceIndex = new Index();
+
 /**
  * Global variables defined in startup.txt as a map of variable names to position in startup.txt
  */
@@ -187,7 +217,13 @@ let labels: Map<string, Map<string, Position>> = new Map();
 // TODO deal with files being deleted, so that they're removed from the above
 
 documents.onDidOpen(e => {
-	identifyVariablesAndLabels(e.document);
+	if (uriIsStartupFile(e.document.uri)) {
+		startupFileUri = e.document.uri;
+	}
+	// else if (!startupFileUri) {
+	// 	startupFileUri = processStartupFile(e.document.uri);
+	// }
+	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), workspaceIndex);
 });
 
 // Only keep settings for open documents
@@ -198,7 +234,7 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-	identifyVariablesAndLabels(change.document);
+	updateProjectIndex(change.document, uriIsStartupFile(change.document.uri), workspaceIndex);
 	validateTextDocument(change.document);
 });
 
@@ -211,28 +247,54 @@ function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 function getFilenameFromUri(uri: string): string | undefined {
 	/**
 	 * Extract the filename portion from a URI.
+ * 
+ * Note that, for URIs with no filename (such as file:///path/to/file), the final portion of the
+ * path is returned.
+ * 
+ * @param uriString URI to extract the filename from.
+ * @returns The filename, or null if none is found.
 	 */
-	return uri.split('/').pop();
+function getFilenameFromUri(uriString: string): string | undefined {
+	let uri = URI(uriString);
+	return uri.filename();
 }
 
-function uriIsStartupFile(uri: string): boolean {
 	/**
 	 * Determine if a URI points to a ChoiceScript startup file.
+ * 
+ * @param uriString URI to see if it refers to the startup file.
+ * @returns True if the URI is to the startup file, false otherwise.
 	 */
-	return (getFilenameFromUri(uri) == "startup.txt");
+function uriIsStartupFile(uriString: string): boolean {
+	return (getFilenameFromUri(uriString) == "startup.txt");
 }
 
-function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
-	start: number, end: number, message: string): Diagnostic {
+/**
+ * Given a URI to a ChoiceScript file, find the URI to the ChoiceScript
+ * startup file.
+ * 
+ * @param uriString URI to turn into the startup file.
+ * @returns The potential URI to the startup file.
+ */
+function createStartupUri(uriString: string): string {
+	let uri = URI(uriString);
+	uri.filename('startup.txt');
+	return uri.valueOf();
+}
+
 		/**
 		 * Generate a diagnostic message.
 		 * 
-		 * @param severity - Diagnostic severity.
-		 * @param textDocument - Document to which the diagnostic applies.
-		 * @param start - Start location of the diagnostic message.
-		 * @param end - End location of the diagnostic message.
-		 * @param message - Diagnostic message.
+ * Pass start and end locations as 0-based indexes into the document's text.
+ * 
+ * @param severity Diagnostic severity
+ * @param textDocument Document to which the diagnostic applies.
+ * @param start Start location in the text of the diagnostic message.
+ * @param end End location in the text of the diagnostic message.
+ * @param message Diagnostic message.
 		 */
+function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
+		start: number, end: number, message: string): Diagnostic {
 	let diagnostic: Diagnostic = {
 		severity: severity,
 		range: {
@@ -249,51 +311,6 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 async function identifyVariablesAndLabels(textDocument: TextDocument): Promise<void> {
 	let text = textDocument.getText();
 	let isStartupFile: boolean = uriIsStartupFile(textDocument.uri);
-
-	let pattern: RegExp | null = null;
-	if (isStartupFile) {
-		pattern = /(\n\s*)?\*(create|temp|label)\s+(\w+)/g;
-	}
-	else {
-		// *create is not legal except in startup files
-		pattern = /(\n\s*)?\*(temp|label)\s+(\w+)/g;
-	}
-	let m: RegExpExecArray | null;
-
-	let newGlobalVariables: Map<string, Position> = new Map();
-	let newLocalVariables: Map<string, Position> = new Map();
-	let newLabels: Map<string, Position> = new Map();
-
-	while (m = pattern.exec(text)) {
-		let prefix: string = m[1];
-		let command: string = m[2];
-		let value: string = m[3];
-		let commandPosition: Position = textDocument.positionAt(m.index + prefix.length);
-
-		if (!(prefix === undefined && m.index > 0)) {
-			switch (command) {
-				case "create":
-					// *create instantiates global variables
-					newGlobalVariables.set(value, commandPosition);
-					break;
-				case "temp":
-					// *temp instantiates variables local to the file
-					newLocalVariables.set(value, commandPosition);
-					break;
-				case "label":
-					// *label creates a goto/gosub label local to the file
-					newLabels.set(value, commandPosition);
-					break;
-			}
-		}
-	}
-
-	if (isStartupFile) {
-		globalVariables = newGlobalVariables;
-	}
-	localVariables.set(textDocument.uri, newLocalVariables);
-	labels.set(textDocument.uri, newLabels);
-}
 
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
@@ -424,8 +441,8 @@ function generateInitialCompletions(documentUri: string, position: Position): Co
 				if (variablesMap !== undefined) {
 					completions = Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
 							label: x, 
-							kind: CompletionItemKind.Keyword, 
-							data: "command"
+							kind: CompletionItemKind.Variable, 
+							data: "variable"
 					})));
 				}
 			}
