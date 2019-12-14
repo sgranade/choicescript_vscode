@@ -12,10 +12,8 @@ import {
 	TextDocumentPositionParams,
 	Position
 } from 'vscode-languageserver';
-
-// let startupCommands: Record<string, number> = {
-// 	"create":1, "scene_list":1, "title":1, "author":1, "achievement":1, "product":1
-// };
+import * as vscode from 'vscode';
+import { formatWithOptions } from 'util';
 
 /**
  * Commands that can only be used in startup.txt
@@ -110,7 +108,21 @@ connection.onInitialized(() => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
+
+	// Try to find the startup.txt file
+	vscode.workspace.findFiles('**/setup.txt', undefined, 10).then(processStartups);
 });
+
+function processStartups(uris: vscode.Uri[]) {
+	// We'll only process if exactly one startup.txt file is found
+	// TODO be smarter about this!
+	if (uris.length == 1) {
+		let document = documents.get(uris[0].toString());
+		if (document !== undefined) {
+			identifyVariablesAndLabels(document);
+		}
+	}
+}
 
 // The example settings
 interface ExampleSettings {
