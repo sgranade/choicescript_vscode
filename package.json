@@ -1,9 +1,14 @@
 {
-	"name": "lsp-sample",
+	"name": "choicescript-lsp",
 	"description": "A language server example",
 	"author": "Microsoft Corporation",
-	"license": "MIT",
-	"version": "1.0.0",
+	"contributors": [
+		{
+			"name": "Stephen Granade",
+			"email": "stephen@granades.com"
+		}
+	],
+	"version": "0.1.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Microsoft/vscode-extension-samples"
@@ -17,10 +22,23 @@
 		"vscode": "^1.33.0"
 	},
 	"activationEvents": [
-		"onLanguage:plaintext"
+		"onLanguage:choicescript"
 	],
 	"main": "./client/out/extension",
 	"contributes": {
+		"languages": [
+			{
+				"id": "choicescript",
+				"aliases": [
+					"ChoiceScript",
+					"choicescript",
+					"cs"
+				],
+				"extensions": [
+					".txt"
+				]
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "Example configuration",
