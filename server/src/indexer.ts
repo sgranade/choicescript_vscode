@@ -4,9 +4,14 @@ import {
 } from 'vscode-languageserver';
 
 /**
- * Type for an index of identifiers.
+ * Type for a mutable index of identifiers.
  */
 export type IdentifierIndex = Map<string, Position>;
+
+/**
+ * Type for an immutable index of identifiers.
+ */
+export type ReadonlyIdentifierIndex = ReadonlyMap<string, Position>;
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -15,6 +20,10 @@ export interface ProjectIndex {
 	updateGlobalVariables(newIndex: IdentifierIndex): void;
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	getGlobalVariables(): ReadonlyIdentifierIndex;
+	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	removeDocument(textDocument: TextDocument): void;
 }
 
 /**

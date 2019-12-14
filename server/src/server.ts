@@ -13,7 +13,7 @@ import {
 	Position
 } from 'vscode-languageserver';
 import * as URI from 'urijs';
-import { ProjectIndex, IdentifierIndex, updateProjectIndex } from './indexer';
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex } from './indexer';
 
 class Index implements ProjectIndex {
 	_globalVariables: IdentifierIndex;
@@ -34,6 +34,27 @@ class Index implements ProjectIndex {
 	}
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._localLabels.set(textDocument.uri, newIndex);
+	}
+	getGlobalVariables(): ReadonlyIdentifierIndex {
+		return this._globalVariables;
+	}
+	getLocalVariables(textDocument: TextDocument) {
+		let index = this._localVariables.get(textDocument.uri);
+		if (index === undefined)
+			index = new Map();
+		
+		return index;
+	}
+	getLabels(textDocument: TextDocument) {
+		let index = this._localLabels.get(textDocument.uri);
+		if (index === undefined)
+			index = new Map();
+
+		return index;
+	}
+	removeDocument(textDocument: TextDocument) {
+		this._localVariables.delete(textDocument.uri);
+		this._localLabels.delete(textDocument.uri);
 	}
 }
 
@@ -176,7 +197,7 @@ connection.onDidChangeConfiguration(change => {
 	}
 
 	// Revalidate all open text documents
-	documents.all().forEach(validateTextDocument);
+	documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 });
 
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
@@ -200,20 +221,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
  */
 let startupFileUri: string | null = null;
 
-let workspaceIndex = new Index();
-
-/**
- * Global variables defined in startup.txt as a map of variable names to position in startup.txt
- */
-let globalVariables: Map<string, Position> = new Map();
-/**
- * Local variables per file as a map of file URIs to a map of variable names to positions in the file
- */
-let localVariables: Map<string, Map<string, Position>> = new Map();
-/**
- * Labels per file as a map of file URIs to a map of label names to positions in the file
- */
-let labels: Map<string, Map<string, Position>> = new Map();
+let projectIndex = new Index();
 
 // TODO deal with files being deleted, so that they're removed from the above
 
@@ -224,7 +232,7 @@ documents.onDidOpen(e => {
 	// else if (!startupFileUri) {
 	// 	startupFileUri = processStartupFile(e.document.uri);
 	// }
-	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), workspaceIndex);
+	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
 });
 
 // Only keep settings for open documents
@@ -235,8 +243,8 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-	updateProjectIndex(change.document, uriIsStartupFile(change.document.uri), workspaceIndex);
-	validateTextDocument(change.document);
+	updateProjectIndex(change.document, uriIsStartupFile(change.document.uri), projectIndex);
+	validateTextDocument(change.document, projectIndex);
 });
 
 function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
@@ -321,7 +329,7 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 // }
 
 
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+async function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): Promise<void> {
 	// In this simple example we get the settings for every validate run.
 	let settings = await getDocumentSettings(textDocument.uri);
 
@@ -331,9 +339,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
-	let currentLabels = labels.get(textDocument.uri);
-	let currentGlobalVariables = globalVariables.get(textDocument.uri);
-	let currentLocalVariables = localVariables.get(textDocument.uri);
+	let currentLabels = projectIndex.getLabels(textDocument);
+	let currentGlobalVariables = projectIndex.getGlobalVariables();
+	let currentLocalVariables = projectIndex.getLocalVariables(textDocument);
 
 	let diagnostics: Diagnostic[] = [];
 	while (m = commandPattern.exec(text)) {
@@ -397,11 +405,11 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		return generateInitialCompletions(textDocumentPosition.textDocument.uri, textDocumentPosition.position);
+		return generateInitialCompletions(textDocumentPosition.textDocument.uri, textDocumentPosition.position, projectIndex);
 	}
 );
 
-function generateInitialCompletions(documentUri: string, position: Position): CompletionItem[] {
+function generateInitialCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	let completions: CompletionItem[] = [];
 
 	// Find out what trigger character started this by loading the document and scanning backwards
@@ -445,7 +453,7 @@ function generateInitialCompletions(documentUri: string, position: Position): Co
 				}
 			}
 			if (!isMultireplace) {
-				let variablesMap = localVariables.get(documentUri);
+				let variablesMap = projectIndex.getLocalVariables(document);
 				if (variablesMap !== undefined) {
 					completions = Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
 							label: x, 
