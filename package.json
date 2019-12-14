@@ -73,6 +73,7 @@
 	"devDependencies": {
 		"@types/mocha": "^5.2.7",
 		"@types/node": "^12.11.7",
+		"@types/urijs": "^1.19.4",
 		"tslint": "^5.16.0",
 		"typescript": "^3.6.4"
 	}

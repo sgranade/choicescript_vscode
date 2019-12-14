@@ -12,6 +12,7 @@ import {
 	TextDocumentPositionParams,
 	Position
 } from 'vscode-languageserver';
+import * as URI from 'urijs';
 import { ProjectIndex, IdentifierIndex, updateProjectIndex } from './indexer';
 
 class Index implements ProjectIndex {
@@ -244,27 +245,26 @@ function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 	}
 }
 
-function getFilenameFromUri(uri: string): string | undefined {
-	/**
-	 * Extract the filename portion from a URI.
+/**
+ * Extract the filename portion from a URI.
  * 
  * Note that, for URIs with no filename (such as file:///path/to/file), the final portion of the
  * path is returned.
  * 
  * @param uriString URI to extract the filename from.
  * @returns The filename, or null if none is found.
-	 */
+ */
 function getFilenameFromUri(uriString: string): string | undefined {
 	let uri = URI(uriString);
 	return uri.filename();
 }
 
-	/**
-	 * Determine if a URI points to a ChoiceScript startup file.
+/**
+ * Determine if a URI points to a ChoiceScript startup file.
  * 
  * @param uriString URI to see if it refers to the startup file.
  * @returns True if the URI is to the startup file, false otherwise.
-	 */
+ */
 function uriIsStartupFile(uriString: string): boolean {
 	return (getFilenameFromUri(uriString) == "startup.txt");
 }
@@ -282,9 +282,9 @@ function createStartupUri(uriString: string): string {
 	return uri.valueOf();
 }
 
-		/**
-		 * Generate a diagnostic message.
-		 * 
+/**
+ * Generate a diagnostic message.
+ * 
  * Pass start and end locations as 0-based indexes into the document's text.
  * 
  * @param severity Diagnostic severity
@@ -292,7 +292,7 @@ function createStartupUri(uriString: string): string {
  * @param start Start location in the text of the diagnostic message.
  * @param end End location in the text of the diagnostic message.
  * @param message Diagnostic message.
-		 */
+ */
 function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
 		start: number, end: number, message: string): Diagnostic {
 	let diagnostic: Diagnostic = {
@@ -308,9 +308,17 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 	return diagnostic;
 }
 
-async function identifyVariablesAndLabels(textDocument: TextDocument): Promise<void> {
-	let text = textDocument.getText();
-	let isStartupFile: boolean = uriIsStartupFile(textDocument.uri);
+// /**
+//  * Given a potential ChoiceScript text file, find the startup.txt file that should be alongside it.
+//  * If it exists, process it and return it.
+//  * 
+//  * @param otherFileUri URI to the possible ChoiceScript file.
+//  * @returns URI to the startup.txt file, or null if not found.
+//  */
+// function processStartupFile(otherFileUri: string): string | null {
+// 	let startupFileUri = createStartupUri(otherFileUri);
+// 	startupDocument = connection.
+// }
 
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
