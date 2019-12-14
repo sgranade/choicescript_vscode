@@ -12,7 +12,6 @@ import {
 	TextDocumentPositionParams,
 	Position
 } from 'vscode-languageserver';
-import * as vscode from 'vscode';
 import { formatWithOptions } from 'util';
 
 /**
@@ -110,19 +109,19 @@ connection.onInitialized(() => {
 	}
 
 	// Try to find the startup.txt file
-	vscode.workspace.findFiles('**/setup.txt', undefined, 10).then(processStartups);
+	// vscode.workspace.findFiles('**/setup.txt', undefined, 10).then(processStartups);
 });
 
-function processStartups(uris: vscode.Uri[]) {
-	// We'll only process if exactly one startup.txt file is found
-	// TODO be smarter about this!
-	if (uris.length == 1) {
-		let document = documents.get(uris[0].toString());
-		if (document !== undefined) {
-			identifyVariablesAndLabels(document);
-		}
-	}
-}
+// function processStartups(uris: vscode.Uri[]) {
+// 	// We'll only process if exactly one startup.txt file is found
+// 	// TODO be smarter about this!
+// 	if (uris.length == 1) {
+// 		let document = documents.get(uris[0].toString());
+// 		if (document !== undefined) {
+// 			identifyVariablesAndLabels(document);
+// 		}
+// 	}
+// }
 
 // The example settings
 interface ExampleSettings {
