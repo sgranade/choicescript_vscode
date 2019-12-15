@@ -1,5 +1,6 @@
 import {
 	createConnection,
+	WorkspaceFolder,
 	TextDocuments,
 	TextDocument,
 	Diagnostic,
@@ -12,7 +13,13 @@ import {
 	TextDocumentPositionParams,
 	Position
 } from 'vscode-languageserver';
+import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
+import { readFile } from 'fs';
+import { ErrnoException } from '@nodelib/fs.stat/out/types';
+import url = require('url');
 import * as URI from 'urijs';
+import globby = require('globby');
+
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex } from './indexer';
 
 class Index implements ProjectIndex {
@@ -112,6 +119,9 @@ let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
+// TODO handle multiple directories with startup.txt
+let projectIndex = new Index();
+
 connection.onInitialize((params: InitializeParams) => {
 	let capabilities = params.capabilities;
 
@@ -152,25 +162,45 @@ connection.onInitialized(() => {
 		});
 	}
 
-	// TODO if there are workspaces, search them for startup.txt
-	// connection.workspace.getWorkspaceFolders().then(workspaces => {
-	// 	if (workspaces && workspaces.length > 0)
-	// 		workspaces.forEach(workspace => {
-	// 			searchWorkspaceForStartupFile(workspace.uri);
-	// 		});
-	// })
+	// TODO this should be handled through server-to-client communications
+	// using custom messages like "workspace/xfind" or the like
+	// see https://stackoverflow.com/questions/51041337/vscode-language-client-extension-how-to-send-a-message-from-the-server-to-the/51081743#51081743
+	// and https://stackoverflow.com/questions/51806347/visual-studio-language-extension-how-do-i-call-my-own-functions?noredirect=1&lq=1
+	// for examples
+	connection.workspace.getWorkspaceFolders().then(workspaces => {
+		if (workspaces && workspaces.length > 0)
+			searchWorkspaces(workspaces)
+	});
 });
 
-// function processStartups(uris: vscode.Uri[]) {
-// 	// We'll only process if exactly one startup.txt file is found
-// 	// TODO be smarter about this!
-// 	if (uris.length == 1) {
-// 		let document = documents.get(uris[0].toString());
-// 		if (document !== undefined) {
-// 			identifyVariablesAndLabels(document);
-// 		}
-// 	}
-// }
+function searchWorkspaces(workspaces: WorkspaceFolder[]) {
+	workspaces.forEach((workspace) => {
+		let rootPath = url.fileURLToPath(workspace.uri);
+		connection.console.log(`${rootPath}`); // TODO DEBUG
+		globby('startup.txt', {
+			cwd: rootPath
+		}).then(paths => initializeIndices(paths))
+	});
+}
+
+function initializeIndices(pathsToStartupFiles: string[]) {
+	pathsToStartupFiles.forEach((path) => {
+		// TODO handle multiple startup.txt files in multiple directories
+		let startupUri = url.pathToFileURL(path).toString();
+		connection.console.log(`Processing ${startupUri}`); // TODO DEBUG
+		readFile(path, 'utf8', (err: ErrnoException | null, data: string) => {
+			if (err) {
+				connection.console.error(`${err.name}: ${err.message}`);
+			}
+			else {
+				let textDocument = TextDocumentImplementation.create(startupUri, 'ChioceScript', 0, data);
+				connection.console.log("Created textDocument."); // TODO DEBUG
+				updateProjectIndex(textDocument, true, projectIndex);
+				connection.console.log("Indexed that document."); // TODO DEBUG
+			}
+		})
+	});
+}
 
 // The example settings
 interface ExampleSettings {
@@ -221,7 +251,6 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
  */
 let startupFileUri: string | null = null;
 
-let projectIndex = new Index();
 
 // TODO deal with files being deleted, so that they're removed from the above
 
@@ -458,9 +487,15 @@ function generateInitialCompletions(documentUri: string, position: Position, pro
 					completions = Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
 							label: x, 
 							kind: CompletionItemKind.Variable, 
-							data: "variable"
+							data: "variable-local"
 					})));
 				}
+				variablesMap = projectIndex.getGlobalVariables();
+				completions.push(...Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
+					label: x,
+					kind: CompletionItemKind.Variable,
+					data: "variable-global"
+				}))));
 			}
 		}
 	}
