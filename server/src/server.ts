@@ -402,16 +402,19 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 }
 
 async function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): Promise<void> {
+	// TODO clean this up like whoa
+	
 	// In this simple example we get the settings for every validate run.
 	let settings = await getDocumentSettings(textDocument.uri);
 
 	// Validate commands start on a line
 	let text = textDocument.getText();
-	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>\w+))?|(?<!@|@!|@!!){(?<reference>\w+?)}/g;
+	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}/g;
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
 	let currentLabels = projectIndex.getLabels(textDocument);
+	let currentScenes = projectIndex.getSceneList();
 	let currentGlobalVariables = projectIndex.getGlobalVariables();
 	let currentLocalVariables = projectIndex.getLocalVariables(textDocument);
 
@@ -439,7 +442,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 			let commandStartIndex = m.index + prefix.length;
 			let commandEndIndex = commandStartIndex + 1 + command.length;
 			let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
-			let dataEndIndex = dataStartIndex + data.length;
+			let tokens = data.trimRight().split(/\s+/);
 	
 			if (!prefix) {
 				if (validCommandsLookup.get(command) && m.index > 0) {
@@ -465,16 +468,40 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 					case "goto":
 					case "gosub":
 						// goto and gosub must refer to an existing label in the file
-						if (currentLabels !== undefined && currentLabels.get(data) === undefined) {
+						if (tokens.length == 0) {
 							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								dataStartIndex, dataEndIndex,
-								`Label wasn't found in this file`));
+								commandStartIndex, commandEndIndex,
+								`Command *${command} requires a label`));
+						}
+						else if (currentLabels !== undefined && currentLabels.get(tokens[0]) === undefined) {
+							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+								dataStartIndex, dataStartIndex + tokens[0].length,
+								`Label "${tokens[0]}" wasn't found in this file`));
 						}
 						break;
 	
 					case "goto_scene":
 					case "gosub_scene":
-						// TODO handle this!
+						// goto and gosub must refer to an existing label in the file
+						if (tokens.length == 0) {
+							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+								commandStartIndex, commandEndIndex,
+								`Command *${command} requires a scene`));
+						}
+						else if (currentScenes.length > 0 && !currentScenes.includes(tokens[0])) {
+							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+								dataStartIndex, dataStartIndex + tokens[0].length,
+								`Scene "${tokens[0]}" wasn't found in startup.txt`));
+						}
+						else if (tokens.length >= 2) {
+							let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
+							if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
+								let sceneIndex = data.indexOf(tokens[1]);
+								diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+									dataStartIndex + sceneIndex, dataStartIndex + sceneIndex + tokens[1].length,
+									`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`));
+							}
+						}
 						break;
 				}
 			}
