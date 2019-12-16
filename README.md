@@ -1,3 +1,25 @@
+# TODO
+
+Write my readme!
+
+Things to note:
+
+* Open ChoiceScript folder in VS Code so that it indexes the entire project.
+* To turn off the auto-word-suggesting behavior:
+        * Press F1, Run the "Preferences: Configure Language Specific Settings...".
+        * Select "ChoiceScript"
+```
+{
+    "[choicescript]": {
+        "editor.quickSuggestions": {
+            "other": false,
+            "comments": false,
+            "strings": false
+        }
+    }
+}
+```
+
 # LSP Example
 
 Heavily documented sample code for https://code.visualstudio.com/api/language-extensions/language-server-extension-guide
