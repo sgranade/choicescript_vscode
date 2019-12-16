@@ -381,7 +381,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate commands start on a line
 	let text = textDocument.getText();
-	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>\s+(?<data>\w+))?/g;
+	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>\w+))?|(?<!@|@!|@!!){(?<reference>\w+?)}/g;
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
@@ -393,50 +393,64 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 	while (m = commandPattern.exec(text)) {
 		if (m.groups === undefined)
 			continue;
-		let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
-		let command = m.groups.command;
-		let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
-		let data = (m.groups.data === undefined ? "" : m.groups.data);
-		let commandStartIndex = m.index + prefix.length;
-		let commandEndIndex = commandStartIndex + 1 + command.length;
-		let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
-		let dataEndIndex = dataStartIndex + data.length;
 
-		if (!prefix) {
-			if (validCommandsLookup.get(command) && m.index > 0) {
+		// Either we caught a {reference} to a variable or a *command
+		if (m.groups.reference !== undefined) {
+			let reference = m.groups.reference;
+			if (!currentGlobalVariables.get(reference) && !currentLocalVariables.get(reference)) {
+				let referenceStartIndex = m.index + 1;
+				let referenceEndIndex = m.index + 1 + reference.length;
 				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					commandStartIndex, commandEndIndex,
-					`Command *${command} must be on a line by itself.`));
+					referenceStartIndex, referenceEndIndex,
+					`Variable "${reference}" not defined in this file or startup.txt`));
 			}
-		}
-		else if (!validCommandsLookup.get(command)) {
-			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-				commandStartIndex, commandEndIndex,
-				`*${command} isn't a valid ChoiceScript command.`));
 		}
 		else {
-			// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
-			if (startupCommandsLookup.get(command) && !isStartupFile) {
+			let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
+			let command = m.groups.command;
+			let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
+			let data = (m.groups.data === undefined ? "" : m.groups.data);
+			let commandStartIndex = m.index + prefix.length;
+			let commandEndIndex = commandStartIndex + 1 + command.length;
+			let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
+			let dataEndIndex = dataStartIndex + data.length;
+	
+			if (!prefix) {
+				if (validCommandsLookup.get(command) && m.index > 0) {
+					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						commandStartIndex, commandEndIndex,
+						`Command *${command} must be on a line by itself.`));
+				}
+			}
+			else if (!validCommandsLookup.get(command)) {
 				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 					commandStartIndex, commandEndIndex,
-					`*${command} can only be used in startup.txt`));
+					`*${command} isn't a valid ChoiceScript command.`));
 			}
-
-			switch (command) {
-				case "goto":
-				case "gosub":
-					// goto and gosub must refer to an existing label in the file
-					if (currentLabels !== undefined && currentLabels.get(data) === undefined) {
-						diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-							dataStartIndex, dataEndIndex,
-							`Label wasn't found in this file`));
-					}
-					break;
-
-				case "goto_scene":
-				case "gosub_scene":
-					// TODO handle this!
-					break;
+			else {
+				// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
+				if (startupCommandsLookup.get(command) && !isStartupFile) {
+					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						commandStartIndex, commandEndIndex,
+						`*${command} can only be used in startup.txt`));
+				}
+	
+				switch (command) {
+					case "goto":
+					case "gosub":
+						// goto and gosub must refer to an existing label in the file
+						if (currentLabels !== undefined && currentLabels.get(data) === undefined) {
+							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+								dataStartIndex, dataEndIndex,
+								`Label wasn't found in this file`));
+						}
+						break;
+	
+					case "goto_scene":
+					case "gosub_scene":
+						// TODO handle this!
+						break;
+				}
 			}
 		}
 	}
