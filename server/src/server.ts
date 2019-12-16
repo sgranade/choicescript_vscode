@@ -76,13 +76,15 @@ class Index implements ProjectIndex {
  * Commands that can only be used in startup.txt
  */
 let startupCommands: Array<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
+// TODO deal with commands that are only allowed in choicescript_stats.txt
 /**
  * Complete list of valid commands
  */
 let validCommands: Array<string> = [
-	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp", "delete", "set", "setref", "print", "if", "rand", "page_break", "line_break", "script", "else", "elseif", "elsif", "reset",
-	"goto_scene", "fake_choice", "input_text", "ending", "share_this_game", "stat_chart",
-	"subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
+	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp", 
+	"delete", "set", "setref", "print", "if", "rand", "page_break", "line_break", "script", "else", 
+	"elseif", "elsif", "reset", "goto_scene", "fake_choice", "input_text", "ending", "share_this_game", 
+	"stat_chart", "subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
 	"check_purchase","restore_purchases","purchase","restore_game","advertisement",
 	"feedback", "save_game","delay_break","image","link","input_number","goto_random_scene",
 	"restart","more_games","delay_ending","end_trial","login","achieve","scene_list","title",
@@ -103,8 +105,10 @@ let startupCommandsCompletions: Array<CompletionItem> = ["create", "scene_list",
  * Commands to auto-complete
  */
 let validCommandsCompletions: Array<CompletionItem> = [
-	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break", "script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
-	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse","save_game","image","link","input_number","goto_random_scene","restart","achieve","bug","sound","gosub_scene","check_achievements","redirect_scene","params",
+	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break", 
+	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
+	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse","save_game","image","link","input_number",
+	"goto_random_scene","restart","achieve","bug","sound","gosub_scene","check_achievements","redirect_scene","params",
 ].map(
 	x => ({
 		label: x, 
@@ -343,19 +347,6 @@ function getFilenameFromUri(uriString: string): string | undefined {
  */
 function uriIsStartupFile(uriString: string): boolean {
 	return (getFilenameFromUri(uriString) == "startup.txt");
-}
-
-/**
- * Given a URI to a ChoiceScript file, find the URI to the ChoiceScript
- * startup file.
- * 
- * @param uriString URI to turn into the startup file.
- * @returns The potential URI to the startup file.
- */
-function createStartupUri(uriString: string): string {
-	let uri = URI(uriString);
-	uri.filename('startup.txt');
-	return uri.valueOf();
 }
 
 /**
