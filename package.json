@@ -1,7 +1,8 @@
 {
 	"name": "choicescript-lsp",
-	"description": "A language server example",
-	"author": "Microsoft Corporation",
+	"displayName": "ChoiceScript LSP TODO",
+	"description": "ChoiceScript for Visual Studio Code",
+	"author": "KLNeidecker",
 	"contributors": [
 		{
 			"name": "Stephen Granade",
@@ -11,15 +12,24 @@
 	"version": "0.1.0",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-extension-samples"
+		"url": "https://github.com/sgranade/choicescript_lsp"
 	},
-	"publisher": "vscode-samples",
-	"categories": [],
+	"publisher": "KLNeidecker",
+	"categories": [
+		"Programming Languages",
+		"Linters",
+		"Snippets"
+	],
 	"keywords": [
-		"multi-root ready"
+		"ChoiceScript"
 	],
 	"engines": {
-		"vscode": "^1.33.0"
+		"vscode": "^1.40.0"
+	},
+	"icon": "images/ChoiceOfGames.png",
+	"galleryBanner": {
+		"color": "#C80000",
+		"theme": "dark"
 	},
 	"activationEvents": [
 		"onLanguage:choicescript"
