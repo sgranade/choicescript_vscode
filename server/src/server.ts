@@ -403,7 +403,7 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 
 async function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): Promise<void> {
 	// TODO clean this up like whoa
-	
+
 	// In this simple example we get the settings for every validate run.
 	let settings = await getDocumentSettings(textDocument.uri);
 
@@ -524,6 +524,24 @@ connection.onCompletion(
 	}
 );
 
+function generateCompletionsFromArray(array: ReadonlyArray<string>, 
+		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	return array.map((x: string) => ({
+		label: x,
+		kind: kind,
+		data: dataDescription
+	}));
+}
+
+function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex, 
+		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	return Array.from(iteratorMap(index.keys(), (x: string) => ({
+		label: x, 
+		kind: kind, 
+		data: dataDescription
+	})));
+}
+
 function generateInitialCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	let completions: CompletionItem[] = [];
 
@@ -550,10 +568,35 @@ function generateInitialCompletions(documentUri: string, position: Position, pro
 	if (start !== null) {
 		// Auto-complete commands
 		if (text[start] == '*') {
-			completions = [...validCommandsCompletions];  // makin' copies
-			// Add in startup-only commands if valid
-			if (uriIsStartupFile(documentUri)) {
-				completions.push(...startupCommandsCompletions);
+			let tokens = text.slice(i+1, index).split(/\s+/);
+			if (tokens.length == 1) {
+				completions = [...validCommandsCompletions];  // makin' copies
+				// Add in startup-only commands if valid
+				if (uriIsStartupFile(documentUri)) {
+					completions.push(...startupCommandsCompletions);
+				}
+			}
+			else {
+				switch (tokens[0]) {
+					case "goto":
+					case "gosub":
+						if (tokens.length == 2) {
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(document), CompletionItemKind.Reference, "labels-local");
+						}
+						break;
+
+					case "goto_scene":
+					case "gosub_scene":
+						if(tokens.length == 2) {
+							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+						}
+						else if (tokens.length == 3) {
+							let sceneLabels = projectIndex.getSceneLabels(tokens[1]);
+							if (sceneLabels !== undefined) {
+								completions = generateCompletionsFromIndex(sceneLabels, CompletionItemKind.Reference, "labels-scene");
+							}
+						}
+				}
 			}
 		}
 		// TODO auto-complete labels for goto/gosub &c.
