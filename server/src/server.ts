@@ -11,7 +11,9 @@ import {
 	CompletionItem,
 	CompletionItemKind,
 	TextDocumentPositionParams,
-	Position
+	Position,
+	Range,
+	TextEdit
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
 const fs = require('fs').promises;
@@ -589,6 +591,14 @@ function generateInitialCompletions(documentUri: string, position: Position, pro
 					case "gosub_scene":
 						if(tokens.length == 2) {
 							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
+							// Get around that by specifying the replacement range if needed
+							if (tokens[1].includes("-")) {
+								let range = Range.create(document.positionAt(index - tokens[1].length), position);
+								completions.forEach(completion => {
+									completion.textEdit = TextEdit.replace(range, completion.label);
+								})
+							}
 						}
 						else if (tokens.length == 3) {
 							let sceneLabels = projectIndex.getSceneLabels(tokens[1]);
@@ -599,9 +609,8 @@ function generateInitialCompletions(documentUri: string, position: Position, pro
 				}
 			}
 		}
-		// TODO auto-complete labels for goto/gosub &c.
 		// Auto-complete variables
-		if (text[start] == '{') {
+		else if (text[start] == '{') {
 			// Only auto-complete if we're not a multi-replace like @{} or @!{} or @!!{}
 			var isMultireplace = false;
 			for (var i = start-1; i >= 0 && i >= start-3; i--) {
