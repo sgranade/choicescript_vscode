@@ -19,9 +19,11 @@ export type ReadonlyIdentifierIndex = ReadonlyMap<string, Position>;
 export interface ProjectIndex {
 	updateGlobalVariables(newIndex: IdentifierIndex): void;
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	updateSceneList(scenes: Array<string>): void;
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex): void;
 	getGlobalVariables(): ReadonlyIdentifierIndex;
 	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	getSceneList(): ReadonlyArray<string>;
 	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
 	removeDocument(textDocument: TextDocument): void;
 }
@@ -38,7 +40,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	let pattern: RegExp | null = null;
 	if (isStartupFile) {
-		pattern = /(\n\s*)?\*(create|temp|label)\s+(\w+)/g;
+		pattern = /(\n\s*)?\*((create|temp|label)\s+(\w+)|(scene_list)\s*?\r?\n?)/g;
 	}
 	else {
 		// *create is not legal except in startup files
@@ -48,35 +50,114 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	let newGlobalVariables: IdentifierIndex = new Map();
 	let newLocalVariables: IdentifierIndex = new Map();
+	let newScenes: Array<string> = [];
 	let newLabels: IdentifierIndex = new Map();
 
 	while (m = pattern.exec(text)) {
 		let prefix: string = m[1];
-		let command: string = m[2];
-		let value: string = m[3];
+		let commandWithValue: string = m[3];
+		let value: string = m[4];
+		let bareCommand: string = m[5];
 		let commandPosition: Position = textDocument.positionAt(m.index + prefix.length);
 
 		if (!(prefix === undefined && m.index > 0)) {
-			switch (command) {
-				case "create":
-					// *create instantiates global variables
-					newGlobalVariables.set(value, commandPosition);
-					break;
-				case "temp":
-					// *temp instantiates variables local to the file
-					newLocalVariables.set(value, commandPosition);
-					break;
-				case "label":
-					// *label creates a goto/gosub label local to the file
-					newLabels.set(value, commandPosition);
-					break;
+			if (bareCommand == "scene_list") {
+				newScenes = extractScenes(text, pattern.lastIndex);
+			}
+			else {
+				switch (commandWithValue) {
+					case "create":
+						// *create instantiates global variables
+						newGlobalVariables.set(value, commandPosition);
+						break;
+					case "temp":
+						// *temp instantiates variables local to the file
+						newLocalVariables.set(value, commandPosition);
+						break;
+					case "label":
+						// *label creates a goto/gosub label local to the file
+						newLabels.set(value, commandPosition);
+						break;
+				}
 			}
 		}
 	}
 
 	if (isStartupFile) {
 		index.updateGlobalVariables(newGlobalVariables);
+		index.updateSceneList(newScenes);
 	}
 	index.updateLocalVariables(textDocument, newLocalVariables);
 	index.updateLabels(textDocument, newLabels);
+}
+
+/**
+ * Scan a document's text to find the end of the current line.
+ * 
+ * @param document Document text to scan.
+ * @param startIndex Index at which to begin scan.
+ * @returns Index corresponding to one past the line's end, including any \r\n
+ */
+function getLineEnd(document: string, startIndex: number): number | null {
+	let i = startIndex;
+	let lineEnd: number | null = null;
+
+	for (let i = startIndex; i < document.length; i++) {
+		if (i < document.length - 2 && document[i] == '\r' && document[i+1] == '\n') {
+			lineEnd = i+2;
+			break;
+		}
+		if (i < document.length - 1 && document[i] == '\n') {
+			lineEnd = i+1;
+			break;
+		}
+		if (i == document.length - 1) {
+			lineEnd = i+1;
+			break;
+		}
+	}
+
+	return lineEnd;
+}
+
+/**
+ * Extract the scenes defined by a *scene_list command.
+ * 
+ * @param document Document text to scan.
+ * @param startIndex Index at the start of the scenes.
+ * @returns Array of the scene names, or an empty array if no scene names were found.
+ */
+function extractScenes(document: string, startIndex: number): Array<string> {
+	let sceneList: Array<string> = [];
+	let scenePattern = /(\s+)(\$\s+)?(\S+)\s*\r?\n/;
+	let lineStart = startIndex;
+
+	// Process the first line to get the indent level and first scene
+	let lineEnd = getLineEnd(document, lineStart);
+	if (!lineEnd) {
+		return sceneList;  // No scene found
+	}
+	let line = document.slice(lineStart, lineEnd);
+	let m = scenePattern.exec(line);
+	if (!m) {
+		return sceneList;
+	}
+	let padding = m[1];
+	sceneList.push(m[3]);
+	lineStart = lineEnd;
+
+	// Now loop as long as the scene pattern matches and the padding is consistent
+	while (true) {
+		lineEnd = getLineEnd(document, lineStart);
+		if (!lineEnd) {
+			return sceneList;
+		}
+		line = document.slice(lineStart, lineEnd);
+		m = scenePattern.exec(line);
+		if (!m || m[1] != padding) {
+			return sceneList;
+		}
+		sceneList.push(m[3]);
+		lineStart = lineEnd;
+	}
 }

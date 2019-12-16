@@ -15,7 +15,6 @@ import {
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
 import { readFile } from 'fs';
-import { ErrnoException } from '@nodelib/fs.stat/out/types';
 import url = require('url');
 import * as URI from 'urijs';
 import globby = require('globby');
@@ -25,11 +24,13 @@ import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIn
 class Index implements ProjectIndex {
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierIndex>;
+	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
 
 	constructor() {
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
+		this._scenes = [];
 		this._localLabels = new Map();
 	}
 
@@ -39,20 +40,26 @@ class Index implements ProjectIndex {
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._localVariables.set(textDocument.uri, newIndex);
 	}
+	updateSceneList(scenes: Array<string>) {
+		this._scenes = scenes;
+	}
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._localLabels.set(textDocument.uri, newIndex);
 	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
 	}
-	getLocalVariables(textDocument: TextDocument) {
+	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex {
 		let index = this._localVariables.get(textDocument.uri);
 		if (index === undefined)
 			index = new Map();
 		
 		return index;
 	}
-	getLabels(textDocument: TextDocument) {
+	getSceneList(): ReadonlyArray<string> {
+		return this._scenes;
+	}
+	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex {
 		let index = this._localLabels.get(textDocument.uri);
 		if (index === undefined)
 			index = new Map();
@@ -169,34 +176,46 @@ connection.onInitialized(() => {
 	// for examples
 	connection.workspace.getWorkspaceFolders().then(workspaces => {
 		if (workspaces && workspaces.length > 0)
-			searchWorkspaces(workspaces)
+			findStartupFiles(workspaces)
 	});
 });
 
-function searchWorkspaces(workspaces: WorkspaceFolder[]) {
+function findStartupFiles(workspaces: WorkspaceFolder[]) {
 	workspaces.forEach((workspace) => {
 		let rootPath = url.fileURLToPath(workspace.uri);
-		connection.console.log(`${rootPath}`); // TODO DEBUG
 		globby('startup.txt', {
 			cwd: rootPath
-		}).then(paths => initializeIndices(paths))
+		}).then(paths => initializeProjectIndices(paths))
 	});
 }
 
-function initializeIndices(pathsToStartupFiles: string[]) {
+function findProjectFiles(pathsToStartupFiles: string[]) {
+	// TODO handle multiple projects
 	pathsToStartupFiles.forEach((path) => {
+		let rootPath = path;
+		let filename = path.split('/').pop();
+		if (filename) {
+			rootPath = path.replace(filename, '');
+		}
+		// TODO instead, get the scene list from the startup.txt file and try to process those!!!
+		globby('*.txt', {
+			cwd: rootPath
+		}).then(paths => initializeProjectIndices(paths))
+	})
+}
+
+function initializeProjectIndices(pathsToProjectFiles: string[]) {
+	// TODO here is where I will loop over all project files in an index
+	pathsToProjectFiles.forEach((path) => {
 		// TODO handle multiple startup.txt files in multiple directories
 		let startupUri = url.pathToFileURL(path).toString();
-		connection.console.log(`Processing ${startupUri}`); // TODO DEBUG
-		readFile(path, 'utf8', (err: ErrnoException | null, data: string) => {
+		readFile(path, 'utf8', (err: NodeJS.ErrnoException | null, data: string) => {
 			if (err) {
 				connection.console.error(`${err.name}: ${err.message}`);
 			}
 			else {
 				let textDocument = TextDocumentImplementation.create(startupUri, 'ChioceScript', 0, data);
-				connection.console.log("Created textDocument."); // TODO DEBUG
 				updateProjectIndex(textDocument, true, projectIndex);
-				connection.console.log("Indexed that document."); // TODO DEBUG
 			}
 		})
 	});
@@ -276,6 +295,12 @@ documents.onDidChangeContent(change => {
 	validateTextDocument(change.document, projectIndex);
 });
 
+/**
+ * Generator for mapping a function over an iterable.
+ * 
+ * @param iterable Iterable to map over.
+ * @param transform Function to map over iterable.
+ */
 function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 	for (var item of iterable) {
 		yield transform(item);
@@ -344,19 +369,6 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 
 	return diagnostic;
 }
-
-// /**
-//  * Given a potential ChoiceScript text file, find the startup.txt file that should be alongside it.
-//  * If it exists, process it and return it.
-//  * 
-//  * @param otherFileUri URI to the possible ChoiceScript file.
-//  * @returns URI to the startup.txt file, or null if not found.
-//  */
-// function processStartupFile(otherFileUri: string): string | null {
-// 	let startupFileUri = createStartupUri(otherFileUri);
-// 	startupDocument = connection.
-// }
-
 
 async function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): Promise<void> {
 	// In this simple example we get the settings for every validate run.
@@ -440,6 +452,10 @@ connection.onCompletion(
 
 function generateInitialCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	let completions: CompletionItem[] = [];
+
+	// TODO DEBUG
+	initializeProjectIndices(['c:/Users/steph/Downloads/Creme/startup.txt'])
+	// TODO END DEBUG
 
 	// Find out what trigger character started this by loading the document and scanning backwards
 	let document = documents.get(documentUri);
