@@ -300,22 +300,9 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	return result;
 }
 
-
-/**
- * URI to the startup file, or null if it hasn't been loaded.
- */
-let startupFileUri: string | null = null;
-
-
 // TODO deal with files being deleted, so that they're removed from the above
 
 documents.onDidOpen(e => {
-	if (uriIsStartupFile(e.document.uri)) {
-		startupFileUri = e.document.uri;
-	}
-	// else if (!startupFileUri) {
-	// 	startupFileUri = processStartupFile(e.document.uri);
-	// }
 	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
 });
 
@@ -411,7 +398,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate commands start on a line
 	let text = textDocument.getText();
-	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}/g;
+	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}|(?<styleGuide>(?<!\.)\.{3}(?!\.)|(?<!-)--(?!-))/g;
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
@@ -425,8 +412,18 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 		if (m.groups === undefined)
 			continue;
 
-		// Either we caught a {reference} to a variable or a *command
-		if (m.groups.reference !== undefined) {
+		if (m.groups.styleGuide) {  // Items against CoG styleguide
+			let characters = m.groups.styleGuide;
+			let description = "";
+			if (characters == "...")
+				description = "ellipsis (…)";
+			else
+				description = "em-dash (—)";
+			diagnostics.push(createDiagnostic(DiagnosticSeverity.Information, textDocument,
+				m.index, m.index + m.groups.styleGuide.length,
+				`Choice of Games style requires a Unicode ${description}`));
+		}
+		else if (m.groups.reference !== undefined) {  // {reference} to a variable
 			let reference = m.groups.reference;
 			if (!currentGlobalVariables.get(reference) && !currentLocalVariables.get(reference)) {
 				let referenceStartIndex = m.index + 1;
@@ -436,7 +433,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 					`Variable "${reference}" not defined in this file or startup.txt`));
 			}
 		}
-		else {
+		else {  // *command
 			let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
 			let command = m.groups.command;
 			let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
