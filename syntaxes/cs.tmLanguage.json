@@ -30,7 +30,7 @@
 	"repository": {
 		"keywords": {
 			"name": "keyword.control.cs",
-			"match": "(?<!\\*)\\*(check_achievements|achievement|achieve|allow_reuse|author|choice|create|delete|disable_reuse|elseif|elsif|else|ending|finish|fake_choice|gosub_scene|gosub|goto_scene|goto_random_scene|goto|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|scene_list|script|set|share_this_game|show_password|stat_chart|selectable_if|title|temp|bug|redirect_scene)\\b"
+			"match": "(?<!\\*)\\*((fake_)?choice|create|temp|delete|set|(else?|selectable_)?if|else|(disable|hide|allow)_reuse|label|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|finish|ending|(page|line)_break|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
 		},
 		"comments": {
 			"name": "comment.line.cs",
@@ -69,11 +69,11 @@
 		},
 		"variable-substitution": {
 			"name": "variable.other",
-			"begin": "(?<!\\$|\\$!|\\$!!|@)\\{",
+			"begin": "(?<![$@]|[$@]!|[$@]!!){",
 			"end": "\\}"
 		},
 		"multireplace": {
-			"begin": "(@\\{)",
+			"begin": "(@!?!?\\{)",
 			"end": "(\\})",
 			"beginCaptures": {
 				"1": {
@@ -110,7 +110,7 @@
 			]
 		},
 		"operators": {
-			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/)|(&)",
+			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/|%+|%-)|(&)",
 			"captures": {
 				"1": {
 					"name": "keyword.operator.comparison.cs"
