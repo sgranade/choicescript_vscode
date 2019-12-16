@@ -482,7 +482,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 	
 					case "goto_scene":
 					case "gosub_scene":
-						// goto and gosub must refer to an existing label in the file
+						// goto and gosub must refer to an existing scene
 						if (tokens.length == 0) {
 							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 								commandStartIndex, commandEndIndex,
@@ -496,7 +496,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 						else if (tokens.length >= 2) {
 							let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
 							if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
-								let sceneIndex = data.indexOf(tokens[1]);
+								let sceneIndex = data.lastIndexOf(tokens[1]);
 								diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 									dataStartIndex + sceneIndex, dataStartIndex + sceneIndex + tokens[1].length,
 									`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`));
