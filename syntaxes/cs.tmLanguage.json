@@ -1,0 +1,135 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "ChoiceScript",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#choices"
+		},
+		{
+			"include": "#todos"
+		},
+		{
+			"include": "#variable-display"
+		},
+		{
+			"include": "#variable-substitution"
+		},
+		{
+			"include": "#multireplace"
+		},
+		{
+			"include": "#operators"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"name": "keyword.control.cs",
+			"match": "(?<!\\*)\\*(check_achievements|achievement|achieve|allow_reuse|author|choice|create|delete|disable_reuse|elseif|elsif|else|ending|finish|fake_choice|gosub_scene|gosub|goto_scene|goto_random_scene|goto|hide_reuse|if|input_text|input_number|image|label|line_break|link|more_games|page_break|print|rand|return|scene_list|script|set|share_this_game|show_password|stat_chart|selectable_if|title|temp|bug|redirect_scene)\\b"
+		},
+		"comments": {
+			"name": "comment.line.cs",
+			"begin": "^\\s*\\*comment",
+			"end": "(?=$)",
+			"patterns": [{
+				"include": "#todos"
+			}]
+		},
+		"todos": {
+			"patterns": [{
+				"name": "invalid.illegal.cs",
+				"match": "todo|TODO"
+			}]
+		},
+		"choices": {
+			"name": "entity.name.function",
+			"begin": "(^|\\s+)#",
+			"end": "(?=$)",
+			"patterns": [
+				{
+					"include": "#multireplace"
+				},
+				{
+					"include": "#variable-display"
+				}
+			]
+		},
+		"variable-display": {
+			"name": "constant.language.cs",
+			"begin": "\\$!?!?\\{",
+			"end": "\\}",
+			"patterns": [{
+				"include": "#variable-substitution"
+			}]
+		},
+		"variable-substitution": {
+			"name": "variable.other",
+			"begin": "(?<!\\$|\\$!|\\$!!|@)\\{",
+			"end": "\\}"
+		},
+		"multireplace": {
+			"begin": "(@\\{)",
+			"end": "(\\})",
+			"beginCaptures": {
+				"1": {
+					"name": "string.interpolated"
+				}
+			},
+			"endCaptures": {
+				"1": {
+					"name": "string.interpolated"
+				}
+			},
+			"patterns": [
+				{
+					"name": "variable.other",
+					"comment": "Bare variable at start of multireplace",
+					"match": "\\G\\s*([a-z]\\w*)"
+				},
+				{
+					"name": "variable.other",
+					"comment": "Expression in parentheses at start of multireplace",
+					"begin": "\\G\\s*\\(",
+					"end": "\\)\\s+",
+					"patterns": [{
+						"include": "#variable-substitution"
+					}]
+				},
+				{
+					"include": "#variable-display"
+				},
+				{
+					"name": "string.interpolated",
+					"match": "\\|"
+				}
+			]
+		},
+		"operators": {
+			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/)|(&)",
+			"captures": {
+				"1": {
+					"name": "keyword.operator.comparison.cs"
+				},
+				"2": {
+					"name": "keyword.operator.arithmetic.cs"
+				},
+				"3": {
+					"name": "keyword.operator.string.cs"
+				}
+			}
+		},
+		"literals": {
+			"name": "constant.language.cs",
+			"match": "true|false"
+		},
+		"variable-name": {
+			"match": "[a-z]\\w*"
+		}
+	},
+	"scopeName": "source.cs"
+}

@@ -39,6 +39,13 @@
 				]
 			}
 		],
+		"grammars": [
+			{
+				"language": "choicescript",
+				"scopeName": "source.cs",
+				"path": "./syntaxes/cs.tmLanguage.json"
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "Example configuration",
