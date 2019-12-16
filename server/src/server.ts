@@ -38,19 +38,19 @@ class Index implements ProjectIndex {
 		this._globalVariables = newIndex;
 	}
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localVariables.set(textDocument.uri, newIndex);
+		this._localVariables.set(normalizeUri(textDocument.uri), newIndex);
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
 	}
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localLabels.set(textDocument.uri, newIndex);
+		this._localLabels.set(normalizeUri(textDocument.uri), newIndex);
 	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
 	}
 	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex {
-		let index = this._localVariables.get(textDocument.uri);
+		let index = this._localVariables.get(normalizeUri(textDocument.uri));
 		if (index === undefined)
 			index = new Map();
 		
@@ -60,15 +60,15 @@ class Index implements ProjectIndex {
 		return this._scenes;
 	}
 	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex {
-		let index = this._localLabels.get(textDocument.uri);
+		let index = this._localLabels.get(normalizeUri(textDocument.uri));
 		if (index === undefined)
 			index = new Map();
 
 		return index;
 	}
 	removeDocument(textDocument: TextDocument) {
-		this._localVariables.delete(textDocument.uri);
-		this._localLabels.delete(textDocument.uri);
+		this._localVariables.delete(normalizeUri(textDocument.uri));
+		this._localLabels.delete(normalizeUri(textDocument.uri));
 	}
 }
 
@@ -305,6 +305,16 @@ function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 	for (var item of iterable) {
 		yield transform(item);
 	}
+}
+
+/**
+ * Normalize a URI.
+ * 
+ * @param uriString URI to normalize.
+ */
+function normalizeUri(uriString: string): string {
+	let uri = new URI(uriString);
+	return uri.normalize().toString();
 }
 
 /**
