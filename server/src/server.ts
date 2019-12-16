@@ -66,6 +66,32 @@ class Index implements ProjectIndex {
 
 		return index;
 	}
+	getSceneVariables(scene: string): ReadonlyIdentifierIndex | undefined {
+		let sceneUri: string | undefined = undefined;
+		for (let key of this._localVariables.keys()) {
+			if (key.includes(scene)) {
+				sceneUri = key;
+				break;
+			}
+		}
+		if (sceneUri === undefined) {
+			return undefined;
+		}
+		return this._localVariables.get(sceneUri);
+	}
+	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined {
+		let sceneUri: string | undefined = undefined;
+		for (let key of this._localLabels.keys()) {
+			if (key.includes(scene)) {
+				sceneUri = key;
+				break;
+			}
+		}
+		if (sceneUri === undefined) {
+			return undefined;
+		}
+		return this._localLabels.get(sceneUri);
+	}
 	removeDocument(textDocument: TextDocument) {
 		this._localVariables.delete(normalizeUri(textDocument.uri));
 		this._localLabels.delete(normalizeUri(textDocument.uri));

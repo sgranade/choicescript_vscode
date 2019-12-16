@@ -25,6 +25,8 @@ export interface ProjectIndex {
 	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
 	getSceneList(): ReadonlyArray<string>;
 	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	getSceneVariables(scene: string): ReadonlyIdentifierIndex | undefined;
+	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined;
 	removeDocument(textDocument: TextDocument): void;
 }
 
