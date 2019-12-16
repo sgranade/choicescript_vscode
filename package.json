@@ -36,7 +36,8 @@
 				],
 				"extensions": [
 					".txt"
-				]
+				],
+				"configuration": "./language-configuration.json"
 			}
 		],
 		"grammars": [
