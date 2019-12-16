@@ -40,11 +40,11 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	let pattern: RegExp | null = null;
 	if (isStartupFile) {
-		pattern = /(\n\s*)?\*((create|temp|label)\s+(\w+)|(scene_list)\s*?\r?\n?)/g;
+		pattern = /(?<prefix>\n\s*)?\*((?<commandWithValue>create|temp|label)\s+(?<value>\w+)|(?<bareCommand>scene_list)\s*?\r?\n?)/g;
 	}
 	else {
 		// *create is not legal except in startup files
-		pattern = /(\n\s*)?\*(temp|label)\s+(\w+)/g;
+		pattern = /(?<prefix>\n\s*)?\*(?<commandWithValue>temp|label)\s+(?<value>\w+)/g;
 	}
 	let m: RegExpExecArray | null;
 
@@ -54,11 +54,18 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	let newLabels: IdentifierIndex = new Map();
 
 	while (m = pattern.exec(text)) {
-		let prefix: string = m[1];
-		let commandWithValue: string = m[3];
-		let value: string = m[4];
-		let bareCommand: string = m[5];
-		let commandPosition: Position = textDocument.positionAt(m.index + prefix.length);
+		if (m.groups === undefined) {
+			continue;
+		}
+		let prefix = m.groups.prefix;
+		let commandWithValue: string = m.groups.commandWithValue;
+		let value = m.groups.value;
+		let bareCommand = m.groups.bareCommand;
+		let commandIndex = m.index;
+		if (prefix !== undefined) {
+			commandIndex += prefix.length;
+		}
+		let commandPosition: Position = textDocument.positionAt(commandIndex);
 
 		if (!(prefix === undefined && m.index > 0)) {
 			if (bareCommand == "scene_list") {
