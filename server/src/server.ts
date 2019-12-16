@@ -14,7 +14,7 @@ import {
 	Position
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
-import { readFile } from 'fs';
+const fs = require('fs').promises;
 import url = require('url');
 import * as URI from 'urijs';
 import globby = require('globby');
@@ -185,40 +185,44 @@ function findStartupFiles(workspaces: WorkspaceFolder[]) {
 		let rootPath = url.fileURLToPath(workspace.uri);
 		globby('startup.txt', {
 			cwd: rootPath
-		}).then(paths => initializeProjectIndices(paths))
+		}).then(paths => indexProject(paths))
 	});
 }
 
-function findProjectFiles(pathsToStartupFiles: string[]) {
-	// TODO handle multiple projects
-	pathsToStartupFiles.forEach((path) => {
-		let rootPath = path;
-		let filename = path.split('/').pop();
-		if (filename) {
-			rootPath = path.replace(filename, '');
-		}
-		// TODO instead, get the scene list from the startup.txt file and try to process those!!!
-		globby('*.txt', {
-			cwd: rootPath
-		}).then(paths => initializeProjectIndices(paths))
-	})
-}
-
-function initializeProjectIndices(pathsToProjectFiles: string[]) {
-	// TODO here is where I will loop over all project files in an index
-	pathsToProjectFiles.forEach((path) => {
+function indexProject(pathsToProjectFiles: string[]) {
+	pathsToProjectFiles.forEach(async (path) => {
 		// TODO handle multiple startup.txt files in multiple directories
-		let startupUri = url.pathToFileURL(path).toString();
-		readFile(path, 'utf8', (err: NodeJS.ErrnoException | null, data: string) => {
-			if (err) {
-				connection.console.error(`${err.name}: ${err.message}`);
-			}
-			else {
-				let textDocument = TextDocumentImplementation.create(startupUri, 'ChioceScript', 0, data);
-				updateProjectIndex(textDocument, true, projectIndex);
-			}
-		})
+
+		let projectPath = path;
+		let startupFilename = path.split('/').pop();
+		if (startupFilename) {
+			projectPath = projectPath.replace(startupFilename, '');
+		}
+
+		// Index the startup.txt file
+		await indexFile(path);
+
+		// Try to index the stats page (which might not exist)
+		indexFile(projectPath+"choicescript_stats.txt");
+
+		// Try to index all of the scene files
+		let scenePaths = projectIndex.getSceneList().map(name => projectPath+name+".txt");
+		scenePaths.map(x => indexFile(x));
 	});
+}
+
+async function indexFile(path: string) {
+	let fileUri = url.pathToFileURL(path).toString();
+
+	try {
+		let data = await fs.readFile(path, 'utf8');
+		let textDocument = TextDocumentImplementation.create(fileUri, 'ChoiceScript', 0, data);
+		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
+	}
+	catch (err) {
+		connection.console.error(`Could not read file ${path} (${err.name}: ${err.message} ${err.filename} ${err.lineNumber})`);
+		return;
+	}
 }
 
 // The example settings
@@ -462,10 +466,6 @@ connection.onCompletion(
 
 function generateInitialCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	let completions: CompletionItem[] = [];
-
-	// TODO DEBUG
-	initializeProjectIndices(['c:/Users/steph/Downloads/Creme/startup.txt'])
-	// TODO END DEBUG
 
 	// Find out what trigger character started this by loading the document and scanning backwards
 	let document = documents.get(documentUri);
