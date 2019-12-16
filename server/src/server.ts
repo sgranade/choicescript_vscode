@@ -381,7 +381,7 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate commands start on a line
 	let text = textDocument.getText();
-	let commandPattern: RegExp = /(\n\s*)?\*(\w+)(\s+(\w+))?/g;
+	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>\s+(?<data>\w+))?/g;
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
@@ -391,16 +391,18 @@ async function validateTextDocument(textDocument: TextDocument, projectIndex: Pr
 
 	let diagnostics: Diagnostic[] = [];
 	while (m = commandPattern.exec(text)) {
-		let prefix = (m[1] === undefined ? "" : m[1]);
-		let command = m[2];
-		let spacingAndData = (m[3] === undefined ? "" : m[3]);
-		let data = (m[4] === undefined ? "" : m[4]);
+		if (m.groups === undefined)
+			continue;
+		let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
+		let command = m.groups.command;
+		let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
+		let data = (m.groups.data === undefined ? "" : m.groups.data);
 		let commandStartIndex = m.index + prefix.length;
 		let commandEndIndex = commandStartIndex + 1 + command.length;
 		let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
 		let dataEndIndex = dataStartIndex + data.length;
 
-		if (prefix === undefined) {
+		if (!prefix) {
 			if (validCommandsLookup.get(command) && m.index > 0) {
 				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 					commandStartIndex, commandEndIndex,
