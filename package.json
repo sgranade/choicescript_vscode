@@ -47,6 +47,12 @@
 				"path": "./syntaxes/cs.tmLanguage.json"
 			}
 		],
+		"snippets": [
+			{
+				"language": "choicescript",
+				"path": "./snippets.json"
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "Example configuration",
