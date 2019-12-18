@@ -3,8 +3,6 @@ import {
 	WorkspaceFolder,
 	TextDocuments,
 	TextDocument,
-	Diagnostic,
-	DiagnosticSeverity,
 	ProposedFeatures,
 	InitializeParams,
 	DidChangeConfigurationNotification,
@@ -23,6 +21,8 @@ import * as URI from 'urijs';
 import globby = require('globby');
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex } from './indexer';
+import { generateDiagnostics } from './validator';
+import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 
 class Index implements ProjectIndex {
 	_startupFileUri: string;
@@ -106,52 +106,6 @@ class Index implements ProjectIndex {
 		this._localLabels.delete(normalizeUri(textDocument.uri));
 	}
 }
-
-/**
- * Commands that can only be used in startup.txt
- */
-let startupCommands: Array<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
-// TODO deal with commands that are only allowed in choicescript_stats.txt
-/**
- * Complete list of valid commands
- */
-let validCommands: Array<string> = [
-	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp", 
-	"delete", "set", "setref", "print", "if", "rand", "page_break", "line_break", "script", "else", 
-	"elseif", "elsif", "reset", "goto_scene", "fake_choice", "input_text", "ending", "share_this_game", 
-	"stat_chart", "subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
-	"check_purchase","restore_purchases","purchase","restore_game","advertisement",
-	"feedback", "save_game","delay_break","image","link","input_number","goto_random_scene",
-	"restart","more_games","delay_ending","end_trial","login","achieve","scene_list","title",
-	"bug","link_button","check_registration","sound","author","gosub_scene","achievement",
-	"check_achievements","redirect_scene","print_discount","purchase_discount","track_event",
-	"timer","youtube","product","text_image","params","config"
-];
-/**
- * Commands to auto-complete in startup.txt only
- */
-let startupCommandsCompletions: Array<CompletionItem> = ["create", "scene_list", "title", "author", "achievement"].map(
-	x => ({
-		label: x, 
-		kind: CompletionItemKind.Keyword, 
-		data: "command"
-}));
-/**
- * Commands to auto-complete
- */
-let validCommandsCompletions: Array<CompletionItem> = [
-	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break", 
-	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
-	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse","save_game","image","link","input_number",
-	"goto_random_scene","restart","achieve","bug","sound","gosub_scene","check_achievements","redirect_scene","params",
-].map(
-	x => ({
-		label: x, 
-		kind: CompletionItemKind.Keyword, 
-		data: "command"
-}));
-let startupCommandsLookup: Map<string, number> = new Map(startupCommands.map(x => [x, 1]));
-let validCommandsLookup: Map<string, number> = new Map(validCommands.map(x => [x, 1]));
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -353,174 +307,8 @@ function normalizeUri(uriString: string): string {
 	return uri.normalize().toString();
 }
 
-/**
- * Extract the filename portion from a URI.
- * 
- * Note that, for URIs with no filename (such as file:///path/to/file), the final portion of the
- * path is returned.
- * 
- * @param uriString URI to extract the filename from.
- * @returns The filename, or null if none is found.
- */
-function getFilenameFromUri(uriString: string): string | undefined {
-	let uri = URI(uriString);
-	return uri.filename();
-}
-
-/**
- * Determine if a URI points to a ChoiceScript startup file.
- * 
- * @param uriString URI to see if it refers to the startup file.
- * @returns True if the URI is to the startup file, false otherwise.
- */
-function uriIsStartupFile(uriString: string): boolean {
-	return (getFilenameFromUri(uriString) == "startup.txt");
-}
-
-/**
- * Generate a diagnostic message.
- * 
- * Pass start and end locations as 0-based indexes into the document's text.
- * 
- * @param severity Diagnostic severity
- * @param textDocument Document to which the diagnostic applies.
- * @param start Start location in the text of the diagnostic message.
- * @param end End location in the text of the diagnostic message.
- * @param message Diagnostic message.
- */
-function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
-		start: number, end: number, message: string): Diagnostic {
-	let diagnostic: Diagnostic = {
-		severity: severity,
-		range: {
-			start: textDocument.positionAt(start),
-			end: textDocument.positionAt(end)
-		},
-		message: message,
-		source: 'ChoiceScript'
-	};
-
-	return diagnostic;
-}
-
-async function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): Promise<void> {
-	// TODO clean this up like whoa
-
-	// In this simple example we get the settings for every validate run.
-	let settings = await getDocumentSettings(textDocument.uri);
-
-	// Validate commands start on a line
-	let text = textDocument.getText();
-	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}|(?<styleGuide>(?<!\.)\.{3}(?!\.)|(?<!-)--(?!-))/g;
-	let m: RegExpExecArray | null;
-
-	let isStartupFile = uriIsStartupFile(textDocument.uri);
-	let currentLabels = projectIndex.getLabels(textDocument);
-	let currentScenes = projectIndex.getSceneList();
-	let currentGlobalVariables = projectIndex.getGlobalVariables();
-	let currentLocalVariables = projectIndex.getLocalVariables(textDocument);
-
-	let diagnostics: Diagnostic[] = [];
-	while (m = commandPattern.exec(text)) {
-		if (m.groups === undefined)
-			continue;
-
-		if (m.groups.styleGuide) {  // Items against CoG styleguide
-			let characters = m.groups.styleGuide;
-			let description = "";
-			if (characters == "...")
-				description = "ellipsis (…)";
-			else
-				description = "em-dash (—)";
-			diagnostics.push(createDiagnostic(DiagnosticSeverity.Information, textDocument,
-				m.index, m.index + m.groups.styleGuide.length,
-				`Choice of Games style requires a Unicode ${description}`));
-		}
-		else if (m.groups.reference !== undefined) {  // {reference} to a variable
-			let reference = m.groups.reference;
-			if (!currentGlobalVariables.get(reference) && !currentLocalVariables.get(reference)) {
-				let referenceStartIndex = m.index + 1;
-				let referenceEndIndex = m.index + 1 + reference.length;
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					referenceStartIndex, referenceEndIndex,
-					`Variable "${reference}" not defined in this file or startup.txt`));
-			}
-		}
-		else {  // *command
-			let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
-			let command = m.groups.command;
-			let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
-			let data = (m.groups.data === undefined ? "" : m.groups.data);
-			let commandStartIndex = m.index + prefix.length;
-			let commandEndIndex = commandStartIndex + 1 + command.length;
-			let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
-			let tokens = data.trimRight().split(/\s+/);
-	
-			if (!prefix) {
-				if (validCommandsLookup.get(command) && m.index > 0) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`Command *${command} must be on a line by itself.`));
-				}
-			}
-			else if (!validCommandsLookup.get(command)) {
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					commandStartIndex, commandEndIndex,
-					`*${command} isn't a valid ChoiceScript command.`));
-			}
-			else {
-				// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
-				if (startupCommandsLookup.get(command) && !isStartupFile) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`*${command} can only be used in startup.txt`));
-				}
-	
-				switch (command) {
-					case "goto":
-					case "gosub":
-						// goto and gosub must refer to an existing label in the file
-						if (tokens.length == 0) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								commandStartIndex, commandEndIndex,
-								`Command *${command} requires a label`));
-						}
-						else if (currentLabels !== undefined && currentLabels.get(tokens[0]) === undefined) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								dataStartIndex, dataStartIndex + tokens[0].length,
-								`Label "${tokens[0]}" wasn't found in this file`));
-						}
-						break;
-	
-					case "goto_scene":
-					case "gosub_scene":
-						// goto and gosub must refer to an existing scene
-						if (tokens.length == 0) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								commandStartIndex, commandEndIndex,
-								`Command *${command} requires a scene`));
-						}
-						else if (currentScenes.length > 0 && !currentScenes.includes(tokens[0])) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								dataStartIndex, dataStartIndex + tokens[0].length,
-								`Scene "${tokens[0]}" wasn't found in startup.txt`));
-						}
-						else if (tokens.length >= 2) {
-							let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
-							if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
-								let sceneIndex = data.lastIndexOf(tokens[1]);
-								diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-									dataStartIndex + sceneIndex, dataStartIndex + sceneIndex + tokens[1].length,
-									`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`));
-							}
-						}
-						break;
-				}
-			}
-		}
-	}
-
-	// Send the computed diagnostics to VSCode.
+function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex) {
+	let diagnostics = generateDiagnostics(textDocument, projectIndex);
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
