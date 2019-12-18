@@ -230,7 +230,7 @@ function findStartupFiles(workspaces: WorkspaceFolder[]) {
 }
 
 function indexProject(pathsToProjectFiles: string[]) {
-	pathsToProjectFiles.forEach(async (path) => {
+	pathsToProjectFiles.map(async (path) => {
 		// TODO handle multiple startup.txt files in multiple directories
 
 		let projectPath = path;
@@ -247,7 +247,12 @@ function indexProject(pathsToProjectFiles: string[]) {
 
 		// Try to index all of the scene files
 		let scenePaths = projectIndex.getSceneList().map(name => projectPath+name+".txt");
-		scenePaths.map(x => indexFile(x));
+		const promises = scenePaths.map(x => indexFile(x));
+
+		await Promise.all(promises);
+
+		// Revalidate all open text documents
+		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	});
 }
 
