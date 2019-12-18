@@ -13,7 +13,8 @@ import {
 	TextDocumentPositionParams,
 	Position,
 	Range,
-	TextEdit
+	TextEdit,
+	Definition
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
 const fs = require('fs').promises;
@@ -24,19 +25,22 @@ import globby = require('globby');
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex } from './indexer';
 
 class Index implements ProjectIndex {
+	_startupFileUri: string;
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
 
 	constructor() {
+		this._startupFileUri = "";
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
 	}
 
-	updateGlobalVariables(newIndex: IdentifierIndex) {
+	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
+		this._startupFileUri = textDocument.uri;
 		this._globalVariables = newIndex;
 	}
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
@@ -47,6 +51,9 @@ class Index implements ProjectIndex {
 	}
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._localLabels.set(normalizeUri(textDocument.uri), newIndex);
+	}
+	getStartupFileUri(): string {
+		return this._startupFileUri;
 	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
@@ -183,9 +190,10 @@ connection.onInitialize((params: InitializeParams) => {
 			textDocumentSync: documents.syncKind,
 			// Tell the client that the server supports code completion
 			completionProvider: {
-				resolveProvider: true,
+				resolveProvider: false,
 				triggerCharacters: [ '*', '{' ]
-			}
+			},
+			definitionProvider: true
 		}
 	};
 });
@@ -637,20 +645,57 @@ function generateInitialCompletions(documentUri: string, position: Position, pro
 	return completions;
 }
 
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			item.detail = 'TypeScript details';
-			item.documentation = 'TypeScript documentation';
-		} else if (item.data === 2) {
-			item.detail = 'JavaScript details';
-			item.documentation = 'JavaScript documentation';
-		}
-		return item;
+connection.onDefinition(
+	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
+		return generateDefinition(textDocumentPosition.textDocument.uri, textDocumentPosition.position, projectIndex);
 	}
 );
+
+function generateDefinition(documentUri: string, position: Position, projectIndex: ProjectIndex): Definition | undefined {
+	let definition: Definition | undefined = undefined;
+
+	// Find out what trigger character started this by loading the document and scanning backwards
+	let document = documents.get(documentUri);
+	if (document === undefined) {
+		return definition;
+	}
+	let text = document.getText();
+	let index = document.offsetAt(position);
+	
+	let start: number | null = null;
+	let end: number | null = null;
+
+	// Get the symbol at this location
+	let symbolPattern = /[\w-]/;
+
+	for (var i = index; i >= 0; i--) {
+		if (!symbolPattern.test(text[i])) {
+			start = i+1;
+			break;
+		}
+	}
+	for (var i = index; i < text.length; i++) {
+		if (!symbolPattern.test(text[i])) {
+			end = i;
+			break;
+		}
+	}
+	if (!start || !end) {
+		return definition;
+	}
+	let symbol = text.substring(start, end);
+
+	let location = projectIndex.getLocalVariables(document).get(symbol);
+	if (location === undefined) {
+		location = projectIndex.getGlobalVariables().get(symbol);
+	}
+
+	if (location !== undefined) {
+		definition = location;
+	}
+
+	return definition;
+}
 
 /*
 connection.onDidOpenTextDocument((params) => {

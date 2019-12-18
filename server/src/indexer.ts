@@ -1,26 +1,24 @@
-import {
-	TextDocument,
-	Position
-} from 'vscode-languageserver';
+import { Range, Location, TextDocument } from 'vscode-languageserver';
 
 /**
  * Type for a mutable index of identifiers.
  */
-export type IdentifierIndex = Map<string, Position>;
+export type IdentifierIndex = Map<string, Location>;
 
 /**
  * Type for an immutable index of identifiers.
  */
-export type ReadonlyIdentifierIndex = ReadonlyMap<string, Position>;
+export type ReadonlyIdentifierIndex = ReadonlyMap<string, Location>;
 
 /**
  * Interface for an index of a ChoiceScript project.
  */
 export interface ProjectIndex {
-	updateGlobalVariables(newIndex: IdentifierIndex): void;
+	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
 	updateSceneList(scenes: Array<string>): void;
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	getStartupFileUri(): string;
 	getGlobalVariables(): ReadonlyIdentifierIndex;
 	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
 	getSceneList(): ReadonlyArray<string>;
@@ -42,11 +40,11 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	let pattern: RegExp | null = null;
 	if (isStartupFile) {
-		pattern = /(?<prefix>\n\s*)?\*((?<commandWithValue>create|temp|label)\s+(?<value>\w+)|(?<bareCommand>scene_list)\s*?\r?\n?)/g;
+		pattern = /(?<prefix>\n\s*)?\*((?<commandWithValue>create|temp|label)(?<spacing>\s+)(?<value>\w+)|(?<bareCommand>scene_list)\s*?\r?\n?)/g;
 	}
 	else {
 		// *create is not legal except in startup files
-		pattern = /(?<prefix>\n\s*)?\*(?<commandWithValue>temp|label)\s+(?<value>\w+)/g;
+		pattern = /(?<prefix>\n\s*)?\*(?<commandWithValue>temp|label)(?<spacing>\s+)(?<value>\w+)/g;
 	}
 	let m: RegExpExecArray | null;
 
@@ -61,13 +59,17 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		}
 		let prefix = m.groups.prefix;
 		let commandWithValue: string = m.groups.commandWithValue;
+		let spacing = m.groups.spacing;
 		let value = m.groups.value;
 		let bareCommand = m.groups.bareCommand;
 		let commandIndex = m.index;
 		if (prefix !== undefined) {
 			commandIndex += prefix.length;
 		}
-		let commandPosition: Position = textDocument.positionAt(commandIndex);
+		let valueIndex = 0;
+		if (value !== undefined) {
+			valueIndex = commandIndex + 1 + commandWithValue.length + spacing.length;
+		}
 
 		if (!(prefix === undefined && m.index > 0)) {
 			if (bareCommand == "scene_list") {
@@ -77,15 +79,24 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				switch (commandWithValue) {
 					case "create":
 						// *create instantiates global variables
-						newGlobalVariables.set(value, commandPosition);
+						newGlobalVariables.set(value, Location.create(textDocument.uri, Range.create(
+							textDocument.positionAt(valueIndex),
+							textDocument.positionAt(valueIndex + value.length)
+							)));
 						break;
 					case "temp":
 						// *temp instantiates variables local to the file
-						newLocalVariables.set(value, commandPosition);
+						newLocalVariables.set(value, Location.create(textDocument.uri, Range.create(
+							textDocument.positionAt(valueIndex),
+							textDocument.positionAt(valueIndex + value.length)
+							)));
 						break;
 					case "label":
 						// *label creates a goto/gosub label local to the file
-						newLabels.set(value, commandPosition);
+						newLabels.set(value, Location.create(textDocument.uri, Range.create(
+							textDocument.positionAt(valueIndex),
+							textDocument.positionAt(valueIndex + value.length)
+							)));
 						break;
 				}
 			}
@@ -93,7 +104,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	}
 
 	if (isStartupFile) {
-		index.updateGlobalVariables(newGlobalVariables);
+		index.updateGlobalVariables(textDocument, newGlobalVariables);
 		index.updateSceneList(newScenes);
 	}
 	index.updateLocalVariables(textDocument, newLocalVariables);
