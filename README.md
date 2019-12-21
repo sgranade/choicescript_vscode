@@ -1,13 +1,32 @@
-# TODO
+# ChoiceScript VS Code
 
-Write my readme!
+A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescript/), a language for writing choose-your-own-path text games.
 
-Things to note:
+## Features
 
-* Open ChoiceScript folder in VS Code so that it indexes the entire project.
-* To turn off the auto-word-suggesting behavior:
-        * Press F1, Run the "Preferences: Configure Language Specific Settings...".
-        * Select "ChoiceScript"
+* Autocomplete
+* Syntax highlighting
+* Verify and highlight errors
+* Snippets to match Choice of Games style rules
+
+## Installation
+
+[Install from the VSCode extension marketplace](https://marketplace.visualstudio.com/items?itemName=KLNeidecker.choicescript-vscode).
+
+## Use
+
+Open your ChoiceScript folder, often named `mygame`, and the language server will index the entire project.
+
+## Settings
+
+To use the style snippets that turn `...` into an ellipsis and `--` into an em-dash, [enable snippet tab completion](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_creating-your-own-snippets). Then type three periods and hit tab to turn them into an ellipsis.
+
+For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying. To turn it off for ChoiceScript:
+
+* Press `F1` to open the command palette
+* Type in `Preferences: Configure Language Specific Settings...` and run that command
+    * Select "ChoiceScript" from the dropdown
+    * Add the following text to the `settings.json` file that VS Code opens
 ```
 {
     "[choicescript]": {
@@ -20,41 +39,35 @@ Things to note:
 }
 ```
 
-# LSP Example
+## Release Notes
 
-Heavily documented sample code for https://code.visualstudio.com/api/language-extensions/language-server-extension-guide
+### [0.1.0]
 
-## Functionality
+Created a language server for ChoiceScript, which added the following features:
 
-This Language Server works for plain text file. It has the following language features:
-- Completions
-- Diagnostics regenerated on each file change or configuration change
+* IntelliSense automatic code completion for ChoiceScript commands like `*choice`
+* Diagnostics to highlight errors
+* Auto-indention after commands that require it, like `*choice` and `*if`
+* Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography
 
-It also includes an End-to-End test.
+### [0.0.5]
 
-## Structure
+Added additional ChoiceScript keywords.
 
-```
-.
-├── client // Language Client
-│   ├── src
-│   │   ├── test // End to End tests for Language Client / Server
-│   │   └── extension.ts // Language Client entry point
-├── package.json // The extension manifest.
-└── server // Language Server
-    └── src
-        └── server.ts // Language Server entry point
-```
+### [0.0.4]
 
-## Running the Sample
+* Now highlights `*stat_chart` (regex typo on my part), `*bug`, and` *redirect_scene`.
+* No longer highlights text between two or more `${variables}`.
+* Recognizes the new variable format that drops the `$` symbol, `{variable}`.
+* Correctly highlights uppercase variable syntax of `$!{variable}`, `$!!{variable}`, `!{variable}`, and `!!{variable}`.
+* An initial multireplace highlight. It's a greedy highlight and I will break it down so it doesn't highlight the entire line in one color later (as in the variables will stand out versus the multireplace text), but for now it will at least show a multireplace text exists and stands out from other commands.
 
-- Run `npm install` in this folder. This installs all necessary npm modules in both the client and server folder
-- Open VS Code on this folder.
-- Press Ctrl+Shift+B to compile the client and server.
-- Switch to the Debug viewlet.
-- Select `Launch Client` from the drop down.
-- Run the launch config.
-- If you want to debug the server as well use the launch configuration `Attach to Server`
-- In the [Extension Development Host] instance of VSCode, open a document in 'plain text' language mode.
-  - Type `j` or `t` to see `Javascript` and `TypeScript` completion.
-  - Enter text content such as `AAA aaa BBB`. The extension will emit diagnostics for all words in all-uppercase.
+### [0.0.3]
+
+Minor changes to extra files, including changelog.
+
+### [0.0.1 - 0.0.2]
+
+Initial release and minor icon tweaks.
+
+Basic syntax highlighting.
