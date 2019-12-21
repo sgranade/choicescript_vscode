@@ -4,7 +4,7 @@
 		"body": "…",
 		"description": "Turn three periods into a Unicode ellipsis"
 	},
-	"Em-Dash": {
+	"Em Dash": {
 		"prefix": "--",
 		"body": "—",
 		"description": "Turn two dashes into a Unicode em-dash"
