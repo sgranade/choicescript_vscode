@@ -1,6 +1,6 @@
 import { TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex } from './indexer';
+import { ProjectIndex, ReadonlyIdentifierIndex } from './indexer';
 import { startupCommands, validCommands, uriIsStartupFile } from './language';
 
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
@@ -33,6 +33,125 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
 }
 
 /**
+ * Validate a set of characters against the Choice of Games style manual.
+ * 
+ * @param characters Characters being evaluated for style.
+ * @param index Location of the characters in the document.
+ * @param textDocument Document being validated.
+ * @returns Diagnostic message, if any.
+ */
+function validateStyle(characters: string, index: number, textDocument: TextDocument): Diagnostic | undefined {
+	let description = "";
+	if (characters == '...')
+		description = "ellipsis (…)";
+	else
+		description = "em-dash (—)";
+	return createDiagnostic(DiagnosticSeverity.Information, textDocument,
+		index, index + characters.length,
+		`Choice of Games style requires a Unicode ${description}`);
+}
+
+/**
+ * Validate a reference to a variable.
+ * 
+ * @param reference Name of the variable being referenced.
+ * @param index Location of the reference in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param localVariables Index of local variables.
+ * @param textDocument Document being validated.
+ * @returns Diagnostic message, if any.
+ */
+function validateReference(reference: string, index: number, projectIndex: ProjectIndex,
+		textDocument: TextDocument): Diagnostic | undefined {
+	let diagnostic: Diagnostic | undefined = undefined;
+	if (!projectIndex.getGlobalVariables().get(reference) && 
+			!projectIndex.getLocalVariables(textDocument).get(reference)) {
+		let referenceStartIndex = index;
+		let referenceEndIndex = index + reference.length;
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			referenceStartIndex, referenceEndIndex,
+			`Variable "${reference}" not defined in this file or startup.txt`);
+	}
+	return diagnostic;
+}
+
+function validateCommand(command: string, index: number, prefix: string | undefined, spacingAndData: string | undefined,
+		projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic | undefined {
+	let diagnostic = undefined;
+	
+	prefix = prefix ?? "";
+	spacingAndData = spacingAndData ?? "";
+	let commandStartIndex = index;
+	let commandEndIndex = commandStartIndex + 1 + command.length;
+	let data = spacingAndData.trimLeft();
+	let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
+	let tokens = data.trimRight().split(/\s+/);
+
+	if (!prefix) {
+		if (validCommandsLookup.get(command) && index > 0) {
+			diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+				commandStartIndex, commandEndIndex,
+				`Command *${command} must be on a line by itself.`);
+		}
+	}
+	else if (!validCommandsLookup.get(command)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			commandStartIndex, commandEndIndex,
+			`*${command} isn't a valid ChoiceScript command.`);
+	}
+	else {
+		// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
+		if (startupCommandsLookup.get(command) && uriIsStartupFile(textDocument.uri)) {
+			diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+				commandStartIndex, commandEndIndex,
+				`*${command} can only be used in startup.txt`);
+		}
+
+		switch (command) {
+			case "goto":
+			case "gosub":
+				// goto and gosub must refer to an existing label in the file
+				if (tokens.length == 0) {
+					diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						commandStartIndex, commandEndIndex,
+						`Command *${command} requires a label`);
+				}
+				else if (!projectIndex.getLabels(textDocument).get(tokens[0])) {
+					diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						dataStartIndex, dataStartIndex + tokens[0].length,
+						`Label "${tokens[0]}" wasn't found in this file`);
+				}
+				break;
+
+			case "goto_scene":
+			case "gosub_scene":
+				// goto and gosub must refer to an existing scene
+				if (tokens.length == 0) {
+					diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						commandStartIndex, commandEndIndex,
+						`Command *${command} requires a scene`);
+				}
+				else if (!projectIndex.getSceneList().includes(tokens[0])) {
+					diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+						dataStartIndex, dataStartIndex + tokens[0].length,
+						`Scene "${tokens[0]}" wasn't found in startup.txt`);
+				}
+				else if (tokens.length >= 2) {
+					let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
+					if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
+						let sceneIndex = data.lastIndexOf(tokens[1]);
+						diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+							dataStartIndex + sceneIndex, dataStartIndex + sceneIndex + tokens[1].length,
+							`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`);
+					}
+				}
+				break;
+		}
+	}
+	return diagnostic;
+}
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -43,9 +162,8 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	let diagnostics: Diagnostic[] = [];
 	// TODO clean this up like whoa
 
-	// Validate commands start on a line
 	let text = textDocument.getText();
-	let commandPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}|(?<styleGuide>(?<!\.)\.{3}(?!\.)|(?<!-)--(?!-))/g;
+	let matchPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}|(?<styleGuide>(?<!\.)\.{3}(?!\.)|(?<!-)--(?!-))/g;
 	let m: RegExpExecArray | null;
 
 	let isStartupFile = uriIsStartupFile(textDocument.uri);
@@ -54,103 +172,26 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	let currentGlobalVariables = projectIndex.getGlobalVariables();
 	let currentLocalVariables = projectIndex.getLocalVariables(textDocument);
 
-	while (m = commandPattern.exec(text)) {
+	while (m = matchPattern.exec(text)) {
+		let diagnostic: Diagnostic | undefined = undefined;
+
 		if (m.groups === undefined)
 			continue;
 
 		if (m.groups.styleGuide) {  // Items against CoG styleguide
-			let characters = m.groups.styleGuide;
-			let description = "";
-			if (characters == "...")
-				description = "ellipsis (…)";
-			else
-				description = "em-dash (—)";
-			diagnostics.push(createDiagnostic(DiagnosticSeverity.Information, textDocument,
-				m.index, m.index + m.groups.styleGuide.length,
-				`Choice of Games style requires a Unicode ${description}`));
+			diagnostic = validateStyle(m.groups.styleGuide, m.index, textDocument);
 		}
 		else if (m.groups.reference !== undefined) {  // {reference} to a variable
-			let reference = m.groups.reference;
-			if (!currentGlobalVariables.get(reference) && !currentLocalVariables.get(reference)) {
-				let referenceStartIndex = m.index + 1;
-				let referenceEndIndex = m.index + 1 + reference.length;
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					referenceStartIndex, referenceEndIndex,
-					`Variable "${reference}" not defined in this file or startup.txt`));
-			}
+			diagnostic = validateReference(m.groups.reference, m.index + 1, projectIndex, textDocument);
 		}
 		else {  // *command
-			let prefix = (m.groups.prefix === undefined ? "" : m.groups.prefix);
-			let command = m.groups.command;
-			let spacingAndData = (m.groups.spacingAndData === undefined ? "" : m.groups.spacingAndData);
-			let data = (m.groups.data === undefined ? "" : m.groups.data);
-			let commandStartIndex = m.index + prefix.length;
-			let commandEndIndex = commandStartIndex + 1 + command.length;
-			let dataStartIndex = commandEndIndex + spacingAndData.length - data.length;
-			let tokens = data.trimRight().split(/\s+/);
-	
-			if (!prefix) {
-				if (validCommandsLookup.get(command) && m.index > 0) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`Command *${command} must be on a line by itself.`));
-				}
-			}
-			else if (!validCommandsLookup.get(command)) {
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					commandStartIndex, commandEndIndex,
-					`*${command} isn't a valid ChoiceScript command.`));
-			}
-			else {
-				// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
-				if (startupCommandsLookup.get(command) && !isStartupFile) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`*${command} can only be used in startup.txt`));
-				}
-	
-				switch (command) {
-					case "goto":
-					case "gosub":
-						// goto and gosub must refer to an existing label in the file
-						if (tokens.length == 0) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								commandStartIndex, commandEndIndex,
-								`Command *${command} requires a label`));
-						}
-						else if (currentLabels !== undefined && currentLabels.get(tokens[0]) === undefined) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								dataStartIndex, dataStartIndex + tokens[0].length,
-								`Label "${tokens[0]}" wasn't found in this file`));
-						}
-						break;
-	
-					case "goto_scene":
-					case "gosub_scene":
-						// goto and gosub must refer to an existing scene
-						if (tokens.length == 0) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								commandStartIndex, commandEndIndex,
-								`Command *${command} requires a scene`));
-						}
-						else if (currentScenes.length > 0 && !currentScenes.includes(tokens[0])) {
-							diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-								dataStartIndex, dataStartIndex + tokens[0].length,
-								`Scene "${tokens[0]}" wasn't found in startup.txt`));
-						}
-						else if (tokens.length >= 2) {
-							let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
-							if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
-								let sceneIndex = data.lastIndexOf(tokens[1]);
-								diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-									dataStartIndex + sceneIndex, dataStartIndex + sceneIndex + tokens[1].length,
-									`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`));
-							}
-						}
-						break;
-				}
-			}
+			let prefix = m.groups.prefix ?? "";
+			diagnostic = validateCommand(m.groups.command, m.index + prefix.length, prefix, m.groups.spacingAndData,
+				projectIndex, textDocument);
 		}
+		
+		if (diagnostic)
+			diagnostics.push(diagnostic);
 	}
 	
 	return diagnostics;
