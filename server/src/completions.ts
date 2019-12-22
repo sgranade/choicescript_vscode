@@ -9,6 +9,7 @@ import {
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex } from './indexer';
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
+import { extractToMatchingDelimiter } from './utilities';
 
 /**
  * Generator for mapping a function over an iterable.
@@ -125,19 +126,42 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 				}
 			}
 		}
-		// Auto-complete variables
+		// Auto-complete variable references
 		else if (text[start] == '{') {
-			// Only auto-complete if we're not a multi-replace like @{} or @!{} or @!!{}
-			var isMultireplace = false;
+			let isMultireplace = false;
 			for (var i = start-1; i >= 0 && i >= start-3; i--) {
 				if (text[i] == '@') {
 					isMultireplace = true;
 					break;
 				}
 			}
-			if (!isMultireplace) {
-				completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
+			let returnVariableCompletions = false;
+
+			// In a multi-replace like @{}, only auto-complete if we're in the first section
+			if (isMultireplace) {
+				let section = text.slice(start + 1, index+1);
+				if (section == "}" || section == "\r") {
+					returnVariableCompletions = true;
+				}
+				else if (section.length > 1 && section[0] == '(') {
+					let innards = section.slice(1);
+					let balancedParens = extractToMatchingDelimiter(innards, "(", ")");
+					if (balancedParens === undefined || (balancedParens == innards || balancedParens + ")" == innards)) {
+						returnVariableCompletions = true;
+					}
+				}
+				else {
+					if (!/\W/.test(section)) {
+						returnVariableCompletions = true;
+					}
+				}
 			}
+			else {
+				returnVariableCompletions = true;
+			}
+
+			if (returnVariableCompletions)
+				completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
 		}
 	}
 	return completions;
