@@ -75,6 +75,16 @@ function validateReference(reference: string, index: number, projectIndex: Proje
 	return diagnostic;
 }
 
+/**
+ * 
+ * @param command Command to validate.
+ * @param index Location of the reference in the document.
+ * @param prefix Optional spacing before the command.
+ * @param spacingAndData Optional spaces plus other data after the command.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Doucment being validated.
+ * @returns Diagnostic message, if any.
+ */
 function validateCommand(command: string, index: number, prefix: string | undefined, spacingAndData: string | undefined,
 		projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic = undefined;
@@ -160,17 +170,10 @@ function validateCommand(command: string, index: number, prefix: string | undefi
  */
 export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
-	// TODO clean this up like whoa
 
 	let text = textDocument.getText();
 	let matchPattern: RegExp = /(?<prefix>\n\s*)?\*(?<command>\w+)(?<spacingAndData>[ \t]+(?<data>[^\r\n]+))?|(?<!@|@!|@!!){(?<reference>\w+)}|(?<styleGuide>(?<!\.)\.{3}(?!\.)|(?<!-)--(?!-))/g;
 	let m: RegExpExecArray | null;
-
-	let isStartupFile = uriIsStartupFile(textDocument.uri);
-	let currentLabels = projectIndex.getLabels(textDocument);
-	let currentScenes = projectIndex.getSceneList();
-	let currentGlobalVariables = projectIndex.getGlobalVariables();
-	let currentLocalVariables = projectIndex.getLocalVariables(textDocument);
 
 	while (m = matchPattern.exec(text)) {
 		let diagnostic: Diagnostic | undefined = undefined;
