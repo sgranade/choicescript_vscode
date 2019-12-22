@@ -20,7 +20,7 @@ import url = require('url');
 import * as URI from 'urijs';
 import globby = require('globby');
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex } from './indexer';
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex, ReferenceIndex } from './indexer';
 import { generateDiagnostics } from './validator';
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 
@@ -28,6 +28,7 @@ class Index implements ProjectIndex {
 	_startupFileUri: string;
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierIndex>;
+	_references: Map<string, ReferenceIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
 
@@ -35,16 +36,20 @@ class Index implements ProjectIndex {
 		this._startupFileUri = "";
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
+		this._references = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
 	}
 
 	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._startupFileUri = textDocument.uri;
+		this._startupFileUri = normalizeUri(textDocument.uri);
 		this._globalVariables = newIndex;
 	}
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._localVariables.set(normalizeUri(textDocument.uri), newIndex);
+	}
+	updateReferences(textDocument: TextDocument, newIndex: ReferenceIndex) {
+		this._references.set(normalizeUri(textDocument.uri), newIndex);
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
@@ -103,6 +108,7 @@ class Index implements ProjectIndex {
 	}
 	removeDocument(textDocument: TextDocument) {
 		this._localVariables.delete(normalizeUri(textDocument.uri));
+		this._references.delete(normalizeUri(textDocument.uri));
 		this._localLabels.delete(normalizeUri(textDocument.uri));
 	}
 }

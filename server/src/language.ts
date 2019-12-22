@@ -1,6 +1,8 @@
 import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
+/* COMMANDS */
+
 /**
  * Commands that can only be used in startup.txt
  */
@@ -45,6 +47,51 @@ export let validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 	kind: CompletionItemKind.Keyword,
 	data: "command"
 }));
+
+/* RESERVED WORDS */
+
+/**
+ * ChoiceScript built-in functions
+ */
+export let functions: ReadonlyArray<string> = [
+	"not", "round", "timestamp", "log", "length", "auto"
+];
+
+/**
+ * ChoiceScript named operators
+ */
+export let namedOperators: ReadonlyArray<string> = [
+	"and", "or", "modulo"
+];
+
+/* PATTERNS */
+
+/**
+ * Pattern to find commands that create labels or variables or directly manipulate those variables.
+ */
+export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+/**
+ * Pattern to find commands that create labels or variables in a ChoiceScript startup file.
+ */
+export let startupFileSymbolCommandPattern = symbolCommandPattern.replace("temp|", "create|temp|");
+/**
+ * Pattern to find commands that create scene lists.
+ */
+export let sceneListCommandPattern = "(?<sceneListCommand>scene_list)\\s*?\\r?\\n?";
+/**
+ * Pattern to find the start of a multireplace.
+ */
+export let multiPattern = "(?<multi>@!?!?{)";
+/**
+ * Pattern to find a reference to a variable.
+ */
+export let referencePattern = "(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)})";
+/**
+ * Variable that finds a command that might reference a symbol.
+ */
+export let symbolReferencePattern = "(?<symbolReferencePrefix>\\n\\s*)?\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.*(\\n|$))";
+
+/* FUNCTIONS */
 
 /**
  * Extract the filename portion from a URI.

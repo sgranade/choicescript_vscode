@@ -89,8 +89,10 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 		projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic = undefined;
 	
-	prefix = prefix ?? "";
-	spacingAndData = spacingAndData ?? "";
+	if (prefix === undefined)
+		prefix = "";
+	if (spacingAndData === undefined)
+			spacingAndData = "";
 	let commandStartIndex = index;
 	let commandEndIndex = commandStartIndex + 1 + command.length;
 	let data = spacingAndData.trimLeft();
@@ -188,7 +190,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			diagnostic = validateReference(m.groups.reference, m.index + 1, projectIndex, textDocument);
 		}
 		else {  // *command
-			let prefix = m.groups.prefix ?? "";
+			let prefix = m.groups.prefix;
+			if (prefix === undefined)
+				prefix = "";
 			diagnostic = validateCommand(m.groups.command, m.index + prefix.length, prefix, m.groups.spacingAndData,
 				projectIndex, textDocument);
 		}
