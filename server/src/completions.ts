@@ -23,111 +23,122 @@ function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 }
 
 function generateCompletionsFromArray(array: ReadonlyArray<string>, 
-	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
-return array.map((x: string) => ({
-	label: x,
-	kind: kind,
-	data: dataDescription
-}));
+		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	return array.map((x: string) => ({
+		label: x,
+		kind: kind,
+		data: dataDescription
+	}));
 }
 
 function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex, 
-	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
-return Array.from(iteratorMap(index.keys(), (x: string) => ({
-	label: x, 
-	kind: kind, 
-	data: dataDescription
-})));
+		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	return Array.from(iteratorMap(index.keys(), (x: string) => ({
+		label: x, 
+		kind: kind, 
+		data: dataDescription
+	})));
+}
+
+function generateVariableCompletions(localVariablesIndex: ReadonlyIdentifierIndex, globalVariables: ReadonlyIdentifierIndex): CompletionItem[] {
+	let completions = Array.from(iteratorMap(localVariablesIndex.keys(), (x: string) => ({
+			label: x, 
+			kind: CompletionItemKind.Variable, 
+			data: "variable-local"
+	})));
+	completions.push(...Array.from(iteratorMap(globalVariables.keys(), (x: string) => ({
+		label: x,
+		kind: CompletionItemKind.Variable,
+		data: "variable-global"
+	}))));
+
+	return completions;
 }
 
 export function generateInitialCompletions(document: TextDocument, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
-let completions: CompletionItem[] = [];
+	let completions: CompletionItem[] = [];
 
-// Find out what trigger character started this by loading the document and scanning backwards
-let text = document.getText();
-let index = document.offsetAt(position);
+	// Find out what trigger character started this by loading the document and scanning backwards
+	let text = document.getText();
+	let index = document.offsetAt(position);
 
-let start: number | null = null;
+	let start: number | null = null;
 
-for (var i = index; i >= 0; i--) {
-	if (text[i] == '*' || text[i] == '{') {
-		start = i;
-		break;
+	for (var i = index; i >= 0; i--) {
+		if (text[i] == '*' || text[i] == '{') {
+			start = i;
+			break;
+		}
+		// Don't go further back than the current line
+		if (text[i] == '\n') {
+			break;
+		}
 	}
-	// Don't go further back than the current line
-	if (text[i] == '\n') {
-		break;
-	}
-}
-if (start !== null) {
-	// Auto-complete commands
-	if (text[start] == '*') {
-		let tokens = text.slice(i+1, index).split(/\s+/);
-		if (tokens.length == 1) {
-			completions = [...validCommandsCompletions];  // makin' copies
-			// Add in startup-only commands if valid
-			if (uriIsStartupFile(document.uri)) {
-				completions.push(...startupCommandsCompletions);
+	if (start !== null) {
+		// Auto-complete commands
+		if (text[start] == '*') {
+			let tokens = text.slice(i+1, index).split(/\s+/);
+			if (tokens.length == 1) {
+				completions = [...validCommandsCompletions];  // makin' copies
+				// Add in startup-only commands if valid
+				if (uriIsStartupFile(document.uri)) {
+					completions.push(...startupCommandsCompletions);
+				}
+			}
+			else {
+				switch (tokens[0]) {
+					case "goto":
+					case "gosub":
+						if (tokens.length == 2) {
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(document), CompletionItemKind.Reference, "labels-local");
+						}
+						break;
+
+					case "goto_scene":
+					case "gosub_scene":
+						if(tokens.length == 2) {
+							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
+							// Get around that by specifying the replacement range if needed
+							if (tokens[1].includes("-")) {
+								let range = Range.create(document.positionAt(index - tokens[1].length), position);
+								completions.forEach(completion => {
+									completion.textEdit = TextEdit.replace(range, completion.label);
+								})
+							}
+						}
+						else if (tokens.length == 3) {
+							let sceneLabels = projectIndex.getSceneLabels(tokens[1]);
+							if (sceneLabels !== undefined) {
+								completions = generateCompletionsFromIndex(sceneLabels, CompletionItemKind.Reference, "labels-scene");
+							}
+						}
+						break;
+
+					case "set":
+					case "delete":
+					case "if":
+					case "elseif":
+					case "elsif":
+						completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
+						break;
+				}
 			}
 		}
-		else {
-			switch (tokens[0]) {
-				case "goto":
-				case "gosub":
-					if (tokens.length == 2) {
-						completions = generateCompletionsFromIndex(projectIndex.getLabels(document), CompletionItemKind.Reference, "labels-local");
-					}
+		// Auto-complete variables
+		else if (text[start] == '{') {
+			// Only auto-complete if we're not a multi-replace like @{} or @!{} or @!!{}
+			var isMultireplace = false;
+			for (var i = start-1; i >= 0 && i >= start-3; i--) {
+				if (text[i] == '@') {
+					isMultireplace = true;
 					break;
-
-				case "goto_scene":
-				case "gosub_scene":
-					if(tokens.length == 2) {
-						completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
-						// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
-						// Get around that by specifying the replacement range if needed
-						if (tokens[1].includes("-")) {
-							let range = Range.create(document.positionAt(index - tokens[1].length), position);
-							completions.forEach(completion => {
-								completion.textEdit = TextEdit.replace(range, completion.label);
-							})
-						}
-					}
-					else if (tokens.length == 3) {
-						let sceneLabels = projectIndex.getSceneLabels(tokens[1]);
-						if (sceneLabels !== undefined) {
-							completions = generateCompletionsFromIndex(sceneLabels, CompletionItemKind.Reference, "labels-scene");
-						}
-					}
+				}
+			}
+			if (!isMultireplace) {
+				completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
 			}
 		}
 	}
-	// Auto-complete variables
-	else if (text[start] == '{') {
-		// Only auto-complete if we're not a multi-replace like @{} or @!{} or @!!{}
-		var isMultireplace = false;
-		for (var i = start-1; i >= 0 && i >= start-3; i--) {
-			if (text[i] == '@') {
-				isMultireplace = true;
-				break;
-			}
-		}
-		if (!isMultireplace) {
-			let variablesMap = projectIndex.getLocalVariables(document);
-			if (variablesMap !== undefined) {
-				completions = Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
-						label: x, 
-						kind: CompletionItemKind.Variable, 
-						data: "variable-local"
-				})));
-			}
-			variablesMap = projectIndex.getGlobalVariables();
-			completions.push(...Array.from(iteratorMap(variablesMap.keys(), (x: string) => ({
-				label: x,
-				kind: CompletionItemKind.Variable,
-				data: "variable-global"
-			}))));
-		}
-	}
-}
-return completions;
+	return completions;
 }
