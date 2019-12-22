@@ -14,17 +14,65 @@ export type ReadonlyIdentifierIndex = ReadonlyMap<string, Location>;
  * Interface for an index of a ChoiceScript project.
  */
 export interface ProjectIndex {
+	/**
+	 * Update the index of global variables from the startup scene.
+	 * @param textDocument startup.txt document.
+	 * @param newIndex New index of global variables.
+	 */
 	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	/**
+	 * Update the index of variables local to a scene.
+	 * @param textDocument Document whose index is to be updated.
+	 * @param newIndex New index of local variables.
+	 */
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	/**
+	 * Update the list of scene names in the project.
+	 * @param scenes New list of scene names.
+	 */
 	updateSceneList(scenes: Array<string>): void;
+	/**
+	 * Update the index of labels in a scene file.
+	 * @param textDocument Document whose index is to be updated.
+	 * @param newIndex New index of labels.
+	 */
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	/**
+	 * Get the URI to the project's startup.txt file.
+	 */
 	getStartupFileUri(): string;
+	/**
+	 * Get global variables in a project.
+	 */
 	getGlobalVariables(): ReadonlyIdentifierIndex;
-	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	/**
+	 * Get list of scenes in the project.
+	 */
 	getSceneList(): ReadonlyArray<string>;
-	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	/**
+	 * Get the local variables in a scene file.
+	 * @param textDocument Scene document.
+	 */
+	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	/**
+	 * Get the local variables in a scene file by the scene's name.
+	 * @param scene Name of the scene.
+	 */
 	getSceneVariables(scene: string): ReadonlyIdentifierIndex | undefined;
+	/**
+	 * Get the labels in a scene file.
+	 * @param textDocument Scene document.
+	 */
+	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
+	/**
+	 * Get the labels in a scene file by the scene's name.
+	 * @param scene Name of the scene.
+	 */
 	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined;
+	/**
+	 * Remove a document from the project index.
+	 * @param textDocument Document to remove.
+	 */
 	removeDocument(textDocument: TextDocument): void;
 }
 
