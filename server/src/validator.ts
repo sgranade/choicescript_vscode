@@ -113,7 +113,7 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 	}
 	else {
 		// Make sure we don't use commands that are limited to startup.txt in non-startup.txt files
-		if (startupCommandsLookup.get(command) && uriIsStartupFile(textDocument.uri)) {
+		if (startupCommandsLookup.get(command) && !uriIsStartupFile(textDocument.uri)) {
 			diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
 				commandStartIndex, commandEndIndex,
 				`*${command} can only be used in startup.txt`);
