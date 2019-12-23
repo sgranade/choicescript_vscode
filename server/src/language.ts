@@ -69,7 +69,7 @@ export let namedOperators: ReadonlyArray<string> = [
 /**
  * Pattern to find commands that create labels or variables or directly manipulate those variables.
  */
-export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete|rand)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
  * Pattern to find commands that create labels or variables in a ChoiceScript startup file.
  */
@@ -89,7 +89,7 @@ export let referencePattern = "(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)}
 /**
  * Variable that finds a command that might reference a symbol.
  */
-export let symbolReferencePattern = "(?<symbolReferencePrefix>\\n\\s*)?\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.*(\\n|$))";
+export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
 
 /* FUNCTIONS */
 

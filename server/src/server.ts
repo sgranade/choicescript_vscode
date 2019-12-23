@@ -5,22 +5,25 @@ import {
 	TextDocument,
 	ProposedFeatures,
 	InitializeParams,
+	ReferenceParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
 	TextDocumentPositionParams,
 	Position,
-	Definition
+	Location,
+	Definition,
+	ReferenceContext
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
 const fs = require('fs').promises;
 import url = require('url');
-import * as URI from 'urijs';
 import globby = require('globby');
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex, ReferenceIndex } from './indexer';
 import { generateDiagnostics } from './validator';
 import { uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
+import { normalizeUri } from './utilities';
 
 class Index implements ProjectIndex {
 	_startupFileUri: string;
@@ -103,6 +106,17 @@ class Index implements ProjectIndex {
 			return undefined;
 		}
 		return this._localLabels.get(sceneUri);
+	}
+	getReferences(symbol: string): ReadonlyArray<Location> {
+		let locations: Location[] = [];
+
+		for (let index of this._references.values()) {
+			let partialLocations = index.get(symbol);
+			if (partialLocations !== undefined)
+				locations.push(...partialLocations);
+		}
+
+		return locations;
 	}
 	removeDocument(textDocument: TextDocument) {
 		this._localVariables.delete(normalizeUri(textDocument.uri));
@@ -290,23 +304,13 @@ documents.onDidChangeContent(change => {
 	validateTextDocument(change.document, projectIndex);
 });
 
-/**
- * Normalize a URI.
- * 
- * @param uriString URI to normalize.
- */
-function normalizeUri(uriString: string): string {
-	let uri = new URI(uriString);
-	return uri.normalize().toString();
-}
-
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex) {
 	let diagnostics = generateDiagnostics(textDocument, projectIndex);
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
 connection.onDidChangeWatchedFiles(_change => {
-	// Monitored files have change in VSCode
+	// Monitored files have change in VSCode TODO
 	connection.console.log('We received an file change event');
 });
 
@@ -371,6 +375,42 @@ function generateDefinition(documentUri: string, position: Position, projectInde
 	}
 
 	return definition;
+}
+
+connection.onReferences(
+	(referencesParams: ReferenceParams): Location[] => {
+		let document = documents.get(referencesParams.textDocument.uri);
+		if (document === undefined) {
+			return [];
+		}
+		return generateReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+	}
+)
+
+function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
+	let text = textDocument.getText();
+	let index = textDocument.offsetAt(position);
+
+	let start = index;
+	while (start > 0 && /\w/.test(text[start]))
+		start--;
+	let end = index;
+	while (end < text.length && /\w/.test(text[end]))
+		end++;
+
+	let symbol = text.slice(start+1, end);
+	let locations = [...projectIndex.getReferences(symbol)];
+	
+	if (context.includeDeclaration) {
+		let declarationLocation = projectIndex.getLocalVariables(textDocument).get(symbol);
+		if (declarationLocation === undefined)
+			declarationLocation = projectIndex.getGlobalVariables().get(symbol);
+
+		if (declarationLocation !== undefined)
+			locations.push(declarationLocation);
+	}
+
+	return locations;
 }
 
 /*

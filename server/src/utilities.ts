@@ -1,3 +1,5 @@
+import * as URI from 'urijs';
+
 /**
  * Scan text to find a matching delimiter.
  * 
@@ -30,4 +32,14 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 	if (matchEnd !== undefined)
 		return section.slice(0, matchEnd);
 	return undefined;
+}
+
+/**
+* Normalize a URI.
+* 
+* @param uriString URI to normalize.
+*/
+export function normalizeUri(uriString: string): string {
+   let uri = new URI(uriString);
+   return uri.normalize().toString();
 }

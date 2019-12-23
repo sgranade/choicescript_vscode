@@ -23,6 +23,9 @@ export type IdentifierIndex = Map<string, Location>;
  */
 export type ReadonlyIdentifierIndex = ReadonlyMap<string, Location>;
 
+/**
+ * Type for a mutable index of references.
+ */
 export type ReferenceIndex = Map<string, Array<Location>>;
 
 /**
@@ -90,6 +93,11 @@ export interface ProjectIndex {
 	 * @param scene Name of the scene.
 	 */
 	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined;
+	/**
+	 * Get all references to a symbol.
+	 * @param symbol Symbol to find references to.
+	 */
+	getReferences(symbol: string): ReadonlyArray<Location>;
 	/**
 	 * Remove a document from the project index.
 	 * @param textDocument Document to remove.
@@ -244,7 +252,7 @@ function indexMulti(document: string, startIndex: number, referenceIndex: Refere
 			let symbol = document.slice(startIndex, endIndex);
 			let location = Location.create(documentObject.uri, Range.create(
 				documentObject.positionAt(startIndex),
-				documentObject.positionAt(endIndex-1)
+				documentObject.positionAt(endIndex)
 			));
 			addReference(symbol, location, referenceIndex);
 		}
@@ -338,7 +346,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			continue;
 		}
 
-		// Pattern options: symbolCommand, sceneListCommand, multi (@{}), referenceCommand
+		// Pattern options: symbolCommand, sceneListCommand, multi (@{}), symbolReference
 		if (m.groups.symbolCommand && (m.groups.symbolCommandPrefix || m.index == 0)) {
 			let symbolIndex = m.index + 1 + m.groups.symbolCommand.length + m.groups.spacing.length;
 			if (m.groups.symbolCommandPrefix !== undefined)
@@ -357,8 +365,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		}
 		else if (m.groups.referenceCommand) {
 			let lineIndex = m.index + 1 + m.groups.referenceCommand.length + m.groups.referenceSpacing.length;
-			if (m.groups.symbolCommandPrefix !== undefined)
-				lineIndex += m.groups.symbolCommandPrefix.length;
+			if (m.groups.symbolReferencePrefix !== undefined)
+				lineIndex += m.groups.symbolReferencePrefix.length;
 			indexReferenceCommand(m.groups.referenceCommand, m.groups.referenceLine, lineIndex, newReferences, textDocument);
 		}
 	}
