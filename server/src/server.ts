@@ -297,11 +297,19 @@ documents.onDidClose(e => {
 	documentSettings.delete(e.document.uri);
 });
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
+// A document has been opened or its content has been changed.
 documents.onDidChangeContent(change => {
-	updateProjectIndex(change.document, uriIsStartupFile(change.document.uri), projectIndex);
-	validateTextDocument(change.document, projectIndex);
+	let isStartupFile = uriIsStartupFile(change.document.uri);
+
+	updateProjectIndex(change.document, isStartupFile, projectIndex);
+
+	if (isStartupFile) {
+		// Since the startup file defines global variables, if it changes, re-validate all other files
+		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+	}
+	else {
+		validateTextDocument(change.document, projectIndex);
+	}
 });
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex) {
