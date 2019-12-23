@@ -14,7 +14,7 @@ export let startupCommands: ReadonlyArray<string> = ["create", "scene_list", "ti
  */
 export let validCommands: ReadonlyArray<string> = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp",
-	"delete", "set", "setref", "print", "if", "rand", "page_break", "line_break", "script", "else",
+	"delete", "set", "setref", "print", "if", "selectable_if", "rand", "page_break", "line_break", "script", "else",
 	"elseif", "elsif", "reset", "goto_scene", "fake_choice", "input_text", "ending", "share_this_game",
 	"stat_chart", "subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
 	"check_purchase", "restore_purchases", "purchase", "restore_game", "advertisement",
