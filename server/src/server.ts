@@ -22,108 +22,10 @@ const fs = require('fs').promises;
 import url = require('url');
 import globby = require('globby');
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex, ReferenceIndex } from './indexer';
+import { ProjectIndex, Index, updateProjectIndex } from './indexer';
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { CaseInsensitiveMap, normalizeUri } from './utilities';
-
-class Index implements ProjectIndex {
-	_startupFileUri: string;
-	_globalVariables: IdentifierIndex;
-	_localVariables: Map<string, IdentifierIndex>;
-	_references: Map<string, ReferenceIndex>;
-	_scenes: Array<string>;
-	_localLabels: Map<string, IdentifierIndex>;
-
-	constructor() {
-		this._startupFileUri = "";
-		this._globalVariables = new Map();
-		this._localVariables = new Map();
-		this._references = new Map();
-		this._scenes = [];
-		this._localLabels = new Map();
-	}
-
-	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
-		this._startupFileUri = normalizeUri(textDocumentUri);
-		this._globalVariables = new CaseInsensitiveMap(newIndex);
-	}
-	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
-		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
-	}
-	updateReferences(textDocumentUri: string, newIndex: ReferenceIndex) {
-		this._references.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
-	}
-	updateSceneList(scenes: Array<string>) {
-		this._scenes = scenes;
-	}
-	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex) {
-		this._localLabels.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
-	}
-	getStartupFileUri(): string {
-		return this._startupFileUri;
-	}
-	getSceneUri(scene: string): string | undefined {
-		let sceneUri: string | undefined = undefined;
-		for (let key of this._localVariables.keys()) {
-			if (key.includes(scene)) {
-				sceneUri = key;
-				break;
-			}
-		}
-		return sceneUri;
-	}
-	getGlobalVariables(): ReadonlyIdentifierIndex {
-		return this._globalVariables;
-	}
-	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
-		let index = this._localVariables.get(normalizeUri(textDocumentUri));
-		if (index === undefined)
-			index = new Map();
-		
-		return index;
-	}
-	getSceneList(): ReadonlyArray<string> {
-		return this._scenes;
-	}
-	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex {
-		let index = this._localLabels.get(normalizeUri(textDocumentUri));
-		if (index === undefined)
-			index = new Map();
-
-		return index;
-	}
-	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined {
-		let sceneUri: string | undefined = undefined;
-		for (let key of this._localLabels.keys()) {
-			if (key.includes(scene)) {
-				sceneUri = key;
-				break;
-			}
-		}
-		if (sceneUri === undefined) {
-			return undefined;
-		}
-		return this._localLabels.get(sceneUri);
-	}
-	getReferences(symbol: string): ReadonlyArray<Location> {
-		let locations: Location[] = [];
-
-		for (let index of this._references.values()) {
-			let partialLocations = index.get(symbol);
-			if (partialLocations !== undefined)
-				locations.push(...partialLocations);
-		}
-
-		return locations;
-	}
-	removeDocument(textDocumentUri: string) {
-		this._localVariables.delete(normalizeUri(textDocumentUri));
-		this._references.delete(normalizeUri(textDocumentUri));
-		this._localLabels.delete(normalizeUri(textDocumentUri));
-	}
-}
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
