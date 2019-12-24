@@ -1,7 +1,14 @@
 import { TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex, ReadonlyIdentifierIndex } from './indexer';
-import { startupCommands, validCommands, uriIsStartupFile, commandPattern, referencePattern, stylePattern } from './language';
+import { ProjectIndex } from './indexer';
+import { 
+	startupCommands, 
+	validCommands, 
+	uriIsStartupFile, 
+	commandPattern, 
+	referencePattern, 
+	stylePattern 
+} from './language';
 
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
@@ -54,23 +61,40 @@ function validateStyle(characters: string, index: number, textDocument: TextDocu
 /**
  * Validate a reference to a variable.
  * 
- * @param reference Name of the variable being referenced.
+ * @param variable Name of the variable being referenced.
  * @param index Location of the reference in the document.
  * @param projectIndex Index of the ChoiceScript project.
- * @param localVariables Index of local variables.
  * @param textDocument Document being validated.
  * @returns Diagnostic message, if any.
  */
-function validateReference(reference: string, index: number, projectIndex: ProjectIndex,
+function validateVariableReference(variable: string, index: number, projectIndex: ProjectIndex,
 		textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (!projectIndex.getGlobalVariables().get(reference) && 
-			!projectIndex.getLocalVariables(textDocument).get(reference)) {
+	if (!projectIndex.getGlobalVariables().get(variable) && 
+			!projectIndex.getLocalVariables(textDocument).get(variable)) {
 		let referenceStartIndex = index;
-		let referenceEndIndex = index + reference.length;
+		let referenceEndIndex = index + variable.length;
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
 			referenceStartIndex, referenceEndIndex,
-			`Variable "${reference}" not defined in this file or startup.txt`);
+			`Variable "${variable}" not defined in this file or startup.txt`);
+	}
+	return diagnostic;
+}
+
+/**
+ * Validate a reference to a label.
+ * @param label Name of the label being referenced.
+ * @param index Location of the label reference in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Document being validated.
+ */
+function validateLabelReference(label: string, index: number, projectIndex: ProjectIndex,
+		textDocument: TextDocument): Diagnostic | undefined {
+	let diagnostic: Diagnostic | undefined = undefined;
+	if (!projectIndex.getLabels(textDocument).get(label)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			index, index + label.length,
+			`Label "${label}" wasn't found in this file`);
 	}
 	return diagnostic;
 }
@@ -90,24 +114,19 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 		line: string | undefined, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic = undefined;
 	
-	if (prefix === undefined)
-		prefix = "";
-	if (spacing === undefined)
-		spacing = "";
-	if (line === undefined)
-		line = "";
-	
 	let commandStartIndex = index;
 	let commandEndIndex = commandStartIndex + 1 + command.length;
-	let lineStartIndex = commandEndIndex + spacing.length;
-	let tokens = line.trimRight().split(/\s+/);
+	let lineStartIndex = commandEndIndex;
+	if (spacing !== undefined)
+		lineStartIndex += spacing.length;
+	let tokens: string[] = [];
+	if (line !== undefined)
+		tokens = line.trimRight().split(/\s+/);
 
-	if (!prefix) {
-		if (validCommandsLookup.get(command) && index > 0) {
-			diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
-				commandStartIndex, commandEndIndex,
-				`Command *${command} must be on a line by itself.`);
-		}
+	if (prefix === undefined && validCommandsLookup.get(command) && index > 0) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			commandStartIndex, commandEndIndex,
+			`Command *${command} must be on a line by itself.`);
 	}
 	else if (!validCommandsLookup.get(command)) {
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
@@ -131,10 +150,9 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 						commandStartIndex, commandEndIndex,
 						`Command *${command} requires a label`);
 				}
-				else if (!projectIndex.getLabels(textDocument).get(tokens[0])) {
-					diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						lineStartIndex, lineStartIndex + tokens[0].length,
-						`Label "${tokens[0]}" wasn't found in this file`);
+				else {
+					diagnostic = validateLabelReference(tokens[0], lineStartIndex,
+						projectIndex, textDocument);
 				}
 				break;
 
@@ -151,7 +169,7 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 						lineStartIndex, lineStartIndex + tokens[0].length,
 						`Scene "${tokens[0]}" wasn't found in startup.txt`);
 				}
-				else if (tokens.length >= 2) {
+				else if (tokens.length >= 2 && line !== undefined) {
 					let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
 					if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
 						let sceneIndex = line.lastIndexOf(tokens[1]);
@@ -190,13 +208,14 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			diagnostic = validateStyle(m.groups.styleGuide, m.index, textDocument);
 		}
 		else if (m.groups.reference !== undefined) {  // {reference} to a variable
-			diagnostic = validateReference(m.groups.referenceSymbol, m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1, projectIndex, textDocument);
+			diagnostic = validateVariableReference(m.groups.referenceSymbol, m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1, projectIndex, textDocument);
 		}
 		else if (m.groups.command !== undefined) {  // *command
 			let commandPrefix = m.groups.commandPrefix;
-			if (commandPrefix === undefined)
-				commandPrefix = "";
-			diagnostic = validateCommand(m.groups.command, m.index + commandPrefix.length, commandPrefix, m.groups.commandSpacing,
+			let commandIndex = m.index;
+			if (commandPrefix !== undefined)
+				commandIndex += commandPrefix.length;
+			diagnostic = validateCommand(m.groups.command, commandIndex, commandPrefix, m.groups.commandSpacing,
 				m.groups.commandLine, projectIndex, textDocument);
 		}
 		

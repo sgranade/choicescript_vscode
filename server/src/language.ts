@@ -3,6 +3,7 @@ import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri } from './utilities';
 
+
 /* COMMANDS */
 
 /**
@@ -28,6 +29,31 @@ export let validCommands: ReadonlyArray<string> = [
 ];
 
 /**
+ * Commands that create labels or variables or directly manipulate those variables.
+ */
+export let symbolCommands: ReadonlyArray<string> = [
+	"temp", "label", "set", "delete", "rand"
+];
+
+/**
+ * Commands that create labels or variables in a ChoiceScript startup file.
+ */
+export let startupFileSymbolCommands: ReadonlyArray<string> = [...symbolCommands, "create"];
+
+/**
+ * Commands that reference variables.
+ */
+export let symbolReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
+
+/**
+ * Commands that reference labels.
+ */
+export let labelReferenceCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene" ];
+
+
+/* COMPLETIONS */
+
+/**
  * Commands to auto-complete in startup.txt only
  */
 export let startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
@@ -50,6 +76,7 @@ export let validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 	data: "command"
 }));
 
+
 /* RESERVED WORDS */
 
 /**
@@ -66,24 +93,25 @@ export let namedOperators: ReadonlyArray<string> = [
 	"and", "or", "modulo"
 ];
 
+
 /* PATTERNS */
 
 /**
  * Pattern to find commands, legal or otherwise.
  */
-export let commandPattern = "(?<commandPrefix>(\\n|^)\\s*?)?\\*(?<command>\\w+)(?<commandSpacing>\\s+)(?<commandLine>.+)";
+export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+)((?<commandSpacing>[ \t]+)(?<commandLine>.+))?";
 /**
  * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
  */
-export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete|rand)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + symbolCommands.join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
  * Pattern to find legal commands that create labels or variables in a ChoiceScript startup file.
  */
-export let startupFileSymbolCommandPattern = symbolCommandPattern.replace("temp|", "create|temp|");
+export let startupFileSymbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + startupFileSymbolCommands.join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
  * Pattern to find commands that create scene lists.
  */
-export let sceneListCommandPattern = "(?<sceneListCommand>scene_list)\\s*?\\r?\\n?";
+export let sceneListCommandPattern = "(?<sceneListCommand>scene_list)[ \t]*?\\r?\\n?";
 /**
  * Pattern to find the start of a multireplace.
  */
@@ -95,11 +123,12 @@ export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<reference
 /**
  * Pattern to find a legal command that might reference a symbol.
  */
-export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
+export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>" + symbolReferenceCommands.join('|') + ")(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
 /**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
+
 
 /* FUNCTIONS */
 
