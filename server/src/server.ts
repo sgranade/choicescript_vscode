@@ -12,7 +12,10 @@ import {
 	Position,
 	Location,
 	Definition,
-	ReferenceContext
+	ReferenceContext,
+	RenameParams,
+	WorkspaceEdit,
+	TextEdit
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
 const fs = require('fs').promises;
@@ -136,6 +139,7 @@ let documents: TextDocuments = new TextDocuments();
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
+let supportsDocumentChanges: boolean = false;
 
 // TODO handle multiple directories with startup.txt
 let projectIndex = new Index();
@@ -156,17 +160,22 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation
 	);
+	supportsDocumentChanges = !!(
+		capabilities.workspace && 
+		capabilities.workspace.workspaceEdit &&
+		capabilities.workspace.workspaceEdit.documentChanges
+	);
 
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
-			// Tell the client that the server supports code completion
 			completionProvider: {
 				resolveProvider: false,
 				triggerCharacters: [ '*', '{' ]
 			},
 			definitionProvider: true,
-			referencesProvider: true
+			referencesProvider: true,
+			renameProvider: true
 		}
 	};
 });
@@ -263,7 +272,7 @@ connection.onDidChangeConfiguration(change => {
 		documentSettings.clear();
 	} else {
 		globalSettings = <ExampleSettings>(
-			(change.settings.languageServerExample || defaultSettings)
+			(change.settings.choicescriptVsCode || defaultSettings)
 		);
 	}
 
@@ -279,7 +288,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!result) {
 		result = connection.workspace.getConfiguration({
 			scopeUri: resource,
-			section: 'languageServerExample'
+			section: 'choicescriptVsCode'
 		});
 		documentSettings.set(resource, result);
 	}
@@ -395,18 +404,23 @@ connection.onReferences(
 	}
 )
 
-function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
-	let text = textDocument.getText();
-	let index = textDocument.offsetAt(position);
-
+function extractSymbolAtIndex(text: string, index: number): string {
 	let start = index;
-	while (start > 0 && /\w/.test(text[start]))
+	while (start >= 0 && /\w/.test(text[start]))
 		start--;
 	let end = index;
 	while (end < text.length && /\w/.test(text[end]))
 		end++;
 
 	let symbol = text.slice(start+1, end);
+	return symbol;
+}
+
+function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
+	let text = textDocument.getText();
+	let index = textDocument.offsetAt(position);
+	let symbol = extractSymbolAtIndex(text, index);
+
 	let locations = [...projectIndex.getReferences(symbol)];
 	
 	if (context.includeDeclaration) {
@@ -421,25 +435,55 @@ function generateReferences(textDocument: TextDocument, position: Position, cont
 	return locations;
 }
 
-/*
-connection.onDidOpenTextDocument((params) => {
-	// A text document got opened in VSCode.
-	// params.textDocument.uri uniquely identifies the document. For documents store on disk this is a file URI.
-	// params.textDocument.text the initial full content of the document.
-	connection.console.log(`${params.textDocument.uri} opened.`);
-});
-connection.onDidChangeTextDocument((params) => {
-	// The content of a text document did change in VSCode.
-	// params.textDocument.uri uniquely identifies the document.
-	// params.contentChanges describe the content changes to the document.
-	connection.console.log(`${params.textDocument.uri} changed: ${JSON.stringify(params.contentChanges)}`);
-});
-connection.onDidCloseTextDocument((params) => {
-	// A text document got closed in VSCode.
-	// params.textDocument.uri uniquely identifies the document.
-	connection.console.log(`${params.textDocument.uri} closed.`);
-});
-*/
+connection.onRenameRequest(
+	(renameParams: RenameParams): WorkspaceEdit | null => {
+		let document = documents.get(renameParams.textDocument.uri);
+		if (document === undefined) {
+			return null;
+		}
+		return generateRenames(document, renameParams.position, renameParams.newName, projectIndex);
+	}
+)
+
+function generateRenames(textDocument: TextDocument, position: Position, newName: string, projectIndex: ProjectIndex): WorkspaceEdit | null {
+	let text = textDocument.getText();
+	let index = textDocument.offsetAt(position);
+	let symbol = extractSymbolAtIndex(text, index);
+
+	let variableDefinition = projectIndex.getGlobalVariables().get(symbol);
+	if (variableDefinition === undefined) {
+		let localVariables = projectIndex.getLocalVariables(textDocument);
+		if (localVariables !== undefined) {
+			variableDefinition = localVariables.get(symbol);
+		}
+	}
+
+	if (variableDefinition === undefined) {
+		return null;
+	}
+
+	let changes: Map<string, TextEdit[]> = new Map();
+
+	for (let location of projectIndex.getReferences(symbol)) {
+		let change = TextEdit.replace(location.range, newName);
+		let edits = changes.get(location.uri);
+		if (edits === undefined) {
+			edits = [];
+			changes.set(location.uri, edits);
+		}
+		edits.push(change);
+	}
+
+	let workspaceEdit: WorkspaceEdit = {
+		changes: {
+		}
+	};
+	for (let [uri, edits] of changes) {
+		workspaceEdit.changes![uri] = edits;
+	}
+
+	return workspaceEdit;
+}
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
