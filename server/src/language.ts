@@ -29,21 +29,28 @@ export let validCommands: ReadonlyArray<string> = [
 ];
 
 /**
- * Commands that create labels or variables or directly manipulate those variables.
+ * Commands that create labels or variables.
  */
-export let symbolCommands: ReadonlyArray<string> = [
-	"temp", "label", "set", "delete", "rand"
+export let symbolCreationCommands: ReadonlyArray<string> = [
+	"temp", "label"
 ];
 
 /**
  * Commands that create labels or variables in a ChoiceScript startup file.
  */
-export let startupFileSymbolCommands: ReadonlyArray<string> = [...symbolCommands, "create"];
+export let startupFileSymbolCreationCommands: ReadonlyArray<string> = [...symbolCreationCommands, "create"];
+
+/**
+ * Commands that manipulate the contents of variables.
+ */
+export let variableManipulationCommands: ReadonlyArray<string> = [
+	"set", "delete", "rand"
+];
 
 /**
  * Commands that reference variables.
  */
-export let symbolReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
+export let variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
 
 /**
  * Commands that reference labels.
@@ -93,6 +100,13 @@ export let namedOperators: ReadonlyArray<string> = [
 	"and", "or", "modulo"
 ];
 
+/**
+ * ChoiceScript named values
+ */
+export let namedValues: ReadonlyArray<string> = [
+	"true", "false"
+];
+
 
 /* PATTERNS */
 
@@ -103,11 +117,11 @@ export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+
 /**
  * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
  */
-export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + symbolCommands.join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + symbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
  * Pattern to find legal commands that create labels or variables in a ChoiceScript startup file.
  */
-export let startupFileSymbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + startupFileSymbolCommands.join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let startupFileSymbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + startupFileSymbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
  * Pattern to find commands that create scene lists.
  */
@@ -123,7 +137,7 @@ export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<reference
 /**
  * Pattern to find a legal command that might reference a symbol.
  */
-export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>" + symbolReferenceCommands.join('|') + ")(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
+export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>" + variableReferenceCommands.join('|') + ")(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
 /**
  * Pattern to find elements that go against Choice of Games style guide.
  */
