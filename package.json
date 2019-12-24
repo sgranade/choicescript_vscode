@@ -95,10 +95,17 @@
 		"test": "sh ./scripts/e2e.sh"
 	},
 	"devDependencies": {
+		"@fluffy-spoon/substitute": "^1.107.0",
+		"@types/chai": "^4.2.7",
 		"@types/mocha": "^5.2.7",
 		"@types/node": "^12.11.7",
 		"@types/urijs": "^1.19.4",
+		"chai": "^4.2.0",
+		"mocha": "^6.2.2",
+		"ts-node": "^8.5.4",
 		"tslint": "^5.16.0",
-		"typescript": "^3.7.4"
-	}
+		"typescript": "^3.7.4",
+		"vscode-languageserver": "^5.2.1"
+	},
+	"dependencies": {}
 }

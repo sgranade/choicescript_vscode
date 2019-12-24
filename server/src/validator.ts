@@ -299,7 +299,7 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 	if (prefix === undefined && validCommandsLookup.get(command) && index > 0) {
 		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 			commandStartIndex, commandEndIndex,
-			`Command *${command} must be on a line by itself.`));
+			`Command *${command} can't have other text in front of it.`));
 	}
 	else if (!validCommandsLookup.get(command)) {
 		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
