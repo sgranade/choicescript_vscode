@@ -5,20 +5,23 @@ import {
 	startupCommands, 
 	validCommands, 
 	variableManipulationCommands,
+	variableReferenceCommands,
+	labelReferenceCommands,
 	functions,
 	namedOperators,
 	namedValues,
 	uriIsStartupFile, 
 	commandPattern, 
 	referencePattern, 
-	stylePattern, 
-	variableReferenceCommands
+	stylePattern
 } from './language';
+import { getFilenameFromUri } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let variableManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(variableManipulationCommands.map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
+let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
@@ -90,7 +93,7 @@ function validateVariableReference(variable: string, index: number, projectIndex
 		textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 	if (!projectIndex.getGlobalVariables().get(variable) && 
-			!projectIndex.getLocalVariables(textDocument).get(variable)) {
+			!projectIndex.getLocalVariables(textDocument.uri).get(variable)) {
 		let referenceStartIndex = index;
 		let referenceEndIndex = index + variable.length;
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
@@ -106,14 +109,35 @@ function validateVariableReference(variable: string, index: number, projectIndex
  * @param index Location of the label reference in the document.
  * @param projectIndex Index of the ChoiceScript project.
  * @param textDocument Document being validated.
+ * @param labelSourceUri Document where the label should live. If undefined, the textDocument's URI is used.
  */
 function validateLabelReference(label: string, index: number, projectIndex: ProjectIndex,
-		textDocument: TextDocument): Diagnostic | undefined {
+		textDocument: TextDocument, labelSourceUri: string | undefined): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (!projectIndex.getLabels(textDocument).get(label)) {
+	if (labelSourceUri === undefined)
+		labelSourceUri = textDocument.uri;
+	if (!projectIndex.getLabels(labelSourceUri).get(label)) {
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
 			index, index + label.length,
-			`Label "${label}" wasn't found in this file`);
+			`Label "${label}" wasn't found in ${getFilenameFromUri(labelSourceUri)}`);
+	}
+	return diagnostic;
+}
+
+/**
+ * Validate a reference to a scene.
+ * @param scene Name of the scene being referenced.
+ * @param index Location of the scene reference in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Document being validated.
+ */
+function validateSceneReference(scene: string, index: number, projectIndex: ProjectIndex,
+		textDocument: TextDocument): Diagnostic | undefined {
+	let diagnostic: Diagnostic | undefined = undefined;
+	if (!projectIndex.getSceneList().includes(scene)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			index, index + scene.length,
+			`Scene "${scene}" wasn't found in startup.txt`);
 	}
 	return diagnostic;
 }
@@ -171,11 +195,12 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 			if (choiceSplit !== undefined)
 				line = choiceSplit[0];
 		}
+
 		let tokenPattern = /\w+/g;
 		let globalVariables = projectIndex.getGlobalVariables();
 		if (globalVariables === undefined)
 			globalVariables = new Map();
-		let localVariables = projectIndex.getLocalVariables(textDocument);
+		let localVariables = projectIndex.getLocalVariables(textDocument.uri);
 		if (localVariables === undefined)
 			localVariables = new Map();
 		let m: RegExpExecArray | null;
@@ -187,6 +212,60 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 					lineIndex + m.index, lineIndex + m.index + m[0].length,
 					`"${m[0]}" is not a variable, function, or named operator`));
 			}
+		}
+	}
+
+	return diagnostics;
+}
+
+/**
+ * Validate commands like *goto and *gosub_scene that reference labels.
+ * @param command Command to validate.
+ * @param commandIndex Location of the command in the document.
+ * @param line Remainder of the line after the command.
+ * @param lineIndex Location of the line in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Document being validated.
+ */
+function validateLabelReferenceCommands(command: string, commandIndex: number, line: string | undefined,
+	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+	let diagnostics: Diagnostic[] = [];
+
+	if (line === undefined) {
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
+			commandIndex, commandIndex + command.length + 1,
+			`Command *${command} is missing its arguments`));
+	}
+	else {
+		let tokens = splitLine(line);
+		let referencesScene = command.includes("_scene");
+
+		if (referencesScene) {
+			let diagnostic = validateSceneReference(tokens[0], lineIndex,
+				projectIndex, textDocument);
+			if (diagnostic !== undefined)
+				diagnostics.push(diagnostic);
+			
+			if (tokens.length < 2) {
+				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
+					lineIndex + line.length, lineIndex + line.length,
+					`Command *${command} requires a label`));
+			}
+			else {
+				let sceneDocumentUri = projectIndex.getSceneUri(tokens[0]);
+				if (sceneDocumentUri !== undefined) {
+					diagnostic = validateLabelReference(tokens[1], lineIndex + line.indexOf(tokens[1]),
+						projectIndex, textDocument, sceneDocumentUri);
+					if (diagnostic !== undefined)
+						diagnostics.push(diagnostic);
+				}
+			}
+		}
+		else {
+			let diagnostic = validateLabelReference(tokens[0], lineIndex,
+				projectIndex, textDocument, undefined);
+			if (diagnostic !== undefined)
+				diagnostics.push(diagnostic);
 		}
 	}
 
@@ -241,48 +320,11 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 			diagnostics.push(...validateVariableReferenceCommand(command, commandStartIndex, line,
 				lineStartIndex, projectIndex, textDocument));
 		}
-
-		switch (command) {
-			case "goto":
-			case "gosub":
-				// goto and gosub must refer to an existing label in the file
-				if (tokens.length == 0) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`Command *${command} requires a label`));
-				}
-				else {
-					let diagnostic = validateLabelReference(tokens[0], lineStartIndex,
-						projectIndex, textDocument);
-					if (diagnostic !== undefined)
-						diagnostics.push(diagnostic);
-				}
-				break;
-
-			case "goto_scene":
-			case "gosub_scene":
-				// goto and gosub must refer to an existing scene
-				if (tokens.length == 0) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						commandStartIndex, commandEndIndex,
-						`Command *${command} requires a scene`));
-				}
-				else if (!projectIndex.getSceneList().includes(tokens[0])) {
-					diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-						lineStartIndex, lineStartIndex + tokens[0].length,
-						`Scene "${tokens[0]}" wasn't found in startup.txt`));
-				}
-				else if (tokens.length >= 2 && line !== undefined) {
-					let sceneLabels = projectIndex.getSceneLabels(tokens[0]);
-					if (sceneLabels !== undefined && sceneLabels.get(tokens[1]) === undefined) {
-						let sceneIndex = line.lastIndexOf(tokens[1]);
-						diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-							lineStartIndex + sceneIndex, lineStartIndex + sceneIndex + tokens[1].length,
-							`Label "${tokens[1]}" wasn't found in scene ${tokens[0]}`));
-					}
-				}
-				break;
+		else if (labelReferenceCommandsLookup.get(command)) {
+			diagnostics.push(...validateLabelReferenceCommands(command, commandStartIndex, line,
+				lineStartIndex, projectIndex, textDocument));
 		}
+
 	}
 
 	return diagnostics;

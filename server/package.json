@@ -1,8 +1,8 @@
 {
-	"name": "lsp-sample-server",
-	"description": "Example implementation of a language server in node.",
-	"version": "1.0.0",
-	"author": "Microsoft Corporation",
+	"name": "choicescript-lsp-server",
+	"description": "ChoiceScript language server in node.",
+	"version": "0.1.0",
+	"author": "Stephen Granade",
 	"license": "MIT",
 	"engines": {
 		"node": "*"

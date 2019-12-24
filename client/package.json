@@ -1,9 +1,9 @@
 {
-	"name": "lsp-sample-client",
-	"description": "VSCode part of a language server",
-	"author": "Microsoft Corporation",
+	"name": "choicescript-lsp-client",
+	"description": "ChoiceScript language client",
+	"author": "Stephen Granade",
 	"license": "MIT",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"publisher": "vscode",
 	"repository": {
 		"type": "git",

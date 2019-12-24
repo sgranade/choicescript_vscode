@@ -91,7 +91,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "goto":
 					case "gosub":
 						if (tokens.length == 2) {
-							completions = generateCompletionsFromIndex(projectIndex.getLabels(document), CompletionItemKind.Reference, "labels-local");
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
 						}
 						break;
 
@@ -109,9 +109,9 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 							}
 						}
 						else if (tokens.length == 3) {
-							let sceneLabels = projectIndex.getSceneLabels(tokens[1]);
-							if (sceneLabels !== undefined) {
-								completions = generateCompletionsFromIndex(sceneLabels, CompletionItemKind.Reference, "labels-scene");
+							let sceneUri = projectIndex.getSceneUri(tokens[1]);
+							if (sceneUri !== undefined) {
+								completions = generateCompletionsFromIndex(projectIndex.getLabels(sceneUri), CompletionItemKind.Reference, "labels-scene");
 							}
 						}
 						break;
@@ -121,7 +121,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "if":
 					case "elseif":
 					case "elsif":
-						completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
+						completions = generateVariableCompletions(projectIndex.getLocalVariables(document.uri), projectIndex.getGlobalVariables());
 						break;
 				}
 			}
@@ -161,7 +161,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 
 			if (returnVariableCompletions)
-				completions = generateVariableCompletions(projectIndex.getLocalVariables(document), projectIndex.getGlobalVariables());
+				completions = generateVariableCompletions(projectIndex.getLocalVariables(document.uri), projectIndex.getGlobalVariables());
 		}
 	}
 	return completions;

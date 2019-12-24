@@ -45,30 +45,40 @@ class Index implements ProjectIndex {
 		this._localLabels = new Map();
 	}
 
-	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._startupFileUri = normalizeUri(textDocument.uri);
+	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+		this._startupFileUri = normalizeUri(textDocumentUri);
 		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
-	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localVariables.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
+	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateReferences(textDocument: TextDocument, newIndex: ReferenceIndex) {
-		this._references.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
+	updateReferences(textDocumentUri: string, newIndex: ReferenceIndex) {
+		this._references.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
 	}
-	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localLabels.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
+	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex) {
+		this._localLabels.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	getStartupFileUri(): string {
 		return this._startupFileUri;
 	}
+	getSceneUri(scene: string): string | undefined {
+		let sceneUri: string | undefined = undefined;
+		for (let key of this._localVariables.keys()) {
+			if (key.includes(scene)) {
+				sceneUri = key;
+				break;
+			}
+		}
+		return sceneUri;
+	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
 	}
-	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex {
-		let index = this._localVariables.get(normalizeUri(textDocument.uri));
+	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
+		let index = this._localVariables.get(normalizeUri(textDocumentUri));
 		if (index === undefined)
 			index = new Map();
 		
@@ -77,25 +87,12 @@ class Index implements ProjectIndex {
 	getSceneList(): ReadonlyArray<string> {
 		return this._scenes;
 	}
-	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex {
-		let index = this._localLabels.get(normalizeUri(textDocument.uri));
+	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex {
+		let index = this._localLabels.get(normalizeUri(textDocumentUri));
 		if (index === undefined)
 			index = new Map();
 
 		return index;
-	}
-	getSceneVariables(scene: string): ReadonlyIdentifierIndex | undefined {
-		let sceneUri: string | undefined = undefined;
-		for (let key of this._localVariables.keys()) {
-			if (key.includes(scene)) {
-				sceneUri = key;
-				break;
-			}
-		}
-		if (sceneUri === undefined) {
-			return undefined;
-		}
-		return this._localVariables.get(sceneUri);
 	}
 	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined {
 		let sceneUri: string | undefined = undefined;
@@ -121,10 +118,10 @@ class Index implements ProjectIndex {
 
 		return locations;
 	}
-	removeDocument(textDocument: TextDocument) {
-		this._localVariables.delete(normalizeUri(textDocument.uri));
-		this._references.delete(normalizeUri(textDocument.uri));
-		this._localLabels.delete(normalizeUri(textDocument.uri));
+	removeDocument(textDocumentUri: string) {
+		this._localVariables.delete(normalizeUri(textDocumentUri));
+		this._references.delete(normalizeUri(textDocumentUri));
+		this._localLabels.delete(normalizeUri(textDocumentUri));
 	}
 }
 
@@ -382,7 +379,7 @@ function generateDefinition(documentUri: string, position: Position, projectInde
 	}
 	let symbol = text.substring(start, end);
 
-	let location = projectIndex.getLocalVariables(document).get(symbol);
+	let location = projectIndex.getLocalVariables(document.uri).get(symbol);
 	if (location === undefined) {
 		location = projectIndex.getGlobalVariables().get(symbol);
 	}
@@ -412,7 +409,7 @@ function generateReferences(textDocument: TextDocument, position: Position, cont
 	let locations = [...projectIndex.getReferences(symbol)];
 	
 	if (context.includeDeclaration) {
-		let declarationLocation = projectIndex.getLocalVariables(textDocument).get(symbol);
+		let declarationLocation = projectIndex.getLocalVariables(textDocument.uri).get(symbol);
 		if (declarationLocation === undefined)
 			declarationLocation = projectIndex.getGlobalVariables().get(symbol);
 
@@ -440,7 +437,7 @@ function generateRenames(textDocument: TextDocument, position: Position, newName
 
 	let variableDefinition = projectIndex.getGlobalVariables().get(symbol);
 	if (variableDefinition === undefined) {
-		let localVariables = projectIndex.getLocalVariables(textDocument);
+		let localVariables = projectIndex.getLocalVariables(textDocument.uri);
 		if (localVariables !== undefined) {
 			variableDefinition = localVariables.get(symbol);
 		}

@@ -39,22 +39,22 @@ export type ReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
 export interface ProjectIndex {
 	/**
 	 * Update the index of global variable definitions from the startup scene.
-	 * @param textDocument startup.txt document.
+	 * @param textDocumentUri URI to startup.txt document.
 	 * @param newIndex New index of global variables.
 	 */
-	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
 	 * Update the index of variable definitions local to a scene.
-	 * @param textDocument Document whose index is to be updated.
+	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of local variables.
 	 */
-	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
 	 * Update the index of references to variables.
-	 * @param textDocument Document whose index is to be updated.
+	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to variables.
 	 */
-	updateReferences(textDocument: TextDocument, newIndex: ReferenceIndex): void;
+	updateReferences(textDocumentUri: string, newIndex: ReferenceIndex): void;
 	/**
 	 * Update the list of scene names in the project.
 	 * @param scenes New list of scene names.
@@ -62,14 +62,19 @@ export interface ProjectIndex {
 	updateSceneList(scenes: Array<string>): void;
 	/**
 	 * Update the index of labels in a scene file.
-	 * @param textDocument Document whose index is to be updated.
+	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of labels.
 	 */
-	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex): void;
+	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
 	 * Get the URI to the project's startup.txt file.
 	 */
 	getStartupFileUri(): string;
+	/**
+	 * Get the URI to a scene file.
+	 * @param scene Scene name.
+	 */
+	getSceneUri(scene: string): string | undefined;
 	/**
 	 * Get global variables in a project.
 	 */
@@ -80,24 +85,14 @@ export interface ProjectIndex {
 	getSceneList(): ReadonlyArray<string>;
 	/**
 	 * Get the local variables in a scene file.
-	 * @param textDocument Scene document.
+	 * @param textDocumentUri URI to scene document.
 	 */
-	getLocalVariables(textDocument: TextDocument): ReadonlyIdentifierIndex;
-	/**
-	 * Get the local variables in a scene file by the scene's name.
-	 * @param scene Name of the scene.
-	 */
-	getSceneVariables(scene: string): ReadonlyIdentifierIndex | undefined;
+	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex;
 	/**
 	 * Get the labels in a scene file.
-	 * @param textDocument Scene document.
+	 * @param textDocumentUri URI to scene document.
 	 */
-	getLabels(textDocument: TextDocument): ReadonlyIdentifierIndex;
-	/**
-	 * Get the labels in a scene file by the scene's name.
-	 * @param scene Name of the scene.
-	 */
-	getSceneLabels(scene: string): ReadonlyIdentifierIndex | undefined;
+	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex;
 	/**
 	 * Get all references to a symbol.
 	 * @param symbol Symbol to find references to.
@@ -105,9 +100,9 @@ export interface ProjectIndex {
 	getReferences(symbol: string): ReadonlyArray<Location>;
 	/**
 	 * Remove a document from the project index.
-	 * @param textDocument Document to remove.
+	 * @param textDocumentUri URI to document to remove.
 	 */
-	removeDocument(textDocument: TextDocument): void;
+	removeDocument(textDocumentUri: string): void;
 }
 
 /**
@@ -349,10 +344,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	}
 
 	if (isStartupFile) {
-		index.updateGlobalVariables(textDocument, newGlobalVariables);
+		index.updateGlobalVariables(textDocument.uri, newGlobalVariables);
 		index.updateSceneList(newScenes);
 	}
-	index.updateLocalVariables(textDocument, newLocalVariables);
-	index.updateReferences(textDocument, newReferences);
-	index.updateLabels(textDocument, newLabels);
+	index.updateLocalVariables(textDocument.uri, newLocalVariables);
+	index.updateReferences(textDocument.uri, newReferences);
+	index.updateLabels(textDocument.uri, newLabels);
 }
