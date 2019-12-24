@@ -26,7 +26,7 @@ import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIn
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { normalizeUri } from './utilities';
+import { CaseInsensitiveMap, normalizeUri } from './utilities';
 
 class Index implements ProjectIndex {
 	_startupFileUri: string;
@@ -47,19 +47,19 @@ class Index implements ProjectIndex {
 
 	updateGlobalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
 		this._startupFileUri = normalizeUri(textDocument.uri);
-		this._globalVariables = newIndex;
+		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
 	updateLocalVariables(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localVariables.set(normalizeUri(textDocument.uri), newIndex);
+		this._localVariables.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
 	}
 	updateReferences(textDocument: TextDocument, newIndex: ReferenceIndex) {
-		this._references.set(normalizeUri(textDocument.uri), newIndex);
+		this._references.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
 	}
 	updateLabels(textDocument: TextDocument, newIndex: IdentifierIndex) {
-		this._localLabels.set(normalizeUri(textDocument.uri), newIndex);
+		this._localLabels.set(normalizeUri(textDocument.uri), new CaseInsensitiveMap(newIndex));
 	}
 	getStartupFileUri(): string {
 		return this._startupFileUri;

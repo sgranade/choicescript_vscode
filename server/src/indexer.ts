@@ -11,22 +11,27 @@ import {
 	referencePattern,
 	symbolReferencePattern
 } from './language';
-import { findLineEnd, extractToMatchingDelimiter } from './utilities';
+import {
+	CaseInsensitiveMap,
+	ReadonlyCaseInsensitiveMap,
+	findLineEnd,
+	extractToMatchingDelimiter
+} from './utilities';
 
 /**
  * Type for a mutable index of identifiers.
  */
-export type IdentifierIndex = Map<string, Location>;
+export type IdentifierIndex = CaseInsensitiveMap<string, Location>;
 
 /**
  * Type for an immutable index of identifiers.
  */
-export type ReadonlyIdentifierIndex = ReadonlyMap<string, Location>;
+export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Location>;
 
 /**
  * Type for a mutable index of references.
  */
-export type ReferenceIndex = Map<string, Array<Location>>;
+export type ReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -137,6 +142,7 @@ function indexSymbolCommand(command: string, symbol: string, symbolIndex: number
 		textDocument.positionAt(symbolIndex),
 		textDocument.positionAt(symbolIndex + symbol.length)
 	));
+
 	switch (command) {
 		case "create":
 			// *create instantiates global variables

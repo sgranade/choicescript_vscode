@@ -146,6 +146,15 @@ function validateVariableManipulationCommand(command: string, commandIndex: numb
 	return diagnostics;
 }
 
+/**
+ * Validate commands like *if that reference variables.
+ * @param command Command to validate.
+ * @param commandIndex Location of the command in the document.
+ * @param line Remainder of the line after the command.
+ * @param lineIndex Location of the line in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Document being validated.
+ */
 function validateVariableReferenceCommand(command: string, commandIndex: number, line: string | undefined,
 	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];

@@ -1,6 +1,26 @@
 import * as URI from 'urijs';
 
 /**
+ * Map that stores and accesses string keys without regard to case.
+ */
+export class CaseInsensitiveMap<T, U> extends Map<T, U> {
+	set (key: T, value: U): this {
+		if (typeof key === 'string') {
+			key = <T><any>key.toLowerCase();
+		}
+		return super.set(key, value);
+	}
+	get(key: T): U | undefined {
+		if (typeof key === 'string') {
+			key = <T><any>key.toLowerCase();
+		}
+		return super.get(key);
+	}
+}
+
+export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
+
+/**
  * Scan a document's text to find the end of the current line.
  * 
  * @param document Document text to scan.
