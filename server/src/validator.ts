@@ -154,7 +154,7 @@ function validateSceneReference(scene: string, index: number, projectIndex: Proj
  * @param projectIndex Index of the ChoiceScript project.
  * @param textDocument Document being validated.
  */
-function validateVariableManipulationCommand(command: string, commandIndex: number, line: string | undefined, 
+function validateVariableManipulationCommand(command: string, commandIndex: number,	line: string | undefined,
 	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 

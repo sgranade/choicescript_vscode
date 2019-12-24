@@ -321,4 +321,13 @@ describe("Variable Reference Commands Validation", () => {
 		expect(diagnostics.length).to.equal(0);
 	});
 
+	it("should be good with parens and no space", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*if(known_variable < 3)");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
 });

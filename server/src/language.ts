@@ -123,7 +123,7 @@ export let namedValues: ReadonlyArray<string> = [
 /**
  * Pattern to find commands, legal or otherwise.
  */
-export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+)((?<commandSpacing>[ \t]+)(?<commandLine>.+))?";
+export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
  * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
  */
