@@ -199,6 +199,10 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 				line = choiceSplit[0];
 		}
 
+		// Get rid of any quoted strings from the line
+		line = line.replace(/(?<!\\)".*?(?<!\\)"/g, '');
+		console.log(line);
+
 		let tokenPattern = /\w+/g;
 		let globalVariables = projectIndex.getGlobalVariables();
 		if (globalVariables === undefined)

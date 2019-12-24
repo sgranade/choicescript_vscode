@@ -63,20 +63,20 @@ describe("Style Validation", () => {
 });
 
 describe("Variable Validation", () => {
-	it("should find global variables", () => {
-		let globalVariables: Map<string, Location> = new Map([["global_reference", Substitute.for<Location>()]]);
-		let fakeDocument = createDocument("{global_reference}");
-		let fakeIndex = createIndex(globalVariables = globalVariables);
+	it("should find local variables", () => {
+		let localVariables: Map<string, Location> = new Map([["local_reference", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("{local_reference}");
+		let fakeIndex = createIndex(undefined, localVariables);
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
 		expect(diagnostics.length).to.equal(0);
 	});
 
-	it("should find local variables", () => {
-		let localVariables: Map<string, Location> = new Map([["local_reference", Substitute.for<Location>()]]);
-		let fakeDocument = createDocument("{local_reference}");
-		let fakeIndex = createIndex(undefined, localVariables);
+	it("should find global variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["global_reference", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("{global_reference}");
+		let fakeIndex = createIndex(globalVariables = globalVariables);
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
@@ -167,6 +167,154 @@ describe("All Commands Validation", () => {
 	it("should allow startup commands in startup.txt", () => {
 		let fakeDocument = createDocument("*create variable", "file:///startup.txt");
 		let fakeIndex = createIndex(undefined, undefined);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+});
+
+describe("Variable Manipulation Commands Validation", () => {
+	it("should flag missing arguments", () => {
+		let fakeDocument = createDocument("*set");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain("*set is missing its arguments");
+	});
+
+	it("should flag an incorrect variable reference", () => {
+		let fakeDocument = createDocument("*delete  missing_variable");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "missing_variable" not defined');
+	});
+
+	it("should be good with local variables", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*rand known_variable");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with global variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*rand known_variable");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+});
+
+describe("Variable Reference Commands Validation", () => {
+	it("should flag missing arguments", () => {
+		let fakeDocument = createDocument("*if");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain("*if is missing its arguments");
+	});
+
+	it("should be okay with numbers", () => {
+		let fakeDocument = createDocument("*elseif 1");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with comparisons", () => {
+		let fakeDocument = createDocument("*elseif 1 >= 2");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with functions", () => {
+		let fakeDocument = createDocument("*selectable_if round(1.2)");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with named operators", () => {
+		let fakeDocument = createDocument("*if 4 modulo 7");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with named values", () => {
+		let fakeDocument = createDocument("*if false");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should not flag text in a trailing #choice", () => {
+		let fakeDocument = createDocument("*if 1 #I should not cause any issues");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with local variables", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*if known_variable > 7");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with global variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*elseif known_variable < 3");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with string comparisons", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('*elseif known_variable = "string"');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with parens", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*elseif (known_variable < 3)");
+		let fakeIndex = createIndex(globalVariables);
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
