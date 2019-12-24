@@ -8,6 +8,7 @@ import {
 	variableReferenceCommands,
 	labelReferenceCommands,
 	functions,
+	builtinVariables,
 	namedOperators,
 	namedValues,
 	uriIsStartupFile, 
@@ -23,6 +24,7 @@ let variableManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(va
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
+let builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
 
@@ -93,7 +95,8 @@ function validateVariableReference(variable: string, index: number, projectIndex
 		textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 	if (!projectIndex.getGlobalVariables().get(variable) && 
-			!projectIndex.getLocalVariables(textDocument.uri).get(variable)) {
+			!projectIndex.getLocalVariables(textDocument.uri).get(variable) &&
+			!builtinVariablesLookup.get(variable)) {
 		let referenceStartIndex = index;
 		let referenceEndIndex = index + variable.length;
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
@@ -205,7 +208,7 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 			localVariables = new Map();
 		let m: RegExpExecArray | null;
 		while (m = tokenPattern.exec(line)) {
-			if (!(functionsLookup.get(m[0]) || namedOperatorsLookup.get(m[0]) || 
+			if (!(functionsLookup.get(m[0]) || builtinVariablesLookup.get(m[0]) || namedOperatorsLookup.get(m[0]) || 
 			globalVariables.get(m[0]) || localVariables.get(m[0]) || namedValuesLookup.get(m[0]))
 			&& Number.isNaN(Number(m[0]))) {
 				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
@@ -292,9 +295,6 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 	let lineStartIndex = commandEndIndex;
 	if (spacing !== undefined)
 		lineStartIndex += spacing.length;
-	let tokens: string[] = [];
-	if (line !== undefined)
-		tokens = line.trimRight().split(/\s+/);
 
 	if (prefix === undefined && validCommandsLookup.get(command) && index > 0) {
 		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,

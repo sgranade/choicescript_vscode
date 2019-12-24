@@ -94,6 +94,16 @@ export let functions: ReadonlyArray<string> = [
 ];
 
 /**
+ * ChoiceScript built-in variables
+ */
+export let builtinVariables: ReadonlyArray<string> = [
+	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered", "choice_is_web", "choice_is_steam",
+	"choice_is_ios_app", "choice_is_advertising_supported", "choice_is_trial", "choice_release_date", "choice_prerelease",
+	"choice_kindle", "choice_randomtest", "choice_quicktest", "choice_restore_purchases_allowed", "choice_save_allowed",
+	"choice_time_stamp", "choice_nightmode"
+];
+
+/**
  * ChoiceScript named operators
  */
 export let namedOperators: ReadonlyArray<string> = [
