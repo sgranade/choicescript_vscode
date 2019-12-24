@@ -1,6 +1,8 @@
 import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
+import { getFilenameFromUri } from './utilities';
+
 /* COMMANDS */
 
 /**
@@ -67,6 +69,10 @@ export let namedOperators: ReadonlyArray<string> = [
 /* PATTERNS */
 
 /**
+ * Pattern to find commands.
+ */
+export let commandPattern = "?<commandPrefix>(\\n|^)\\s*?)\\*(?<command>\\w+)";
+/**
  * Pattern to find commands that create labels or variables or directly manipulate those variables.
  */
 export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete|rand)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
@@ -85,26 +91,34 @@ export let multiPattern = "(?<multi>@!?!?{)";
 /**
  * Pattern to find a reference to a variable.
  */
-export let referencePattern = "(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)})";
+export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)})";
 /**
- * Variable that finds a command that might reference a symbol.
+ * Pattern to find a command that might reference a symbol.
  */
 export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
+/**
+ * Pattern to find elements that go against Choice of Games style guide.
+ */
+export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
 
 /* FUNCTIONS */
 
 /**
- * Extract the filename portion from a URI.
- * 
- * Note that, for URIs with no filename (such as file:///path/to/file), the final portion of the
- * path is returned.
- * 
- * @param uriString URI to extract the filename from.
- * @returns The filename, or null if none is found.
+ * Extract a ChoiceScript symbol from text at a given index.
+ * @param text Text.
+ * @param index Index inside the symbol to be extracted.
+ * @returns The symbol.
  */
-function getFilenameFromUri(uriString: string): string | undefined {
-	let uri = URI(uriString);
-	return uri.filename();
+export function extractSymbolAtIndex(text: string, index: number): string {
+	let start = index;
+	while (start >= 0 && /\w/.test(text[start]))
+		start--;
+	let end = index;
+	while (end < text.length && /\w/.test(text[end]))
+		end++;
+
+	let symbol = text.slice(start+1, end);
+	return symbol;
 }
 
 /**

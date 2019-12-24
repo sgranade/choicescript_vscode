@@ -11,7 +11,7 @@ import {
 	referencePattern,
 	symbolReferencePattern
 } from './language';
-import { extractToMatchingDelimiter } from './utilities';
+import { findLineEnd, extractToMatchingDelimiter } from './utilities';
 
 /**
  * Type for a mutable index of identifiers.
@@ -118,35 +118,6 @@ function addReference(symbol: string, location: Location, referenceIndex: Refere
 		referenceArray = [];
 	referenceArray.push(location);
 	referenceIndex.set(symbol, referenceArray);
-}
-
-/**
- * Scan a document's text to find the end of the current line.
- * 
- * @param document Document text to scan.
- * @param startIndex Index at which to begin scan.
- * @returns Index corresponding to one past the line's end, including any \r\n
- */
-function findLineEnd(document: string, startIndex: number): number | undefined {
-	let i = startIndex;
-	let lineEnd: number | undefined = undefined;
-
-	for (let i = startIndex; i < document.length; i++) {
-		if (i < document.length - 2 && document[i] == '\r' && document[i+1] == '\n') {
-			lineEnd = i+2;
-			break;
-		}
-		if (i < document.length - 1 && document[i] == '\n') {
-			lineEnd = i+1;
-			break;
-		}
-		if (i == document.length - 1) {
-			lineEnd = i+1;
-			break;
-		}
-	}
-
-	return lineEnd;
 }
 
 /**

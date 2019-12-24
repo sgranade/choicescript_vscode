@@ -24,7 +24,7 @@ import globby = require('globby');
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, updateProjectIndex, ReferenceIndex } from './indexer';
 import { generateDiagnostics } from './validator';
-import { uriIsStartupFile } from './language';
+import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
 import { normalizeUri } from './utilities';
 
@@ -403,18 +403,6 @@ connection.onReferences(
 		return generateReferences(document, referencesParams.position, referencesParams.context, projectIndex);
 	}
 )
-
-function extractSymbolAtIndex(text: string, index: number): string {
-	let start = index;
-	while (start >= 0 && /\w/.test(text[start]))
-		start--;
-	let end = index;
-	while (end < text.length && /\w/.test(text[end]))
-		end++;
-
-	let symbol = text.slice(start+1, end);
-	return symbol;
-}
 
 function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
 	let text = textDocument.getText();
