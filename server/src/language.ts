@@ -69,15 +69,15 @@ export let namedOperators: ReadonlyArray<string> = [
 /* PATTERNS */
 
 /**
- * Pattern to find commands.
+ * Pattern to find commands, legal or otherwise.
  */
-export let commandPattern = "?<commandPrefix>(\\n|^)\\s*?)\\*(?<command>\\w+)";
+export let commandPattern = "(?<commandPrefix>(\\n|^)\\s*?)?\\*(?<command>\\w+)(?<commandSpacing>\\s+)(?<commandLine>.+)";
 /**
- * Pattern to find commands that create labels or variables or directly manipulate those variables.
+ * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
  */
 export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)\\s*?)\\*(?<symbolCommand>temp|label|set|delete|rand)(?<spacing>\\s+)(?<commandSymbol>\\w+)";
 /**
- * Pattern to find commands that create labels or variables in a ChoiceScript startup file.
+ * Pattern to find legal commands that create labels or variables in a ChoiceScript startup file.
  */
 export let startupFileSymbolCommandPattern = symbolCommandPattern.replace("temp|", "create|temp|");
 /**
@@ -93,7 +93,7 @@ export let multiPattern = "(?<multi>@!?!?{)";
  */
 export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)})";
 /**
- * Pattern to find a command that might reference a symbol.
+ * Pattern to find a legal command that might reference a symbol.
  */
 export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>(selectable_)?if|elseif|elsif)(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
 /**
