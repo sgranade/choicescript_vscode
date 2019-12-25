@@ -253,12 +253,7 @@ function validateLabelReferenceCommands(command: string, commandIndex: number, l
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 			
-			if (tokens.length < 2) {
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
-					lineIndex + line.length, lineIndex + line.length,
-					`Command *${command} requires a label`));
-			}
-			else {
+			if (tokens.length >= 2) {
 				let sceneDocumentUri = projectIndex.getSceneUri(tokens[0]);
 				if (sceneDocumentUri !== undefined) {
 					diagnostic = validateLabelReference(tokens[1], lineIndex + line.indexOf(tokens[1]),

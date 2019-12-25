@@ -6,9 +6,10 @@ import { Location, TextDocument } from 'vscode-languageserver';
 import { ProjectIndex, IdentifierIndex } from '../../../server/src/indexer';
 import { generateDiagnostics } from '../../../server/src/validator';
 
-const fakeUri: string = "file:///faker.txt";
+const fakeDocumentUri: string = "file:///faker.txt";
+const fakeSceneUri: string = "file:///other-scene.txt";
 
-function createDocument(text: string, uri: string = fakeUri): SubstituteOf<TextDocument> {
+function createDocument(text: string, uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
@@ -17,7 +18,11 @@ function createDocument(text: string, uri: string = fakeUri): SubstituteOf<TextD
 
 function createIndex(globalVariables: IdentifierIndex | undefined = undefined,
 		localVariables: IdentifierIndex | undefined = undefined,
-		startupUri: string | undefined = undefined): SubstituteOf<ProjectIndex> {
+		startupUri: string | undefined = undefined, 
+		labels: IdentifierIndex | undefined = undefined,
+		labelsUri: string | undefined = undefined,
+		sceneList: string[] | undefined = undefined,
+		sceneFileUri: string | undefined = undefined): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new Map();
 	}
@@ -27,13 +32,28 @@ function createIndex(globalVariables: IdentifierIndex | undefined = undefined,
 	if (startupUri === undefined) {
 		startupUri = "";
 	}
+	if (labels === undefined) {
+		labels = new Map();
+	}
+	if (sceneList === undefined) {
+		sceneList = [];
+	}
+	if (sceneFileUri === undefined) {
+		sceneFileUri = fakeSceneUri;
+	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
 	fakeIndex.getGlobalVariables().returns(globalVariables);
 	fakeIndex.getLocalVariables(Arg.any()).returns(localVariables);
 	fakeIndex.getStartupFileUri().returns(startupUri);
-	fakeIndex.getSceneList().returns([]);
-	fakeIndex.getLabels(Arg.any()).returns(new Map());
+	fakeIndex.getSceneUri(Arg.any()).returns(sceneFileUri);
+	fakeIndex.getSceneList().returns(sceneList);
+	if (labelsUri === undefined) {
+		fakeIndex.getLabels(Arg.any()).returns(labels);
+	}
+	else {
+		fakeIndex.getLabels(labelsUri).returns(labels);
+	}
 	fakeIndex.getReferences(Arg.any()).returns([]);
 
 	return fakeIndex;
@@ -331,3 +351,75 @@ describe("Variable Reference Commands Validation", () => {
 		expect(diagnostics.length).to.equal(0);
 	});
 });
+
+describe("Label Reference Commands Validation", () => {
+	it("should flag missing arguments", () => {
+		let fakeDocument = createDocument("*goto");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain("*goto is missing its arguments");
+	});
+
+	it("should be good with local labels", () => {
+		let localLabels: Map<string, Location> = new Map([["local_label", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*gosub local_label");
+		let fakeIndex = createIndex(undefined, undefined, undefined, localLabels, fakeDocumentUri);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with jumping to another scene without a label", () => {
+		let fakeDocument = createDocument("*goto_scene scene_name");
+		let fakeIndex = createIndex(undefined, undefined, undefined, undefined, undefined, ['scene_name']);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be flag bad scene names", () => {
+		let fakeDocument = createDocument("*goto_scene missing_scene");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
+	});
+
+	it("should be good with hyphenated scene names", () => {
+		let fakeDocument = createDocument("*goto_scene scene-name");
+		let fakeIndex = createIndex(undefined, undefined, undefined, undefined, undefined, ['scene-name']);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with labels in another scene", () => {
+		let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*goto_scene other-scene scene_label");
+		let fakeIndex = createIndex(undefined, undefined, undefined, sceneLabels, fakeSceneUri, ["other-scene"], fakeSceneUri);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag missing labels in another scene", () => {
+		let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*goto_scene other-scene missing_label");
+		let fakeIndex = createIndex(undefined, undefined, undefined, sceneLabels, fakeSceneUri, ["other-scene"], fakeSceneUri);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
+	});
+});
+
