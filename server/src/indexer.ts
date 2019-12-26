@@ -9,7 +9,8 @@ import {
 	sceneListCommandPattern,
 	multiPattern,
 	referencePattern,
-	symbolReferencePattern
+	symbolReferencePattern,
+	extractMultireplaceTest
 } from './language';
 import {
 	CaseInsensitiveMap,
@@ -297,35 +298,13 @@ function indexScenes(document: string, startIndex: number): Array<string> {
  * @param documentObject Document being indexed.
  */
 function indexMulti(document: string, startIndex: number, referenceIndex: ReferenceIndex, documentObject: TextDocument) {
-	if (document[startIndex] != '(') {
-		// The multi-index is referring to just a variable
-		let i = startIndex;
-		let endIndex: number | undefined = undefined;
-		while (i < document.length) {
-			if (!/\w/.test(document[i])) {
-				endIndex = i;
-				break;
-			}
-			i++;
-		}
-		if (endIndex !== undefined) {
-			let symbol = document.slice(startIndex, endIndex);
-			let location = Location.create(documentObject.uri, Range.create(
-				documentObject.positionAt(startIndex),
-				documentObject.positionAt(endIndex)
-			));
-			addReference(symbol, location, referenceIndex);
-		}
-	}
-	else {
-		// TODO would be better to tokenize this instead
-		let documentPiece = document.slice(startIndex+1);
-		let comparison = extractToMatchingDelimiter(documentPiece, "(", ")");
-		let wordPattern = /\w+/g;
-		let m: RegExpExecArray | null;
-
-		if (comparison !== undefined) {
-			while (m = wordPattern.exec(comparison)) {
+	let { testContents: multiTestContents } = extractMultireplaceTest(document, startIndex);
+	if (multiTestContents !== undefined) {
+		if (multiTestContents.includes(' ')) {
+			let wordPattern = /\w+/g;
+			let m: RegExpExecArray | null;
+	
+			while (m = wordPattern.exec(multiTestContents)) {
 				if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0])) {
 					let location = Location.create(documentObject.uri, Range.create(
 						documentObject.positionAt(startIndex + 1 + m.index),
@@ -334,6 +313,13 @@ function indexMulti(document: string, startIndex: number, referenceIndex: Refere
 					addReference(m[0], location, referenceIndex);
 				}
 			}
+		}
+		else {
+			let location = Location.create(documentObject.uri, Range.create(
+				documentObject.positionAt(startIndex),
+				documentObject.positionAt(startIndex + multiTestContents.length)
+			));
+			addReference(multiTestContents, location, referenceIndex);
 		}
 	}
 }

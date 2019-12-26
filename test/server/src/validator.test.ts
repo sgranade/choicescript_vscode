@@ -423,3 +423,145 @@ describe("Label Reference Commands Validation", () => {
 	});
 });
 
+describe("Multireplace Validation", () => {
+	it("should allow a bare global variable at the start", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{known_variable yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should allow a bare local variable at the start", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{known_variable yes | no}");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should allow spaces and then a bare variable at the start", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{   known_variable yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag missing bare variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{unknown_variable yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('"unknown_variable" is not a variable');
+	});
+
+	it("should flag missing bare variables in a capitalized multireplace", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@!{unknown_variable yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('"unknown_variable" is not a variable');
+	});
+
+	it("should flag missing bare variables in an all-caps multireplace", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@!!{unknown_variable yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('"unknown_variable" is not a variable');
+	});
+
+	it("should allow parenthesized global variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{(1 + known_variable) yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should allow parenthesized local variables", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{(1 + known_variable) yes | no}");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag missing parenthesized variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{(1 + unknown_variable) yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('"unknown_variable" is not a variable');
+	});
+
+	it("should allow spaces before parenthesized global variables", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("@{    (1 + known_variable) yes | no}");
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with functions", () => {
+		let fakeDocument = createDocument("@{(round(1.2) always | never}");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with named operators", () => {
+		let fakeDocument = createDocument("@{(4 modulo 7) maybe | maybe not}");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be okay with named values", () => {
+		let fakeDocument = createDocument("@{false never | always}");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with string comparisons", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('@{(known_variable = "string") matches | doesn\'t}');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+});

@@ -1,7 +1,7 @@
 import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
-import { getFilenameFromUri } from './utilities';
+import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
 
 
 /* COMMANDS */
@@ -172,6 +172,42 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 
 	let symbol = text.slice(start+1, end);
 	return symbol;
+}
+
+/**
+ * Extract the test portion of a multireplace (the bit right after "@{").
+ * @param document Document containing the multireplace.
+ * @param startIndex Index to the multireplace's contents (after the "@{" part).
+ * @returns The test portion and its index in the document.
+ */
+export function extractMultireplaceTest(document: string, 
+	startIndex: number): { testContents: string | undefined; index: number } {
+	let testContents: string | undefined = undefined;
+	let testIndex: number = startIndex;
+
+	if (document[startIndex] != '(') {
+		// The multireplace only has a bare symbol as its test
+		let i = startIndex;
+		let endIndex: number | undefined = undefined;
+		while (i < document.length) {
+			if (!/\w/.test(document[i])) {
+				endIndex = i;
+				break;
+			}
+			i++;
+		}
+		if (endIndex !== undefined) {
+			testContents = document.slice(startIndex, endIndex);
+		}
+	}
+	else {
+		// TODO tokenizing would potentially give better performance
+		testIndex++;
+		let documentPiece = document.slice(testIndex);
+		testContents = extractToMatchingDelimiter(documentPiece, "(", ")");
+	}
+
+	return { testContents: testContents, index: testIndex };
 }
 
 /**

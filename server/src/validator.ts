@@ -14,7 +14,9 @@ import {
 	uriIsStartupFile, 
 	commandPattern, 
 	referencePattern, 
-	stylePattern
+	stylePattern,
+	multiPattern,
+	extractMultireplaceTest
 } from './language';
 import { getFilenameFromUri } from './utilities';
 
@@ -174,6 +176,41 @@ function validateVariableManipulationCommand(command: string, commandIndex: numb
 }
 
 /**
+ * Validate an expression such as (variable > 3).
+ * @param expression Expression to validate.
+ * @param index Location of the expression in the document.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param textDocument Document being validated.
+ */
+function validateExpression(expression: string, index: number, projectIndex: ProjectIndex, 
+	textDocument: TextDocument): Diagnostic[] {
+	let diagnostics: Diagnostic[] = [];
+
+	// Get rid of any quoted strings from the line
+	expression = expression.replace(/(?<!\\)".*?(?<!\\)"/g, '');
+
+	let tokenPattern = /\w+/g;
+	let globalVariables = projectIndex.getGlobalVariables();
+	if (globalVariables === undefined)
+		globalVariables = new Map();
+	let localVariables = projectIndex.getLocalVariables(textDocument.uri);
+	if (localVariables === undefined)
+		localVariables = new Map();
+	let m: RegExpExecArray | null;
+	while (m = tokenPattern.exec(expression)) {
+		if (!(functionsLookup.get(m[0]) || builtinVariablesLookup.get(m[0]) || namedOperatorsLookup.get(m[0]) || 
+		globalVariables.get(m[0]) || localVariables.get(m[0]) || namedValuesLookup.get(m[0]))
+		&& Number.isNaN(Number(m[0]))) {
+			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+				index + m.index, index + m.index + m[0].length,
+				`"${m[0]}" is not a variable, function, or named operator`));
+		}
+	}
+
+	return diagnostics;
+}
+
+/**
  * Validate commands like *if that reference variables.
  * @param command Command to validate.
  * @param commandIndex Location of the command in the document.
@@ -199,27 +236,7 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 				line = choiceSplit[0];
 		}
 
-		// Get rid of any quoted strings from the line
-		line = line.replace(/(?<!\\)".*?(?<!\\)"/g, '');
-		console.log(line);
-
-		let tokenPattern = /\w+/g;
-		let globalVariables = projectIndex.getGlobalVariables();
-		if (globalVariables === undefined)
-			globalVariables = new Map();
-		let localVariables = projectIndex.getLocalVariables(textDocument.uri);
-		if (localVariables === undefined)
-			localVariables = new Map();
-		let m: RegExpExecArray | null;
-		while (m = tokenPattern.exec(line)) {
-			if (!(functionsLookup.get(m[0]) || builtinVariablesLookup.get(m[0]) || namedOperatorsLookup.get(m[0]) || 
-			globalVariables.get(m[0]) || localVariables.get(m[0]) || namedValuesLookup.get(m[0]))
-			&& Number.isNaN(Number(m[0]))) {
-				diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
-					lineIndex + m.index, lineIndex + m.index + m[0].length,
-					`"${m[0]}" is not a variable, function, or named operator`));
-			}
-		}
+		diagnostics = validateExpression(line, lineIndex, projectIndex, textDocument);
 	}
 
 	return diagnostics;
@@ -330,6 +347,24 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 }
 
 /**
+ * Validate a multi-replace.
+ * 
+ * @param index Location of the start of the multi-replacement's contents.
+ * @param textDocument Document being validated.
+ * @returns Diagnostic message, if any.
+ */
+function validateMultireplace(text: string, index: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+	let diagnostics: Diagnostic[] = [];
+
+	let { testContents: multiTestContents, index: testIndex } = extractMultireplaceTest(text, index);
+	if (multiTestContents !== undefined) {
+		diagnostics = validateExpression(multiTestContents, testIndex, projectIndex, textDocument);
+	}
+
+	return diagnostics;
+}
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -340,7 +375,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	let diagnostics: Diagnostic[] = [];
 
 	let text = textDocument.getText();
-	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}`, 'g');
+	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = matchPattern.exec(text)) {
@@ -365,6 +400,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 				commandIndex += commandPrefix.length;
 			diagnostics.push(...validateCommand(m.groups.command, commandIndex, commandPrefix, m.groups.commandSpacing,
 				m.groups.commandLine, projectIndex, textDocument));
+		}
+		else if (m.groups.multi !== undefined) {  // @{variable true replacement | false replacement}
+			diagnostics.push(...validateMultireplace(text, m.index + m[0].length, projectIndex, textDocument));
 		}
 	}
 	
