@@ -10,14 +10,14 @@ import {
 	multiPattern,
 	referencePattern,
 	symbolReferencePattern,
+	achievementPattern,
 	extractMultireplaceTest
 } from './language';
 import {
 	CaseInsensitiveMap,
 	ReadonlyCaseInsensitiveMap,
 	normalizeUri,
-	findLineEnd,
-	extractToMatchingDelimiter
+	findLineEnd
 } from './utilities';
 
 /**
@@ -69,6 +69,11 @@ export interface ProjectIndex {
 	 */
 	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
+	 * Update the index of achievement codenames in the project.
+	 * @param newIndex New index of achievement codenames.
+	 */
+	updateAchievements(newIndex: IdentifierIndex): void;
+	/**
 	 * Get the URI to the project's startup.txt file.
 	 */
 	getStartupFileUri(): string;
@@ -96,6 +101,10 @@ export interface ProjectIndex {
 	 */
 	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex;
 	/**
+	 * Get the achievement codenames.
+	 */
+	getAchievements(): ReadonlyIdentifierIndex;
+	/**
 	 * Get all references to a symbol.
 	 * @param symbol Symbol to find references to.
 	 */
@@ -117,6 +126,7 @@ export class Index implements ProjectIndex {
 	_references: Map<string, ReferenceIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
+	_achievements: IdentifierIndex;
 
 	constructor() {
 		this._startupFileUri = "";
@@ -125,6 +135,7 @@ export class Index implements ProjectIndex {
 		this._references = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
+		this._achievements = new Map();
 	}
 
 	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
@@ -142,6 +153,9 @@ export class Index implements ProjectIndex {
 	}
 	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex) {
 		this._localLabels.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+	}
+	updateAchievements(newIndex: IdentifierIndex) {
+		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
 	getStartupFileUri(): string {
 		return this._startupFileUri;
@@ -175,6 +189,9 @@ export class Index implements ProjectIndex {
 			index = new Map();
 
 		return index;
+	}
+	getAchievements(): ReadonlyIdentifierIndex {
+		return this._achievements;
 	}
 	getReferences(symbol: string): ReadonlyArray<Location> {
 		let locations: Location[] = [];
@@ -362,6 +379,14 @@ function indexReferenceCommand(command: string, line: string, startIndex: number
 	}
 }
 
+function indexAchievement(codename: string, startIndex: number, achievementIndex: IdentifierIndex, textDocument: TextDocument) {
+	let location = Location.create(textDocument.uri, Range.create(
+		textDocument.positionAt(startIndex),
+		textDocument.positionAt(startIndex + codename.length)
+	));
+	achievementIndex.set(codename, location);
+}
+
 /**
  * Update project index for a document in that project.
  * 
@@ -374,7 +399,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	let pattern: RegExp | null = null;
 	if (isStartupFile) {
-		pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${multiPattern}|${referencePattern}|${symbolReferencePattern}`, 'g');
+		pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${multiPattern}|${referencePattern}|${symbolReferencePattern}|${achievementPattern}`, 'g');
 	}
 	else {
 		pattern = RegExp(`${symbolCommandPattern}|${sceneListCommandPattern}|${multiPattern}|${referencePattern}|${symbolReferencePattern}`, 'g');
@@ -386,13 +411,14 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	let newReferences: ReferenceIndex = new Map();
 	let newScenes: Array<string> = [];
 	let newLabels: IdentifierIndex = new Map();
+	let newAchievements: IdentifierIndex = new Map();
 
 	while (m = pattern.exec(text)) {
 		if (m.groups === undefined) {
 			continue;
 		}
 
-		// Pattern options: symbolCommand, sceneListCommand, multi (@{}), symbolReference
+		// Pattern options: symbolCommand, sceneListCommand, multi (@{}), symbolReference, achievement
 		if (m.groups.symbolCommand && (m.groups.symbolCommandPrefix || m.index == 0)) {
 			let symbolIndex = m.index + 1 + m.groups.symbolCommand.length + m.groups.spacing.length;
 			if (m.groups.symbolCommandPrefix !== undefined)
@@ -415,11 +441,16 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				lineIndex += m.groups.symbolReferencePrefix.length;
 			indexReferenceCommand(m.groups.referenceCommand, m.groups.referenceLine, lineIndex, newReferences, textDocument);
 		}
+		else if (m.groups.achievement) {
+			let codenameIndex = m.index + m[0].length - m.groups.achievement.length;
+			indexAchievement(m.groups.achievement, codenameIndex, newAchievements, textDocument);
+		}
 	}
 
 	if (isStartupFile) {
 		index.updateGlobalVariables(textDocument.uri, newGlobalVariables);
 		index.updateSceneList(newScenes);
+		index.updateAchievements(newAchievements);
 	}
 	index.updateLocalVariables(textDocument.uri, newLocalVariables);
 	index.updateReferences(textDocument.uri, newReferences);

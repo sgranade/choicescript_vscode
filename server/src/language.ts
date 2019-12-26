@@ -149,6 +149,10 @@ export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<reference
  */
 export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>" + variableReferenceCommands.join('|') + ")(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
 /**
+ * Pattern to find an achievement definition.
+ */
+export let achievementPattern = "\\*achievement[ \\t]+(?<achievement>\\S+)";
+/**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
