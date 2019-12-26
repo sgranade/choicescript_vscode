@@ -41,7 +41,9 @@ function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | Identifie
 	})));
 }
 
-function generateVariableCompletions(localVariablesIndex: ReadonlyIdentifierIndex, globalVariables: ReadonlyIdentifierIndex): CompletionItem[] {
+function generateVariableCompletions(localVariablesIndex: ReadonlyIdentifierIndex, 
+	globalVariables: ReadonlyIdentifierIndex,
+	achievements: ReadonlyIdentifierIndex | undefined): CompletionItem[] {
 	let completions = Array.from(iteratorMap(localVariablesIndex.keys(), (x: string) => ({
 			label: x, 
 			kind: CompletionItemKind.Variable, 
@@ -52,6 +54,13 @@ function generateVariableCompletions(localVariablesIndex: ReadonlyIdentifierInde
 		kind: CompletionItemKind.Variable,
 		data: "variable-global"
 	}))));
+	if (achievements !== undefined) {
+		completions.push(...Array.from(iteratorMap(achievements.keys(), (x: string) => ({
+			label: "choice_achieved_" + x,
+			kind: CompletionItemKind.Variable,
+			data: "variable-achievement"
+		}))));
+	}
 
 	return completions;
 }
@@ -121,8 +130,18 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "if":
 					case "elseif":
 					case "elsif":
-						completions = generateVariableCompletions(projectIndex.getLocalVariables(document.uri), projectIndex.getGlobalVariables());
+						completions = generateVariableCompletions(
+							projectIndex.getLocalVariables(document.uri), 
+							projectIndex.getGlobalVariables(),
+							projectIndex.getAchievements());
 						break;
+
+					case "achieve":
+						completions = generateCompletionsFromIndex(
+							projectIndex.getAchievements(),
+							CompletionItemKind.Variable,
+							"achievement"
+						);
 				}
 			}
 		}
@@ -161,7 +180,10 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 
 			if (returnVariableCompletions)
-				completions = generateVariableCompletions(projectIndex.getLocalVariables(document.uri), projectIndex.getGlobalVariables());
+				completions = generateVariableCompletions(
+					projectIndex.getLocalVariables(document.uri), 
+					projectIndex.getGlobalVariables(),
+					undefined);
 		}
 	}
 	return completions;
