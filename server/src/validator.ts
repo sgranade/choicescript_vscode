@@ -32,6 +32,29 @@ let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.m
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
 
 /**
+ * Captures information about the current state of validation
+ */
+class ValidationState {
+	/**
+	 * Index for the ChoiceScript project
+	 */
+	projectIndex: ProjectIndex;
+	/**
+	 * Document being validated
+	 */
+	textDocument: TextDocument;
+	/**
+	 * True if *check_achievements has been run, bringing the "choice_achieved_[codename]" variables into scope
+	 */
+	achievementVariablesExist: boolean = false;
+
+	constructor(projectIndex: ProjectIndex, textDocument: TextDocument) {
+		this.projectIndex = projectIndex;
+		this.textDocument = textDocument;
+	}
+}
+
+/**
  * Split a command line into potential tokens.
  * @param line Line to split.
  * @returns Array of potential tokens.
@@ -71,16 +94,16 @@ function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocume
  * 
  * @param characters Characters being evaluated for style.
  * @param index Location of the characters in the document.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
-function validateStyle(characters: string, index: number, textDocument: TextDocument): Diagnostic | undefined {
+function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let description = "";
 	if (characters == '...')
 		description = "ellipsis (…)";
 	else
 		description = "em-dash (—)";
-	return createDiagnostic(DiagnosticSeverity.Information, textDocument,
+	return createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
 		index, index + characters.length,
 		`Choice of Games style requires a Unicode ${description}`);
 }
@@ -88,15 +111,19 @@ function validateStyle(characters: string, index: number, textDocument: TextDocu
 /**
  * Determine if a variable name references an actual variable.
  * @param variable Variable name.
- * @param projectIndex Index of the ChoiceScript project.
- * @param documentUri URI to the document being validated.
+ * @param state Validation state.
  */
-function isVariableReference(variable: string, projectIndex: ProjectIndex, documentUri: string): boolean {
+function isVariableReference(variable: string, state: ValidationState): boolean {
+	let isAchievementVariable = false;
+
+	if (state.achievementVariablesExist) {
+		isAchievementVariable = variableIsAchievement(variable, state.projectIndex.getAchievements());
+	}
 	return (!!(
-		projectIndex.getGlobalVariables().get(variable) ||
-		projectIndex.getLocalVariables(documentUri).get(variable) ||
+		state.projectIndex.getGlobalVariables().get(variable) ||
+		state.projectIndex.getLocalVariables(state.textDocument.uri).get(variable) ||
 		builtinVariablesLookup.get(variable) ||
-		variableIsAchievement(variable, projectIndex.getAchievements())
+		isAchievementVariable
 	));
 }
 
@@ -105,17 +132,15 @@ function isVariableReference(variable: string, projectIndex: ProjectIndex, docum
  * 
  * @param variable Name of the variable being referenced.
  * @param index Location of the reference in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
-function validateVariableReference(variable: string, index: number, projectIndex: ProjectIndex,
-		textDocument: TextDocument): Diagnostic | undefined {
+function validateVariableReference(variable: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (!isVariableReference(variable, projectIndex, textDocument.uri)) {
+	if (!isVariableReference(variable, state)) {
 		let referenceStartIndex = index;
 		let referenceEndIndex = index + variable.length;
-		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			referenceStartIndex, referenceEndIndex,
 			`Variable "${variable}" not defined in this file or startup.txt`);
 	}
@@ -126,17 +151,16 @@ function validateVariableReference(variable: string, index: number, projectIndex
  * Validate a reference to a label.
  * @param label Name of the label being referenced.
  * @param index Location of the label reference in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  * @param labelSourceUri Document where the label should live. If undefined, the textDocument's URI is used.
  */
-function validateLabelReference(label: string, index: number, projectIndex: ProjectIndex,
-		textDocument: TextDocument, labelSourceUri: string | undefined): Diagnostic | undefined {
+function validateLabelReference(label: string, index: number, state: ValidationState,
+	 labelSourceUri: string | undefined): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 	if (labelSourceUri === undefined)
-		labelSourceUri = textDocument.uri;
-	if (!projectIndex.getLabels(labelSourceUri).get(label)) {
-		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+		labelSourceUri = state.textDocument.uri;
+	if (!state.projectIndex.getLabels(labelSourceUri).get(label)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			index, index + label.length,
 			`Label "${label}" wasn't found in ${getFilenameFromUri(labelSourceUri)}`);
 	}
@@ -147,14 +171,12 @@ function validateLabelReference(label: string, index: number, projectIndex: Proj
  * Validate a reference to a scene.
  * @param scene Name of the scene being referenced.
  * @param index Location of the scene reference in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  */
-function validateSceneReference(scene: string, index: number, projectIndex: ProjectIndex,
-		textDocument: TextDocument): Diagnostic | undefined {
+function validateSceneReference(scene: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (!projectIndex.getSceneList().includes(scene)) {
-		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
+	if (!state.projectIndex.getSceneList().includes(scene)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			index, index + scene.length,
 			`Scene "${scene}" wasn't found in startup.txt`);
 	}
@@ -167,21 +189,20 @@ function validateSceneReference(scene: string, index: number, projectIndex: Proj
  * @param commandIndex Location of the command in the document.
  * @param line Remainder of the line after the command.
  * @param lineIndex Location of the line in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  */
 function validateVariableManipulationCommand(command: string, commandIndex: number,	line: string | undefined,
-	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+	lineIndex: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
 	if (line === undefined) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument, 
 			commandIndex, commandIndex + command.length + 1,
 			`Command *${command} is missing its arguments`));
 	}
 	else {
 		let tokens = splitLine(line);
-		let diagnostic = validateVariableReference(tokens[0], lineIndex, projectIndex, textDocument);
+		let diagnostic = validateVariableReference(tokens[0], lineIndex, state);
 		if (diagnostic !== undefined)
 			diagnostics.push(diagnostic);
 	}
@@ -193,11 +214,9 @@ function validateVariableManipulationCommand(command: string, commandIndex: numb
  * Validate an expression such as (variable > 3).
  * @param expression Expression to validate.
  * @param index Location of the expression in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  */
-function validateExpression(expression: string, index: number, projectIndex: ProjectIndex, 
-	textDocument: TextDocument): Diagnostic[] {
+function validateExpression(expression: string, index: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
 	// Get rid of any quoted strings from the line
@@ -210,10 +229,10 @@ function validateExpression(expression: string, index: number, projectIndex: Pro
 			functionsLookup.get(m[0]) || 
 			namedOperatorsLookup.get(m[0]) || 
 			namedValuesLookup.get(m[0]) ||
-			isVariableReference(m[0], projectIndex, textDocument.uri) ||
+			isVariableReference(m[0], state) ||
 			!Number.isNaN(Number(m[0]))
 		)) {
-			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				index + m.index, index + m.index + m[0].length,
 				`"${m[0]}" is not a variable, function, or named operator`));
 		}
@@ -228,15 +247,14 @@ function validateExpression(expression: string, index: number, projectIndex: Pro
  * @param commandIndex Location of the command in the document.
  * @param line Remainder of the line after the command.
  * @param lineIndex Location of the line in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  */
 function validateVariableReferenceCommand(command: string, commandIndex: number, line: string | undefined,
-	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+	lineIndex: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
 	if (line === undefined) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument, 
 			commandIndex, commandIndex + command.length + 1,
 			`Command *${command} is missing its arguments`));
 	}
@@ -248,7 +266,7 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
 				line = choiceSplit[0];
 		}
 
-		diagnostics = validateExpression(line, lineIndex, projectIndex, textDocument);
+		diagnostics = validateExpression(line, lineIndex, state);
 	}
 
 	return diagnostics;
@@ -260,15 +278,14 @@ function validateVariableReferenceCommand(command: string, commandIndex: number,
  * @param commandIndex Location of the command in the document.
  * @param line Remainder of the line after the command.
  * @param lineIndex Location of the line in the document.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  */
 function validateLabelReferenceCommands(command: string, commandIndex: number, line: string | undefined,
-	lineIndex: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+	lineIndex: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
 	if (line === undefined) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument, 
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument, 
 			commandIndex, commandIndex + command.length + 1,
 			`Command *${command} is missing its arguments`));
 	}
@@ -277,24 +294,22 @@ function validateLabelReferenceCommands(command: string, commandIndex: number, l
 		let referencesScene = command.includes("_scene");
 
 		if (referencesScene) {
-			let diagnostic = validateSceneReference(tokens[0], lineIndex,
-				projectIndex, textDocument);
+			let diagnostic = validateSceneReference(tokens[0], lineIndex, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 			
 			if (tokens.length >= 2) {
-				let sceneDocumentUri = projectIndex.getSceneUri(tokens[0]);
+				let sceneDocumentUri = state.projectIndex.getSceneUri(tokens[0]);
 				if (sceneDocumentUri !== undefined) {
 					diagnostic = validateLabelReference(tokens[1], lineIndex + line.indexOf(tokens[1]),
-						projectIndex, textDocument, sceneDocumentUri);
+						state, sceneDocumentUri);
 					if (diagnostic !== undefined)
 						diagnostics.push(diagnostic);
 				}
 			}
 		}
 		else {
-			let diagnostic = validateLabelReference(tokens[0], lineIndex,
-				projectIndex, textDocument, undefined);
+			let diagnostic = validateLabelReference(tokens[0], lineIndex, state, undefined);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
@@ -310,12 +325,11 @@ function validateLabelReferenceCommands(command: string, commandIndex: number, l
  * @param prefix Optional spaces before the command.
  * @param spacing Optional spaces after the command.
  * @param line Optional line continuing after the command and its spacing.
- * @param projectIndex Index of the ChoiceScript project.
- * @param textDocument Doucment being validated.
+ * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
 function validateCommand(command: string, index: number, prefix: string | undefined, spacing: string | undefined,
-		line: string | undefined, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+		line: string | undefined, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 	
 	let commandStartIndex = index;
@@ -324,33 +338,38 @@ function validateCommand(command: string, index: number, prefix: string | undefi
 	if (spacing !== undefined)
 		lineStartIndex += spacing.length;
 
+	// Handle commands that change validation state
+	if (command == "check_achievements") {
+		state.achievementVariablesExist = true;
+	}
+
 	if (prefix === undefined && validCommandsLookup.get(command) && index > 0) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandStartIndex, commandEndIndex,
 			`Command *${command} can't have other text in front of it.`));
 	}
 	else if (!validCommandsLookup.get(command)) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandStartIndex, commandEndIndex,
 			`*${command} isn't a valid ChoiceScript command.`));
 	}
-	else if (startupCommandsLookup.get(command) && !uriIsStartupFile(textDocument.uri)) {
-		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
+	else if (startupCommandsLookup.get(command) && !uriIsStartupFile(state.textDocument.uri)) {
+		diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandStartIndex, commandEndIndex,
 			`*${command} can only be used in startup.txt`));
 	}
 	else {
 		if (variableManipulationCommandsLookup.get(command)) {
 			diagnostics.push(...validateVariableManipulationCommand(command, commandStartIndex, line,
-				lineStartIndex, projectIndex, textDocument));
+				lineStartIndex, state));
 		}
 		else if (variableReferenceCommandsLookup.get(command)) {
 			diagnostics.push(...validateVariableReferenceCommand(command, commandStartIndex, line,
-				lineStartIndex, projectIndex, textDocument));
+				lineStartIndex, state));
 		}
 		else if (labelReferenceCommandsLookup.get(command)) {
 			diagnostics.push(...validateLabelReferenceCommands(command, commandStartIndex, line,
-				lineStartIndex, projectIndex, textDocument));
+				lineStartIndex, state));
 		}
 
 	}
@@ -362,15 +381,15 @@ function validateCommand(command: string, index: number, prefix: string | undefi
  * Validate a multi-replace.
  * 
  * @param index Location of the start of the multi-replacement's contents.
- * @param textDocument Document being validated.
+ * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
-function validateMultireplace(text: string, index: number, projectIndex: ProjectIndex, textDocument: TextDocument): Diagnostic[] {
+function validateMultireplace(text: string, index: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
 	let { testContents: multiTestContents, index: testIndex } = extractMultireplaceTest(text, index);
 	if (multiTestContents !== undefined) {
-		diagnostics = validateExpression(multiTestContents, testIndex, projectIndex, textDocument);
+		diagnostics = validateExpression(multiTestContents, testIndex, state);
 	}
 
 	return diagnostics;
@@ -386,6 +405,8 @@ function validateMultireplace(text: string, index: number, projectIndex: Project
 export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
+	let state = new ValidationState(projectIndex, textDocument);
+
 	let text = textDocument.getText();
 	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiPattern}`, 'g');
 	let m: RegExpExecArray | null;
@@ -395,13 +416,13 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			continue;
 
 		if (m.groups.styleGuide !== undefined) {  // Items against CoG styleguide
-			let diagnostic = validateStyle(m.groups.styleGuide, m.index, textDocument);
+			let diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
 		else if (m.groups.reference !== undefined) {  // {reference} to a variable
 			let diagnostic = validateVariableReference(m.groups.referenceSymbol, 
-				m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1, projectIndex, textDocument);
+				m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
@@ -411,10 +432,10 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			if (commandPrefix !== undefined)
 				commandIndex += commandPrefix.length;
 			diagnostics.push(...validateCommand(m.groups.command, commandIndex, commandPrefix, m.groups.commandSpacing,
-				m.groups.commandLine, projectIndex, textDocument));
+				m.groups.commandLine, state));
 		}
 		else if (m.groups.multi !== undefined) {  // @{variable true replacement | false replacement}
-			diagnostics.push(...validateMultireplace(text, m.index + m[0].length, projectIndex, textDocument));
+			diagnostics.push(...validateMultireplace(text, m.index + m[0].length, state));
 		}
 	}
 	
