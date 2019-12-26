@@ -7,7 +7,8 @@ import { ProjectIndex, IdentifierIndex, updateProjectIndex } from '../../../serv
 
 const fakeDocumentUri: string = "file:///faker.txt";
 
-function createDocument(text: string, uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
+function createDocument(text: string, 
+	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
@@ -15,12 +16,40 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 	return fakeDocument;
 }
 
+describe("Scene Indexing", () => {
+	it("should index scenes in startup files", () => {
+		let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
+		let receivedScenes: Array<Array<string>> = [];
+		let fakeIndex = Substitute.for<ProjectIndex>();
+		fakeIndex.updateSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes) });
+		fakeIndex.getStatsFileUri().returns("");
+
+		updateProjectIndex(fakeDocument, true, fakeIndex);
+
+		expect(receivedScenes).to.eql([['scene-1', 'scene-2']]);
+	});
+
+	it("should add stats file to list of scenes if it exists", () => {
+		let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
+		let receivedScenes: Array<Array<string>> = [];
+		let fakeIndex = Substitute.for<ProjectIndex>();
+		fakeIndex.updateSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes) });
+		fakeIndex.getStatsFileUri().returns("file:///choicescript_stats.txt");
+
+		updateProjectIndex(fakeDocument, true, fakeIndex);
+
+		expect(receivedScenes.length).to.equal(1);
+		expect(receivedScenes).to.eql([['scene-1', 'scene-2', 'choicescript_stats']]);
+	});
+})
+
 describe("Achievement Indexing", () => {
 	it("should index an achievement", () => {
 		let fakeDocument = createDocument("*achievement code_name");
 		let receivedAchievements: IdentifierIndex[] = [];
 		let fakeIndex = Substitute.for<ProjectIndex>();
 		fakeIndex.updateAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index) });
+		fakeIndex.getStatsFileUri().returns("");
 
 		updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -33,6 +62,7 @@ describe("Achievement Indexing", () => {
 		let receivedAchievements: IdentifierIndex[] = [];
 		let fakeIndex = Substitute.for<ProjectIndex>();
 		fakeIndex.updateAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index) });
+		fakeIndex.getStatsFileUri().returns("");
 
 		updateProjectIndex(fakeDocument, true, fakeIndex);
 

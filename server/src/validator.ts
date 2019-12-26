@@ -55,12 +55,12 @@ class ValidationState {
 }
 
 /**
- * Split a command line into potential tokens.
+ * Split a command line into potential tokens at word boundaries.
  * @param line Line to split.
  * @returns Array of potential tokens.
  */
 function splitLine(line: string): string[] {
-	return line.trimRight().split(/\s+/);
+	return line.trimRight().split(/\b/);
 }
 
 /**
@@ -291,17 +291,29 @@ function validateLabelReferenceCommands(command: string, commandIndex: number, l
 	}
 	else {
 		let tokens = splitLine(line);
+		// Label references can include dashes, so glue those back together if needed
+		let firstToken = "";
+		let secondToken = "";
+		for (let i = 0; i < tokens.length; i++) {
+			if (tokens[i].trim().length == 0) {
+				if (i + 1 < tokens.length) {
+					secondToken = tokens[i + 1];
+				}
+				break;
+			}
+			firstToken += tokens[i];
+		}
 		let referencesScene = command.includes("_scene");
 
 		if (referencesScene) {
-			let diagnostic = validateSceneReference(tokens[0], lineIndex, state);
+			let diagnostic = validateSceneReference(firstToken, lineIndex, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 			
-			if (tokens.length >= 2) {
-				let sceneDocumentUri = state.projectIndex.getSceneUri(tokens[0]);
+			if (secondToken.length > 0) {
+				let sceneDocumentUri = state.projectIndex.getSceneUri(firstToken);
 				if (sceneDocumentUri !== undefined) {
-					diagnostic = validateLabelReference(tokens[1], lineIndex + line.indexOf(tokens[1]),
+					diagnostic = validateLabelReference(secondToken, lineIndex + line.indexOf(secondToken),
 						state, sceneDocumentUri);
 					if (diagnostic !== undefined)
 						diagnostics.push(diagnostic);
@@ -309,7 +321,7 @@ function validateLabelReferenceCommands(command: string, commandIndex: number, l
 			}
 		}
 		else {
-			let diagnostic = validateLabelReference(tokens[0], lineIndex, state, undefined);
+			let diagnostic = validateLabelReference(firstToken, lineIndex, state, undefined);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

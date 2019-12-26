@@ -273,6 +273,18 @@ describe("Variable Manipulation Commands Validation", () => {
 
 		expect(diagnostics.length).to.equal(0);
 	});
+
+	it("should be good with *set addition with no spaces", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*set known_variable+1");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+
 });
 
 describe("Variable Reference Commands Validation", () => {

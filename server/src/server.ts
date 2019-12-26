@@ -17,7 +17,7 @@ import {
 	TextEdit
 } from 'vscode-languageserver';
 import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
-const fs = require('fs').promises;
+const fsPromises = require('fs').promises;
 import url = require('url');
 import globby = require('globby');
 
@@ -38,8 +38,6 @@ let documents: TextDocuments = new TextDocuments();
 let projectIndex = new Index();
 
 connection.onInitialize((params: InitializeParams) => {
-	let capabilities = params.capabilities;
-
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
@@ -106,7 +104,7 @@ async function indexFile(path: string) {
 	let fileUri = url.pathToFileURL(path).toString();
 
 	try {
-		let data = await fs.readFile(path, 'utf8');
+		let data = await fsPromises.readFile(path, 'utf8');
 		let textDocument = TextDocumentImplementation.create(fileUri, 'ChoiceScript', 0, data);
 		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
 	}
