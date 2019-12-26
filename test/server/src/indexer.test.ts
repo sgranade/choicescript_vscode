@@ -11,7 +11,7 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
-	fakeDocument.positionAt(Arg.any()).returns(Position.create(1, 2));
+	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return(Position.create(index, 0)); });
 	return fakeDocument;
 }
 
@@ -28,4 +28,16 @@ describe("Achievement Indexing", () => {
 		expect(receivedAchievements[0]).has.keys(['code_name']);
 	});
 
+	it("should get the right position for the achievement", () => {
+		let fakeDocument = createDocument("*achievement code_name");
+		let receivedAchievements: IdentifierIndex[] = [];
+		let fakeIndex = Substitute.for<ProjectIndex>();
+		fakeIndex.updateAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index) });
+
+		updateProjectIndex(fakeDocument, true, fakeIndex);
+
+		// The fake document stores the index passed to positionAt in the line property of a position
+		expect(receivedAchievements[0].get('code_name').range.start.line).to.equal(13);
+		expect(receivedAchievements[0].get('code_name').range.end.line).to.equal(22);
+	});
 });

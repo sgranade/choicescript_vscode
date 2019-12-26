@@ -2,6 +2,7 @@ import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
+import { ReadonlyIdentifierIndex } from './indexer';
 
 
 /* COMMANDS */
@@ -212,6 +213,18 @@ export function extractMultireplaceTest(document: string,
 	}
 
 	return { testContents: testContents, index: testIndex };
+}
+
+/**
+ * Determine if a variable name references an auto-created achievement variable.
+ * @param variable Variable name.
+ * @param achievements Index of achievements.
+ */
+export function variableIsAchievement(variable: string, achievements: ReadonlyIdentifierIndex): boolean {
+	let achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
+
+	let m = achievementVariablePattern.exec(variable);
+	return (m !== null && m.groups !== undefined && achievements.get(m.groups.codename) !== undefined);
 }
 
 /**

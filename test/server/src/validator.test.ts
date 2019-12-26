@@ -22,7 +22,8 @@ function createIndex(globalVariables: IdentifierIndex | undefined = undefined,
 		labels: IdentifierIndex | undefined = undefined,
 		labelsUri: string | undefined = undefined,
 		sceneList: string[] | undefined = undefined,
-		sceneFileUri: string | undefined = undefined): SubstituteOf<ProjectIndex> {
+		sceneFileUri: string | undefined = undefined,
+		achievements: IdentifierIndex | undefined = undefined): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new Map();
 	}
@@ -41,6 +42,9 @@ function createIndex(globalVariables: IdentifierIndex | undefined = undefined,
 	if (sceneFileUri === undefined) {
 		sceneFileUri = fakeSceneUri;
 	}
+	if (achievements === undefined) {
+		achievements = new Map();
+	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
 	fakeIndex.getGlobalVariables().returns(globalVariables);
@@ -55,9 +59,9 @@ function createIndex(globalVariables: IdentifierIndex | undefined = undefined,
 		fakeIndex.getLabels(labelsUri).returns(labels);
 	}
 	fakeIndex.getReferences(Arg.any()).returns([]);
+	fakeIndex.getAchievements(Arg.any()).returns(achievements);
 
 	return fakeIndex;
-	
 }
 
 describe("Style Validation", () => {
@@ -150,6 +154,29 @@ describe("Variable Validation", () => {
 
 		expect(diagnostics.length).to.equal(1);
 		expect(diagnostics[0].message).to.contain('Variable "undefined" not defined');
+	});
+
+	it("should validate achievement variables", () => {
+		let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("${choice_achieved_codename}");
+		let fakeIndex = createIndex(undefined, undefined, undefined, undefined, 
+			undefined, undefined, undefined, achievements);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag incorrect achievement variables", () => {
+		let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("${choice_achieved_othername}");
+		let fakeIndex = createIndex(undefined, undefined, undefined, undefined, 
+			undefined, undefined, undefined, achievements);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "choice_achieved_othername" not defined');
 	});
 });
 
@@ -315,6 +342,17 @@ describe("Variable Reference Commands Validation", () => {
 		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
 		let fakeDocument = createDocument("*elseif known_variable < 3");
 		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should be good with achievement variables", () => {
+		let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*if choice_achieved_codename");
+		let fakeIndex = createIndex(undefined, undefined, undefined, undefined, 
+			undefined, undefined, undefined, achievements);
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 

@@ -16,7 +16,8 @@ import {
 	referencePattern, 
 	stylePattern,
 	multiPattern,
-	extractMultireplaceTest
+	extractMultireplaceTest,
+	variableIsAchievement
 } from './language';
 import { getFilenameFromUri } from './utilities';
 
@@ -85,6 +86,21 @@ function validateStyle(characters: string, index: number, textDocument: TextDocu
 }
 
 /**
+ * Determine if a variable name references an actual variable.
+ * @param variable Variable name.
+ * @param projectIndex Index of the ChoiceScript project.
+ * @param documentUri URI to the document being validated.
+ */
+function isVariableReference(variable: string, projectIndex: ProjectIndex, documentUri: string): boolean {
+	return (!!(
+		projectIndex.getGlobalVariables().get(variable) ||
+		projectIndex.getLocalVariables(documentUri).get(variable) ||
+		builtinVariablesLookup.get(variable) ||
+		variableIsAchievement(variable, projectIndex.getAchievements())
+	));
+}
+
+/**
  * Validate a reference to a variable.
  * 
  * @param variable Name of the variable being referenced.
@@ -96,9 +112,7 @@ function validateStyle(characters: string, index: number, textDocument: TextDocu
 function validateVariableReference(variable: string, index: number, projectIndex: ProjectIndex,
 		textDocument: TextDocument): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (!projectIndex.getGlobalVariables().get(variable) && 
-			!projectIndex.getLocalVariables(textDocument.uri).get(variable) &&
-			!builtinVariablesLookup.get(variable)) {
+	if (!isVariableReference(variable, projectIndex, textDocument.uri)) {
 		let referenceStartIndex = index;
 		let referenceEndIndex = index + variable.length;
 		diagnostic = createDiagnostic(DiagnosticSeverity.Error, textDocument,
@@ -190,17 +204,15 @@ function validateExpression(expression: string, index: number, projectIndex: Pro
 	expression = expression.replace(/(?<!\\)".*?(?<!\\)"/g, '');
 
 	let tokenPattern = /\w+/g;
-	let globalVariables = projectIndex.getGlobalVariables();
-	if (globalVariables === undefined)
-		globalVariables = new Map();
-	let localVariables = projectIndex.getLocalVariables(textDocument.uri);
-	if (localVariables === undefined)
-		localVariables = new Map();
 	let m: RegExpExecArray | null;
 	while (m = tokenPattern.exec(expression)) {
-		if (!(functionsLookup.get(m[0]) || builtinVariablesLookup.get(m[0]) || namedOperatorsLookup.get(m[0]) || 
-		globalVariables.get(m[0]) || localVariables.get(m[0]) || namedValuesLookup.get(m[0]))
-		&& Number.isNaN(Number(m[0]))) {
+		if (!(
+			functionsLookup.get(m[0]) || 
+			namedOperatorsLookup.get(m[0]) || 
+			namedValuesLookup.get(m[0]) ||
+			isVariableReference(m[0], projectIndex, textDocument.uri) ||
+			!Number.isNaN(Number(m[0]))
+		)) {
 			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, textDocument,
 				index + m.index, index + m.index + m[0].length,
 				`"${m[0]}" is not a variable, function, or named operator`));
