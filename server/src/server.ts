@@ -6,7 +6,6 @@ import {
 	ProposedFeatures,
 	InitializeParams,
 	ReferenceParams,
-	DidChangeConfigurationNotification,
 	CompletionItem,
 	TextDocumentPositionParams,
 	Position,
@@ -35,35 +34,11 @@ let connection = createConnection(ProposedFeatures.all);
 // supports full document sync only
 let documents: TextDocuments = new TextDocuments();
 
-let hasConfigurationCapability: boolean = false;
-let hasWorkspaceFolderCapability: boolean = false;
-let hasDiagnosticRelatedInformationCapability: boolean = false;
-let supportsDocumentChanges: boolean = false;
-
 // TODO handle multiple directories with startup.txt
 let projectIndex = new Index();
 
 connection.onInitialize((params: InitializeParams) => {
 	let capabilities = params.capabilities;
-
-	// Does the client support the `workspace/configuration` request?
-	// If not, we will fall back using global settings
-	hasConfigurationCapability = !!(
-		capabilities.workspace && !!capabilities.workspace.configuration
-	);
-	hasWorkspaceFolderCapability = !!(
-		capabilities.workspace && !!capabilities.workspace.workspaceFolders
-	);
-	hasDiagnosticRelatedInformationCapability = !!(
-		capabilities.textDocument &&
-		capabilities.textDocument.publishDiagnostics &&
-		capabilities.textDocument.publishDiagnostics.relatedInformation
-	);
-	supportsDocumentChanges = !!(
-		capabilities.workspace && 
-		capabilities.workspace.workspaceEdit &&
-		capabilities.workspace.workspaceEdit.documentChanges
-	);
 
 	return {
 		capabilities: {
@@ -80,16 +55,6 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-	if (hasConfigurationCapability) {
-		// Register for all configuration changes.
-		connection.client.register(DidChangeConfigurationNotification.type, undefined);
-	}
-	if (hasWorkspaceFolderCapability) {
-		connection.workspace.onDidChangeWorkspaceFolders(_event => {
-			connection.console.log('Workspace folder change event received.');
-		});
-	}
-
 	// TODO this should be handled through server-to-client communications
 	// using custom messages like "workspace/xfind" or the like
 	// see https://stackoverflow.com/questions/51041337/vscode-language-client-extension-how-to-send-a-message-from-the-server-to-the/51081743#51081743
@@ -151,58 +116,15 @@ async function indexFile(path: string) {
 	}
 }
 
-// The example settings
-interface ExampleSettings {
-	maxNumberOfProblems: number;
-}
-
-// The global settings, used when the `workspace/configuration` request is not supported by the client.
-// Please note that this is not the case when using this server with the client provided in this example
-// but could happen with other clients.
-const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
-let globalSettings: ExampleSettings = defaultSettings;
-
-// Cache the settings of all open documents
-let documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
-
 connection.onDidChangeConfiguration(change => {
-	if (hasConfigurationCapability) {
-		// Reset all cached document settings
-		documentSettings.clear();
-	} else {
-		globalSettings = <ExampleSettings>(
-			(change.settings.choicescriptVsCode || defaultSettings)
-		);
-	}
-
 	// Revalidate all open text documents
 	documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 });
-
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
-	if (!hasConfigurationCapability) {
-		return Promise.resolve(globalSettings);
-	}
-	let result = documentSettings.get(resource);
-	if (!result) {
-		result = connection.workspace.getConfiguration({
-			scopeUri: resource,
-			section: 'choicescriptVsCode'
-		});
-		documentSettings.set(resource, result);
-	}
-	return result;
-}
 
 // TODO deal with files being deleted, so that they're removed from the above
 
 documents.onDidOpen(e => {
 	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
-});
-
-// Only keep settings for open documents
-documents.onDidClose(e => {
-	documentSettings.delete(e.document.uri);
 });
 
 // A document has been opened or its content has been changed.
@@ -225,12 +147,6 @@ function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectI
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
-connection.onDidChangeWatchedFiles(_change => {
-	// Monitored files have change in VSCode TODO
-	connection.console.log('We received an file change event');
-});
-
-// This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
 		let document = documents.get(textDocumentPosition.textDocument.uri);
@@ -250,7 +166,6 @@ connection.onDefinition(
 function generateDefinition(documentUri: string, position: Position, projectIndex: ProjectIndex): Definition | undefined {
 	let definition: Definition | undefined = undefined;
 
-	// Find out what trigger character started this by loading the document and scanning backwards
 	let document = documents.get(documentUri);
 	if (document === undefined) {
 		return definition;
@@ -258,36 +173,18 @@ function generateDefinition(documentUri: string, position: Position, projectInde
 	let text = document.getText();
 	let index = document.offsetAt(position);
 	
-	let start: number | null = null;
-	let end: number | null = null;
-
 	// Get the symbol at this location
-	let symbolPattern = /[\w-]/;
+	let symbol = extractSymbolAtIndex(text, index);
 
-	for (var i = index; i >= 0; i--) {
-		if (!symbolPattern.test(text[i])) {
-			start = i+1;
-			break;
+	if (symbol !== undefined) {
+		let location = projectIndex.getLocalVariables(document.uri).get(symbol);
+		if (location === undefined) {
+			location = projectIndex.getGlobalVariables().get(symbol);
 		}
-	}
-	for (var i = index; i < text.length; i++) {
-		if (!symbolPattern.test(text[i])) {
-			end = i;
-			break;
+	
+		if (location !== undefined) {
+			definition = location;
 		}
-	}
-	if (!start || !end) {
-		return definition;
-	}
-	let symbol = text.substring(start, end);
-
-	let location = projectIndex.getLocalVariables(document.uri).get(symbol);
-	if (location === undefined) {
-		location = projectIndex.getGlobalVariables().get(symbol);
-	}
-
-	if (location !== undefined) {
-		definition = location;
 	}
 
 	return definition;

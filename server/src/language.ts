@@ -163,16 +163,18 @@ export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
 
 /**
  * Extract a ChoiceScript symbol from text at a given index.
- * @param text Text.
+ * @param text Text to extract symbol from.
  * @param index Index inside the symbol to be extracted.
+ * @param isScene True if the symbol to be extracted is a scene.
  * @returns The symbol.
  */
 export function extractSymbolAtIndex(text: string, index: number): string {
+	let symbolCharacter = /\w/;
 	let start = index;
-	while (start >= 0 && /\w/.test(text[start]))
+	while (start >= 0 && symbolCharacter.test(text[start]))
 		start--;
 	let end = index;
-	while (end < text.length && /\w/.test(text[end]))
+	while (end < text.length && symbolCharacter.test(text[end]))
 		end++;
 
 	let symbol = text.slice(start+1, end);
