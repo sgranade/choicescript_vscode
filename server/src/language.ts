@@ -157,6 +157,10 @@ export let achievementPattern = "\\*achievement[ \\t]+(?<achievement>\\S+)";
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
+/**
+ * Pattern to find strings.
+ */
+export let stringPattern = '(?<!\\\\)"(?<quote>.*?)(?<!\\\\)"';
 
 
 /* FUNCTIONS */

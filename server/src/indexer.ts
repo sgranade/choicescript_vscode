@@ -11,7 +11,8 @@ import {
 	referencePattern,
 	symbolReferencePattern,
 	achievementPattern,
-	extractMultireplaceTest
+	extractMultireplaceTest,
+	stringPattern
 } from './language';
 import {
 	CaseInsensitiveMap,
@@ -367,8 +368,29 @@ function indexReference(symbol: string, startIndex: number, referenceIndex: Refe
  * @param textDocument Document being indexed.
  */
 function indexReferenceCommand(command: string, line: string, startIndex: number, referenceIndex: ReferenceIndex, textDocument: TextDocument) {
-	let wordPattern = /\w+/g;
+	// Extract and index any quoted strings from the line
+	let quotePattern = RegExp(stringPattern, 'g');
 	let m: RegExpExecArray | null;
+	while (m = quotePattern.exec(line)) {
+		// Only look for references inside strings
+		if (m.groups !== undefined) {
+			let s = m.groups.quote;
+			let index = startIndex + m.index + 1;
+			let innerPattern = RegExp(referencePattern, 'g');
+			let m2: RegExpExecArray | null;
+			while (m2 = innerPattern.exec(s)) {
+				if (m2.groups !== undefined) {
+					let symbolIndex = index + m2.index + m2.groups.reference.length - m2.groups.referenceSymbol.length - 1;
+					indexReference(m2.groups.referenceSymbol, symbolIndex, referenceIndex, textDocument);
+				}
+			}
+		}
+	}
+
+	// Now get rid of all of those strings
+	line = line.replace(RegExp(stringPattern, 'g'), '');
+
+	let wordPattern = /\w+/g;
 
 	while (m = wordPattern.exec(line)) {
 		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0]) && !(!Number.isNaN(Number(m[0])))) {

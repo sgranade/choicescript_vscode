@@ -17,7 +17,8 @@ import {
 	stylePattern,
 	multiPattern,
 	extractMultireplaceTest,
-	variableIsAchievement
+	variableIsAchievement,
+	stringPattern
 } from './language';
 import { getFilenameFromUri } from './utilities';
 
@@ -244,7 +245,7 @@ function validateExpression(expression: string, index: number, state: Validation
 	let diagnostics: Diagnostic[] = [];
 
 	// Extract and validate any quoted strings from the line
-	let quotePattern = /(?<!\\)"(?<quote>.*?)(?<!\\)"/g;
+	let quotePattern = RegExp(stringPattern, 'g');
 	let m: RegExpExecArray | null;
 	while (m = quotePattern.exec(expression)) {
 		// Only look for references
@@ -254,7 +255,7 @@ function validateExpression(expression: string, index: number, state: Validation
 	}
 
 	// Now get rid of all of those strings
-	expression = expression.replace(/(?<!\\)".*?(?<!\\)"/g, '');
+	expression = expression.replace(RegExp(stringPattern, 'g'), '');
 
 	let tokenPattern = /\w+/g;
 	while (m = tokenPattern.exec(expression)) {
