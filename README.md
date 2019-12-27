@@ -7,6 +7,7 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 * Autocomplete
 * Syntax highlighting
 * Verify and highlight errors
+* Change variable names project-wide
 * Snippets to match Choice of Games style rules
 
 ## Installation
@@ -41,12 +42,13 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
-### [0.1.0]
+### [1.0.0]
 
 Created a language server for ChoiceScript, which added the following features:
 
 * IntelliSense automatic code completion for ChoiceScript commands like `*choice`
 * Diagnostics to highlight errors
+* Variable name changes project-wide
 * Auto-indention after commands that require it, like `*choice` and `*if`
 * Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography
 
