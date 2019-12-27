@@ -371,7 +371,7 @@ function indexReferenceCommand(command: string, line: string, startIndex: number
 	let m: RegExpExecArray | null;
 
 	while (m = wordPattern.exec(line)) {
-		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0])) {
+		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0]) && !(!Number.isNaN(Number(m[0])))) {
 			let location = Location.create(textDocument.uri, Range.create(
 				textDocument.positionAt(startIndex + m.index),
 				textDocument.positionAt(startIndex + m.index + m[0].length)
