@@ -248,10 +248,12 @@ function indexSymbolCommand(command: string, symbol: string, symbolIndex: number
 		case "create":
 			// *create instantiates global variables
 			globalVariables.set(symbol, symbolLocation);
+			addReference(symbol, symbolLocation, references);
 			break;
 		case "temp":
 			// *temp instantiates variables local to the scene file
 			localVariables.set(symbol, symbolLocation);
+			addReference(symbol, symbolLocation, references);
 			break;
 		case "label":
 			// *label creates a goto/gosub label local to the scene file
