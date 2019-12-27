@@ -30,7 +30,7 @@
 	"repository": {
 		"keywords": {
 			"name": "keyword.control.cs",
-			"match": "(?<!\\*)\\*((fake_)?choice|create|temp|delete|set|(else?|selectable_)?if|else|(disable|hide|allow)_reuse|label|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|finish|ending|(page|line)_break|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
+			"match": "(?<!\\*)\\*((fake_)?choice|create|temp|delete|set|(else?|selectable_)?if|else|(disable|hide|allow)_reuse|label|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|finish|ending|(page|line)_break|params|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
 		},
 		"comments": {
 			"name": "comment.line.cs",
