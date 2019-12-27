@@ -211,6 +211,30 @@ function validateVariableManipulationCommand(command: string, commandIndex: numb
 }
 
 /**
+ * Validate any references in a string.
+ * @param s String to validate.
+ * @param index Location of the string in the document.
+ * @param state Validation state.
+ */
+function validateString(s: string, index: number, state: ValidationState): Diagnostic[] {
+	let diagnostics: Diagnostic[] = [];
+
+	let pattern = RegExp(referencePattern, 'g');
+	let m: RegExpExecArray | null;
+	while (m = pattern.exec(s)) {
+		if (m.groups === undefined)
+			continue;
+		if (m.groups.referenceSymbol !== undefined) {
+			let diagnostic = validateVariableReference(m.groups.referenceSymbol, index + m.index, state);
+			if (diagnostic !== undefined)
+				diagnostics.push(diagnostic);
+		}
+	}
+
+	return diagnostics;
+}
+
+/**
  * Validate an expression such as (variable > 3).
  * @param expression Expression to validate.
  * @param index Location of the expression in the document.
@@ -219,11 +243,20 @@ function validateVariableManipulationCommand(command: string, commandIndex: numb
 function validateExpression(expression: string, index: number, state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
 
-	// Get rid of any quoted strings from the line
+	// Extract and validate any quoted strings from the line
+	let quotePattern = /(?<!\\)"(?<quote>.*?)(?<!\\)"/g;
+	let m: RegExpExecArray | null;
+	while (m = quotePattern.exec(expression)) {
+		// Only look for references
+		if (m.groups !== undefined) {
+			diagnostics.push(...validateString(m.groups.quote, index + m.index, state));
+		}
+	}
+
+	// Now get rid of all of those strings
 	expression = expression.replace(/(?<!\\)".*?(?<!\\)"/g, '');
 
 	let tokenPattern = /\w+/g;
-	let m: RegExpExecArray | null;
 	while (m = tokenPattern.exec(expression)) {
 		if (!(
 			functionsLookup.get(m[0]) || 

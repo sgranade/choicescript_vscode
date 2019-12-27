@@ -283,8 +283,6 @@ describe("Variable Manipulation Commands Validation", () => {
 
 		expect(diagnostics.length).to.equal(0);
 	});
-
-
 });
 
 describe("Variable Reference Commands Validation", () => {
@@ -403,6 +401,17 @@ describe("Variable Reference Commands Validation", () => {
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
 		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag bad references in strings", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('*elseif known_variable = "${unknown_variable}"');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "unknown_variable" not defined');
 	});
 
 	it("should be good with parens", () => {
