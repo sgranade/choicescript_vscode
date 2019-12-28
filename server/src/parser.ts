@@ -2,7 +2,8 @@ import { Range, Location, Position, TextDocument } from 'vscode-languageserver';
 
 import { 
 	functions, 
-	namedOperators, 
+	namedOperators,
+	namedValues,
 	validCommands, 
 	symbolManipulateCommandPattern, 
 	startupFileSymbolCommandPattern,
@@ -14,13 +15,16 @@ import {
 	TokenizeMultireplace
 } from './language';
 import {
-	CaseInsensitiveMap,
-	ReadonlyCaseInsensitiveMap,
-	normalizeUri,
 	findLineEnd,
 	extractToMatchingDelimiter,
 	stringIsNumber
 } from './utilities';
+
+let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
+let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
+let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
+let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
+
 
 export interface ParserCallbacks {
 	onGlobalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
@@ -90,7 +94,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 	let wordPattern = /\w+/g;
 	
 	while (m = wordPattern.exec(expression)) {
-		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0]) && !stringIsNumber(m[0])) {
+		if (!validCommandsLookup.get(m[0]) && !namedOperatorsLookup.get(m[0]) && !functionsLookup.get(m[0]) && !namedValuesLookup.get(m[0]) && !stringIsNumber(m[0])) {
 			let location = Location.create(state.textDocument.uri, Range.create(
 				state.textDocument.positionAt(globalIndex + m.index),
 				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
@@ -192,44 +196,60 @@ function parseMultireplacement(multiSection: string, globalIndex: number, state:
  * @param state Indexing state.
  */
 function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
-	let lineLocation = Location.create(state.textDocument.uri, Range.create(
-		state.textDocument.positionAt(lineGlobalIndex),
-		state.textDocument.positionAt(lineGlobalIndex + line.length)
-	));
-	let bareSymbolMatch = line.match(/^\w+/);
-	let bareSymbol: string | null = null;
-	if (bareSymbolMatch !== null)
-		bareSymbol = bareSymbolMatch[0];
-
-	switch (command) {
-		case "create":
-			// *create instantiates global variables
-			if (bareSymbol !== null) {
-				state.callbacks.onGlobalVariableCreate(bareSymbol, lineLocation, state);
-			}
-			break;
-		case "temp":
-			// *temp instantiates variables local to the scene file
-			if (bareSymbol !== null) {
-				state.callbacks.onLocalVariableCreate(bareSymbol, lineLocation, state);
-			}
-			break;
-		case "label":
-			// *label creates a goto/gosub label local to the scene file
-			if (bareSymbol !== null) {
-				state.callbacks.onLabelCreate(bareSymbol, lineLocation, state);
-			}
-			break;
-		case "set":
-			// A *set command has a full expression
-			parseExpression(line, lineGlobalIndex, state);
-			break;
-		case "delete":
-			// *delete references a variable
-			if (bareSymbol !== null) {
-				state.callbacks.onReference(bareSymbol, lineLocation, state);
-			}
-			break;
+	// The set command is odd in that it takes an entire expression, so handle that differently
+	if (command == "set") {
+		parseExpression(line, lineGlobalIndex, state);
+	}
+	else {
+		let lineMatch = line.match(/^(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/);
+		if (lineMatch === null || lineMatch.groups === undefined) {
+			return;
+		}
+		let symbol: string = lineMatch.groups.symbol;
+		let symbolLocation = Location.create(state.textDocument.uri, Range.create(
+			state.textDocument.positionAt(lineGlobalIndex),
+			state.textDocument.positionAt(lineGlobalIndex + symbol.length)
+		));
+		let expression: string | undefined = lineMatch.groups.expression;
+		let expressionGlobalIndex = lineGlobalIndex + symbol.length;
+		if (lineMatch.groups.spacing) {
+			expressionGlobalIndex += lineMatch.groups.spacing.length;
+		}
+	
+		switch (command) {
+			case "create":
+				// *create instantiates global variables
+				if (symbol !== undefined) {
+					state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
+					if (expression !== undefined) {
+						parseExpression(expression, expressionGlobalIndex, state);
+					}
+				}
+				break;
+			case "temp":
+				// *temp instantiates variables local to the scene file
+				if (symbol !== undefined) {
+					state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
+					if (expression !== undefined) {
+						parseExpression(expression, expressionGlobalIndex, state);
+					}
+				}
+				break;
+			case "label":
+				// *label creates a goto/gosub label local to the scene file
+				if (symbol !== undefined) {
+					state.callbacks.onLabelCreate(symbol, symbolLocation, state);
+				}
+				break;
+			case "delete":
+				// *delete references a variable
+				if (symbol !== undefined) {
+					state.callbacks.onReference(symbol, symbolLocation, state);
+				}
+				break;
+			default:
+				throw Error(`Unexpected command ${command} in parseSymbolManipulatingCommand`);
+		}
 	}
 }
 
@@ -292,6 +312,12 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
  * @param state Parsing state.
  */
 function parseReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+	// The *if and *selectable_if commands can be used with options, so take that into account
+	if (command == "if" || command == "selectable_if") {
+		let choiceSplit = line.split('#');
+		if (choiceSplit !== undefined)
+			line = choiceSplit[0];
+	}
 	// The line that follows a command that can reference a variable is an expression
 	parseExpression(line, lineGlobalIndex, state);
 }

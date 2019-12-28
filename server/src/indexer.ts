@@ -1,25 +1,9 @@
-import { Range, Location, TextDocument } from 'vscode-languageserver';
+import { Location, TextDocument } from 'vscode-languageserver';
 
-import { 
-	functions, 
-	namedOperators, 
-	validCommands, 
-	symbolManipulateCommandPattern, 
-	startupFileSymbolCommandPattern,
-	sceneListCommandPattern,
-	multiStartPattern,
-	variableReferenceCommandPattern,
-	achievementPattern,
-	replacementStartPattern,
-	TokenizeMultireplace
-} from './language';
 import {
 	CaseInsensitiveMap,
 	ReadonlyCaseInsensitiveMap,
-	normalizeUri,
-	findLineEnd,
-	extractToMatchingDelimiter,
-	stringIsNumber
+	normalizeUri
 } from './utilities';
 import { ParserCallbacks, ParsingState, parse } from './parser';
 
@@ -37,6 +21,16 @@ export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Locatio
  * Type for a mutable index of references.
  */
 export type ReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
+
+/**
+ * Type for a mutable index of labels.
+ */
+export type LabelIndex = Map<string, Location>;
+
+/**
+ * Type for an immutable index of labels.
+ */
+export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -70,7 +64,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of labels.
 	 */
-	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex): void;
+	updateLabels(textDocumentUri: string, newIndex: LabelIndex): void;
 	/**
 	 * Update the index of achievement codenames in the project.
 	 * @param newIndex New index of achievement codenames.
@@ -102,7 +96,7 @@ export interface ProjectIndex {
 	 * Get the labels in a scene file.
 	 * @param textDocumentUri URI to scene document.
 	 */
-	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex;
+	getLabels(textDocumentUri: string): ReadonlyLabelIndex;
 	/**
 	 * Get the achievement codenames.
 	 */
@@ -154,8 +148,8 @@ export class Index implements ProjectIndex {
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
 	}
-	updateLabels(textDocumentUri: string, newIndex: IdentifierIndex) {
-		this._localLabels.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+	updateLabels(textDocumentUri: string, newIndex: LabelIndex) {
+		this._localLabels.set(normalizeUri(textDocumentUri), new Map(newIndex));
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
@@ -186,7 +180,7 @@ export class Index implements ProjectIndex {
 	getSceneList(): ReadonlyArray<string> {
 		return this._scenes;
 	}
-	getLabels(textDocumentUri: string): ReadonlyIdentifierIndex {
+	getLabels(textDocumentUri: string): ReadonlyLabelIndex {
 		let index = this._localLabels.get(normalizeUri(textDocumentUri));
 		if (index === undefined)
 			index = new Map();
