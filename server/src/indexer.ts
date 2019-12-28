@@ -318,6 +318,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 		onAchievementCreate: (codename: string, location: Location, state: ParsingState) => {
 			indexingState.achievements.set(codename, location);
+		},
+
+		onParseError: (error: Diagnostic) => {
+
 		}
 	}
 

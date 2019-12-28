@@ -1,4 +1,4 @@
-import { Range, Location, Position, TextDocument } from 'vscode-languageserver';
+import { Range, Location, Position, TextDocument, Diagnostic } from 'vscode-languageserver';
 
 import { 
 	functions, 
@@ -49,6 +49,7 @@ export interface ParserCallbacks {
 	onLabelReference(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
+	onParseError(error: Diagnostic): void;
 }
 
 /**
