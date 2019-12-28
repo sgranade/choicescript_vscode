@@ -187,7 +187,7 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 			newGlobalIndex = parseReplacement(section, sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
-			newGlobalIndex = parseMultireplacement(section, sectionToDocumentDelta, contentsLocalIndex, state);
+			newGlobalIndex = parseMultireplacement(section, m.groups.multi.length, sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else {
 			globalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
@@ -223,21 +223,53 @@ function parseReplacement(section: string, globalIndex: number, localIndex: numb
  * Multireplacements can either be parsed from the large global document or from a subsection of it.
  * 
  * @param section Section being parsed.
+ * @param openDelimiterLength Length of the opening delimiter (@{ or @!{ or @!!{).
  * @param globalIndex Multireplacement content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param localContentIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns The global index to the end of the multireplacement.
  */
-function parseMultireplacement(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
+function parseMultireplacement(section: string, openDelimiterLength: number, globalIndex: number, 
+	localContentIndex: number | undefined, state: ParsingState): number {
 	let sectionToDocumentDelta = globalIndex;
-	if (localIndex === undefined) {
-		localIndex = globalIndex;
+	if (localContentIndex === undefined) {
+		localContentIndex = globalIndex;
 		sectionToDocumentDelta = 0;
 	}
 
-	let tokens = TokenizeMultireplace(section, localIndex);
+	let tokens = TokenizeMultireplace(section, localContentIndex);
 
-	if (tokens !== undefined) {
+	if (tokens === undefined) {
+		let lineEndIndex = findLineEnd(section, localContentIndex);
+		if (lineEndIndex === undefined)
+			lineEndIndex = section.length;
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			localContentIndex - openDelimiterLength + sectionToDocumentDelta, lineEndIndex + sectionToDocumentDelta,
+			"Multireplace is missing its }");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (tokens.test.text.trim() == "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			localContentIndex - openDelimiterLength + sectionToDocumentDelta,
+			tokens.endIndex + sectionToDocumentDelta,
+			"Multireplace is empty");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (tokens.body.length == 0 || tokens.body[0].text.trim() == "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			tokens.test.index + tokens.test.text.length + sectionToDocumentDelta,
+			tokens.endIndex + sectionToDocumentDelta,
+			"Multireplace has no options");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (tokens.body.length == 1) {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			tokens.body[0].index + tokens.body[0].text.length + sectionToDocumentDelta,
+			tokens.endIndex + sectionToDocumentDelta,
+			"Multireplace must have at least two options separated by |");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else {
 		// The test portion is an expression
 		parseExpression(tokens.test.text, tokens.test.index + sectionToDocumentDelta, state);
 
@@ -548,7 +580,7 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 		else if (m.groups.multi) {
 			let sectionGlobalIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseMultireplacement(text, sectionGlobalIndex, undefined, state);
+			let endIndex = parseMultireplacement(text, m[0].length, sectionGlobalIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 	}
