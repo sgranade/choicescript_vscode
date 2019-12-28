@@ -268,6 +268,11 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.variableReferences.set(symbol, referenceArray);
 		},
 
+		onLabelReference: (command: string, label: string, scene: string, labelLocation: Location | undefined, 
+			sceneLocation: Location | undefined, state: ParsingState) => {
+
+		},
+
 		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {
 			indexingState.scenes = scenes;
 		},

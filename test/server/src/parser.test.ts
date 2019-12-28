@@ -29,6 +29,13 @@ interface Symbol {
 	location: Location
 }
 
+interface Label {
+	label: string,
+	scene: string,
+	labelLocation: Location | undefined,
+	sceneLocation: Location | undefined
+}
+
 describe("Parser", () => {
 	describe("Command Parsing", () => {
 		it("should callback on anything that looks like a command", () => {
@@ -98,7 +105,142 @@ describe("Parser", () => {
 			expect(received[0].spacing).to.equal("  ");
 			expect(received[0].line).to.equal("with arguments ");
 		});
+	})
+
+	describe("Label-Referencing Command Parsing", () => {
+		it("should callback on goto", () => {
+			let fakeDocument = createDocument("*goto label");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+				received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
 	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("label");
+			expect(received[0].labelLocation.range.start.line).to.equal(6);
+			expect(received[0].labelLocation.range.end.line).to.equal(11);
+		})
+
+		it("should callback on gosub", () => {
+			let fakeDocument = createDocument("*gosub label");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("label");
+			expect(received[0].labelLocation.range.start.line).to.equal(7);
+			expect(received[0].labelLocation.range.end.line).to.equal(12);
+		})
+
+		it("should deal with no scene on a goto", () => {
+			let fakeDocument = createDocument("*goto label");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].scene).to.equal("");
+			expect(received[0].sceneLocation).is.undefined;
+		})
+
+		it("should callback on goto_scene", () => {
+			let fakeDocument = createDocument("*goto_scene scenename");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].scene).to.equal("scenename");
+			expect(received[0].sceneLocation.range.start.line).to.equal(12);
+			expect(received[0].sceneLocation.range.end.line).to.equal(21);
+		})
+
+		it("should callback on gosub_scene", () => {
+			let fakeDocument = createDocument("*gosub_scene scenename");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].scene).to.equal("scenename");
+			expect(received[0].sceneLocation.range.start.line).to.equal(13);
+			expect(received[0].sceneLocation.range.end.line).to.equal(22);
+		})
+
+		it("should deal with no label on goto_scene", () => {
+			let fakeDocument = createDocument("*goto_scene scenename");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("");
+			expect(received[0].labelLocation).is.undefined;
+		})
+
+		it("should deal with hyphenated scenes on goto_scene", () => {
+			let fakeDocument = createDocument("*goto_scene 1-scenename");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].scene).to.equal("1-scenename");
+			expect(received[0].sceneLocation.range.start.line).to.equal(12);
+			expect(received[0].sceneLocation.range.end.line).to.equal(23);
+		})
+
+		it("should send scene and label on goto_scene", () => {
+			let fakeDocument = createDocument("*goto_scene scenename labelname");
+			let received: Array<Label> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
+				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+				received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("labelname");
+			expect(received[0].labelLocation.range.start.line).to.equal(22);
+			expect(received[0].labelLocation.range.end.line).to.equal(31);
+		})
 	})
 	
 	describe("Symbol-Creation Command Parsing", () => {

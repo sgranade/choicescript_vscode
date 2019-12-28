@@ -37,6 +37,16 @@ export interface ParserCallbacks {
 	onLocalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
 	onLabelCreate(symbol: string, location: Location, state: ParsingState): void;
 	onVariableReference(symbol: string, location: Location, state: ParsingState): void;
+	/**
+	 * Called when a *goto, *gosub, *goto_scene, or *gosub_scene is called.
+	 * @param command Command.
+	 * @param label Label being referenced, or empty string if there is no reference.
+	 * @param scene Scene name being referenced, or empty string if there is no reference.
+	 * @param labelLocation Location of the label.
+	 * @param sceneLocation Location of the scene.
+	 * @param state Parsing state.
+	 */
+	onLabelReference(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 }
@@ -361,7 +371,7 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
  * @param lineGlobalIndex Index at the start of the line.
  * @param state Parsing state.
  */
-function parseReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseVariableReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
 	// The *if and *selectable_if commands can be used with options, so take that into account
 	if (command == "if" || command == "selectable_if") {
 		let choiceSplit = line.split('#');
@@ -370,6 +380,49 @@ function parseReferenceCommand(command: string, line: string, lineGlobalIndex: n
 	}
 	// The line that follows a command that can reference a variable is an expression
 	parseExpression(line, lineGlobalIndex, state);
+}
+
+/**
+ * Parse a command that references labels, such as *goto.
+ * @param command Command.
+ * @param line Line after the command.
+ * @param lineGlobalIndex Index of the line in the document.
+ * @param state Parsing state.
+ */
+function parseLabelReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+	let label = "";
+	let scene = "";
+	let labelLocation: Location | undefined = undefined;
+	let sceneLocation: Location | undefined = undefined;
+
+	let m = line.match(/^(?<firstToken>[\w-]+)((?<spacing>[ \t]+)(?<secondToken>\w+))?/);
+	if (m !== null && m.groups !== undefined) {
+		if (command.includes("_scene")) {
+			scene = m.groups.firstToken;
+			sceneLocation = Location.create(state.textDocument.uri, Range.create(
+				state.textDocument.positionAt(lineGlobalIndex),
+				state.textDocument.positionAt(lineGlobalIndex + scene.length)
+			));
+
+			if (m.groups.secondToken !== undefined) {
+				label = m.groups.secondToken;
+				let labelIndex = lineGlobalIndex + scene.length + m.groups.spacing.length;
+				labelLocation = Location.create(state.textDocument.uri, Range.create(
+					state.textDocument.positionAt(labelIndex),
+					state.textDocument.positionAt(labelIndex + label.length)
+				));
+			}
+		}
+		else {
+			label = m.groups.firstToken;
+			labelLocation = Location.create(state.textDocument.uri, Range.create(
+				state.textDocument.positionAt(lineGlobalIndex),
+				state.textDocument.positionAt(lineGlobalIndex + label.length)
+			));
+		}
+	}
+
+	state.callbacks.onLabelReference(command, label, scene, labelLocation, sceneLocation, state);
 }
 
 /**
@@ -411,7 +464,10 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		parseSymbolManipulationCommand(command, line, lineIndex, state);
 	}
 	else if (variableReferenceCommandsLookup.get(command)) {
-		parseReferenceCommand(command, line, lineIndex, state);
+		parseVariableReferenceCommand(command, line, lineIndex, state);
+	}
+	else if (labelReferenceCommandsLookup.get(command)) {
+		parseLabelReferenceCommand(command, line, lineIndex, state);
 	}
 	else if (command == "scene_list") {
 		let nextLineIndex = findLineEnd(document, commandIndex);
