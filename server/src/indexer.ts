@@ -18,9 +18,9 @@ export type IdentifierIndex = CaseInsensitiveMap<string, Location>;
 export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Location>;
 
 /**
- * Type for a mutable index of references.
+ * Type for a mutable index of references to variables.
  */
-export type ReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
+export type VariableReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
 
 /**
  * Type for a mutable index of labels.
@@ -31,6 +31,11 @@ export type LabelIndex = Map<string, Location>;
  * Type for an immutable index of labels.
  */
 export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
+
+/**
+ * Type for a mutable index of references to labels.
+ */
+export type LabelReferenceIndex = Map<string, Array<Location>>;
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -53,7 +58,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to variables.
 	 */
-	updateVariableReferences(textDocumentUri: string, newIndex: ReferenceIndex): void;
+	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
 	/**
 	 * Update the list of scene names in the project.
 	 * @param scenes New list of scene names.
@@ -65,6 +70,12 @@ export interface ProjectIndex {
 	 * @param newIndex New index of labels.
 	 */
 	updateLabels(textDocumentUri: string, newIndex: LabelIndex): void;
+	/**
+	 * Update the index of references to labels.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of references to labels.
+	 */
+	updateLabelReferences(textDocumentUri: string, newIndex: LabelReferenceIndex): void;
 	/**
 	 * Update the index of achievement codenames in the project.
 	 * @param newIndex New index of achievement codenames.
@@ -102,10 +113,15 @@ export interface ProjectIndex {
 	 */
 	getAchievements(): ReadonlyIdentifierIndex;
 	/**
-	 * Get all references to a symbol.
-	 * @param symbol Symbol to find references to.
+	 * Get all references to a variable.
+	 * @param variable Variable to find references to.
 	 */
-	getVariableReferences(symbol: string): ReadonlyArray<Location>;
+	getVariableReferences(variable: string): ReadonlyArray<Location>;
+	/**
+	 * Get all references to a label.
+	 * @param label Label to find references to.
+	 */
+	getLabelReferences(label: string): ReadonlyArray<Location>;
 	/**
 	 * Remove a document from the project index.
 	 * @param textDocumentUri URI to document to remove.
@@ -120,18 +136,20 @@ export class Index implements ProjectIndex {
 	_startupFileUri: string;
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierIndex>;
-	_references: Map<string, ReferenceIndex>;
+	_variableReferences: Map<string, VariableReferenceIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
+	_labelReferences: Map<string, LabelReferenceIndex>;
 	_achievements: IdentifierIndex;
 
 	constructor() {
 		this._startupFileUri = "";
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
-		this._references = new Map();
+		this._variableReferences = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
+		this._labelReferences = new Map();
 		this._achievements = new Map();
 	}
 
@@ -142,14 +160,17 @@ export class Index implements ProjectIndex {
 	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
 		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateVariableReferences(textDocumentUri: string, newIndex: ReferenceIndex) {
-		this._references.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
+		this._variableReferences.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
 	}
 	updateLabels(textDocumentUri: string, newIndex: LabelIndex) {
 		this._localLabels.set(normalizeUri(textDocumentUri), new Map(newIndex));
+	}
+	updateLabelReferences(textDocumentUri: string, newIndex: LabelReferenceIndex) {
+		this._labelReferences.set(normalizeUri(textDocumentUri), new Map(newIndex));
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
@@ -193,7 +214,18 @@ export class Index implements ProjectIndex {
 	getVariableReferences(symbol: string): ReadonlyArray<Location> {
 		let locations: Location[] = [];
 
-		for (let index of this._references.values()) {
+		for (let index of this._variableReferences.values()) {
+			let partialLocations = index.get(symbol);
+			if (partialLocations !== undefined)
+				locations.push(...partialLocations);
+		}
+
+		return locations;
+	}
+	getLabelReferences(symbol: string): ReadonlyArray<Location> {
+		let locations: Location[] = [];
+
+		for (let index of this._labelReferences.values()) {
 			let partialLocations = index.get(symbol);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
@@ -203,7 +235,7 @@ export class Index implements ProjectIndex {
 	}
 	removeDocument(textDocumentUri: string) {
 		this._localVariables.delete(normalizeUri(textDocumentUri));
-		this._references.delete(normalizeUri(textDocumentUri));
+		this._variableReferences.delete(normalizeUri(textDocumentUri));
 		this._localLabels.delete(normalizeUri(textDocumentUri));
 	}
 }
@@ -219,9 +251,10 @@ class IndexingState {
 
 	globalVariables: IdentifierIndex = new Map();
 	localVariables: IdentifierIndex = new Map();
-	variableReferences: ReferenceIndex = new Map();
+	variableReferences: VariableReferenceIndex = new Map();
 	scenes: Array<string> = [];
 	labels: IdentifierIndex = new Map();
+	labelReferences: LabelReferenceIndex = new Map();
 	achievements: IdentifierIndex = new Map();
 
 	constructor(textDocument: TextDocument) {
@@ -270,7 +303,13 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 		onLabelReference: (command: string, label: string, scene: string, labelLocation: Location | undefined, 
 			sceneLocation: Location | undefined, state: ParsingState) => {
-
+			if (label != "" && labelLocation !== undefined) {
+				let referenceArray: Array<Location> | undefined = indexingState.labelReferences.get(label);
+				if (referenceArray === undefined)
+					referenceArray = [];
+				referenceArray.push(labelLocation);
+				indexingState.labelReferences.set(label, referenceArray);
+			}
 		},
 
 		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {
@@ -292,4 +331,5 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateLocalVariables(textDocument.uri, indexingState.localVariables);
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
+	index.updateLabelReferences(textDocument.uri, indexingState.labelReferences);
 }

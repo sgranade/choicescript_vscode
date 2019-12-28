@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { TextDocument, Position } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, updateProjectIndex, ReferenceIndex, LabelIndex } from '../../../server/src/indexer';
+import { ProjectIndex, IdentifierIndex, updateProjectIndex, VariableReferenceIndex, LabelIndex, LabelReferenceIndex } from '../../../server/src/indexer';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 
@@ -20,9 +20,9 @@ describe("Indexer", () => {
 	describe("Symbol Command Indexing", () => {
 		it("should index bare variables in the command", () => {
 			let fakeDocument = createDocument("*set variable 3");
-			let receivedReferences: Array<ReferenceIndex> = [];
+			let receivedReferences: Array<VariableReferenceIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: ReferenceIndex) => { receivedReferences.push(index) });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index) });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -34,9 +34,9 @@ describe("Indexer", () => {
 	describe("Multireplace Indexing", () => {
 		it("should index variables in the test", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
-			let receivedReferences: Array<ReferenceIndex> = [];
+			let receivedReferences: Array<VariableReferenceIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: ReferenceIndex) => { receivedReferences.push(index) });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index) });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -45,12 +45,12 @@ describe("Indexer", () => {
 		});
 	})
 	
-	describe("Reference Command Indexing", () => {
+	describe("Variable Reference Command Indexing", () => {
 		it("should index local variables directly after a reference command", () => {
 			let fakeDocument = createDocument("*if variable > 1");
-			let receivedReferences: Array<ReferenceIndex> = [];
+			let receivedReferences: Array<VariableReferenceIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: ReferenceIndex) => { receivedReferences.push(index) });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index) });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -59,7 +59,20 @@ describe("Indexer", () => {
 		});
 	})
 	
+	describe("Label Reference Command Indexing", () => {
+		it("should index labels directly after a reference command", () => {
+			let fakeDocument = createDocument("*gosub label");
+			let receivedReferences: Array<LabelReferenceIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLabelReferences(Arg.all()).mimicks((uri: string, index: LabelReferenceIndex) => { receivedReferences.push(index) });
 	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...receivedReferences[0].keys()]).to.eql(['label']);
+			expect(receivedReferences[0].get('label')[0].range.start.line).to.equal(7);
+		});
+	})
+		
 	describe("Scene Indexing", () => {
 		it("should index scenes in startup files", () => {
 			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
