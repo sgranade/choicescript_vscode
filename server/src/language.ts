@@ -14,7 +14,7 @@ export let startupCommands: ReadonlyArray<string> = ["create", "scene_list", "ti
 // TODO deal with commands that are only allowed in choicescript_stats.txt
 
 /**
- * Complete list of valid commands
+ * Complete list of valid commands.
  */
 export let validCommands: ReadonlyArray<string> = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp",
@@ -27,6 +27,16 @@ export let validCommands: ReadonlyArray<string> = [
 	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
 	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
 	"timer", "youtube", "product", "text_image", "params", "config"
+];
+
+/**
+ * Commands that require arguments.
+ */
+export let argumentRequiringCommands: ReadonlyArray<string> = [
+	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
+	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
+	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
+	"text_image", "config"
 ];
 
 /**
@@ -45,7 +55,7 @@ export let startupFileSymbolCreationCommands: ReadonlyArray<string> = [...symbol
  * Commands that manipulate the contents of variables.
  */
 export let variableManipulationCommands: ReadonlyArray<string> = [
-	"set", "delete", "rand"
+	"set", "delete", "rand", "input_text", "input_number"
 ];
 
 /**

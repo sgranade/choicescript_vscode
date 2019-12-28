@@ -302,7 +302,9 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 				break;
 			case "delete":
 			case "rand":
-				// *delete and *rand reference a variable
+			case "input_text":
+			case "input_number":
+				// these reference a variable
 				if (symbol !== undefined) {
 					state.callbacks.onVariableReference(symbol, symbolLocation, state);
 				}

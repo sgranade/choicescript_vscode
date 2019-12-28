@@ -358,6 +358,38 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
 	
+		it("should callback on input_text commands", () => {
+			let fakeDocument = createDocument("*input_text variable");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(12);
+			expect(received[0].location.range.end.line).to.equal(20);
+		});
+	
+		it("should callback on input_number commands", () => {
+			let fakeDocument = createDocument("*input_number variable");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(14);
+			expect(received[0].location.range.end.line).to.equal(22);
+		});
+	
 		it("should callback on bare variables", () => {
 			let fakeDocument = createDocument("*set variable 3");
 			let received: Array<Symbol> = [];
