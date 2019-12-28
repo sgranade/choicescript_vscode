@@ -346,7 +346,7 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 	let state = new ParsingState(textDocument, callbacks);
 	let text = textDocument.getText();
 
-	let pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${multiStartPattern}|${variableReferenceCommandPattern}|${achievementPattern}`, 'g');
+	let pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${replacementStartPattern}|${multiStartPattern}|${variableReferenceCommandPattern}|${achievementPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = pattern.exec(text)) {
@@ -356,7 +356,7 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 
 		// TODO ADVANCE THE MATCH LOCATION INDEX BASED ON TOKENIZING
 
-		// Pattern options: symbolManipulateCommand, sceneListCommand, multi (@{}), symbolReference, achievement
+		// Pattern options: symbolManipulateCommand, sceneListCommand, replacement, multi (@{}), symbolReference, achievement
 		if (m.groups.symbolManipulateCommand && (m.groups.symbolManipulateCommandPrefix || m.index == 0)) {
 			let symbolIndex = m.index + 1 + m.groups.symbolManipulateCommand.length + m.groups.spacing.length;
 			if (m.groups.symbolManipulateCommandPrefix !== undefined)
@@ -365,6 +365,11 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 		}
 		else if (m.groups.sceneListCommand) {
 			parseScenes(text, pattern.lastIndex, state);
+		}
+		else if (m.groups.replacement) {
+			let sectionGlobalIndex = m.index + m[0].length;
+			let section = text.slice(sectionGlobalIndex);
+			parseReplacement(section, sectionGlobalIndex, state);
 		}
 		else if (m.groups.multi) {
 			let sectionGlobalIndex = m.index + m[0].length;

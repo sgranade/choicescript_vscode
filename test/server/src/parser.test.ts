@@ -259,6 +259,107 @@ describe("Symbol-Manipulating Command Parsing", () => {
 	});
 })
 
+describe("Replace Parsing", () => {
+	it("should callback on bare variables", () => {
+		let fakeDocument = createDocument("${variable}");
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(1);
+		expect(received[0].text).to.equal("variable");
+		expect(received[0].location.range.start.line).to.equal(2);
+		expect(received[0].location.range.end.line).to.equal(10);
+	});
+
+	it("should callback on capitalized replacements", () => {
+		let fakeDocument = createDocument("$!{variable}");
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(1);
+		expect(received[0].text).to.equal("variable");
+		expect(received[0].location.range.start.line).to.equal(3);
+		expect(received[0].location.range.end.line).to.equal(11);
+	});
+
+	it("should callback on all-caps replacements", () => {
+		let fakeDocument = createDocument("$!!{variable}");
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(1);
+		expect(received[0].text).to.equal("variable");
+		expect(received[0].location.range.start.line).to.equal(4);
+		expect(received[0].location.range.end.line).to.equal(12);
+	});
+
+	it("should callback on multiple variables in the replacement", () => {
+		let fakeDocument = createDocument('${var1 + var2}');
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(2);
+		expect(received[0].text).to.equal("var1");
+		expect(received[0].location.range.start.line).to.equal(2);
+		expect(received[0].location.range.end.line).to.equal(6);
+		expect(received[1].text).to.equal("var2");
+		expect(received[1].location.range.start.line).to.equal(9);
+		expect(received[1].location.range.end.line).to.equal(13);
+	});
+
+	it("should not callback on strings in the replacement", () => {
+		let fakeDocument = createDocument('${"var1" && var2}');
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(1);
+		expect(received[0].text).to.equal("var2");
+		expect(received[0].location.range.start.line).to.equal(12);
+		expect(received[0].location.range.end.line).to.equal(16);
+	});
+
+	it("should callback on multireplacements in the replacement", () => {
+		let fakeDocument = createDocument('${@{var1 true | false}}');
+		let received: Array<Symbol> = [];
+		let fakeCallbacks = Substitute.for<ParserCallbacks>();
+		fakeCallbacks.onReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+			received.push({text: s, location: l});
+		})
+
+		parse(fakeDocument, fakeCallbacks);
+
+		expect(received.length).to.equal(1);
+		expect(received[0].text).to.equal("var1");
+		expect(received[0].location.range.start.line).to.equal(4);
+		expect(received[0].location.range.end.line).to.equal(8);
+	});
+})
+
 describe("Multireplace Parsing", () => {
 	it("should callback on bare variables in the test", () => {
 		let fakeDocument = createDocument("@{variable this | that}");
