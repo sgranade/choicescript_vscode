@@ -128,11 +128,11 @@ export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+
 /**
  * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
  */
-export let symbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + symbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let symbolManipulateCommandPattern = "(?<symbolManipulateCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolManipulateCommand>" + symbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<manipulateCommandLine>.+)";
 /**
- * Pattern to find legal commands that create labels or variables in a ChoiceScript startup file.
+ * Pattern to find legal commands that create labels or variables or directly manipulate those variables in a ChoiceScript startup file.
  */
-export let startupFileSymbolCommandPattern = "(?<symbolCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolCommand>" + startupFileSymbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<commandSymbol>\\w+)";
+export let startupFileSymbolCommandPattern = "(?<symbolManipulateCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolManipulateCommand>" + startupFileSymbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<manipulateCommandLine>.+)";
 /**
  * Pattern to find commands that create scene lists.
  */
@@ -140,15 +140,20 @@ export let sceneListCommandPattern = "(?<sceneListCommand>scene_list)[ \t]*?\\r?
 /**
  * Pattern to find the start of a multireplace.
  */
-export let multiPattern = "(?<multi>@!?!?{)";
+export let multiStartPattern = "(?<multi>@!?!?{)";
+/**
+ * Pattern to find the start of a replacement.
+ */
+export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
  * Pattern to find a reference to a variable.
  */
-export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>\\w+)})";
+// TODO GET RID OF THIS IT'S INSUFFICIENT
+export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>[^}]+)})";
 /**
- * Pattern to find a legal command that might reference a symbol.
+ * Pattern to find a legal command that might reference a variable.
  */
-export let symbolReferencePattern = "(?<symbolReferencePrefix>(\\n|^)\\s*?)\\*(?<referenceCommand>" + variableReferenceCommands.join('|') + ")(?<referenceSpacing>\\s+)(?<referenceLine>.+)";
+export let variableReferenceCommandPattern = "(?<variableReferencePrefix>(\\n|^)\\s*?)\\*(?<variableReferenceCommand>" + variableReferenceCommands.join('|') + ")(?<referenceCommandSpacing>\\s+)(?<referenceCommandLine>.+)";
 /**
  * Pattern to find an achievement definition.
  */
@@ -185,6 +190,83 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 	return symbol;
 }
 
+/**
+ * A token in a string.
+ */
+export interface Token {
+	text: string,
+	index: number
+}
+
+/**
+ * A tokenized multireplace @{variable if-true | if-false}
+ */
+export interface Multireplace {
+	test: Token,
+	body: Token[],
+	endIndex: number
+}
+
+/**
+ * Break a multireplace into tokens.
+ * @param section Document section beginning with the text right inside @{ and including the close }.
+ */
+export function TokenizeMultireplace(section: string): Multireplace | undefined {
+	let test: Token;
+	let body: Token[] = [];
+
+	let multireplaceText = extractToMatchingDelimiter(section, "{", "}");
+	if (multireplaceText === undefined)
+		return undefined;
+
+	let multireplaceEndLocalIndex = multireplaceText.length + 1;
+	let testEndLocalIndex = 0;
+
+	if (multireplaceText[0] != '(') {
+		// The multireplace only has a bare symbol as its test
+		while (testEndLocalIndex < section.length) {
+			if (!/\w/.test(multireplaceText[testEndLocalIndex])) {
+				break;
+			}
+			testEndLocalIndex++;
+		}
+		test = {
+			text: multireplaceText.slice(0, testEndLocalIndex),
+			index: 0
+		};
+	}
+	else {
+		let testContents = extractToMatchingDelimiter(multireplaceText.slice(1), "(", ")");
+		if (testContents === undefined) {
+			testContents = "";
+		}
+		test = {
+			text: testContents,
+			index: 1
+		}
+		testEndLocalIndex = testContents.length + 2;
+	}
+
+	multireplaceText = multireplaceText.slice(testEndLocalIndex);
+	let bareTokens = multireplaceText.split('|');
+	let runningIndex = 0;
+	for (let bareToken of bareTokens) {
+		let trimmed = bareToken.trim();
+		body.push({
+			text: trimmed,
+			index: testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
+		});
+		runningIndex += bareToken.length + 1;
+	}
+
+	return {
+		test: test,
+		body: body,
+		endIndex: multireplaceEndLocalIndex
+	};
+}
+
+// TODO GET RID OF MEEEE!!!
 /**
  * Extract the test portion of a multireplace (the bit right after "@{").
  * @param document Document containing the multireplace.

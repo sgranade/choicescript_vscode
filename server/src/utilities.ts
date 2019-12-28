@@ -21,6 +21,13 @@ export class CaseInsensitiveMap<T, U> extends Map<T, U> {
 export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
 
 /**
+ * Determine if a string contains a number.
+ */
+export function stringIsNumber(s: string) {
+	return !Number.isNaN(Number(s));
+}
+
+/**
  * Scan a document's text to find the end of the current line.
  * 
  * @param document Document text to scan.
@@ -50,17 +57,20 @@ export function findLineEnd(document: string, startIndex: number): number | unde
 }
 
 /**
- * Scan text to find a matching delimiter.
+ * Scan text to find a matching delimiter, skipping escaped delimiters.
+ * 
+ * The passed section should begin with the first character past the opening delimiter.
  * 
  * @param section Section of text to scan.
  * @param openDelimiter Delimiter that opens the group.
  * @param closeDelimiter Delimiter that closes the group.
- * @returns Index corresponding to one past the delimiter's end
+ * @returns String contained within the delimiters.
  */
 export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string): string | undefined {
-	let match = RegExp(`\\${openDelimiter}|\\${closeDelimiter}`, "g");
+	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, "g");
 	let matchEnd: number | undefined = undefined;
 	let delimiterCount = 0;
+	let extract: string | undefined = undefined;
 
 	let m: RegExpExecArray | null;
 
@@ -79,8 +89,8 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 	}
 
 	if (matchEnd !== undefined)
-		return section.slice(0, matchEnd);
-	return undefined;
+		extract = section.slice(0, matchEnd);
+	return extract;
 }
 
 /**

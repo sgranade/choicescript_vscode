@@ -116,6 +116,16 @@ describe("Variable Validation", () => {
 		expect(diagnostics.length).to.equal(0);
 	});
 
+	it("should find global variables in expanded references", () => {
+		let globalVariables: Map<string, Location> = new Map([["global_reference", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("{global_reference + 1}");
+		let fakeIndex = createIndex(globalVariables = globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
 	it("should flag undefined variables in references", () => {
 		let fakeDocument = createDocument("{undefined}");
 		let fakeIndex = createIndex();
@@ -148,6 +158,16 @@ describe("Variable Validation", () => {
 
 	it("should flag undefined variables in all-caps replacements", () => {
 		let fakeDocument = createDocument("$!!{undefined}");
+		let fakeIndex = createIndex();
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "undefined" not defined');
+	});
+
+	it("should flag undefined variables in expanded references", () => {
+		let fakeDocument = createDocument("{1 + undefined}");
 		let fakeIndex = createIndex();
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
@@ -283,6 +303,17 @@ describe("Variable Manipulation Commands Validation", () => {
 
 		expect(diagnostics.length).to.equal(0);
 	});
+
+	it("should flag bad variable indirect references", () => {
+		let localVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument("*set known_variable {unknown_variable}");
+		let fakeIndex = createIndex(undefined, localVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "unknown_variable" not defined');
+	});
 });
 
 describe("Variable Reference Commands Validation", () => {
@@ -403,9 +434,41 @@ describe("Variable Reference Commands Validation", () => {
 		expect(diagnostics.length).to.equal(0);
 	});
 
+	it("should be good with good references", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()], ["other_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('*elseif known_variable = {other_variable}');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(0);
+	});
+
+	it("should flag bad references", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('*elseif known_variable = {unknown_variable}');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('"unknown_variable" is not a variable');
+	});
+
 	it("should flag bad references in strings", () => {
 		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
 		let fakeDocument = createDocument('*elseif known_variable = "${unknown_variable}"');
+		let fakeIndex = createIndex(globalVariables);
+
+		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+		expect(diagnostics.length).to.equal(1);
+		expect(diagnostics[0].message).to.contain('Variable "unknown_variable" not defined');
+	});
+
+	it("should flag bad multireplaces in strings", () => {
+		let globalVariables: Map<string, Location> = new Map([["known_variable", Substitute.for<Location>()]]);
+		let fakeDocument = createDocument('*elseif known_variable = "@{unknown_variable this | that}"');
 		let fakeIndex = createIndex(globalVariables);
 
 		let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);

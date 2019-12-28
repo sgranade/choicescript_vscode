@@ -4,21 +4,22 @@ import {
 	functions, 
 	namedOperators, 
 	validCommands, 
-	symbolCommandPattern, 
+	symbolManipulateCommandPattern, 
 	startupFileSymbolCommandPattern,
 	sceneListCommandPattern,
-	multiPattern,
-	referencePattern,
-	symbolReferencePattern,
+	multiStartPattern,
+	variableReferenceCommandPattern,
 	achievementPattern,
-	extractMultireplaceTest,
-	stringPattern
+	replacementStartPattern,
+	TokenizeMultireplace
 } from './language';
 import {
 	CaseInsensitiveMap,
 	ReadonlyCaseInsensitiveMap,
 	normalizeUri,
-	findLineEnd
+	findLineEnd,
+	extractToMatchingDelimiter,
+	stringIsNumber
 } from './utilities';
 
 /**
@@ -213,64 +214,227 @@ export class Index implements ProjectIndex {
 }
 
 /**
- * Add a symbol reference to a reference index
- * @param symbol Symbol to add a reference to.
- * @param location Location of the symbol.
- * @param referenceIndex Index to add the reference to.
+ * Captures information about the current state of indexing
  */
-function addReference(symbol: string, location: Location, referenceIndex: ReferenceIndex) {
-	// My kingdom for the nullish coalescing operator
-	let referenceArray: Array<Location> | undefined = referenceIndex.get(symbol);
-	if (referenceArray === undefined)
-		referenceArray = [];
-	referenceArray.push(location);
-	referenceIndex.set(symbol, referenceArray);
+class IndexingState {
+	/**
+	 * Document being validated
+	 */
+	textDocument: TextDocument;
+
+	globalVariables: IdentifierIndex = new Map();
+	localVariables: IdentifierIndex = new Map();
+	references: ReferenceIndex = new Map();
+	scenes: Array<string> = [];
+	labels: IdentifierIndex = new Map();
+	achievements: IdentifierIndex = new Map();
+
+	constructor(textDocument: TextDocument) {
+		this.textDocument = textDocument;
+	}
 }
 
 /**
- * 
- * @param command Command that defines or references a symbol.
- * @param symbol Symbol being defined or referenced.
- * @param symbolIndex Location of the symbol in the text.
- * @param globalVariables Index of global variables.
- * @param localVariables Index of local variables.
- * @param labels Index of goto/gosub labels.
- * @param references Index of references to variables.
- * @param textDocument Document being indexed.
+ * Add a symbol reference to a reference index
+ * @param symbol Symbol to add a reference to.
+ * @param location Location of the symbol in the document being indexed.
+ * @param state Indexing state.
  */
-function indexSymbolCommand(command: string, symbol: string, symbolIndex: number, globalVariables: IdentifierIndex, 
-		localVariables: IdentifierIndex, labels: IdentifierIndex, references: ReferenceIndex, textDocument: TextDocument) {
-	let symbolLocation = Location.create(textDocument.uri, Range.create(
-		textDocument.positionAt(symbolIndex),
-		textDocument.positionAt(symbolIndex + symbol.length)
+function addReference(symbol: string, location: Location, state: IndexingState) {
+	// My kingdom for the nullish coalescing operator
+	let referenceArray: Array<Location> | undefined = state.references.get(symbol);
+	if (referenceArray === undefined)
+		referenceArray = [];
+	referenceArray.push(location);
+	state.references.set(symbol, referenceArray);
+}
+
+/**
+ * Index an expression.
+ * @param expression String containing the expression (and only the expression).
+ * @param globalIndex Expression's index in the document being indexed.
+ * @param state Indexing state.
+ */
+function indexExpression(expression: string, globalIndex: number, state: IndexingState) {
+	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
+	// As variable references and strings can contain other things, first handle them and remove them from the expression
+	let referenceOrStringPattern = /^(?<prefix>.*?)(?<delimiter>["{])(?<remainder>.*)$/;
+
+	let m: RegExpExecArray | null;
+	while (m = referenceOrStringPattern.exec(expression)) {
+		if (m.groups === undefined || m.groups.remainder === undefined)
+			continue;
+
+		let openDelimiter = m.groups.delimiter;
+		let openDelimiterLocalIndex = 0;
+		let remainderLocalIndex = 1;
+		if (m.groups.prefix !== undefined) {
+			openDelimiterLocalIndex += m.groups.prefix.length;
+			remainderLocalIndex += m.groups.prefix.length;
+		}
+		let endGlobalIndex = 0;
+		if (openDelimiter == '{') {
+			endGlobalIndex = indexReference(m.groups.remainder, globalIndex + remainderLocalIndex, state);
+		}
+		else {
+			endGlobalIndex = indexString(m.groups.remainder, globalIndex + remainderLocalIndex, state);
+		}
+		let endLocalIndex = endGlobalIndex - globalIndex;
+
+		// blank out the matched string
+		expression = expression.slice(0, openDelimiterLocalIndex) + " ".repeat(endLocalIndex - openDelimiterLocalIndex) + expression.slice(endLocalIndex);
+	}
+
+	// Split the remaining expression into words, since that's all we care about
+	let wordPattern = /\w+/g;
+	
+	while (m = wordPattern.exec(expression)) {
+		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0]) && !stringIsNumber(m[0])) {
+			let location = Location.create(state.textDocument.uri, Range.create(
+				state.textDocument.positionAt(globalIndex + m.index),
+				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
+			));
+			addReference(m[0], location, state);
+		}
+	}
+}
+
+/**
+ * Index a variable reference {var}.
+ * @param referenceSection Section containing the reference, starting after the { but including the }.
+ * @param globalIndex Reference's index in the document being indexed.
+ * @param state Indexing state.
+ */
+function indexReference(referenceSection: string, globalIndex: number, state: IndexingState): number {
+	let reference = extractToMatchingDelimiter(referenceSection, '{', '}');
+	if (reference !== undefined) {
+		// References contain expressions, so let the expression indexer handle that
+		indexExpression(reference, globalIndex, state);
+		globalIndex += reference.length + 1;
+	}
+
+	return globalIndex;
+}
+
+/**
+ * Index a string.
+ * @param stringSection Section containing the string, starting after the opening " but including the closing ".
+ * @param globalIndex String's index in the document being indexed.
+ * @param state Indexing state.
+ */
+function indexString(stringSection: string, globalIndex: number, state: IndexingState): number {
+	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
+	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`);
+	let m: RegExpExecArray | null;
+	while (m = delimiterPattern.exec(stringSection)) {
+		if (m.groups === undefined)
+			break;
+
+		let contentsLocalIndex = m.index + m[0].length;
+		let subsection = stringSection.slice(contentsLocalIndex);
+		let newGlobalIndex: number;
+
+		if (m.groups.replacement !== undefined) {
+			newGlobalIndex = indexReplacement(subsection, globalIndex + contentsLocalIndex, state);
+		}
+		else if (m.groups.multi !== undefined) {
+			newGlobalIndex = indexMultireplacement(subsection, globalIndex + contentsLocalIndex, state);
+		}
+		else {
+			globalIndex += contentsLocalIndex;  // b/c contentsLocalIndex points beyond the end of the string
+			break;
+		}
+
+		let endLocalIndex = newGlobalIndex - globalIndex;
+		globalIndex = newGlobalIndex;
+		stringSection = stringSection.slice(endLocalIndex);
+	}
+
+	return globalIndex;
+}
+
+/**
+ * Index a replacement ${var}.
+ * @param replacementSection Section containing the replacement, starting after the ${ but including the closing }.
+ * @param globalIndex Replacement's index in the document being indexed.
+ * @param state Indexing state.
+ */
+function indexReplacement(replacementSection: string, globalIndex: number, state: IndexingState): number {
+	// Internally, a replacement acts like a reference, so we can forward to it
+	return indexReference(replacementSection, globalIndex, state);
+}
+
+function indexMultireplacement(multiSection: string, globalIndex: number, state: IndexingState): number {
+	let tokens = TokenizeMultireplace(multiSection);
+
+	if (tokens !== undefined) {
+		// The test portion is an expression
+		indexExpression(tokens.test.text, globalIndex + tokens.test.index, state);
+
+		// The body portions are strings
+		for (let token of tokens.body) {
+			// Gotta append a quote mark so it'll behave properly
+			indexString(token.text + '"', globalIndex + token.index, state);
+		}
+		globalIndex += tokens.endIndex;
+	}
+
+	return globalIndex;
+}
+
+/**
+ * Index a symbol creating or manipulating command
+ * @param command Command that defines or references a symbol.
+ * @param line Remainder of the line after the command.
+ * @param lineGlobalIndex Location of the line in the text.
+ * @param state Indexing state.
+ */
+function indexSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: IndexingState) {
+	let lineLocation = Location.create(state.textDocument.uri, Range.create(
+		state.textDocument.positionAt(lineGlobalIndex),
+		state.textDocument.positionAt(lineGlobalIndex + line.length)
 	));
+	let bareSymbolMatch = line.match(/^\w+/);
+	let bareSymbol: string | null = null;
+	if (bareSymbolMatch !== null)
+		bareSymbol = bareSymbolMatch[0];
 
 	switch (command) {
 		case "create":
 			// *create instantiates global variables
-			globalVariables.set(symbol, symbolLocation);
-			addReference(symbol, symbolLocation, references);
+			if (bareSymbol !== null) {
+				state.globalVariables.set(bareSymbol, lineLocation);
+				addReference(bareSymbol, lineLocation, state);
+			}
 			break;
 		case "temp":
 			// *temp instantiates variables local to the scene file
-			localVariables.set(symbol, symbolLocation);
-			addReference(symbol, symbolLocation, references);
+			if (bareSymbol !== null) {
+				state.localVariables.set(bareSymbol, lineLocation);
+				addReference(bareSymbol, lineLocation, state);
+			}
 			break;
 		case "label":
 			// *label creates a goto/gosub label local to the scene file
-			labels.set(symbol, symbolLocation);
+			if (bareSymbol !== null) {
+				state.labels.set(bareSymbol, lineLocation);
+			}
 			break;
 		case "set":
+			// A *set command has a full expression
+			indexExpression(line, lineGlobalIndex, state);
+			break;
 		case "delete":
-			// *set and *delete reference a variable
-			addReference(symbol, symbolLocation, references);
+			// *delete references a variable
+			if (bareSymbol !== null) {
+				addReference(bareSymbol, lineLocation, state);
+			}
 			break;
 	}
 }
 
 /**
  * Extract the scenes defined by a *scene_list command.
- * 
  * @param document Document text to scan.
  * @param startIndex Index at the start of the scenes.
  * @returns Array of the scene names, or an empty array if no scene names were found.
@@ -311,104 +475,23 @@ function indexScenes(document: string, startIndex: number): Array<string> {
 }
 
 /**
- * Index variable references in a multireplace.
- * @param document Document text to scan.
- * @param startIndex Index at the start of the multireplace.
- * @param referenceIndex Index of references to variables.
- * @param documentObject Document being indexed.
- */
-function indexMulti(document: string, startIndex: number, referenceIndex: ReferenceIndex, documentObject: TextDocument) {
-	let { testContents: multiTestContents } = extractMultireplaceTest(document, startIndex);
-	if (multiTestContents !== undefined) {
-		if (multiTestContents.includes(' ')) {
-			let wordPattern = /\w+/g;
-			let m: RegExpExecArray | null;
-	
-			while (m = wordPattern.exec(multiTestContents)) {
-				if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0])) {
-					let location = Location.create(documentObject.uri, Range.create(
-						documentObject.positionAt(startIndex + 1 + m.index),
-						documentObject.positionAt(startIndex + 1 + m.index + m[0].length)
-					));
-					addReference(m[0], location, referenceIndex);
-				}
-			}
-		}
-		else {
-			let location = Location.create(documentObject.uri, Range.create(
-				documentObject.positionAt(startIndex),
-				documentObject.positionAt(startIndex + multiTestContents.length)
-			));
-			addReference(multiTestContents, location, referenceIndex);
-		}
-	}
-}
-
-/**
- * Index a reference to a symbol.
- * @param symbol Symbol being referenced.
- * @param startIndex Index at the start of the symbol.
- * @param referenceIndex Index of references to variables.
- * @param textDocument Document being indexed.
- */
-function indexReference(symbol: string, startIndex: number, referenceIndex: ReferenceIndex, textDocument: TextDocument) {
-	let location = Location.create(textDocument.uri, Range.create(
-		textDocument.positionAt(startIndex),
-		textDocument.positionAt(startIndex + symbol.length)
-	));
-	addReference(symbol, location, referenceIndex);
-}
-
-/**
- * 
+ * Index a command that can reference variables, such as *if.
  * @param command ChoiceScript command, such as "if", that may contain a reference.
  * @param line The rest of the line after the command.
- * @param startIndex Index at the start of the line.
- * @param referenceIndex Index of references to variables.
- * @param textDocument Document being indexed.
+ * @param lineGlobalIndex Index at the start of the line.
+ * @param state Indexing state.
  */
-function indexReferenceCommand(command: string, line: string, startIndex: number, referenceIndex: ReferenceIndex, textDocument: TextDocument) {
-	// Extract and index any quoted strings from the line
-	let quotePattern = RegExp(stringPattern, 'g');
-	let m: RegExpExecArray | null;
-	while (m = quotePattern.exec(line)) {
-		// Only look for references inside strings
-		if (m.groups !== undefined) {
-			let s = m.groups.quote;
-			let index = startIndex + m.index + 1;
-			let innerPattern = RegExp(referencePattern, 'g');
-			let m2: RegExpExecArray | null;
-			while (m2 = innerPattern.exec(s)) {
-				if (m2.groups !== undefined) {
-					let symbolIndex = index + m2.index + m2.groups.reference.length - m2.groups.referenceSymbol.length - 1;
-					indexReference(m2.groups.referenceSymbol, symbolIndex, referenceIndex, textDocument);
-				}
-			}
-		}
-	}
-
-	// Now get rid of all of those strings
-	line = line.replace(RegExp(stringPattern, 'g'), '');
-
-	let wordPattern = /\w+/g;
-
-	while (m = wordPattern.exec(line)) {
-		if (!validCommands.includes(m[0]) && !namedOperators.includes(m[0]) && !functions.includes(m[0]) && !(!Number.isNaN(Number(m[0])))) {
-			let location = Location.create(textDocument.uri, Range.create(
-				textDocument.positionAt(startIndex + m.index),
-				textDocument.positionAt(startIndex + m.index + m[0].length)
-			));
-			addReference(m[0], location, referenceIndex);
-		}
-	}
+function indexReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: IndexingState) {
+	// The line that follows a command that can reference a variable is an expression
+	indexExpression(line, lineGlobalIndex, state);
 }
 
-function indexAchievement(codename: string, startIndex: number, achievementIndex: IdentifierIndex, textDocument: TextDocument) {
-	let location = Location.create(textDocument.uri, Range.create(
-		textDocument.positionAt(startIndex),
-		textDocument.positionAt(startIndex + codename.length)
+function indexAchievement(codename: string, startIndex: number, state: IndexingState) {
+	let location = Location.create(state.textDocument.uri, Range.create(
+		state.textDocument.positionAt(startIndex),
+		state.textDocument.positionAt(startIndex + codename.length)
 	));
-	achievementIndex.set(codename, location);
+	state.achievements.set(codename, location);
 }
 
 /**
@@ -419,64 +502,58 @@ function indexAchievement(codename: string, startIndex: number, achievementIndex
  * @param index Project index to update.
  */
 export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, index: ProjectIndex): void {
+	let state = new IndexingState(textDocument);
 	let text = textDocument.getText();
 
 	let pattern: RegExp | null = null;
 	if (isStartupFile) {
-		pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${multiPattern}|${referencePattern}|${symbolReferencePattern}|${achievementPattern}`, 'g');
+		pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${multiStartPattern}|${variableReferenceCommandPattern}|${achievementPattern}`, 'g');
 	}
 	else {
-		pattern = RegExp(`${symbolCommandPattern}|${sceneListCommandPattern}|${multiPattern}|${referencePattern}|${symbolReferencePattern}`, 'g');
+		pattern = RegExp(`${symbolManipulateCommandPattern}|${sceneListCommandPattern}|${multiStartPattern}|${variableReferenceCommandPattern}`, 'g');
 	}
 	let m: RegExpExecArray | null;
-
-	let newGlobalVariables: IdentifierIndex = new Map();
-	let newLocalVariables: IdentifierIndex = new Map();
-	let newReferences: ReferenceIndex = new Map();
-	let newScenes: Array<string> = [];
-	let newLabels: IdentifierIndex = new Map();
-	let newAchievements: IdentifierIndex = new Map();
 
 	while (m = pattern.exec(text)) {
 		if (m.groups === undefined) {
 			continue;
 		}
 
-		// Pattern options: symbolCommand, sceneListCommand, multi (@{}), symbolReference, achievement
-		if (m.groups.symbolCommand && (m.groups.symbolCommandPrefix || m.index == 0)) {
-			let symbolIndex = m.index + 1 + m.groups.symbolCommand.length + m.groups.spacing.length;
-			if (m.groups.symbolCommandPrefix !== undefined)
-				symbolIndex += m.groups.symbolCommandPrefix.length;
-			indexSymbolCommand(m.groups.symbolCommand, m.groups.commandSymbol, symbolIndex, newGlobalVariables, newLocalVariables, newLabels, newReferences, textDocument);
+		// TODO ADVANCE THE MATCH LOCATION INDEX BASED ON TOKENIZING
+
+		// Pattern options: symbolManipulateCommand, sceneListCommand, multi (@{}), symbolReference, achievement
+		if (m.groups.symbolManipulateCommand && (m.groups.symbolManipulateCommandPrefix || m.index == 0)) {
+			let symbolIndex = m.index + 1 + m.groups.symbolManipulateCommand.length + m.groups.spacing.length;
+			if (m.groups.symbolManipulateCommandPrefix !== undefined)
+				symbolIndex += m.groups.symbolManipulateCommandPrefix.length;
+			indexSymbolManipulatingCommand(m.groups.symbolManipulateCommand, m.groups.manipulateCommandLine, symbolIndex, state);
 		}
 		else if (m.groups.sceneListCommand) {
-			newScenes = indexScenes(text, pattern.lastIndex);
+			state.scenes = indexScenes(text, pattern.lastIndex);
 		}
 		else if (m.groups.multi) {
-			indexMulti(text, pattern.lastIndex, newReferences, textDocument);
+			let sectionGlobalIndex = m.index + m[0].length;
+			let section = text.slice(sectionGlobalIndex);
+			indexMultireplacement(section, sectionGlobalIndex, state);
 		}
-		else if (m.groups.reference) {
-			let symbolIndex = m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1;
-			indexReference(m.groups.referenceSymbol, symbolIndex, newReferences, textDocument);
-		}
-		else if (m.groups.referenceCommand) {
-			let lineIndex = m.index + 1 + m.groups.referenceCommand.length + m.groups.referenceSpacing.length;
+		else if (m.groups.variableReferenceCommand) {
+			let lineIndex = m.index + 1 + m.groups.variableReferenceCommand.length + m.groups.referenceCommandSpacing.length;
 			if (m.groups.symbolReferencePrefix !== undefined)
 				lineIndex += m.groups.symbolReferencePrefix.length;
-			indexReferenceCommand(m.groups.referenceCommand, m.groups.referenceLine, lineIndex, newReferences, textDocument);
+			indexReferenceCommand(m.groups.variableReferenceCommand, m.groups.referenceCommandLine, lineIndex, state);
 		}
 		else if (m.groups.achievement) {
 			let codenameIndex = m.index + m[0].length - m.groups.achievement.length;
-			indexAchievement(m.groups.achievement, codenameIndex, newAchievements, textDocument);
+			indexAchievement(m.groups.achievement, codenameIndex, state);
 		}
 	}
 
 	if (isStartupFile) {
-		index.updateGlobalVariables(textDocument.uri, newGlobalVariables);
-		index.updateSceneList(newScenes);
-		index.updateAchievements(newAchievements);
+		index.updateGlobalVariables(textDocument.uri, state.globalVariables);
+		index.updateSceneList(state.scenes);
+		index.updateAchievements(state.achievements);
 	}
-	index.updateLocalVariables(textDocument.uri, newLocalVariables);
-	index.updateReferences(textDocument.uri, newReferences);
-	index.updateLabels(textDocument.uri, newLabels);
+	index.updateLocalVariables(textDocument.uri, state.localVariables);
+	index.updateReferences(textDocument.uri, state.references);
+	index.updateLabels(textDocument.uri, state.labels);
 }

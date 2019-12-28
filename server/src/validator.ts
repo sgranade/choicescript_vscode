@@ -15,12 +15,12 @@ import {
 	commandPattern, 
 	referencePattern, 
 	stylePattern,
-	multiPattern,
+	multiStartPattern,
 	extractMultireplaceTest,
 	variableIsAchievement,
 	stringPattern
 } from './language';
-import { getFilenameFromUri } from './utilities';
+import { getFilenameFromUri, stringIsNumber } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
@@ -264,7 +264,7 @@ function validateExpression(expression: string, index: number, state: Validation
 			namedOperatorsLookup.get(m[0]) || 
 			namedValuesLookup.get(m[0]) ||
 			isVariableReference(m[0], state) ||
-			!Number.isNaN(Number(m[0]))
+			stringIsNumber(m[0])
 		)) {
 			diagnostics.push(createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				index + m.index, index + m.index + m[0].length,
@@ -454,7 +454,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	let state = new ValidationState(projectIndex, textDocument);
 
 	let text = textDocument.getText();
-	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiPattern}`, 'g');
+	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = matchPattern.exec(text)) {
