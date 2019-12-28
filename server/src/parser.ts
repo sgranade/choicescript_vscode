@@ -1,4 +1,4 @@
-import { Range, Location, Position, TextDocument, Diagnostic } from 'vscode-languageserver';
+import { Range, Location, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { 
 	functions, 
@@ -12,16 +12,22 @@ import {
 	variableReferenceCommands,
 	labelReferenceCommands,
 	startupFileSymbolCreationCommands,
-	commandPattern
+	commandPattern,
+	argumentRequiringCommands,
+	startupCommands,
+	uriIsStartupFile
 } from './language';
 import {
 	findLineEnd,
 	extractToMatchingDelimiter,
-	stringIsNumber
+	stringIsNumber,
+	createDiagnostic
 } from './utilities';
 
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
+let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
+let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(startupFileSymbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
@@ -460,6 +466,25 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	));
 
 	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
+
+	if (!validCommandsLookup.get(command)) {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			commandIndex, commandIndex + command.length,
+			`Command *${command} isn't a valid ChoiceScript command.`);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (argumentRequiringCommandsLookup.get(command) && line.trim() == "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			commandIndex, commandIndex + command.length,
+			`Command *${command} is missing its arguments.`);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (startupCommandsLookup.get(command) && !uriIsStartupFile(state.textDocument.uri)) {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			commandIndex, commandIndex + command.length,
+			`Command *${command} can only be used in startup.txt.`);
+		state.callbacks.onParseError(diagnostic);
+	}
 
 	let lineIndex = commandIndex + command.length + spacing.length;
 

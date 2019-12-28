@@ -1,4 +1,5 @@
 import * as URI from 'urijs';
+import { Diagnostic, DiagnosticSeverity, TextDocument } from 'vscode-languageserver';
 
 /**
  * Map that stores and accesses string keys without regard to case.
@@ -107,4 +108,30 @@ export function normalizeUri(uriString: string): string {
 export function getFilenameFromUri(uriString: string): string | undefined {
 	let uri = URI(uriString);
 	return uri.filename();
+}
+
+/**
+ * Generate a diagnostic message.
+ * 
+ * Pass start and end locations as 0-based indexes into the document's text.
+ * 
+ * @param severity Diagnostic severity
+ * @param textDocument Document to which the diagnostic applies.
+ * @param start Start location in the text of the diagnostic message.
+ * @param end End location in the text of the diagnostic message.
+ * @param message Diagnostic message.
+ */
+export function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
+	start: number, end: number, message: string): Diagnostic {
+	let diagnostic: Diagnostic = {
+		severity: severity,
+		range: {
+			start: textDocument.positionAt(start),
+			end: textDocument.positionAt(end)
+		},
+		message: message,
+		source: 'ChoiceScript'
+	};
+
+	return diagnostic;
 }

@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Location } from 'vscode-languageserver';
+import { TextDocument, Position, Location, Diagnostic } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
 
-const fakeDocumentUri: string = "file:///faker.txt";
+const fakeDocumentUri: string = "file:///startup.txt";
 
 function createDocument(text: string, 
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
@@ -858,6 +858,56 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("code_name");
 			expect(received[0].location.range.start.line).to.equal(13);
 			expect(received[0].location.range.end.line).to.equal(22);
+		});
+	})
+
+	describe("Errors", () => {
+		it("should flag non-existent commands", () => {
+			let fakeDocument = createDocument("*fake_command");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("*fake_command isn't a valid");
+			expect(received[0].range.start.line).to.equal(1);
+			expect(received[0].range.end.line).to.equal(13);
+		});
+
+		it("should flag commands with missing arguments", () => {
+			let fakeDocument = createDocument("*set");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("*set is missing its");
+			expect(received[0].range.start.line).to.equal(1);
+			expect(received[0].range.end.line).to.equal(4);
+		});
+
+		it("should flag commands that can only be used in startup.txt", () => {
+			let fakeDocument = createDocument("*create var 3", "file:///scene.txt");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("*create can only be used in");
+			expect(received[0].range.start.line).to.equal(1);
+			expect(received[0].range.end.line).to.equal(7);
 		});
 	})
 })

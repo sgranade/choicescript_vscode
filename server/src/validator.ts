@@ -20,7 +20,7 @@ import {
 	variableIsAchievement,
 	stringPattern
 } from './language';
-import { getFilenameFromUri, stringIsNumber } from './utilities';
+import { getFilenameFromUri, stringIsNumber, createDiagnostic } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
@@ -62,32 +62,6 @@ class ValidationState {
  */
 function splitLine(line: string): string[] {
 	return line.trimRight().split(/\b/);
-}
-
-/**
- * Generate a diagnostic message.
- * 
- * Pass start and end locations as 0-based indexes into the document's text.
- * 
- * @param severity Diagnostic severity
- * @param textDocument Document to which the diagnostic applies.
- * @param start Start location in the text of the diagnostic message.
- * @param end End location in the text of the diagnostic message.
- * @param message Diagnostic message.
- */
-function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
-		start: number, end: number, message: string): Diagnostic {
-	let diagnostic: Diagnostic = {
-		severity: severity,
-		range: {
-			start: textDocument.positionAt(start),
-			end: textDocument.positionAt(end)
-		},
-		message: message,
-		source: 'ChoiceScript'
-	};
-
-	return diagnostic;
 }
 
 /**
