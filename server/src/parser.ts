@@ -102,7 +102,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 		}
 		let endGlobalIndex = 0;
 		if (openDelimiter == '{') {
-			endGlobalIndex = parseReference(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
+			endGlobalIndex = parseReference(m.groups.remainder, 1, globalIndex + remainderLocalIndex, 0, state);
 		}
 		else {
 			endGlobalIndex = parseString(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
@@ -132,12 +132,16 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  * 
  * Variable references can either be parsed from the large global document or from a subsection of it.
  * 
+ * openDelimeterLength is needed in case this is called to parse a replacement.
+ * 
  * @param section Section being parsed.
+ * @param openDelimiterLength Length of the opening delimiter.
  * @param globalIndex Reference content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  */
-function parseReference(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
+function parseReference(section: string, openDelimiterLength: number, globalIndex: number,
+	localIndex: number | undefined, state: ParsingState): number {
 	let sectionToDocumentDelta = globalIndex;
 	if (localIndex === undefined) {
 		localIndex = globalIndex;
@@ -145,7 +149,24 @@ function parseReference(section: string, globalIndex: number, localIndex: number
 	}
 
 	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
-	if (reference !== undefined) {
+	if (reference === undefined) {
+		let lineEndIndex = findLineEnd(section, localIndex);
+		if (lineEndIndex === undefined)
+			lineEndIndex = section.length;
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			localIndex - openDelimiterLength + sectionToDocumentDelta,
+			lineEndIndex + sectionToDocumentDelta,
+			"Replacement is missing its }");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (reference.trim() == "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			localIndex - openDelimiterLength + sectionToDocumentDelta,
+			localIndex + reference.length + 1 + sectionToDocumentDelta,
+			"Replacement is empty");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else {
 		// References contain expressions, so let the expression indexer handle that
 		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
 		globalIndex = sectionToDocumentDelta + localIndex + reference.length + 1;
@@ -184,7 +205,7 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 		let newGlobalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
-			newGlobalIndex = parseReplacement(section, sectionToDocumentDelta, contentsLocalIndex, state);
+			newGlobalIndex = parseReplacement(section, m.groups.replacement.length, sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
 			newGlobalIndex = parseMultireplacement(section, m.groups.multi.length, sectionToDocumentDelta, contentsLocalIndex, state);
@@ -207,14 +228,16 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
  * Replacements can either be parsed from the large global document or from a subsection of it.
  * 
  * @param section Section being parsed.
+ * @param openDelimiterLength Length of the opening delimiter (${ or $!{ or $!!{).
  * @param globalIndex Replacement content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns The global index to the end of the replacement.
  */
-function parseReplacement(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
+function parseReplacement(section: string, openDelimiterLength: number, globalIndex: number, 
+	localIndex: number | undefined, state: ParsingState): number {
 	// Internally, a replacement acts like a reference, so we can forward to it
-	return parseReference(section, globalIndex, localIndex, state);
+	return parseReference(section, openDelimiterLength, globalIndex, localIndex, state);
 }
 
 /**
@@ -574,7 +597,7 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 		else if (m.groups.replacement) {
 			let sectionGlobalIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseReplacement(text, sectionGlobalIndex, undefined, state);
+			let endIndex = parseReplacement(text, m[0].length, sectionGlobalIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.multi) {

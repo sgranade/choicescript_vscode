@@ -910,6 +910,38 @@ describe("Parser", () => {
 			expect(received[0].range.end.line).to.equal(7);
 		});
 
+		it("should flag an unterminated replace", () => {
+			let fakeDocument = createDocument("replace ${ with errors");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Replacement is missing its }");
+			expect(received[0].range.start.line).to.equal(8);
+			expect(received[0].range.end.line).to.equal(22);
+		});
+
+		it("should flag an empty replace", () => {
+			let fakeDocument = createDocument("replace ${} with errors");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Replacement is empty");
+			expect(received[0].range.start.line).to.equal(8);
+			expect(received[0].range.end.line).to.equal(11);
+		});
+
 		it("should flag an unterminated multireplace", () => {
 			let fakeDocument = createDocument("multireplace @{ no end in sight");
 			let received: Array<Diagnostic> = [];
@@ -925,8 +957,6 @@ describe("Parser", () => {
 			expect(received[0].range.start.line).to.equal(13);
 			expect(received[0].range.end.line).to.equal(31);
 		});
-
-
 
 		it("should flag an empty multireplace", () => {
 			let fakeDocument = createDocument("multireplace @{} with errors");
