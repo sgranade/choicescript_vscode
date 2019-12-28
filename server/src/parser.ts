@@ -5,13 +5,14 @@ import {
 	namedOperators,
 	namedValues,
 	validCommands, 
-	startupFileSymbolCommandPattern,
-	sceneListCommandPattern,
 	multiStartPattern,
-	variableReferenceCommandPattern,
-	achievementPattern,
 	replacementStartPattern,
-	TokenizeMultireplace
+	TokenizeMultireplace,
+	variableManipulationCommands,
+	variableReferenceCommands,
+	labelReferenceCommands,
+	startupFileSymbolCreationCommands,
+	commandPattern
 } from './language';
 import {
 	findLineEnd,
@@ -19,17 +20,23 @@ import {
 	stringIsNumber
 } from './utilities';
 
+
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
+let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(startupFileSymbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
+let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
+let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
+	/** Called for anything that looks like a *command, valid or not */
+	onCommand(prefix: string, command: string, spacing: string, line: string, commandLocation: Location, state: ParsingState): void;
 	onGlobalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
 	onLocalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
 	onLabelCreate(symbol: string, location: Location, state: ParsingState): void;
-	onReference(symbol: string, location: Location, state: ParsingState): void;
+	onVariableReference(symbol: string, location: Location, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 }
@@ -98,7 +105,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 				state.textDocument.positionAt(globalIndex + m.index),
 				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
 			));
-			state.callbacks.onReference(m[0], location, state);
+			state.callbacks.onVariableReference(m[0], location, state);
 		}
 	}
 }
@@ -235,7 +242,7 @@ function parseMultireplacement(section: string, globalIndex: number, localIndex:
  * @param lineGlobalIndex Location of the line in the text.
  * @param state Indexing state.
  */
-function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseSymbolManipulationCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
 	// The set command is odd in that it takes an entire expression, so handle that differently
 	if (command == "set") {
 		parseExpression(line, lineGlobalIndex, state);
@@ -284,9 +291,10 @@ function parseSymbolManipulatingCommand(command: string, line: string, lineGloba
 				}
 				break;
 			case "delete":
-				// *delete references a variable
+			case "rand":
+				// *delete and *rand reference a variable
 				if (symbol !== undefined) {
-					state.callbacks.onReference(symbol, symbolLocation, state);
+					state.callbacks.onVariableReference(symbol, symbolLocation, state);
 				}
 				break;
 			default:
@@ -379,6 +387,48 @@ function parseAchievement(codename: string, startIndex: number, state: ParsingSt
 }
 
 /**
+ * Parse a command line.
+ * 
+ * @param document Document being parsed.
+ * @param prefix Spaces before the command.
+ * @param command Command.
+ * @param spacing Spaces after the command, if any.
+ * @param line The rest of the line after the command, if any.
+ * @param commandIndex Index of the command in the document.
+ * @param state Parsing state.
+ */
+function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandIndex: number, state: ParsingState) {
+	let commandLocation = Location.create(state.textDocument.uri, Range.create(
+		state.textDocument.positionAt(commandIndex),
+		state.textDocument.positionAt(commandIndex + command.length)
+	));
+
+	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
+
+	let lineIndex = commandIndex + command.length + spacing.length;
+
+	if (symbolManipulationCommandsLookup.get(command)) {
+		parseSymbolManipulationCommand(command, line, lineIndex, state);
+	}
+	else if (variableReferenceCommandsLookup.get(command)) {
+		parseReferenceCommand(command, line, lineIndex, state);
+	}
+	else if (command == "scene_list") {
+		let nextLineIndex = findLineEnd(document, commandIndex);
+		if (nextLineIndex !== undefined) {
+			parseScenes(document, nextLineIndex, state);
+		}
+	}
+	else if (command == "achievement") {
+		let codenameMatch = line.match(/^\S+/);
+		if (codenameMatch) {
+			let codename = codenameMatch[0];
+			parseAchievement(codename, lineIndex, state);
+		}
+	}
+}
+
+/**
  * Parse a ChoiceScript document.
  * 
  * @param textDocument Document to parse.
@@ -388,7 +438,7 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 	let state = new ParsingState(textDocument, callbacks);
 	let text = textDocument.getText();
 
-	let pattern = RegExp(`${startupFileSymbolCommandPattern}|${sceneListCommandPattern}|${replacementStartPattern}|${multiStartPattern}|${variableReferenceCommandPattern}|${achievementPattern}`, 'g');
+	let pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = pattern.exec(text)) {
@@ -396,15 +446,14 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 			continue;
 		}
 
-		// Pattern options: symbolManipulateCommand, sceneListCommand, replacement, multi (@{}), symbolReference, achievement
-		if (m.groups.symbolManipulateCommand && (m.groups.symbolManipulateCommandPrefix || m.index == 0)) {
-			let symbolIndex = m.index + 1 + m.groups.symbolManipulateCommand.length + m.groups.spacing.length;
-			if (m.groups.symbolManipulateCommandPrefix !== undefined)
-				symbolIndex += m.groups.symbolManipulateCommandPrefix.length;
-			parseSymbolManipulatingCommand(m.groups.symbolManipulateCommand, m.groups.manipulateCommandLine, symbolIndex, state);
-		}
-		else if (m.groups.sceneListCommand) {
-			parseScenes(text, pattern.lastIndex, state);
+		// Pattern options: command, replacement (${}), multi (@{})
+		if (m.groups.command) {
+			let command = m.groups.command;
+			let prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
+			let spacing = m.groups.commandSpacing ? m.groups.commandSpacing : "";
+			let line = m.groups.commandLine ? m.groups.commandLine : "";
+			let commandIndex = m.index + prefix.length + 1;
+			parseCommand(text, prefix, command, spacing, line, commandIndex, state);
 		}
 		else if (m.groups.replacement) {
 			let sectionGlobalIndex = m.index + m[0].length;
@@ -417,16 +466,6 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
 			let endIndex = parseMultireplacement(text, sectionGlobalIndex, undefined, state);
 			pattern.lastIndex = endIndex;
-		}
-		else if (m.groups.variableReferenceCommand) {
-			let lineIndex = m.index + 1 + m.groups.variableReferenceCommand.length + m.groups.referenceCommandSpacing.length;
-			if (m.groups.symbolReferencePrefix !== undefined)
-				lineIndex += m.groups.symbolReferencePrefix.length;
-			parseReferenceCommand(m.groups.variableReferenceCommand, m.groups.referenceCommandLine, lineIndex, state);
-		}
-		else if (m.groups.achievement) {
-			let codenameIndex = m.index + m[0].length - m.groups.achievement.length;
-			parseAchievement(m.groups.achievement, codenameIndex, state);
 		}
 	}
 }

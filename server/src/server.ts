@@ -203,7 +203,7 @@ function generateReferences(textDocument: TextDocument, position: Position, cont
 	let index = textDocument.offsetAt(position);
 	let symbol = extractSymbolAtIndex(text, index);
 
-	let locations = [...projectIndex.getReferences(symbol)];
+	let locations = [...projectIndex.getVariableReferences(symbol)];
 	
 	if (context.includeDeclaration) {
 		let declarationLocation = projectIndex.getLocalVariables(textDocument.uri).get(symbol);
@@ -246,7 +246,7 @@ function generateRenames(textDocument: TextDocument, position: Position, newName
 
 	let changes: Map<string, TextEdit[]> = new Map();
 
-	for (let location of projectIndex.getReferences(symbol)) {
+	for (let location of projectIndex.getVariableReferences(symbol)) {
 		let change = TextEdit.replace(location.range, newName);
 		let edits = changes.get(location.uri);
 		if (edits === undefined) {

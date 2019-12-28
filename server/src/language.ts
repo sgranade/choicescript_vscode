@@ -124,19 +124,7 @@ export let namedValues: ReadonlyArray<string> = [
 /**
  * Pattern to find commands, legal or otherwise.
  */
-export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)?\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
-/**
- * Pattern to find legal commands that create labels or variables or directly manipulate those variables.
- */
-export let symbolManipulateCommandPattern = "(?<symbolManipulateCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolManipulateCommand>" + symbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<manipulateCommandLine>.+)";
-/**
- * Pattern to find legal commands that create labels or variables or directly manipulate those variables in a ChoiceScript startup file.
- */
-export let startupFileSymbolCommandPattern = "(?<symbolManipulateCommandPrefix>(\\n|^)[ \t]*?)\\*(?<symbolManipulateCommand>" + startupFileSymbolCreationCommands.concat(variableManipulationCommands).join('|') + ")(?<spacing>\\s+)(?<manipulateCommandLine>.+)";
-/**
- * Pattern to find commands that create scene lists.
- */
-export let sceneListCommandPattern = "(?<sceneListCommand>scene_list)[ \t]*?\\r?\\n?";
+export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
  * Pattern to find the start of a multireplace.
  */
@@ -151,20 +139,13 @@ export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
 // TODO GET RID OF THIS IT'S INSUFFICIENT
 export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>[^}]+)})";
 /**
- * Pattern to find a legal command that might reference a variable.
- */
-export let variableReferenceCommandPattern = "(?<variableReferencePrefix>(\\n|^)\\s*?)\\*(?<variableReferenceCommand>" + variableReferenceCommands.join('|') + ")(?<referenceCommandSpacing>\\s+)(?<referenceCommandLine>.+)";
-/**
- * Pattern to find an achievement definition.
- */
-export let achievementPattern = "\\*achievement[ \\t]+(?<achievement>\\S+)";
-/**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
 /**
  * Pattern to find strings.
  */
+// TODO GET RID OF THIS
 export let stringPattern = '(?<!\\\\)"(?<quote>.*?)(?<!\\\\)"';
 
 

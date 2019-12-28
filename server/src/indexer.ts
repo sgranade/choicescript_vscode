@@ -53,7 +53,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to variables.
 	 */
-	updateReferences(textDocumentUri: string, newIndex: ReferenceIndex): void;
+	updateVariableReferences(textDocumentUri: string, newIndex: ReferenceIndex): void;
 	/**
 	 * Update the list of scene names in the project.
 	 * @param scenes New list of scene names.
@@ -105,7 +105,7 @@ export interface ProjectIndex {
 	 * Get all references to a symbol.
 	 * @param symbol Symbol to find references to.
 	 */
-	getReferences(symbol: string): ReadonlyArray<Location>;
+	getVariableReferences(symbol: string): ReadonlyArray<Location>;
 	/**
 	 * Remove a document from the project index.
 	 * @param textDocumentUri URI to document to remove.
@@ -142,7 +142,7 @@ export class Index implements ProjectIndex {
 	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
 		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateReferences(textDocumentUri: string, newIndex: ReferenceIndex) {
+	updateVariableReferences(textDocumentUri: string, newIndex: ReferenceIndex) {
 		this._references.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
@@ -190,7 +190,7 @@ export class Index implements ProjectIndex {
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
 	}
-	getReferences(symbol: string): ReadonlyArray<Location> {
+	getVariableReferences(symbol: string): ReadonlyArray<Location> {
 		let locations: Location[] = [];
 
 		for (let index of this._references.values()) {
@@ -219,7 +219,7 @@ class IndexingState {
 
 	globalVariables: IdentifierIndex = new Map();
 	localVariables: IdentifierIndex = new Map();
-	references: ReferenceIndex = new Map();
+	variableReferences: ReferenceIndex = new Map();
 	scenes: Array<string> = [];
 	labels: IdentifierIndex = new Map();
 	achievements: IdentifierIndex = new Map();
@@ -240,27 +240,32 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	let indexingState = new IndexingState(textDocument);
 
 	let callbacks: ParserCallbacks = {
+		onCommand: (prefix: string, command: string, spacing: string, line: string, 
+			commandLocation: Location, state: ParsingState) => {
+
+		},
+
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
 			indexingState.globalVariables.set(symbol, location);
-			state.callbacks.onReference(symbol, location, state);
+			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
 			indexingState.localVariables.set(symbol, location);
-			state.callbacks.onReference(symbol, location, state);
+			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
 		onLabelCreate: (symbol: string, location: Location, state: ParsingState) => {
 			indexingState.labels.set(symbol, location);
 		},
 
-		onReference: (symbol: string, location: Location, state: ParsingState) => {
+		onVariableReference: (symbol: string, location: Location, state: ParsingState) => {
 			// My kingdom for the nullish coalescing operator
-			let referenceArray: Array<Location> | undefined = indexingState.references.get(symbol);
+			let referenceArray: Array<Location> | undefined = indexingState.variableReferences.get(symbol);
 			if (referenceArray === undefined)
 				referenceArray = [];
 			referenceArray.push(location);
-			indexingState.references.set(symbol, referenceArray);
+			indexingState.variableReferences.set(symbol, referenceArray);
 		},
 
 		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {
@@ -280,6 +285,6 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		index.updateAchievements(indexingState.achievements);
 	}
 	index.updateLocalVariables(textDocument.uri, indexingState.localVariables);
-	index.updateReferences(textDocument.uri, indexingState.references);
+	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 }
