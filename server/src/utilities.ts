@@ -37,20 +37,11 @@ export function stringIsNumber(s: string) {
 export function findLineEnd(document: string, startIndex: number): number | undefined {
 	let i = startIndex;
 	let lineEnd: number | undefined = undefined;
-
-	for (let i = startIndex; i < document.length; i++) {
-		if (i < document.length - 2 && document[i] == '\r' && document[i+1] == '\n') {
-			lineEnd = i+2;
-			break;
-		}
-		if (i < document.length - 1 && document[i] == '\n') {
-			lineEnd = i+1;
-			break;
-		}
-		if (i == document.length - 1) {
-			lineEnd = i+1;
-			break;
-		}
+	let lineEndPattern = /\r?\n|$/g;
+	lineEndPattern.lastIndex = startIndex;
+	let m = lineEndPattern.exec(document);
+	if (m) {
+		lineEnd = m.index + m[0].length;
 	}
 
 	return lineEnd;
@@ -66,8 +57,9 @@ export function findLineEnd(document: string, startIndex: number): number | unde
  * @param closeDelimiter Delimiter that closes the group.
  * @returns String contained within the delimiters.
  */
-export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string): string | undefined {
-	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, "g");
+export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {
+	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
+	match.lastIndex = startIndex;
 	let matchEnd: number | undefined = undefined;
 	let delimiterCount = 0;
 	let extract: string | undefined = undefined;
@@ -89,7 +81,7 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 	}
 
 	if (matchEnd !== undefined)
-		extract = section.slice(0, matchEnd);
+		extract = section.slice(startIndex, matchEnd);
 	return extract;
 }
 

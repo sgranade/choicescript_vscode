@@ -112,7 +112,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  * @param state Parsing state.
  */
 function parseReference(referenceSection: string, globalIndex: number, state: ParsingState): number {
-	let reference = extractToMatchingDelimiter(referenceSection, '{', '}');
+	let reference = extractToMatchingDelimiter(referenceSection, '{', '}', 0);
 	if (reference !== undefined) {
 		// References contain expressions, so let the expression indexer handle that
 		parseExpression(reference, globalIndex, state);
@@ -130,7 +130,8 @@ function parseReference(referenceSection: string, globalIndex: number, state: Pa
  */
 function parseString(stringSection: string, globalIndex: number, state: ParsingState): number {
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
-	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`);
+	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
+	delimiterPattern.lastIndex = 0;
 	let m: RegExpExecArray | null;
 	while (m = delimiterPattern.exec(stringSection)) {
 		if (m.groups === undefined)
@@ -164,14 +165,22 @@ function parseString(stringSection: string, globalIndex: number, state: ParsingS
  * @param replacementSection Section containing the replacement, starting after the ${ but including the closing }.
  * @param globalIndex Replacement's index in the document being indexed.
  * @param state Parsing state.
+ * @returns The global index to the end of the replacement.
  */
 function parseReplacement(replacementSection: string, globalIndex: number, state: ParsingState): number {
 	// Internally, a replacement acts like a reference, so we can forward to it
 	return parseReference(replacementSection, globalIndex, state);
 }
 
+/**
+ * Parse a multireplacement @{var true | false}.
+ * @param multiSection Section containing the multireplacement, starting after the @{ but including the closing }.
+ * @param globalIndex Multireplacement content's index in the document being indexed.
+ * @param state Parsing state.
+ * @returns The global index to the end of the multireplacement.
+ */
 function parseMultireplacement(multiSection: string, globalIndex: number, state: ParsingState): number {
-	let tokens = TokenizeMultireplace(multiSection);
+	let tokens = TokenizeMultireplace(multiSection, 0);
 
 	if (tokens !== undefined) {
 		// The test portion is an expression
@@ -195,13 +204,15 @@ function parseMultireplacement(multiSection: string, globalIndex: number, state:
  * @param lineGlobalIndex Location of the line in the text.
  * @param state Indexing state.
  */
-function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState): number {
 	// The set command is odd in that it takes an entire expression, so handle that differently
 	if (command == "set") {
 		parseExpression(line, lineGlobalIndex, state);
 	}
 	else {
-		let lineMatch = line.match(/^(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/);
+		let linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;
+		linePattern.lastIndex = 0;
+		let lineMatch = linePattern.exec(line);
 		if (lineMatch === null || lineMatch.groups === undefined) {
 			return;
 		}
@@ -354,8 +365,6 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 			continue;
 		}
 
-		// TODO ADVANCE THE MATCH LOCATION INDEX BASED ON TOKENIZING
-
 		// Pattern options: symbolManipulateCommand, sceneListCommand, replacement, multi (@{}), symbolReference, achievement
 		if (m.groups.symbolManipulateCommand && (m.groups.symbolManipulateCommandPrefix || m.index == 0)) {
 			let symbolIndex = m.index + 1 + m.groups.symbolManipulateCommand.length + m.groups.spacing.length;
@@ -369,12 +378,16 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 		else if (m.groups.replacement) {
 			let sectionGlobalIndex = m.index + m[0].length;
 			let section = text.slice(sectionGlobalIndex);
-			parseReplacement(section, sectionGlobalIndex, state);
+			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
+			let endIndex = parseReplacement(section, sectionGlobalIndex, state);
+			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.multi) {
 			let sectionGlobalIndex = m.index + m[0].length;
 			let section = text.slice(sectionGlobalIndex);
-			parseMultireplacement(section, sectionGlobalIndex, state);
+			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
+			let endIndex = parseMultireplacement(section, sectionGlobalIndex, state);
+			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.variableReferenceCommand) {
 			let lineIndex = m.index + 1 + m.groups.variableReferenceCommand.length + m.groups.referenceCommandSpacing.length;

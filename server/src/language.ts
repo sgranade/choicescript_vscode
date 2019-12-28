@@ -209,13 +209,15 @@ export interface Multireplace {
 
 /**
  * Break a multireplace into tokens.
+ * 
  * @param section Document section beginning with the text right inside @{ and including the close }.
+ * @param globalIndex Index into the section where the multireplace contents begin.
  */
-export function TokenizeMultireplace(section: string): Multireplace | undefined {
+export function TokenizeMultireplace(section: string, globalIndex: number = 0): Multireplace | undefined {
 	let test: Token;
 	let body: Token[] = [];
 
-	let multireplaceText = extractToMatchingDelimiter(section, "{", "}");
+	let multireplaceText = extractToMatchingDelimiter(section, "{", "}", globalIndex);
 	if (multireplaceText === undefined)
 		return undefined;
 
@@ -232,7 +234,7 @@ export function TokenizeMultireplace(section: string): Multireplace | undefined 
 		}
 		test = {
 			text: multireplaceText.slice(0, testEndLocalIndex),
-			index: 0
+			index: globalIndex
 		};
 	}
 	else {
@@ -242,7 +244,7 @@ export function TokenizeMultireplace(section: string): Multireplace | undefined 
 		}
 		test = {
 			text: testContents,
-			index: 1
+			index: globalIndex + 1
 		}
 		testEndLocalIndex = testContents.length + 2;
 	}
@@ -254,7 +256,7 @@ export function TokenizeMultireplace(section: string): Multireplace | undefined 
 		let trimmed = bareToken.trim();
 		body.push({
 			text: trimmed,
-			index: testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
+			index: globalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
 		});
 		runningIndex += bareToken.length + 1;
 	}
@@ -262,7 +264,7 @@ export function TokenizeMultireplace(section: string): Multireplace | undefined 
 	return {
 		test: test,
 		body: body,
-		endIndex: multireplaceEndLocalIndex
+		endIndex: globalIndex + multireplaceEndLocalIndex
 	};
 }
 
