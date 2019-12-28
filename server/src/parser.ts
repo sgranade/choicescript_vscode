@@ -5,7 +5,6 @@ import {
 	namedOperators,
 	namedValues,
 	validCommands, 
-	symbolManipulateCommandPattern, 
 	startupFileSymbolCommandPattern,
 	sceneListCommandPattern,
 	multiStartPattern,
@@ -79,10 +78,10 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 		}
 		let endGlobalIndex = 0;
 		if (openDelimiter == '{') {
-			endGlobalIndex = parseReference(m.groups.remainder, globalIndex + remainderLocalIndex, state);
+			endGlobalIndex = parseReference(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
 		}
 		else {
-			endGlobalIndex = parseString(m.groups.remainder, globalIndex + remainderLocalIndex, state);
+			endGlobalIndex = parseString(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
 		}
 		let endLocalIndex = endGlobalIndex - globalIndex;
 
@@ -99,24 +98,33 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 				state.textDocument.positionAt(globalIndex + m.index),
 				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
 			));
-			state.callbacks.
-			onReference(m[0], location, state);
+			state.callbacks.onReference(m[0], location, state);
 		}
 	}
 }
 
 /**
  * Parse a variable reference {var}.
- * @param referenceSection Section containing the reference, starting after the { but including the }.
- * @param globalIndex Reference's index in the document being indexed.
+ * 
+ * Variable references can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param section Section being parsed.
+ * @param globalIndex Reference content's index in the global document.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  */
-function parseReference(referenceSection: string, globalIndex: number, state: ParsingState): number {
-	let reference = extractToMatchingDelimiter(referenceSection, '{', '}', 0);
+function parseReference(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
+	let sectionToDocumentDelta = globalIndex;
+	if (localIndex === undefined) {
+		localIndex = globalIndex;
+		sectionToDocumentDelta = 0;
+	}
+
+	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
 	if (reference !== undefined) {
 		// References contain expressions, so let the expression indexer handle that
-		parseExpression(reference, globalIndex, state);
-		globalIndex += reference.length + 1;
+		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
+		globalIndex = sectionToDocumentDelta + localIndex + reference.length + 1;
 	}
 
 	return globalIndex;
@@ -124,37 +132,46 @@ function parseReference(referenceSection: string, globalIndex: number, state: Pa
 
 /**
  * Parse a string.
- * @param stringSection Section containing the string, starting after the opening " but including the closing ".
- * @param globalIndex String's index in the document being indexed.
+ * 
+ * Strings can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param section Section being parsed.
+ * @param globalIndex String contents's index in the global document.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
+ * @returns Global index to the end of the string.
  */
-function parseString(stringSection: string, globalIndex: number, state: ParsingState): number {
+function parseString(section: string, globalIndex: number, localIndex: number, state: ParsingState): number {
+	let sectionToDocumentDelta = globalIndex;
+	if (localIndex === undefined) {
+		localIndex = globalIndex;
+		sectionToDocumentDelta = 0;
+	}
+
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
 	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
-	delimiterPattern.lastIndex = 0;
+	delimiterPattern.lastIndex = localIndex;
 	let m: RegExpExecArray | null;
-	while (m = delimiterPattern.exec(stringSection)) {
+	while (m = delimiterPattern.exec(section)) {
 		if (m.groups === undefined)
 			break;
 
 		let contentsLocalIndex = m.index + m[0].length;
-		let subsection = stringSection.slice(contentsLocalIndex);
 		let newGlobalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
-			newGlobalIndex = parseReplacement(subsection, globalIndex + contentsLocalIndex, state);
+			newGlobalIndex = parseReplacement(section, sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
-			newGlobalIndex = parseMultireplacement(subsection, globalIndex + contentsLocalIndex, state);
+			newGlobalIndex = parseMultireplacement(section, sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else {
-			globalIndex += contentsLocalIndex;  // b/c contentsLocalIndex points beyond the end of the string
+			globalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
 			break;
 		}
 
-		let endLocalIndex = newGlobalIndex - globalIndex;
+		delimiterPattern.lastIndex = newGlobalIndex;
 		globalIndex = newGlobalIndex;
-		stringSection = stringSection.slice(endLocalIndex);
 	}
 
 	return globalIndex;
@@ -162,36 +179,50 @@ function parseString(stringSection: string, globalIndex: number, state: ParsingS
 
 /**
  * Parse a replacement ${var}.
- * @param replacementSection Section containing the replacement, starting after the ${ but including the closing }.
- * @param globalIndex Replacement's index in the document being indexed.
+ * 
+ * Replacements can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param section Section being parsed.
+ * @param globalIndex Replacement content's index in the global document.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns The global index to the end of the replacement.
  */
-function parseReplacement(replacementSection: string, globalIndex: number, state: ParsingState): number {
+function parseReplacement(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
 	// Internally, a replacement acts like a reference, so we can forward to it
-	return parseReference(replacementSection, globalIndex, state);
+	return parseReference(section, globalIndex, localIndex, state);
 }
 
 /**
  * Parse a multireplacement @{var true | false}.
- * @param multiSection Section containing the multireplacement, starting after the @{ but including the closing }.
- * @param globalIndex Multireplacement content's index in the document being indexed.
+ * 
+ * Multireplacements can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param section Section being parsed.
+ * @param globalIndex Multireplacement content's index in the global document.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns The global index to the end of the multireplacement.
  */
-function parseMultireplacement(multiSection: string, globalIndex: number, state: ParsingState): number {
-	let tokens = TokenizeMultireplace(multiSection, 0);
+function parseMultireplacement(section: string, globalIndex: number, localIndex: number | undefined, state: ParsingState): number {
+	let sectionToDocumentDelta = globalIndex;
+	if (localIndex === undefined) {
+		localIndex = globalIndex;
+		sectionToDocumentDelta = 0;
+	}
+
+	let tokens = TokenizeMultireplace(section, localIndex);
 
 	if (tokens !== undefined) {
 		// The test portion is an expression
-		parseExpression(tokens.test.text, globalIndex + tokens.test.index, state);
+		parseExpression(tokens.test.text, tokens.test.index + sectionToDocumentDelta, state);
 
 		// The body portions are strings
 		for (let token of tokens.body) {
 			// Gotta append a quote mark so it'll behave properly
-			parseString(token.text + '"', globalIndex + token.index, state);
+			parseString(token.text + '"', token.index + sectionToDocumentDelta, 0, state);
 		}
-		globalIndex += tokens.endIndex;
+		globalIndex = tokens.endIndex + sectionToDocumentDelta;
 	}
 
 	return globalIndex;
@@ -204,7 +235,7 @@ function parseMultireplacement(multiSection: string, globalIndex: number, state:
  * @param lineGlobalIndex Location of the line in the text.
  * @param state Indexing state.
  */
-function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState): number {
+function parseSymbolManipulatingCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
 	// The set command is odd in that it takes an entire expression, so handle that differently
 	if (command == "set") {
 		parseExpression(line, lineGlobalIndex, state);
@@ -377,16 +408,14 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 		}
 		else if (m.groups.replacement) {
 			let sectionGlobalIndex = m.index + m[0].length;
-			let section = text.slice(sectionGlobalIndex);
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseReplacement(section, sectionGlobalIndex, state);
+			let endIndex = parseReplacement(text, sectionGlobalIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.multi) {
 			let sectionGlobalIndex = m.index + m[0].length;
-			let section = text.slice(sectionGlobalIndex);
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseMultireplacement(section, sectionGlobalIndex, state);
+			let endIndex = parseMultireplacement(text, sectionGlobalIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.variableReferenceCommand) {
