@@ -42,10 +42,18 @@ export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
  */
 export type LabelReferenceIndex = Map<string, Array<Location>>;
 
+/**
+ * Type for an immutable index of references to labels.
+ */
+export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, Array<Location>>;
+
 export interface DocumentScopes {
 	achievementVarScopes: Range[];
 	paramScopes: Range[];
 }
+
+// TODO would be good to re-work this interface so it has more consistency
+// f'rex, a since index that indexes all references & what type of reference it is
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -86,6 +94,12 @@ export interface ProjectIndex {
 	 * @param newIndex New index of references to labels.
 	 */
 	updateLabelReferences(textDocumentUri: string, newIndex: LabelReferenceIndex): void;
+	/**
+	 * Update the index of references to scenes.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of references to scene names.
+	 */
+	updateSceneReferences(textDocumentUri: string, newIndex: LabelReferenceIndex): void;
 	/**
 	 * Update the index of achievement codenames in the project.
 	 * @param newIndex New index of achievement codenames.
@@ -150,6 +164,11 @@ export interface ProjectIndex {
 	 */
 	getLabelReferences(label: string): ReadonlyArray<Location>;
 	/**
+	 * Get all references to scenes in one scene document.
+	 * @param textDocumentUri URI to scene document.
+	 */
+	getDocumentSceneReferences(textDocumentUri: string): ReadonlyLabelReferenceIndex;
+	/**
 	 * Get document scopes for a scene file.
 	 * @param textDocumentUri URI to scene document.
 	 */
@@ -177,6 +196,7 @@ export class Index implements ProjectIndex {
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
 	_labelReferences: Map<string, LabelReferenceIndex>;
+	_sceneReferences: Map<string, LabelReferenceIndex>;
 	_achievements: IdentifierIndex;
 	_documentScopes: Map<string, DocumentScopes>;
 	_parseErrors: Map<string, Diagnostic[]>;
@@ -189,6 +209,7 @@ export class Index implements ProjectIndex {
 		this._scenes = [];
 		this._localLabels = new Map();
 		this._labelReferences = new Map();
+		this._sceneReferences = new Map();
 		this._achievements = new Map();
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
@@ -212,6 +233,9 @@ export class Index implements ProjectIndex {
 	}
 	updateLabelReferences(textDocumentUri: string, newIndex: LabelReferenceIndex) {
 		this._labelReferences.set(normalizeUri(textDocumentUri), new Map(newIndex));
+	}
+	updateSceneReferences(textDocumentUri: string, newIndex: LabelReferenceIndex) {
+		this._sceneReferences.set(normalizeUri(textDocumentUri), new Map(newIndex));
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
@@ -287,6 +311,13 @@ export class Index implements ProjectIndex {
 
 		return locations;
 	}
+	getDocumentSceneReferences(textDocumentUri: string): ReadonlyLabelReferenceIndex {
+		let index = this._sceneReferences.get(normalizeUri(textDocumentUri));
+		if (index === undefined) {
+			index = new Map();
+		}
+		return index;
+	}
 	getVariableScopes(textDocumentUri: string): DocumentScopes {
 		let scopes = this._documentScopes.get(textDocumentUri);
 		if (scopes === undefined) {
@@ -324,6 +355,7 @@ class IndexingState {
 	localVariables: IdentifierIndex = new Map();
 	variableReferences: VariableReferenceIndex = new Map();
 	scenes: Array<string> = [];
+	sceneReferences: LabelReferenceIndex = new Map();
 	labels: IdentifierIndex = new Map();
 	labelReferences: LabelReferenceIndex = new Map();
 	achievements: IdentifierIndex = new Map();
@@ -392,6 +424,13 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				referenceArray.push(labelLocation);
 				indexingState.labelReferences.set(label, referenceArray);
 			}
+			if (scene != "" && sceneLocation !== undefined) {
+				let referenceArray: Array<Location> | undefined = indexingState.sceneReferences.get(scene);
+				if (referenceArray === undefined)
+					referenceArray = [];
+				referenceArray.push(sceneLocation);
+				indexingState.sceneReferences.set(scene, referenceArray);
+			}
 		},
 
 		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {
@@ -437,6 +476,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 	index.updateLabelReferences(textDocument.uri, indexingState.labelReferences);
+	index.updateSceneReferences(textDocument.uri, indexingState.sceneReferences);
 	index.updateVariableScopes(textDocument.uri, scopes);
 	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);
 }

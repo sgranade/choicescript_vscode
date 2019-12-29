@@ -70,6 +70,20 @@ describe("Indexer", () => {
 	
 			expect([...receivedReferences[0].keys()]).to.eql(['label']);
 			expect(receivedReferences[0].get('label')[0].range.start.line).to.equal(7);
+			expect(receivedReferences[0].get('label')[0].range.end.line).to.equal(12);
+		});
+
+		it("should index scenes directly after a reference command", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name");
+			let receivedReferences: Array<LabelReferenceIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateSceneReferences(Arg.all()).mimicks((uri: string, index: LabelReferenceIndex) => { receivedReferences.push(index) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...receivedReferences[0].keys()]).to.eql(['scene-name']);
+			expect(receivedReferences[0].get('scene-name')[0].range.start.line).to.equal(13);
+			expect(receivedReferences[0].get('scene-name')[0].range.end.line).to.equal(23);
 		});
 	})
 		
