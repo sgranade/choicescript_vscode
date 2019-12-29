@@ -6,10 +6,13 @@ import {
 	uriIsStartupFile, 
 	stylePattern,
 	variableIsAchievement,
-	variableIsPossibleParameter
+	variableIsPossibleParameter,
+	incorrectCommandPattern,
+	validCommands
 } from './language';
 import { getFilenameFromUri, createDiagnostic, createDiagnosticFromLocation } from './utilities';
 
+let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 
 /**
@@ -29,25 +32,6 @@ class ValidationState {
 		this.projectIndex = projectIndex;
 		this.textDocument = textDocument;
 	}
-}
-
-/**
- * Validate a set of characters against the Choice of Games style manual.
- * 
- * @param characters Characters being evaluated for style.
- * @param index Location of the characters in the document.
- * @param state Validation state.
- * @returns Diagnostic message, if any.
- */
-function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
-	let description = "";
-	if (characters == '...')
-		description = "ellipsis (…)";
-	else
-		description = "em-dash (—)";
-	return createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-		index, index + characters.length,
-		`Choice of Games style requires a Unicode ${description}`);
 }
 
 /**
@@ -232,6 +216,45 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 }
 
 /**
+ * Validate a set of characters against the Choice of Games style manual.
+ * 
+ * @param characters Characters being evaluated for style.
+ * @param index Location of the characters in the document.
+ * @param state Validation state.
+ * @returns Diagnostic message, if any.
+ */
+function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
+	let description = "";
+	if (characters == '...')
+		description = "ellipsis (…)";
+	else
+		description = "em-dash (—)";
+	return createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+		index, index + characters.length,
+		`Choice of Games style requires a Unicode ${description}`);
+}
+
+/**
+ * Validate a potential command in the middle of a line.
+ * 
+ * @param command Possible command.
+ * @param index Location of the command, starting with its leading "*".
+ * @param state Validation state.
+ * @returns Diagnostic message, if any.
+ */
+function validateCommandInLine(command: string, index: number, state: ValidationState): Diagnostic | undefined {
+	let diagnostic: Diagnostic | undefined = undefined;
+
+	if (validCommandsLookup.get(command)) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+			index, index + command.length + 1,
+			`*${command} should be on a line by itself`);
+	}
+
+	return diagnostic;
+}
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -252,7 +275,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 	// TODO fix below this line
 	let text = textDocument.getText();
-	let matchPattern = RegExp(`${stylePattern}`, 'g');
+	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = matchPattern.exec(text)) {
@@ -261,6 +284,13 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 		if (m.groups.styleGuide !== undefined) {  // Items against CoG styleguide
 			let diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
+			if (diagnostic !== undefined)
+				diagnostics.push(diagnostic);
+		}
+		else if (m.groups.command !== undefined) {
+			let diagnostic = validateCommandInLine(
+				m.groups.command, m.index + m.groups.commandPrefix.length, state
+			);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

@@ -129,6 +129,10 @@ export let namedValues: ReadonlyArray<string> = [
  */
 export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
+ * Pattern to find commands that aren't on a line by themselves.
+ */
+export let incorrectCommandPattern = "(?<!\\n|^)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
+/**
  * Pattern to find the start of a multireplace.
  */
 export let multiStartPattern = "(?<multi>@!?!?{)";

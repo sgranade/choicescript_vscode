@@ -253,14 +253,13 @@ describe("Validator", () => {
 	
 	describe("All Commands Validation", () => {
 		it("should flag commands with text in front of them", () => {
-			// TODO FIX ME
-			let fakeDocument = createDocument("Leading text *comment This is illegal!");
+			let fakeDocument = createDocument("Leading text *if This is illegal!");
 			let fakeIndex = createIndex({});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("Command *comment can't have other text");
+			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
 		});
 	});
 	
