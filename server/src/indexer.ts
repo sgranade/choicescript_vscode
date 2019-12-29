@@ -1,4 +1,4 @@
-import { Location, TextDocument, Diagnostic } from 'vscode-languageserver';
+import { Location, Range, TextDocument, Diagnostic } from 'vscode-languageserver';
 
 import {
 	CaseInsensitiveMap,
@@ -41,6 +41,19 @@ export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
  * Type for a mutable index of references to labels.
  */
 export type LabelReferenceIndex = Map<string, Array<Location>>;
+
+/**
+ * Section of a document in which variables are valid.
+ */
+export interface VariableScope {
+	scope: Range;
+	variables: string[];
+}
+
+export interface DocumentScopes {
+	achievementVarScopes: Range[];
+	paramScopes: VariableScope[];
+}
 
 /**
  * Interface for an index of a ChoiceScript project.
@@ -86,6 +99,12 @@ export interface ProjectIndex {
 	 * @param newIndex New index of achievement codenames.
 	 */
 	updateAchievements(newIndex: IdentifierIndex): void;
+	/**
+	 * Update the index of variable scopes.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newScopes New variable scopes.
+	 */
+	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes): void;
 	/**
 	 * Update the list of errors that occured during parsing.
 	 * @param textDocumentUri URI to document whose index is to be updated.
@@ -139,6 +158,11 @@ export interface ProjectIndex {
 	 */
 	getLabelReferences(label: string): ReadonlyArray<Location>;
 	/**
+	 * Get document scopes for a scene file.
+	 * @param textDocumentUri URI to scene document.
+	 */
+	getDocumentScopes(textDocumentUri: string): DocumentScopes;
+	/**
 	 * Get the parse errors.
 	 * @param textDocumentUri URI to scene document.
 	 */
@@ -162,6 +186,7 @@ export class Index implements ProjectIndex {
 	_localLabels: Map<string, IdentifierIndex>;
 	_labelReferences: Map<string, LabelReferenceIndex>;
 	_achievements: IdentifierIndex;
+	_documentScopes: Map<string, DocumentScopes>;
 	_parseErrors: Map<string, Diagnostic[]>;
 
 	constructor() {
@@ -173,6 +198,7 @@ export class Index implements ProjectIndex {
 		this._localLabels = new Map();
 		this._labelReferences = new Map();
 		this._achievements = new Map();
+		this._documentScopes = new Map();
 		this._parseErrors = new Map();
 	}
 
@@ -197,6 +223,9 @@ export class Index implements ProjectIndex {
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
+	}
+	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes) {
+		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);
 	}
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]) {
 		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
@@ -266,6 +295,16 @@ export class Index implements ProjectIndex {
 
 		return locations;
 	}
+	getDocumentScopes(textDocumentUri: string): DocumentScopes {
+		let scopes = this._documentScopes.get(textDocumentUri);
+		if (scopes === undefined) {
+			scopes = {
+				achievementVarScopes: [],
+				paramScopes: []
+			}
+		}
+		return scopes;
+	}
 	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic> {
 		let errors = this._parseErrors.get(normalizeUri(textDocumentUri));
 		if (errors === undefined)
@@ -298,6 +337,8 @@ class IndexingState {
 	achievements: IdentifierIndex = new Map();
 	parseErrors: Array<Diagnostic> = [];
 
+	checkAchievementLocation: Location | undefined = undefined;
+
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
 	}
@@ -316,7 +357,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	let callbacks: ParserCallbacks = {
 		onCommand: (prefix: string, command: string, spacing: string, line: string, 
 			commandLocation: Location, state: ParsingState) => {
-			// Do nothing
+			// Record where achievement temporary variables are brought into existence
+			if (command == "check_achievements" && indexingState.checkAchievementLocation === undefined) {
+				indexingState.checkAchievementLocation = commandLocation;
+			}
 		},
 
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
@@ -368,6 +412,19 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	parse(textDocument, callbacks);
 
+	let scopes: DocumentScopes = {
+		achievementVarScopes: [],
+		paramScopes: []
+	};
+	if (indexingState.checkAchievementLocation !== undefined) {
+		let documentLength = textDocument.getText().length;
+		let start = indexingState.checkAchievementLocation.range.start;
+		let end = textDocument.positionAt(documentLength);
+		scopes.achievementVarScopes.push(Range.create(
+			start, end
+		));
+	}
+
 	if (isStartupFile) {
 		index.updateGlobalVariables(textDocument.uri, indexingState.globalVariables);
 		index.updateSceneList(indexingState.scenes);
@@ -377,5 +434,6 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 	index.updateLabelReferences(textDocument.uri, indexingState.labelReferences);
+	index.updateVariableScopes(textDocument.uri, scopes);
 	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);
 }

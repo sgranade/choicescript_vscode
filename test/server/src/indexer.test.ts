@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Diagnostic } from 'vscode-languageserver';
+import { TextDocument, Position, Range, Diagnostic } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, updateProjectIndex, VariableReferenceIndex, LabelIndex, LabelReferenceIndex } from '../../../server/src/indexer';
+import { ProjectIndex, IdentifierIndex, updateProjectIndex, VariableReferenceIndex, LabelIndex, LabelReferenceIndex, DocumentScopes } from '../../../server/src/indexer';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 
@@ -112,7 +112,38 @@ describe("Indexer", () => {
 			expect(receivedLabels.length).to.equal(1);
 			expect(receivedLabels[0]).has.keys(['label_name']);
 		});
-	})	
+	})
+
+	describe("Variable Scoping", () => {
+		it("should capture *check_achievements scopes", () => {
+			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].achievementVarScopes.length).to.equal(1);
+		})
+
+		it("should have *check_achievements scope run from definition to document end", () => {
+			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2\nLast line");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			// These positions are due to the fake document converting an index directly into a line number
+			expect(received[0].achievementVarScopes[0].start).to.eql({line: 8, character: 0});
+			expect(received[0].achievementVarScopes[0].end).to.eql({line: 43, character: 0});
+		})
+	})
 
 	describe("Parse Errors", () => {
 		it("should flag non-existent commands", () => {
