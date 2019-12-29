@@ -1,4 +1,4 @@
-import { TextDocument, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument, Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ProjectIndex } from './indexer';
 import { 
@@ -12,10 +12,8 @@ import {
 	namedOperators,
 	namedValues,
 	uriIsStartupFile, 
-	commandPattern, 
 	referencePattern, 
 	stylePattern,
-	multiStartPattern,
 	extractMultireplaceTest,
 	variableIsAchievement,
 	stringPattern
@@ -445,6 +443,16 @@ function comparePositions(pos1: Position, pos2: Position): number {
 }
 
 /**
+ * Determine if one range is completely contained by a second.
+ * @param range1 First range.
+ * @param range2 Second range.
+ */
+function rangeInOtherRange(range1: Range, range2: Range): boolean {
+	return (comparePositions(range1.start, range2.start) >= 0 &&
+		comparePositions(range1.end, range2.end) <= 0);
+}
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -480,21 +488,30 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 				diagnostics.push(...newDiagnostics);
 			}
 		}
-		else {
-			// TODO handle block-scoped variables!
-			if (!builtinVariablesLookup.get(variable)) {
-				let newDiagnostics = locations.map((location: Location): Diagnostic => {
-					return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
-						`Variable "${variable}" not defined ${whereDefined}`);
-				});
-				diagnostics.push(...newDiagnostics);
+		else if (!builtinVariablesLookup.get(variable)) {
+			let scopes = projectIndex.getVariableScopes(textDocument.uri);
+			let trimmedLocations = locations;
+			
+			// Get rid of any variables that are legal achievement variables
+			if (scopes.achievementVarScopes.length > 0 && 
+				variableIsAchievement(variable, projectIndex.getAchievements())) {
+				for (let scopeRange of scopes.achievementVarScopes) {
+					trimmedLocations = locations.filter((location: Location) => {
+						rangeInOtherRange(location.range, scopeRange)
+					});
+				}
 			}
+			let newDiagnostics = trimmedLocations.map((location: Location): Diagnostic => {
+				return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
+					`Variable "${variable}" not defined ${whereDefined}`);
+			});
+			diagnostics.push(...newDiagnostics);
 		}
 	}
 
 	// TODO fix below this line
 	let text = textDocument.getText();
-	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiStartPattern}`, 'g');
+	let matchPattern = RegExp(`${stylePattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = matchPattern.exec(text)) {
@@ -505,23 +522,6 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			let diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
-		}
-		else if (m.groups.reference !== undefined) {  // {reference} to a variable
-			let diagnostic = validateVariableReference(m.groups.referenceSymbol, 
-				m.index + m.groups.reference.length - m.groups.referenceSymbol.length - 1, state);
-			if (diagnostic !== undefined)
-				diagnostics.push(diagnostic);
-		}
-		else if (m.groups.command !== undefined) {  // *command
-			let commandPrefix = m.groups.commandPrefix;
-			let commandIndex = m.index;
-			if (commandPrefix !== undefined)
-				commandIndex += commandPrefix.length;
-			diagnostics.push(...validateCommand(m.groups.command, commandIndex, commandPrefix, m.groups.commandSpacing,
-				m.groups.commandLine, state));
-		}
-		else if (m.groups.multi !== undefined) {  // @{variable true replacement | false replacement}
-			diagnostics.push(...validateMultireplace(text, m.index + m[0].length, state));
 		}
 	}
 	

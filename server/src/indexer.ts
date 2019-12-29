@@ -161,7 +161,7 @@ export interface ProjectIndex {
 	 * Get document scopes for a scene file.
 	 * @param textDocumentUri URI to scene document.
 	 */
-	getDocumentScopes(textDocumentUri: string): DocumentScopes;
+	getVariableScopes(textDocumentUri: string): DocumentScopes;
 	/**
 	 * Get the parse errors.
 	 * @param textDocumentUri URI to scene document.
@@ -295,7 +295,7 @@ export class Index implements ProjectIndex {
 
 		return locations;
 	}
-	getDocumentScopes(textDocumentUri: string): DocumentScopes {
+	getVariableScopes(textDocumentUri: string): DocumentScopes {
 		let scopes = this._documentScopes.get(textDocumentUri);
 		if (scopes === undefined) {
 			scopes = {

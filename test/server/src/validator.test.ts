@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, TextDocument } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, VariableReferenceIndex } from '../../../server/src/indexer';
+import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes } from '../../../server/src/indexer';
 import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
@@ -25,13 +25,14 @@ interface IndexArgs {
 	sceneList?: string[],
 	sceneFileUri?: string,
 	achievements?: IdentifierIndex,
-	variableReferences?: VariableReferenceIndex
+	variableReferences?: VariableReferenceIndex,
+	scopes?: DocumentScopes
 }
 
 function createIndex({
 	globalVariables, localVariables, startupUri, labels, 
 	labelsUri, sceneList, sceneFileUri, achievements, 
-	variableReferences}: IndexArgs): SubstituteOf<ProjectIndex> {
+	variableReferences, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
 		if (globalVariables === undefined) {
 			globalVariables = new Map();
 		}
@@ -56,6 +57,12 @@ function createIndex({
 		if (variableReferences === undefined) {
 			variableReferences = new Map();
 		}
+		if (scopes === undefined) {
+			scopes = {
+				achievementVarScopes: [],
+				paramScopes: []
+			}
+		}
 	
 		let fakeIndex = Substitute.for<ProjectIndex>();
 		fakeIndex.getGlobalVariables().returns(globalVariables);
@@ -71,6 +78,7 @@ function createIndex({
 		}
 		fakeIndex.getAchievements(Arg.any()).returns(achievements);
 		fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
+		fakeIndex.getVariableScopes(Arg.all()).returns(scopes);
 	
 		return fakeIndex;
 }
@@ -176,10 +184,11 @@ describe("Validator", () => {
 		});
 
 		it("should flag achievement variables if not instantiated", () => {
-			// TODO FIX ME
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("${choice_achieved_codename}");
-			let fakeIndex = createIndex({achievements: achievements});
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -188,10 +197,15 @@ describe("Validator", () => {
 		});
 	
 		it("should not flag achievement variables after instantiation", () => {
-			// TODO FIX ME
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("*check_achievements\r\n${choice_achieved_codename}");
-			let fakeIndex = createIndex({achievements: achievements});
+			let scopes: DocumentScopes = {
+				achievementVarScopes: [Range.create(1, 0, 4, 0)],
+				paramScopes: []
+			};
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -199,11 +213,17 @@ describe("Validator", () => {
 		});
 	
 		it("should flag incorrect achievement variables", () => {
-			// TODO FIX ME
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("*check_achievements\r\n${choice_achieved_othername}");
-			let fakeIndex = createIndex({achievements: achievements});
-	
+			let scopes: DocumentScopes = {
+				achievementVarScopes: [Range.create(1, 0, 4, 0)],
+				paramScopes: []
+			};
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_othername", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
+
+			
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(1);
