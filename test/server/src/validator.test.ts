@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, TextDocument } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex } from '../../../server/src/index';
+import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex, FlowControlEvent } from '../../../server/src/index';
 import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
@@ -26,13 +26,14 @@ interface IndexArgs {
 	sceneFileUri?: string,
 	achievements?: IdentifierIndex,
 	variableReferences?: VariableReferenceIndex,
+	flowControlEvents?: FlowControlEvent[],
 	scopes?: DocumentScopes
 }
 
 function createIndex({
 	globalVariables, localVariables, startupUri, labels, 
 	labelsUri, sceneList, sceneFileUri, achievements, 
-	variableReferences, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
+	variableReferences, flowControlEvents, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
 		if (globalVariables === undefined) {
 			globalVariables = new Map();
 		}
@@ -57,6 +58,9 @@ function createIndex({
 		if (variableReferences === undefined) {
 			variableReferences = new Map();
 		}
+		if (flowControlEvents === undefined) {
+			flowControlEvents = [];
+		}
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
@@ -79,6 +83,7 @@ function createIndex({
 		fakeIndex.getAchievements(Arg.any()).returns(achievements);
 		fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
 		fakeIndex.getVariableScopes(Arg.all()).returns(scopes);
+		fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
 	
 		return fakeIndex;
 }
@@ -260,11 +265,56 @@ describe("Validator", () => {
 	});
 	
 	describe("Label Reference Commands Validation", () => {
+		it("should flag missing labels", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ flowControlEvents: events });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
+		});
+	
+		it("should flag missing label locations", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ flowControlEvents: events });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics[0].range.start).to.eql({line: 2, character: 0});
+			expect(diagnostics[0].range.end).to.eql({line: 2, character: 5});
+		});
+		
 		it("should be good with local labels", () => {
-			// TODO fix me
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
 			let localLabels: Map<string, Location> = new Map([["local_label", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("*gosub local_label");
-			let fakeIndex = createIndex({labels: localLabels, labelsUri: fakeDocumentUri});
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				labels: localLabels, labelsUri: fakeDocumentUri, flowControlEvents: events
+			});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -272,19 +322,35 @@ describe("Validator", () => {
 		});
 	
 		it("should be good with jumping to another scene without a label", () => {
-			// TODO FIX ME
-			let fakeDocument = createDocument("*goto_scene scene_name");
-			let fakeIndex = createIndex({sceneList: ['scene_name']});
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "scene_name",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				sceneList: ['scene_name'], flowControlEvents: events
+			});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(0);
 		});
 	
-		it("should be flag bad scene names", () => {
-			// TODO FIX ME
-			let fakeDocument = createDocument("*goto_scene missing_scene");
-			let fakeIndex = createIndex({});
+		it("should flag bad scene names", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "missing_scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({flowControlEvents: events});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -292,21 +358,59 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
 		});
 	
-		it("should be good with hyphenated scene names", () => {
-			// TODO FIX ME
-			let fakeDocument = createDocument("*goto_scene scene-name");
-			let fakeIndex = createIndex({sceneList: ['scene-name']});
+		it("should flag the location of bad scene names", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "missing_scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({flowControlEvents: events});
 	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics[0].range.start).to.eql({line: 2, character: 0});
+			expect(diagnostics[0].range.end).to.eql({line: 2, character: 5});
+		});
+	
+		it("should be good with hyphenated scene names", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "scene-name",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				sceneList: ['scene-name'], flowControlEvents: events
+			});	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(0);
 		});
 	
 		it("should be good with labels in another scene", () => {
-			// TODO FIXME
 			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("*goto_scene other-scene scene_label");
-			let fakeIndex = createIndex({labels: sceneLabels, labelsUri: fakeSceneUri, sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "scene_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				flowControlEvents: events,
+				labels: sceneLabels, labelsUri: fakeSceneUri, 
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri
+			});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -314,10 +418,21 @@ describe("Validator", () => {
 		});
 	
 		it("should flag missing labels in another scene", () => {
-			// TODO FIXME
 			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
-			let fakeDocument = createDocument("*goto_scene other-scene missing_label");
-			let fakeIndex = createIndex({labels: sceneLabels, labelsUri: fakeSceneUri, sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "missing_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				flowControlEvents: events,
+				labels: sceneLabels, labelsUri: fakeSceneUri, 
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
