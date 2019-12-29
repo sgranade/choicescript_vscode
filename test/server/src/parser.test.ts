@@ -1064,5 +1064,18 @@ describe("Parser", () => {
 			expect(received[0].range.start.line).to.equal(23);
 			expect(received[0].range.end.line).to.equal(24);
 		});
+
+		it("should not flag a multireplace with a blank first option", () => {
+			let fakeDocument = createDocument("multireplace @{(var) |, the redsmith's son,}");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(0);
+		});
 	})
 })

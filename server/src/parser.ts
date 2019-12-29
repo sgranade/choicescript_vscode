@@ -270,7 +270,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			"Multireplace is empty");
 		state.callbacks.onParseError(diagnostic);
 	}
-	else if (tokens.body.length == 0 || tokens.body[0].text.trim() == "") {
+	else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			tokens.test.index + tokens.test.text.length + sectionToDocumentDelta,
 			tokens.endIndex + sectionToDocumentDelta,
