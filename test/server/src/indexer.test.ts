@@ -143,6 +143,35 @@ describe("Indexer", () => {
 			expect(received[0].achievementVarScopes[0].start).to.eql({line: 8, character: 0});
 			expect(received[0].achievementVarScopes[0].end).to.eql({line: 43, character: 0});
 		})
+
+		it("should capture *params scopes", () => {
+			let fakeDocument = createDocument("Line 0\n*params\nLine 2");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].paramScopes.length).to.equal(1);
+		})
+
+		it("should have *params scope run from definition to document end", () => {
+			let fakeDocument = createDocument("Line 0\n*params\nLine 2\nLast line");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			// These positions are due to the fake document converting an index directly into a line number
+			expect(received[0].paramScopes[0].start).to.eql({line: 8, character: 0});
+			expect(received[0].paramScopes[0].end).to.eql({line: 31, character: 0});
+		})
 	})
 
 	describe("Parse Errors", () => {

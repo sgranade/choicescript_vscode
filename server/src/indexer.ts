@@ -42,17 +42,9 @@ export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
  */
 export type LabelReferenceIndex = Map<string, Array<Location>>;
 
-/**
- * Section of a document in which variables are valid.
- */
-export interface VariableScope {
-	scope: Range;
-	variables: string[];
-}
-
 export interface DocumentScopes {
 	achievementVarScopes: Range[];
-	paramScopes: VariableScope[];
+	paramScopes: Range[];
 }
 
 /**
@@ -338,6 +330,7 @@ class IndexingState {
 	parseErrors: Array<Diagnostic> = [];
 
 	checkAchievementLocation: Location | undefined = undefined;
+	paramsLocations: Location[] = [];
 
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
@@ -360,6 +353,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			// Record where achievement temporary variables are brought into existence
 			if (command == "check_achievements" && indexingState.checkAchievementLocation === undefined) {
 				indexingState.checkAchievementLocation = commandLocation;
+			}
+			// Record where params temporary variables are brought into existence
+			if (command == "params") {
+				indexingState.paramsLocations.push(commandLocation);
 			}
 		},
 
@@ -416,12 +413,18 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		achievementVarScopes: [],
 		paramScopes: []
 	};
+	let documentLength = textDocument.getText().length;
+	let documentEndLocation = textDocument.positionAt(documentLength);
 	if (indexingState.checkAchievementLocation !== undefined) {
-		let documentLength = textDocument.getText().length;
 		let start = indexingState.checkAchievementLocation.range.start;
-		let end = textDocument.positionAt(documentLength);
 		scopes.achievementVarScopes.push(Range.create(
-			start, end
+			start, documentEndLocation
+		));
+	}
+	for (let location of indexingState.paramsLocations) {
+		let start = location.range.start;
+		scopes.paramScopes.push(Range.create(
+			start, documentEndLocation
 		));
 	}
 
