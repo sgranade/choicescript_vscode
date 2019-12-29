@@ -21,7 +21,8 @@ const fsPromises = require('fs').promises;
 import url = require('url');
 import globby = require('globby');
 
-import { ProjectIndex, Index, updateProjectIndex } from './indexer';
+import { updateProjectIndex } from './indexer';
+import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';

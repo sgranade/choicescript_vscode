@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, TextDocument } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes } from '../../../server/src/indexer';
+import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex } from '../../../server/src/index';
 import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";

@@ -7,7 +7,7 @@ import {
 	CompletionItemKind
 } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex } from './indexer';
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 import { extractToMatchingDelimiter } from './utilities';
 

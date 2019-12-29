@@ -3,7 +3,15 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { TextDocument, Position, Range, Diagnostic } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, updateProjectIndex, VariableReferenceIndex, LabelIndex, LabelReferenceIndex, DocumentScopes } from '../../../server/src/indexer';
+import { 
+	ProjectIndex, 
+	IdentifierIndex, 
+	VariableReferenceIndex, 
+	LabelIndex, 
+	FlowControlEvent, 
+	DocumentScopes 
+} from '../../../server/src/index';
+import { updateProjectIndex } from '../../../server/src/indexer';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 
@@ -59,31 +67,114 @@ describe("Indexer", () => {
 		});
 	})
 	
-	describe("Label Reference Command Indexing", () => {
-		it("should index labels directly after a reference command", () => {
+	describe("Flow Control Event Indexing", () => {
+		it("should capture the flow control command", () => {
 			let fakeDocument = createDocument("*gosub label");
-			let receivedReferences: Array<LabelReferenceIndex> = [];
+			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabelReferences(Arg.all()).mimicks((uri: string, index: LabelReferenceIndex) => { receivedReferences.push(index) });
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
-			expect([...receivedReferences[0].keys()]).to.eql(['label']);
-			expect(receivedReferences[0].get('label')[0].range.start.line).to.equal(7);
-			expect(receivedReferences[0].get('label')[0].range.end.line).to.equal(12);
+			expect(receivedReferences.length).to.equal(1);
+			expect(receivedReferences[0].length).to.equal(1);
+			expect(receivedReferences[0][0].command).to.equal("gosub");
 		});
 
-		it("should index scenes directly after a reference command", () => {
-			let fakeDocument = createDocument("*gosub_scene scene-name");
-			let receivedReferences: Array<LabelReferenceIndex> = [];
+		it("should capture the label", () => {
+			let fakeDocument = createDocument("*gosub label");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateSceneReferences(Arg.all()).mimicks((uri: string, index: LabelReferenceIndex) => { receivedReferences.push(index) });
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
-			expect([...receivedReferences[0].keys()]).to.eql(['scene-name']);
-			expect(receivedReferences[0].get('scene-name')[0].range.start.line).to.equal(13);
-			expect(receivedReferences[0].get('scene-name')[0].range.end.line).to.equal(23);
+			expect(receivedReferences[0][0].label).to.equal("label");
+		});
+
+		it("should capture the label location", () => {
+			let fakeDocument = createDocument("*gosub label");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].labelLocation.range.start.line).to.equal(7);
+			expect(receivedReferences[0][0].labelLocation.range.end.line).to.equal(12);
+		});
+
+		it("should skip the scene when not present", () => {
+			let fakeDocument = createDocument("*gosub label");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].scene).equals("");
+			expect(receivedReferences[0][0].sceneLocation).is.undefined;
+		});
+
+		it("should capture the scene", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].scene).to.eql("scene-name");
+		});
+
+		it("should capture the scene location", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
+			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
+		});
+
+		it("should skip the label when not present", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].label).equals("");
+			expect(receivedReferences[0][0].labelLocation).is.undefined;
+		});
+
+		it("should capture both scene and label if present", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name other_label");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].scene).to.eql("scene-name");
+			expect(receivedReferences[0][0].label).to.eql("other_label");
+		});
+
+		it("should capture both scene and label locations if present", () => {
+			let fakeDocument = createDocument("*gosub_scene scene-name other_label");
+			let receivedReferences: Array<FlowControlEvent[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
+			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
+			expect(receivedReferences[0][0].labelLocation.range.start.line).to.eql(24);
+			expect(receivedReferences[0][0].labelLocation.range.end.line).to.eql(35);
 		});
 	})
 		

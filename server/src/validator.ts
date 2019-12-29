@@ -1,12 +1,12 @@
 import { TextDocument, Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex } from './indexer';
+import { ProjectIndex } from "./index";
 import { 
 	startupCommands, 
 	validCommands, 
 	variableManipulationCommands,
 	variableReferenceCommands,
-	labelReferenceCommands,
+	flowControlCommands,
 	functions,
 	builtinVariables,
 	namedOperators,
@@ -25,7 +25,7 @@ let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let variableManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(variableManipulationCommands.map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
-let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
+let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
 let builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));

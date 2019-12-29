@@ -10,7 +10,7 @@ import {
 	TokenizeMultireplace,
 	variableManipulationCommands,
 	variableReferenceCommands,
-	labelReferenceCommands,
+	flowControlCommands,
 	startupFileSymbolCreationCommands,
 	commandPattern,
 	argumentRequiringCommands,
@@ -30,7 +30,7 @@ let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argum
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(startupFileSymbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
-let labelReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(labelReferenceCommands.map(x => [x, 1]));
+let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
@@ -43,16 +43,8 @@ export interface ParserCallbacks {
 	onLocalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
 	onLabelCreate(symbol: string, location: Location, state: ParsingState): void;
 	onVariableReference(symbol: string, location: Location, state: ParsingState): void;
-	/**
-	 * Called when a *goto, *gosub, *goto_scene, or *gosub_scene is called.
-	 * @param command Command.
-	 * @param label Label being referenced, or empty string if there is no reference.
-	 * @param scene Scene name being referenced, or empty string if there is no reference.
-	 * @param labelLocation Location of the label.
-	 * @param sceneLocation Location of the scene.
-	 * @param state Parsing state.
-	 */
-	onLabelReference(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
+	onFlowControlEvent(command: string, commandLocation: Location, label: string, scene: string,
+		labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 	onParseError(error: Diagnostic): void;
@@ -468,44 +460,51 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 /**
  * Parse a command that references labels, such as *goto.
  * @param command Command.
+ * @param commandGlobalIndex: Index of the command in the document.
  * @param line Line after the command.
  * @param lineGlobalIndex Index of the line in the document.
  * @param state Parsing state.
  */
-function parseLabelReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseFlowControlCommand(command: string, commandGlobalIndex: number, line: string, lineGlobalIndex: number, state: ParsingState) {
+	let commandLocation = Location.create(state.textDocument.uri, Range.create(
+		state.textDocument.positionAt(commandGlobalIndex),
+		state.textDocument.positionAt(commandGlobalIndex + command.length)
+	));
 	let label = "";
 	let scene = "";
 	let labelLocation: Location | undefined = undefined;
 	let sceneLocation: Location | undefined = undefined;
 
-	let m = line.match(/^(?<firstToken>[\w-]+)((?<spacing>[ \t]+)(?<secondToken>\w+))?/);
-	if (m !== null && m.groups !== undefined) {
-		if (command.includes("_scene")) {
-			scene = m.groups.firstToken;
-			sceneLocation = Location.create(state.textDocument.uri, Range.create(
-				state.textDocument.positionAt(lineGlobalIndex),
-				state.textDocument.positionAt(lineGlobalIndex + scene.length)
-			));
-
-			if (m.groups.secondToken !== undefined) {
-				label = m.groups.secondToken;
-				let labelIndex = lineGlobalIndex + scene.length + m.groups.spacing.length;
+	if (command != "return") {
+		let m = line.match(/^(?<firstToken>[\w-]+)((?<spacing>[ \t]+)(?<secondToken>\w+))?/);
+		if (m !== null && m.groups !== undefined) {
+			if (command.includes("_scene")) {
+				scene = m.groups.firstToken;
+				sceneLocation = Location.create(state.textDocument.uri, Range.create(
+					state.textDocument.positionAt(lineGlobalIndex),
+					state.textDocument.positionAt(lineGlobalIndex + scene.length)
+				));
+	
+				if (m.groups.secondToken !== undefined) {
+					label = m.groups.secondToken;
+					let labelIndex = lineGlobalIndex + scene.length + m.groups.spacing.length;
+					labelLocation = Location.create(state.textDocument.uri, Range.create(
+						state.textDocument.positionAt(labelIndex),
+						state.textDocument.positionAt(labelIndex + label.length)
+					));
+				}
+			}
+			else {
+				label = m.groups.firstToken;
 				labelLocation = Location.create(state.textDocument.uri, Range.create(
-					state.textDocument.positionAt(labelIndex),
-					state.textDocument.positionAt(labelIndex + label.length)
+					state.textDocument.positionAt(lineGlobalIndex),
+					state.textDocument.positionAt(lineGlobalIndex + label.length)
 				));
 			}
 		}
-		else {
-			label = m.groups.firstToken;
-			labelLocation = Location.create(state.textDocument.uri, Range.create(
-				state.textDocument.positionAt(lineGlobalIndex),
-				state.textDocument.positionAt(lineGlobalIndex + label.length)
-			));
-		}
 	}
 
-	state.callbacks.onLabelReference(command, label, scene, labelLocation, sceneLocation, state);
+	state.callbacks.onFlowControlEvent(command, commandLocation, label, scene, labelLocation, sceneLocation, state);
 }
 
 /**
@@ -568,8 +567,8 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	else if (variableReferenceCommandsLookup.get(command)) {
 		parseVariableReferenceCommand(command, line, lineIndex, state);
 	}
-	else if (labelReferenceCommandsLookup.get(command)) {
-		parseLabelReferenceCommand(command, line, lineIndex, state);
+	else if (flowControlCommandsLookup.get(command)) {
+		parseFlowControlCommand(command, commandIndex, line, lineIndex, state);
 	}
 	else if (command == "scene_list") {
 		let nextLineIndex = findLineEnd(document, commandIndex);

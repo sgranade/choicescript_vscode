@@ -2,7 +2,7 @@ import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
-import { ReadonlyIdentifierIndex } from './indexer';
+import { ReadonlyIdentifierIndex } from "./index";
 
 
 /* COMMANDS */
@@ -64,9 +64,9 @@ export let variableManipulationCommands: ReadonlyArray<string> = [
 export let variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
 
 /**
- * Commands that reference labels.
+ * Commands that control flow.
  */
-export let labelReferenceCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene" ];
+export let flowControlCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene", "return" ];
 
 
 /* COMPLETIONS */

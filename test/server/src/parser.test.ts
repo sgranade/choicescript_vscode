@@ -4,6 +4,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { TextDocument, Position, Location, Diagnostic } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
+import { FlowControlEvent } from '../../../server/src';
 
 const fakeDocumentUri: string = "file:///startup.txt";
 
@@ -27,13 +28,6 @@ interface CommandLine {
 interface Symbol {
 	text: string,
 	location: Location
-}
-
-interface Label {
-	label: string,
-	scene: string,
-	labelLocation: Location | undefined,
-	sceneLocation: Location | undefined
 }
 
 describe("Parser", () => {
@@ -107,14 +101,28 @@ describe("Parser", () => {
 		});
 	})
 
-	describe("Label-Referencing Command Parsing", () => {
+	describe("Flow Control Command Parsing", () => {
+		it("should callback on return", () => {
+			let fakeDocument = createDocument("*return");
+			let received: Array<FlowControlEvent> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+				received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+		})
+
 		it("should callback on goto", () => {
 			let fakeDocument = createDocument("*goto label");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-				received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -127,11 +135,11 @@ describe("Parser", () => {
 
 		it("should callback on gosub", () => {
 			let fakeDocument = createDocument("*gosub label");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});	
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -144,11 +152,11 @@ describe("Parser", () => {
 
 		it("should deal with no scene on a goto", () => {
 			let fakeDocument = createDocument("*goto label");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -160,11 +168,11 @@ describe("Parser", () => {
 
 		it("should callback on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -177,11 +185,11 @@ describe("Parser", () => {
 
 		it("should callback on gosub_scene", () => {
 			let fakeDocument = createDocument("*gosub_scene scenename");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -194,11 +202,11 @@ describe("Parser", () => {
 
 		it("should deal with no label on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -210,11 +218,11 @@ describe("Parser", () => {
 
 		it("should deal with hyphenated scenes on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene 1-scenename");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
@@ -227,11 +235,11 @@ describe("Parser", () => {
 
 		it("should send scene and label on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename labelname");
-			let received: Array<Label> = [];
+			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onLabelReference(Arg.all()).mimicks(
-				(command: string, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-				received.push({label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
 			})
 	
 			parse(fakeDocument, fakeCallbacks);
