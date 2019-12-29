@@ -309,6 +309,14 @@ export function variableIsAchievement(variable: string, achievements: ReadonlyId
 }
 
 /**
+ * Determine if a variable name could be an auto-created parameter variable.
+ * @param variable Variable name.
+ */
+export function variableIsPossibleParameter(variable: string): boolean {
+	return /^param_\d+$/.test(variable);
+}
+
+/**
  * Determine if a URI points to a ChoiceScript startup file.
  * 
  * @param uriString URI to see if it refers to the startup file.

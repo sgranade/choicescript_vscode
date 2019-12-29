@@ -16,7 +16,8 @@ import {
 	stylePattern,
 	extractMultireplaceTest,
 	variableIsAchievement,
-	stringPattern
+	stringPattern,
+	variableIsPossibleParameter
 } from './language';
 import { getFilenameFromUri, stringIsNumber, createDiagnostic, createDiagnosticFromLocation } from './utilities';
 
@@ -496,6 +497,15 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			if (scopes.achievementVarScopes.length > 0 && 
 				variableIsAchievement(variable, projectIndex.getAchievements())) {
 				for (let scopeRange of scopes.achievementVarScopes) {
+					trimmedLocations = locations.filter((location: Location) => {
+						rangeInOtherRange(location.range, scopeRange)
+					});
+				}
+			}
+			// Get rid of any variables that are legal param_1 and similar
+			if (scopes.paramScopes.length > 0 &&
+				variableIsPossibleParameter(variable)) {
+				for (let scopeRange of scopes.paramScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
 						rangeInOtherRange(location.range, scopeRange)
 					});

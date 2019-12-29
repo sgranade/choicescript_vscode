@@ -229,6 +229,21 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_othername" not defined');
 		});
+
+		it("should not flag params variables after instantiation", () => {
+			let scopes: DocumentScopes = {
+				achievementVarScopes: [],
+				paramScopes: [Range.create(1, 0, 4, 0)]
+			};
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["param_1", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({variableReferences: variableReferences, scopes: scopes});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
 	});
 	
 	describe("All Commands Validation", () => {
