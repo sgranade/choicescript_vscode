@@ -131,7 +131,7 @@ export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)
 /**
  * Pattern to find commands that aren't on a line by themselves.
  */
-export let incorrectCommandPattern = "(?<!\\n|^)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
+export let incorrectCommandPattern = "(?<=\\S)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
 /**
  * Pattern to find the start of a multireplace.
  */

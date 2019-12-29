@@ -273,7 +273,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	// Validate flow control
 	diagnostics.push(...validateFlowControlEvents(state));
 
-	// TODO fix below this line
+	// Add suggestions for the user that don't rise to the level of an error
 	let text = textDocument.getText();
 	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}`, 'g');
 	let m: RegExpExecArray | null;
