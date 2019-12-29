@@ -307,6 +307,22 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 	return globalIndex;
 }
 
+function parseParams(line: string, lineGlobalIndex: number, state: ParsingState) {
+	// Split into words
+	let wordsPattern = /\w+/g;
+	let m: RegExpExecArray | null;
+	while (m = wordsPattern.exec(line)) {
+		if (m === null)
+			continue;
+
+		let location = Location.create(state.textDocument.uri, Range.create(
+			state.textDocument.positionAt(lineGlobalIndex + m.index),
+			state.textDocument.positionAt(lineGlobalIndex + m.index + m[0].length)
+		));
+		state.callbacks.onLocalVariableCreate(m[0], location, state);
+	}
+}
+
 /**
  * Parse a symbol creating or manipulating command
  * @param command Command that defines or references a symbol.
@@ -315,9 +331,12 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
  * @param state Indexing state.
  */
 function parseSymbolManipulationCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
-	// The set command is odd in that it takes an entire expression, so handle that differently
+	// The set and params commands are odd in that they take an entire expression, so handle them differently
 	if (command == "set") {
 		parseExpression(line, lineGlobalIndex, state);
+	}
+	else if (command == "params") {
+		parseParams(line, lineGlobalIndex, state);
 	}
 	else {
 		let linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;

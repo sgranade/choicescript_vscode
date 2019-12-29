@@ -292,6 +292,25 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
 	
+		it("should callback on param variable creation", () => {
+			let fakeDocument = createDocument("*params var1 var2");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[0].text).to.equal("var1");
+			expect(received[0].location.range.start.line).to.equal(8);
+			expect(received[0].location.range.end.line).to.equal(12);
+			expect(received[1].text).to.equal("var2");
+			expect(received[1].location.range.start.line).to.equal(13);
+			expect(received[1].location.range.end.line).to.equal(17);
+		});
+	
 		it("should callback on references in local variable creation", () => {
 			let fakeDocument = createDocument("*temp variable {other_variable}");
 			let received: Array<Symbol> = [];

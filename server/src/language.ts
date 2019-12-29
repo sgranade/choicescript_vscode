@@ -43,7 +43,7 @@ export let argumentRequiringCommands: ReadonlyArray<string> = [
  * Commands that create labels or variables.
  */
 export let symbolCreationCommands: ReadonlyArray<string> = [
-	"temp", "label"
+	"temp", "label", "params"
 ];
 
 /**
