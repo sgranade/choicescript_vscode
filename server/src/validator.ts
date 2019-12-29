@@ -1,4 +1,4 @@
-import { TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ProjectIndex } from './indexer';
 import { 
@@ -20,7 +20,7 @@ import {
 	variableIsAchievement,
 	stringPattern
 } from './language';
-import { getFilenameFromUri, stringIsNumber, createDiagnostic } from './utilities';
+import { getFilenameFromUri, stringIsNumber, createDiagnostic, createDiagnosticFromLocation } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
@@ -100,6 +100,22 @@ function isVariableReference(variable: string, state: ValidationState): boolean 
 		builtinVariablesLookup.get(variable) ||
 		isAchievementVariable
 	));
+}
+
+/**
+ * Get the location where a variable was created.
+ * @param variable Variable to get.
+ * @param state Validation state.
+ */
+function getVariableCreationLocation(variable: string, state: ValidationState): Location | undefined {
+	let location = state.projectIndex.getGlobalVariables().get(variable);
+	if (location !== undefined) {
+		return location;
+	}
+
+	location = state.projectIndex.getLocalVariables(state.textDocument.uri).get(variable);
+
+	return location;
 }
 
 /**
@@ -416,6 +432,19 @@ function validateMultireplace(text: string, index: number, state: ValidationStat
 }
 
 /**
+ * Compare two positions.
+ * @param pos1 First position.
+ * @param pos2 Second position.
+ * @returns -1 if pos1 is before pos2, 0 if they're equal, 1 if pos1 is after pos2.
+ */
+function comparePositions(pos1: Position, pos2: Position): number {
+	if (pos1.line == pos2.line && pos1.character == pos2.character) {
+		return 0;
+	}
+	return (pos1.line > pos2.line || (pos1.line == pos2.line && pos1.character > pos2.character)) ? 1 : -1;
+}
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -423,10 +452,47 @@ function validateMultireplace(text: string, index: number, state: ValidationStat
  * @returns List of diagnostic messages.
  */
 export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex): Diagnostic[] {
-	let diagnostics: Diagnostic[] = [];
-
 	let state = new ValidationState(projectIndex, textDocument);
 
+	// Start with parse errors
+	let diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
+
+	// Validate references
+	let references = projectIndex.getDocumentVariableReferences(textDocument.uri);
+	let whereDefined = "in this file";
+	if (!uriIsStartupFile(textDocument.uri)) {
+		whereDefined += " or startup.txt";
+	}
+	for (let [variable, locations] of references.entries()) {
+		let creationLocation = getVariableCreationLocation(variable, state);
+
+		if (creationLocation) {
+			// Make sure we don't reference variables before they're created
+			let badLocations = locations.filter((location: Location) => {
+				return ((location.uri == creationLocation!.uri) && 
+				(comparePositions(location.range.end, creationLocation!.range.start) < 0))
+			});
+			if (badLocations.length > 0) {
+				let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
+					return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
+						`Variable "${variable}" used before it was created`);
+				})
+				diagnostics.push(...newDiagnostics);
+			}
+		}
+		else {
+			// TODO handle block-scoped variables!
+			if (!builtinVariablesLookup.get(variable)) {
+				let newDiagnostics = locations.map((location: Location): Diagnostic => {
+					return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
+						`Variable "${variable}" not defined ${whereDefined}`);
+				});
+				diagnostics.push(...newDiagnostics);
+			}
+		}
+	}
+
+	// TODO fix below this line
 	let text = textDocument.getText();
 	let matchPattern = RegExp(`${commandPattern}|${referencePattern}|${stylePattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Location, TextDocument } from 'vscode-languageserver';
+import { Location, Range, TextDocument } from 'vscode-languageserver';
 
 import { ProjectIndex, IdentifierIndex, VariableReferenceIndex } from '../../../server/src/indexer';
 import { generateDiagnostics } from '../../../server/src/validator';
@@ -70,13 +70,7 @@ function createIndex({
 			fakeIndex.getLabels(labelsUri).returns(labels);
 		}
 		fakeIndex.getAchievements(Arg.any()).returns(achievements);
-		fakeIndex.getVariableReferences(Arg.all()).mimicks((variable: string) => {
-			let locations = variableReferences.get(variable);
-			if (locations === undefined) {
-				locations = [];
-			}
-			return locations;
-		})
+		fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
 	
 		return fakeIndex;
 }
@@ -106,19 +100,22 @@ describe("Validator", () => {
 	
 	describe("Variable Validation", () => {
 		it("should flag missing variables", () => {
-			let variableReferences: VariableReferenceIndex = new Map([["unknown", [Substitute.for<Location>()]]])
+			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["unknown", [location]]])
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include("TK");
+			expect(diagnostics[0].message).to.include('"unknown" not defined');
 		});
 
 		it("should not flag existing local variables", () => {
-			let localVariables: Map<string, Location> = new Map([["local_var", Substitute.for<Location>()]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [Substitute.for<Location>()]]])
+			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
@@ -127,15 +124,45 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 
+		it("should flag a local variable referenced before it's created", () => {
+			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
+		});
+
 		it("should not flag existing global variables", () => {
-			let globalVariables: Map<string, Location> = new Map([["global_var", Substitute.for<Location>()]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [Substitute.for<Location>()]]])
+			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
 			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should flag a global variable referenced before it's created", () => {
+			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include('"global_var" used before it was created');
 		});
 
 		it("should not flag built-in variables", () => {

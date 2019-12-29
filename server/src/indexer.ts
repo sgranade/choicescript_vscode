@@ -23,6 +23,11 @@ export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Locatio
 export type VariableReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
 
 /**
+ * Type for an immutable index of references to variables.
+ */
+export type ReadonlyVariableReferenceIndex = ReadonlyCaseInsensitiveMap<string, Array<Location>>;
+
+/**
  * Type for a mutable index of labels.
  */
 export type LabelIndex = Map<string, Location>;
@@ -119,7 +124,12 @@ export interface ProjectIndex {
 	 */
 	getAchievements(): ReadonlyIdentifierIndex;
 	/**
-	 * Get all references to a variable.
+	 * Get all references to variables in one scene document.
+	 * @param textDocumentUri URI to scene document.
+	 */
+	getDocumentVariableReferences(textDocumentUri: string): ReadonlyVariableReferenceIndex;
+	/**
+	 * Get all references to a variable across all documents.
 	 * @param variable Variable to find references to.
 	 */
 	getVariableReferences(variable: string): ReadonlyArray<Location>;
@@ -226,6 +236,13 @@ export class Index implements ProjectIndex {
 	}
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
+	}
+	getDocumentVariableReferences(textDocumentUri: string): ReadonlyVariableReferenceIndex {
+		let index = this._variableReferences.get(normalizeUri(textDocumentUri));
+		if (index === undefined) {
+			index = new Map();
+		}
+		return index;
 	}
 	getVariableReferences(symbol: string): ReadonlyArray<Location> {
 		let locations: Location[] = [];
