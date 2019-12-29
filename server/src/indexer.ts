@@ -1,4 +1,4 @@
-import { Location, TextDocument } from 'vscode-languageserver';
+import { Location, TextDocument, Diagnostic } from 'vscode-languageserver';
 
 import {
 	CaseInsensitiveMap,
@@ -82,6 +82,12 @@ export interface ProjectIndex {
 	 */
 	updateAchievements(newIndex: IdentifierIndex): void;
 	/**
+	 * Update the list of errors that occured during parsing.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New list of errors.
+	 */
+	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void;
+	/**
 	 * Get the URI to the project's startup.txt file.
 	 */
 	getStartupFileUri(): string;
@@ -123,6 +129,11 @@ export interface ProjectIndex {
 	 */
 	getLabelReferences(label: string): ReadonlyArray<Location>;
 	/**
+	 * Get the parse errors.
+	 * @param textDocumentUri URI to scene document.
+	 */
+	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic>;
+	/**
 	 * Remove a document from the project index.
 	 * @param textDocumentUri URI to document to remove.
 	 */
@@ -141,6 +152,7 @@ export class Index implements ProjectIndex {
 	_localLabels: Map<string, IdentifierIndex>;
 	_labelReferences: Map<string, LabelReferenceIndex>;
 	_achievements: IdentifierIndex;
+	_parseErrors: Map<string, Diagnostic[]>;
 
 	constructor() {
 		this._startupFileUri = "";
@@ -151,6 +163,7 @@ export class Index implements ProjectIndex {
 		this._localLabels = new Map();
 		this._labelReferences = new Map();
 		this._achievements = new Map();
+		this._parseErrors = new Map();
 	}
 
 	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
@@ -174,6 +187,9 @@ export class Index implements ProjectIndex {
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
+	}
+	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]) {
+		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
 	}
 	getStartupFileUri(): string {
 		return this._startupFileUri;
@@ -233,6 +249,13 @@ export class Index implements ProjectIndex {
 
 		return locations;
 	}
+	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic> {
+		let errors = this._parseErrors.get(normalizeUri(textDocumentUri));
+		if (errors === undefined)
+			errors = [];
+
+		return errors;
+	}
 	removeDocument(textDocumentUri: string) {
 		this._localVariables.delete(normalizeUri(textDocumentUri));
 		this._variableReferences.delete(normalizeUri(textDocumentUri));
@@ -256,6 +279,7 @@ class IndexingState {
 	labels: IdentifierIndex = new Map();
 	labelReferences: LabelReferenceIndex = new Map();
 	achievements: IdentifierIndex = new Map();
+	parseErrors: Array<Diagnostic> = [];
 
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
@@ -275,7 +299,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	let callbacks: ParserCallbacks = {
 		onCommand: (prefix: string, command: string, spacing: string, line: string, 
 			commandLocation: Location, state: ParsingState) => {
-
+			// Do nothing
 		},
 
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
@@ -321,7 +345,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onParseError: (error: Diagnostic) => {
-
+			indexingState.parseErrors.push(error);
 		}
 	}
 
@@ -336,4 +360,5 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 	index.updateLabelReferences(textDocument.uri, indexingState.labelReferences);
+	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);
 }

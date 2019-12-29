@@ -406,6 +406,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(13);
 		});
 	
+		it("should callback on variables that are added to", () => {
+			let fakeDocument = createDocument("*set variable+3");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(5);
+			expect(received[0].location.range.end.line).to.equal(13);
+		});
+	
 		it("should callback on variable references", () => {
 			let fakeDocument = createDocument("*set {variable} 3");
 			let received: Array<Symbol> = [];
@@ -729,6 +745,22 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(12);
+		});
+	
+		it("should callback on local variables in parentheses", () => {
+			let fakeDocument = createDocument("*if (variable > 1)");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(5);
+			expect(received[0].location.range.end.line).to.equal(13);
 		});
 	
 		it("should not callback on strings", () => {

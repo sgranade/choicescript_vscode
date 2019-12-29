@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position } from 'vscode-languageserver';
+import { TextDocument, Position, Diagnostic } from 'vscode-languageserver';
 
 import { ProjectIndex, IdentifierIndex, updateProjectIndex, VariableReferenceIndex, LabelIndex, LabelReferenceIndex } from '../../../server/src/indexer';
 
@@ -113,4 +113,23 @@ describe("Indexer", () => {
 			expect(receivedLabels[0]).has.keys(['label_name']);
 		});
 	})	
+
+	describe("Parse Errors", () => {
+		it("should flag non-existent commands", () => {
+			let fakeDocument = createDocument("*fake_command");
+			let received: Array<Diagnostic[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+				(uri: string, errors: Diagnostic[]) => { received.push(errors) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].length).to.equal(1);
+			expect(received[0][0].message).to.include("*fake_command isn't a valid");
+			expect(received[0][0].range.start.line).to.equal(1);
+			expect(received[0][0].range.end.line).to.equal(13);
+		});
+	})
 })
