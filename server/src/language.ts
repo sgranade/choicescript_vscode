@@ -42,14 +42,7 @@ export let argumentRequiringCommands: ReadonlyArray<string> = [
 /**
  * Commands that create labels or variables.
  */
-export let symbolCreationCommands: ReadonlyArray<string> = [
-	"temp", "label", "params"
-];
-
-/**
- * Commands that create labels or variables in a ChoiceScript startup file.
- */
-export let startupFileSymbolCreationCommands: ReadonlyArray<string> = [...symbolCreationCommands, "create"];
+export let symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];
 
 /**
  * Commands that manipulate the contents of variables.
@@ -132,7 +125,7 @@ export let namedValues: ReadonlyArray<string> = [
 /* PATTERNS */
 
 /**
- * Pattern to find commands, legal or otherwise.
+ * Pattern to find legal commands.
  */
 export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
@@ -144,19 +137,9 @@ export let multiStartPattern = "(?<multi>@!?!?{)";
  */
 export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
- * Pattern to find a reference to a variable.
- */
-// TODO GET RID OF THIS IT'S INSUFFICIENT
-export let referencePattern = "(?<!@|@!|@!!)(?<reference>(\\$!?!?)?{(?<referenceSymbol>[^}]+)})";
-/**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
-/**
- * Pattern to find strings.
- */
-// TODO GET RID OF THIS
-export let stringPattern = '(?<!\\\\)"(?<quote>.*?)(?<!\\\\)"';
 
 
 /* FUNCTIONS */
@@ -257,43 +240,6 @@ export function TokenizeMultireplace(section: string, globalIndex: number = 0): 
 		body: body,
 		endIndex: globalIndex + multireplaceEndLocalIndex
 	};
-}
-
-// TODO GET RID OF MEEEE!!!
-/**
- * Extract the test portion of a multireplace (the bit right after "@{").
- * @param document Document containing the multireplace.
- * @param startIndex Index to the multireplace's contents (after the "@{" part).
- * @returns The test portion and its index in the document.
- */
-export function extractMultireplaceTest(document: string, 
-	startIndex: number): { testContents: string | undefined; index: number } {
-	let testContents: string | undefined = undefined;
-	let testIndex: number = startIndex;
-
-	if (document[startIndex] != '(') {
-		// The multireplace only has a bare symbol as its test
-		let i = startIndex;
-		let endIndex: number | undefined = undefined;
-		while (i < document.length) {
-			if (!/\w/.test(document[i])) {
-				endIndex = i;
-				break;
-			}
-			i++;
-		}
-		if (endIndex !== undefined) {
-			testContents = document.slice(startIndex, endIndex);
-		}
-	}
-	else {
-		// TODO tokenizing would potentially give better performance
-		testIndex++;
-		let documentPiece = document.slice(testIndex);
-		testContents = extractToMatchingDelimiter(documentPiece, "(", ")");
-	}
-
-	return { testContents: testContents, index: testIndex };
 }
 
 /**

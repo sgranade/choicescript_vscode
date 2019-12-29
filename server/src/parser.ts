@@ -11,7 +11,7 @@ import {
 	variableManipulationCommands,
 	variableReferenceCommands,
 	flowControlCommands,
-	startupFileSymbolCreationCommands,
+	symbolCreationCommands,
 	commandPattern,
 	argumentRequiringCommands,
 	startupCommands,
@@ -28,7 +28,7 @@ import {
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
-let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(startupFileSymbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
+let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
