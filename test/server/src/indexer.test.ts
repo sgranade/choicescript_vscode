@@ -64,6 +64,20 @@ describe("Indexer", () => {
 			expect(received[0].get('variable').range.start.line).to.equal(6);
 			expect(received[0].get('variable').range.end.line).to.equal(14);
 		});
+
+		it("should index effective locations of local variables created in a subroutine", () => {
+			let fakeDocument = createDocument("*gosub subroutine\n*finish\n*label subroutine\n*temp variable 3\n*return\n");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...received[0].keys()]).to.eql(['variable']);
+			expect(received[0].get('variable').range.start.line).to.equal(1);
+			expect(received[0].get('variable').range.end.line).to.equal(6);
+		});
+
 	})
 	
 	describe("Symbol Command Indexing", () => {

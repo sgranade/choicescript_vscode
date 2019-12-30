@@ -1,5 +1,5 @@
 import * as URI from 'urijs';
-import { Diagnostic, DiagnosticSeverity, TextDocument, Location } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, TextDocument, Location, Range, Position } from 'vscode-languageserver';
 
 /**
  * Map that stores and accesses string keys without regard to case.
@@ -125,6 +125,29 @@ export function normalizeUri(uriString: string): string {
 export function getFilenameFromUri(uriString: string): string | undefined {
 	let uri = URI(uriString);
 	return uri.filename();
+}
+
+/**
+ * Compare two positions.
+ * @param pos1 First position.
+ * @param pos2 Second position.
+ * @returns -1 if pos1 is before pos2, 0 if they're equal, 1 if pos1 is after pos2.
+ */
+export function comparePositions(pos1: Position, pos2: Position): number {
+	if (pos1.line == pos2.line && pos1.character == pos2.character) {
+		return 0;
+	}
+	return (pos1.line > pos2.line || (pos1.line == pos2.line && pos1.character > pos2.character)) ? 1 : -1;
+}
+
+/**
+ * Determine if one range is completely contained by a second.
+ * @param range1 First range.
+ * @param range2 Second range.
+ */
+export function rangeInOtherRange(range1: Range, range2: Range): boolean {
+	return (comparePositions(range1.start, range2.start) >= 0 &&
+		comparePositions(range1.end, range2.end) <= 0);
 }
 
 /**

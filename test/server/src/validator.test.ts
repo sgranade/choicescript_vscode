@@ -19,6 +19,7 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 interface IndexArgs {
 	globalVariables?: IdentifierIndex,
 	localVariables?: IdentifierIndex,
+	subroutineVariables?: IdentifierIndex,
 	startupUri?: string,
 	labels?: IdentifierIndex,
 	labelsUri?: string,
@@ -31,7 +32,7 @@ interface IndexArgs {
 }
 
 function createIndex({
-	globalVariables, localVariables, startupUri, labels, 
+	globalVariables, localVariables, subroutineVariables, startupUri, labels, 
 	labelsUri, sceneList, sceneFileUri, achievements, 
 	variableReferences, flowControlEvents, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
 		if (globalVariables === undefined) {
@@ -39,6 +40,9 @@ function createIndex({
 		}
 		if (localVariables === undefined) {
 			localVariables = new Map();
+		}
+		if (subroutineVariables === undefined) {
+			subroutineVariables = new Map();
 		}
 		if (startupUri === undefined) {
 			startupUri = "";
@@ -71,6 +75,7 @@ function createIndex({
 		let fakeIndex = Substitute.for<ProjectIndex>();
 		fakeIndex.getGlobalVariables().returns(globalVariables);
 		fakeIndex.getLocalVariables(Arg.any()).returns(localVariables);
+		fakeIndex.getSubroutineLocalVariables(Arg.any()).returns(subroutineVariables);
 		fakeIndex.getStartupFileUri().returns(startupUri);
 		fakeIndex.getSceneUri(Arg.any()).returns(sceneFileUri);
 		fakeIndex.getSceneList().returns(sceneList);
@@ -163,29 +168,13 @@ describe("Validator", () => {
 		it("should not flag a local variable created through a gosub", () => {
 			let gosubLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let labelLocation = Location.create(fakeDocumentUri, Range.create(20, 0, 20, 5));
 			let createLocation = Location.create(fakeDocumentUri, Range.create(21, 0, 21, 5));
-			let returnLocation = Location.create(fakeDocumentUri, Range.create(22, 0, 22, 5));
-			let events: FlowControlEvent[] = [{
-				command: "gosub",
-				commandLocation: gosubLocation,
-				label: "local_label",
-				labelLocation: referenceLocation,
-				scene: ""
-			},
-			{
-				command: "return",
-				commandLocation: returnLocation,
-				label: "",
-				scene: ""
-			}];
 			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let subroutineVariables: Map<string, Location> = new Map([["local_var", gosubLocation]]);
 			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
-			let localLabels: Map<string, Location> = new Map([["local_label", labelLocation]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({
-				localVariables: localVariables, variableReferences: variableReferences, labels: localLabels,
-				flowControlEvents: events
+				localVariables: localVariables, variableReferences: variableReferences, subroutineVariables: subroutineVariables
 			});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);

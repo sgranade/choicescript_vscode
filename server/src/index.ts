@@ -74,6 +74,15 @@ export interface ProjectIndex {
      * @param newIndex New index of local variables.
      */
 	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
+	/**
+	 * Update the index of variables defined in subroutines.
+	 * 
+	 * These locations are the location of the first *gosub that calls those
+	 * subroutines.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of subroutine-local variables.
+	 */
+	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
     /**
      * Update the index of references to variables.
      * @param textDocumentUri URI to document whose index is to be updated.
@@ -136,6 +145,11 @@ export interface ProjectIndex {
      * @param textDocumentUri Scene document URI.
      */
 	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex;
+	/**
+	 * Get the local variables defined in a scene file's subroutines.
+	 * @param textDocumentUri Scene document URI.
+	 */
+	getSubroutineLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex;
     /**
      * Get the labels in a scene file.
      * @param textDocumentUri Scene document URI.
@@ -184,6 +198,7 @@ export class Index implements ProjectIndex {
 	_startupFileUri: string;
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierIndex>;
+	_subroutineLocalVariables: Map<string, IdentifierIndex>;
 	_variableReferences: Map<string, VariableReferenceIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, IdentifierIndex>;
@@ -195,6 +210,7 @@ export class Index implements ProjectIndex {
 		this._startupFileUri = "";
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
+		this._subroutineLocalVariables = new Map();
 		this._variableReferences = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
@@ -209,6 +225,9 @@ export class Index implements ProjectIndex {
 	}
 	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
 		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+	}
+	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+		this._subroutineLocalVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
 		this._variableReferences.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
@@ -249,6 +268,12 @@ export class Index implements ProjectIndex {
 	}
 	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
 		let index = this._localVariables.get(normalizeUri(textDocumentUri));
+		if (index === undefined)
+			index = new Map();
+		return index;
+	}
+	getSubroutineLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
+		let index = this._subroutineLocalVariables.get(normalizeUri(textDocumentUri));
 		if (index === undefined)
 			index = new Map();
 		return index;

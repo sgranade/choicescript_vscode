@@ -1,8 +1,8 @@
-import { Location, Range, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, VariableReferenceIndex, LabelReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex } from './index';
-import { createDiagnostic, createDiagnosticFromLocation } from './utilities';
+import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex } from './index';
+import { createDiagnosticFromLocation, comparePositions } from './utilities';
 
 /**
  * Captures information about the current state of indexing
@@ -28,6 +28,88 @@ class IndexingState {
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
 	}
+}
+
+/**
+ * Generate scopes from a fully-indexed project.
+ * @param state Indexing state.
+ */
+function generateScopes(state: IndexingState): DocumentScopes {
+	let scopes: DocumentScopes = {
+		achievementVarScopes: [],
+		paramScopes: []
+	};
+	let documentLength = state.textDocument.getText().length;
+	let documentEndLocation = state.textDocument.positionAt(documentLength);
+	if (state.checkAchievementLocation !== undefined) {
+		let start = state.checkAchievementLocation.range.start;
+		scopes.achievementVarScopes.push(Range.create(
+			start, documentEndLocation
+		));
+	}
+	for (let location of state.paramsLocations) {
+		let start = location.range.start;
+		scopes.paramScopes.push(Range.create(
+			start, documentEndLocation
+		));
+	}
+
+	return scopes;
+}
+
+/**
+ * Generate identifiers that lie between two positions.
+ * @param identifiers Index of identifiers.
+ * @param start Start position.
+ * @param end End position.
+ */
+function* identifiersBetweenLocations(
+	identifiers: ReadonlyIdentifierIndex, start: Position, end: Position) {
+	for (let [identifier, location] of identifiers.entries()) {
+		if (comparePositions(location.range.start, start) >= 0 &&
+			comparePositions(location.range.start, end) <= 0) {
+			yield identifier;
+		}
+	}
+}
+
+/**
+ * Find the effective creation location of local variables defined in subroutines.
+ * @param state Indexing state.
+ */
+function findSubroutineVariables(state: IndexingState): IdentifierIndex {
+	let events = state.flowControlEvents;
+	let returnEvents = events.filter((event: FlowControlEvent) => { return event.command == "return"; });
+	let labels = state.labels;
+	let localVariables = state.localVariables;
+	let subroutineVariables: IdentifierIndex = new Map();
+
+	for (let event of events) {
+		if (event.command != "gosub") {
+			continue;
+		}
+		// If a temp variable is defined in a gosubbed label, it's as if it's created
+		// at the location of the *gosub
+		let labelLocation = labels.get(event.label);
+		if (labelLocation === undefined) {
+			continue;
+		}
+		// Find the return that's after that label
+		// This trick works b/c the array of events is built from the top of the document down
+		let firstReturn = returnEvents.find(
+			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation!.range.start.line; }
+		);
+		if (firstReturn === undefined) {
+			continue;
+		}
+		for (let variable of identifiersBetweenLocations(localVariables, labelLocation.range.end, firstReturn.commandLocation.range.start)) {
+			if (!subroutineVariables.get(variable)) {
+				subroutineVariables.set(variable, event.commandLocation);
+			}
+		}
+	}
+
+	return subroutineVariables;
 }
 
 /**
@@ -111,25 +193,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	}
 
 	parse(textDocument, callbacks);
-
-	let scopes: DocumentScopes = {
-		achievementVarScopes: [],
-		paramScopes: []
-	};
-	let documentLength = textDocument.getText().length;
-	let documentEndLocation = textDocument.positionAt(documentLength);
-	if (indexingState.checkAchievementLocation !== undefined) {
-		let start = indexingState.checkAchievementLocation.range.start;
-		scopes.achievementVarScopes.push(Range.create(
-			start, documentEndLocation
-		));
-	}
-	for (let location of indexingState.paramsLocations) {
-		let start = location.range.start;
-		scopes.paramScopes.push(Range.create(
-			start, documentEndLocation
-		));
-	}
+	let scopes = generateScopes(indexingState);
+	let subroutineVariables = findSubroutineVariables(indexingState);
 
 	if (isStartupFile) {
 		index.updateGlobalVariables(textDocument.uri, indexingState.globalVariables);
@@ -137,6 +202,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		index.updateAchievements(indexingState.achievements);
 	}
 	index.updateLocalVariables(textDocument.uri, indexingState.localVariables);
+	index.updateSubroutineLocalVariables(textDocument.uri, subroutineVariables);
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 	index.updateVariableScopes(textDocument.uri, scopes);
