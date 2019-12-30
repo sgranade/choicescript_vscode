@@ -151,6 +151,39 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
 		});
 
+		it("should not flag a local variable created through a gosub", () => {
+			let gosubLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let labelLocation = Location.create(fakeDocumentUri, Range.create(20, 0, 20, 5));
+			let createLocation = Location.create(fakeDocumentUri, Range.create(21, 0, 21, 5));
+			let returnLocation = Location.create(fakeDocumentUri, Range.create(22, 0, 22, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub",
+				commandLocation: gosubLocation,
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			},
+			{
+				command: "return",
+				commandLocation: returnLocation,
+				label: "",
+				scene: ""
+			}];
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
+			let localLabels: Map<string, Location> = new Map([["local_label", labelLocation]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				localVariables: localVariables, variableReferences: variableReferences, labels: localLabels,
+				flowControlEvents: events
+			});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should not flag existing global variables", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));

@@ -1,6 +1,6 @@
 import { TextDocument, Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex } from "./index";
+import { ProjectIndex, FlowControlEvent, ReadonlyIdentifierIndex, IdentifierIndex } from "./index";
 import { 
 	builtinVariables,
 	uriIsStartupFile, 
@@ -30,6 +30,10 @@ class ValidationState {
 	 * Document being validated
 	 */
 	textDocument: TextDocument;
+	/**
+	 * Effective location of *temp variables declared in subroutines.
+	 */
+	effectiveVariableCreations: IdentifierIndex;
 
 	text: string = "";
 
@@ -37,6 +41,7 @@ class ValidationState {
 		this.projectIndex = projectIndex;
 		this.textDocument = textDocument;
 		this.text = textDocument.getText();
+		this.effectiveVariableCreations = new Map();
 	}
 }
 
@@ -46,12 +51,18 @@ class ValidationState {
  * @param state Validation state.
  */
 function getVariableCreationLocation(variable: string, state: ValidationState): Location | undefined {
-	let location = state.projectIndex.getGlobalVariables().get(variable);
+	// Precedence order: effective location variable location; local; global
+	let location = state.effectiveVariableCreations.get(variable);
 	if (location !== undefined) {
 		return location;
 	}
 
 	location = state.projectIndex.getLocalVariables(state.textDocument.uri).get(variable);
+	if (location !== undefined) {
+		return location;
+	}
+
+	location = state.projectIndex.getGlobalVariables().get(variable);
 
 	return location;
 }
@@ -122,12 +133,59 @@ function rangeInOtherRange(range1: Range, range2: Range): boolean {
 		comparePositions(range1.end, range2.end) <= 0);
 }
 
+function* variableCreationsBetweenLocations(
+	variableCreations: ReadonlyIdentifierIndex, start: Location, end: Location) {
+	for (let [variable, location] of variableCreations.entries()) {
+		if (comparePositions(location.range.start, start.range.end) >= 0 &&
+			comparePositions(location.range.start, end.range.start) <= 0) {
+			yield variable;
+		}
+	}
+}
+
+function findEffectiveLocalCreationLocations(state: ValidationState): void {
+	let events = state.projectIndex.getFlowControlEvents(state.textDocument.uri);
+	let returnEvents = events.filter((event: FlowControlEvent) => { return event.command == "return"; });
+	let labels = state.projectIndex.getLabels(state.textDocument.uri);
+	let variableCreations = state.projectIndex.getLocalVariables(state.textDocument.uri);
+	let effectiveVariableCreations: IdentifierIndex = new Map();
+
+	for (let event of events) {
+		if (event.command != "gosub") {
+			continue;
+		}
+		// If a temp variable is defined in a gosubbed label, it's as if it's created
+		// at the location of the *gosub
+		let labelLocation = labels.get(event.label);
+		if (labelLocation === undefined) {
+			continue;
+		}
+		// Find the return that's after that label
+		// This trick works b/c the array of events is built from the top of the document down
+		let firstReturn = returnEvents.find(
+			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation!.range.start.line; }
+		);
+		if (firstReturn === undefined) {
+			continue;
+		}
+		for (let variable of variableCreationsBetweenLocations(variableCreations, labelLocation, firstReturn.commandLocation)) {
+			if (!effectiveVariableCreations.get(variable)) {
+				effectiveVariableCreations.set(variable, event.commandLocation);
+			}
+		}
+	}
+
+	state.effectiveVariableCreations = effectiveVariableCreations;
+}
+
 /**
  * Validate all variable references in a scene document.
  * @param state Validation state.
  */
 function validateReferences(state: ValidationState): Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
+
+	findEffectiveLocalCreationLocations(state);
 
 	// Validate references
 	let references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);
@@ -136,6 +194,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 		whereDefined += " or startup.txt";
 	}
 	for (let [variable, locations] of references.entries()) {
+		// Effective creation locations take precedence
 		let creationLocation = getVariableCreationLocation(variable, state);
 
 		if (creationLocation) {
