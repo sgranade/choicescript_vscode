@@ -289,7 +289,7 @@ export class Index implements ProjectIndex {
 		return index;
 	}
 	getVariableScopes(textDocumentUri: string): DocumentScopes {
-		let scopes = this._documentScopes.get(textDocumentUri);
+		let scopes = this._documentScopes.get(normalizeUri(textDocumentUri));
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],

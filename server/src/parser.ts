@@ -207,7 +207,7 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 			break;
 		}
 
-		delimiterPattern.lastIndex = newGlobalIndex;
+		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
 		globalIndex = newGlobalIndex;
 	}
 

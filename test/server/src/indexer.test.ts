@@ -13,7 +13,7 @@ import {
 } from '../../../server/src/index';
 import { updateProjectIndex } from '../../../server/src/indexer';
 
-const fakeDocumentUri: string = "file:///faker.txt";
+const fakeDocumentUri: string = "file:///startup.txt";
 
 function createDocument(text: string, 
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
@@ -25,6 +25,47 @@ function createDocument(text: string,
 }
 
 describe("Indexer", () => {
+	describe("Symbol Creation Indexing", () => {
+		it("should index locations of created global variables", () => {
+			let fakeDocument = createDocument("*create variable 3");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateGlobalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...received[0].keys()]).to.eql(['variable']);
+			expect(received[0].get('variable').range.start.line).to.equal(8);
+			expect(received[0].get('variable').range.end.line).to.equal(16);
+		});
+
+		it("should index locations of created local variables", () => {
+			let fakeDocument = createDocument("*temp variable 3");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...received[0].keys()]).to.eql(['variable']);
+			expect(received[0].get('variable').range.start.line).to.equal(6);
+			expect(received[0].get('variable').range.end.line).to.equal(14);
+		});
+
+		it("should only index first locations of created local variables", () => {
+			let fakeDocument = createDocument("*temp variable 3\n*temp variable 1");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index) });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect([...received[0].keys()]).to.eql(['variable']);
+			expect(received[0].get('variable').range.start.line).to.equal(6);
+			expect(received[0].get('variable').range.end.line).to.equal(14);
+		});
+	})
+	
 	describe("Symbol Command Indexing", () => {
 		it("should index bare variables in the command", () => {
 			let fakeDocument = createDocument("*set variable 3");
@@ -280,8 +321,8 @@ describe("Indexer", () => {
 	})
 
 	describe("Parse Errors", () => {
-		it("should flag non-existent commands", () => {
-			let fakeDocument = createDocument("*fake_command");
+		it("should flag attempts to re-create already-created global variables", () => {
+			let fakeDocument = createDocument("*create variable 3\n*create variable 9");
 			let received: Array<Diagnostic[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateParseErrors(Arg.all()).mimicks(
@@ -292,9 +333,9 @@ describe("Indexer", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
-			expect(received[0][0].message).to.include("*fake_command isn't a valid");
-			expect(received[0][0].range.start.line).to.equal(1);
-			expect(received[0][0].range.end.line).to.equal(13);
+			expect(received[0][0].message).to.include('Variable "variable" was already created');
+			expect(received[0][0].range.start.line).to.equal(27);
+			expect(received[0][0].range.end.line).to.equal(35);
 		});
 	})
 })

@@ -1,7 +1,8 @@
-import { Location, Range, TextDocument, Diagnostic } from 'vscode-languageserver';
+import { Location, Range, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
 import { IdentifierIndex, VariableReferenceIndex, LabelReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex } from './index';
+import { createDiagnostic, createDiagnosticFromLocation } from './utilities';
 
 /**
  * Captures information about the current state of indexing
@@ -53,12 +54,21 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			indexingState.globalVariables.set(symbol, location);
+			if (indexingState.globalVariables.get(symbol)) {
+				state.callbacks.onParseError(createDiagnosticFromLocation(
+					DiagnosticSeverity.Error, location,
+					`Variable "${symbol}" was already created`
+				));
+			}
+			else {
+				indexingState.globalVariables.set(symbol, location);
+			}
 			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			indexingState.localVariables.set(symbol, location);
+			if (!indexingState.localVariables.get(symbol))
+				indexingState.localVariables.set(symbol, location);
 			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
