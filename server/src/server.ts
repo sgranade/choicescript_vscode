@@ -24,7 +24,7 @@ import globby = require('globby');
 import { updateProjectIndex } from './indexer';
 import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
-import { extractSymbolAtIndex, uriIsStartupFile } from './language';
+import { extractSymbolAtIndex, uriIsStartupFile, variableIsAchievement } from './language';
 import { generateInitialCompletions } from './completions';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -179,6 +179,13 @@ function generateDefinition(documentUri: string, position: Position, projectInde
 		let location = projectIndex.getLocalVariables(document.uri).get(symbol);
 		if (location === undefined) {
 			location = projectIndex.getGlobalVariables().get(symbol);
+		}
+		if (location === undefined) {
+			let achievements = projectIndex.getAchievements();
+			let codename = variableIsAchievement(symbol, achievements);
+			if (codename !== undefined) {
+				location = achievements.get(codename);
+			}
 		}
 	
 		if (location !== undefined) {

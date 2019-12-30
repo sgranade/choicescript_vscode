@@ -97,7 +97,7 @@ function validateSceneReference(
 
 	if (!state.projectIndex.getSceneList().includes(scene)) {
 		diagnostic = createDiagnosticFromLocation(
-			DiagnosticSeverity.Error, location,
+			DiagnosticSeverity.Warning, location,
 			`Scene "${scene}" wasn't found in startup.txt`
 			);
 	}
@@ -142,7 +142,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			
 			// Get rid of any variables that are legal achievement variables
 			if (scopes.achievementVarScopes.length > 0 && 
-				variableIsAchievement(variable, state.projectIndex.getAchievements())) {
+				variableIsAchievement(variable, state.projectIndex.getAchievements()) !== undefined) {
 				for (let scopeRange of scopes.achievementVarScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
 						rangeInOtherRange(location.range, scopeRange)

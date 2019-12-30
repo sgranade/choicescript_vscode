@@ -109,7 +109,7 @@ export let builtinVariables: ReadonlyArray<string> = [
 	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered", "choice_is_web", "choice_is_steam",
 	"choice_is_ios_app", "choice_is_advertising_supported", "choice_is_trial", "choice_release_date", "choice_prerelease",
 	"choice_kindle", "choice_randomtest", "choice_quicktest", "choice_restore_purchases_allowed", "choice_save_allowed",
-	"choice_time_stamp", "choice_nightmode"
+	"choice_time_stamp", "choice_nightmode", "choice_purchased_adfree", "choice_purchase_supported"
 ];
 
 /**
@@ -255,12 +255,18 @@ export function TokenizeMultireplace(section: string, globalIndex: number = 0): 
  * Determine if a variable name references an auto-created achievement variable.
  * @param variable Variable name.
  * @param achievements Index of achievements.
+ * @returns The achievement codename, or undefined if it's not an achievement variable.
  */
-export function variableIsAchievement(variable: string, achievements: ReadonlyIdentifierIndex): boolean {
-	let achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
+export function variableIsAchievement(variable: string, achievements: ReadonlyIdentifierIndex): string | undefined {
+	let codename: string | undefined = undefined;
 
+	let achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
 	let m = achievementVariablePattern.exec(variable);
-	return (m !== null && m.groups !== undefined && achievements.has(m.groups.codename));
+	if (m !== null && m.groups !== undefined && achievements.has(m.groups.codename)) {
+		codename = m.groups.codename;
+	}
+
+	return codename;
 }
 
 /**
