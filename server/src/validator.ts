@@ -8,11 +8,14 @@ import {
 	variableIsAchievement,
 	variableIsPossibleParameter,
 	incorrectCommandPattern,
-	validCommands
+	validCommands,
+	reuseCommands,
+	commandPattern
 } from './language';
-import { getFilenameFromUri, createDiagnostic, createDiagnosticFromLocation } from './utilities';
+import { findLineBegin, getFilenameFromUri, createDiagnostic, createDiagnosticFromLocation } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
+let reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
 let builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 
 /**
@@ -28,9 +31,12 @@ class ValidationState {
 	 */
 	textDocument: TextDocument;
 
+	text: string = "";
+
 	constructor(projectIndex: ProjectIndex, textDocument: TextDocument) {
 		this.projectIndex = projectIndex;
 		this.textDocument = textDocument;
+		this.text = textDocument.getText();
 	}
 }
 
@@ -246,9 +252,24 @@ function validateCommandInLine(command: string, index: number, state: Validation
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (validCommandsLookup.get(command)) {
-		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-			index, index + command.length + 1,
-			`*${command} should be on a line by itself`);
+		let commandOk = false;
+
+		// Make sure we're not in a situation where we can have another command before this one
+		if (command == "if" || command == "selectable_if") {
+			let lineBegin = findLineBegin(state.text, index-1);
+			let line = state.text.substring(lineBegin, index-1);
+			let commandSearch = RegExp(commandPattern);
+			let m = commandSearch.exec(line);
+			if (m && m.groups && reuseCommandsLookup.get(m.groups.command)) {
+				commandOk = true;
+			}
+		}
+		if (!commandOk) {
+			diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+				index, index + command.length + 1,
+				`*${command} should be on a line by itself`);
+	
+		}
 	}
 
 	return diagnostic;
@@ -274,11 +295,10 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateFlowControlEvents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
-	let text = textDocument.getText();
 	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
-	while (m = matchPattern.exec(text)) {
+	while (m = matchPattern.exec(state.text)) {
 		if (m.groups === undefined)
 			continue;
 

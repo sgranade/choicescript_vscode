@@ -29,6 +29,23 @@ export function stringIsNumber(s: string) {
 }
 
 /**
+ * Scan a document's text to find the beginning of the current line.
+ * 
+ * @param document Document text to scan.
+ * @param startIndex Index at which to begin scan.
+ * @returns Index corresponding to the line's beginning.
+ */
+export function findLineBegin(document: string, startIndex: number): number {
+	let i = startIndex;
+	let lineBegin: number = startIndex;
+	while (document[lineBegin] != '\n' && lineBegin >= 0) {
+		lineBegin--;
+	}
+
+	return lineBegin + 1;
+}
+
+/**
  * Scan a document's text to find the end of the current line.
  * 
  * @param document Document text to scan.

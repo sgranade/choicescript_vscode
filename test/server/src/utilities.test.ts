@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineEnd } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd } from '../../../server/src/utilities';
 
 describe("Utilities", () => {
 	describe("Delimiter Extraction", () => {
@@ -61,7 +61,25 @@ describe("Utilities", () => {
 			expect(extract).to.equal("inner");
 		});
 	})
+
+	describe("Finding Line Begin", () => {
+		it("should work with a carriage return", () => {
+			let text = "line1\nline2";
 	
+			let endLocation = findLineBegin(text, 8);
+	
+			expect(endLocation).to.equal(6);
+		});
+	
+		it("should work with CRLF", () => {
+			let text = "line1\r\nline2";
+	
+			let endLocation = findLineBegin(text, 9);
+	
+			expect(endLocation).to.equal(7);
+		});
+	})
+
 	describe("Finding Line End", () => {
 		it("should work with a carriage return", () => {
 			let text = "line1\nline2";

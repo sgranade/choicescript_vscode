@@ -40,6 +40,11 @@ export let argumentRequiringCommands: ReadonlyArray<string> = [
 ];
 
 /**
+ * Commands that modify display of a choice.
+ */
+export let reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
+
+/**
  * Commands that create labels or variables.
  */
 export let symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];

@@ -261,6 +261,15 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
 		});
+
+		it("should not flag a command with *hide_reuse or similar before it", () => {
+			let fakeDocument = createDocument("*hide_reuse *if var");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
 	});
 	
 	describe("Label Reference Commands Validation", () => {
