@@ -289,6 +289,20 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
  * @returns Diagnostic message, if any.
  */
 function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
+	let lineBegin = findLineBegin(state.text, index-1);
+	let line = state.text.substring(lineBegin, index-1);
+	let commandSearch = RegExp(commandPattern);
+	let m = commandSearch.exec(line);
+	let actualCommand = m?.groups?.command;
+	if (actualCommand === undefined) {
+		actualCommand = "";
+	}
+
+	// Anything goes in a comment
+	if (actualCommand == "comment") {
+		return;
+	}
+
 	let description = "";
 	if (characters == '...')
 		description = "ellipsis (…)";
@@ -311,24 +325,28 @@ function validateCommandInLine(command: string, index: number, state: Validation
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (validCommandsLookup.get(command)) {
-		let commandOk = false;
+		let lineBegin = findLineBegin(state.text, index-1);
+		let line = state.text.substring(lineBegin, index-1);
+		let commandSearch = RegExp(commandPattern);
+		let m = commandSearch.exec(line);
+		let actualCommand = m?.groups?.command;
+		if (actualCommand === undefined) {
+			actualCommand = "";
+		}
+
+		// Anything goes in a comment
+		if (actualCommand == "comment") {
+			return;
+		}
 
 		// Make sure we're not in a situation where we can have another command before this one
-		if (command == "if" || command == "selectable_if") {
-			let lineBegin = findLineBegin(state.text, index-1);
-			let line = state.text.substring(lineBegin, index-1);
-			let commandSearch = RegExp(commandPattern);
-			let m = commandSearch.exec(line);
-			if (m && m.groups && reuseCommandsLookup.get(m.groups.command)) {
-				commandOk = true;
-			}
+		if ((command == "if" || command == "selectable_if") && (reuseCommandsLookup.get(actualCommand))) {
+			return;
 		}
-		if (!commandOk) {
-			diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-				index, index + command.length + 1,
-				`*${command} should be on a line by itself`);
-	
-		}
+
+		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+			index, index + command.length + 1,
+			`*${command} should be on a line by itself`);
 	}
 
 	return diagnostic;

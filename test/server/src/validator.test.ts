@@ -109,6 +109,15 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("em-dash");
 		})
+
+		it("shouldn't flag dashes in a comment", () => {
+			let fakeDocument = createDocument("*comment Dashes--");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		})
 	});
 	
 	describe("Variable Validation", () => {
