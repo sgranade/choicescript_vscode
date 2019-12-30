@@ -260,7 +260,7 @@ export function variableIsAchievement(variable: string, achievements: ReadonlyId
 	let achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
 
 	let m = achievementVariablePattern.exec(variable);
-	return (m !== null && m.groups !== undefined && achievements.get(m.groups.codename) !== undefined);
+	return (m !== null && m.groups !== undefined && achievements.has(m.groups.codename));
 }
 
 /**

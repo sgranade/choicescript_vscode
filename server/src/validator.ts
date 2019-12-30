@@ -76,7 +76,7 @@ function validateLabelReference(
 	if (labelSourceUri === undefined)
 		labelSourceUri = state.textDocument.uri;
 
-	if (!state.projectIndex.getLabels(labelSourceUri).get(label)) {
+	if (!state.projectIndex.getLabels(labelSourceUri).has(label)) {
 		diagnostic = createDiagnosticFromLocation(
 			DiagnosticSeverity.Error, location,
 			`Label "${label}" wasn't found in ${getFilenameFromUri(labelSourceUri)}`);
@@ -136,7 +136,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				diagnostics.push(...newDiagnostics);
 			}
 		}
-		else if (!builtinVariablesLookup.get(variable)) {
+		else if (!builtinVariablesLookup.has(variable)) {
 			let scopes = state.projectIndex.getVariableScopes(state.textDocument.uri);
 			let trimmedLocations = locations;
 			
@@ -249,7 +249,7 @@ function validateStyle(characters: string, index: number, state: ValidationState
 function validateCommandInLine(command: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 
-	if (validCommandsLookup.get(command)) {
+	if (validCommandsLookup.has(command)) {
 		let lineBegin = findLineBegin(state.text, index-1);
 		let line = state.text.substring(lineBegin, index-1);
 		let commandSearch = RegExp(commandPattern);
@@ -265,7 +265,7 @@ function validateCommandInLine(command: string, index: number, state: Validation
 		}
 
 		// Make sure we're not in a situation where we can have another command before this one
-		if ((command == "if" || command == "selectable_if") && (reuseCommandsLookup.get(actualCommand))) {
+		if ((command == "if" || command == "selectable_if") && (reuseCommandsLookup.has(actualCommand))) {
 			return;
 		}
 

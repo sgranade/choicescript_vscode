@@ -103,7 +103,7 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
 			continue;
 		}
 		for (let variable of identifiersBetweenLocations(localVariables, labelLocation.range.end, firstReturn.commandLocation.range.start)) {
-			if (!subroutineVariables.get(variable)) {
+			if (!subroutineVariables.has(variable)) {
 				subroutineVariables.set(variable, event.commandLocation);
 			}
 		}
@@ -136,7 +136,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			if (indexingState.globalVariables.get(symbol)) {
+			if (indexingState.globalVariables.has(symbol)) {
 				state.callbacks.onParseError(createDiagnosticFromLocation(
 					DiagnosticSeverity.Error, location,
 					`Variable "${symbol}" was already created`
@@ -149,7 +149,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			if (!indexingState.localVariables.get(symbol))
+			if (!indexingState.localVariables.has(symbol))
 				indexingState.localVariables.set(symbol, location);
 			state.callbacks.onVariableReference(symbol, location, state);
 		},

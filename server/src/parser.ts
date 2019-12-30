@@ -109,7 +109,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 	let wordPattern = /\w+/g;
 	
 	while (m = wordPattern.exec(expression)) {
-		if (!validCommandsLookup.get(m[0]) && !namedOperatorsLookup.get(m[0]) && !functionsLookup.get(m[0]) && !namedValuesLookup.get(m[0]) && !stringIsNumber(m[0])) {
+		if (!validCommandsLookup.has(m[0]) && !namedOperatorsLookup.has(m[0]) && !functionsLookup.has(m[0]) && !namedValuesLookup.has(m[0]) && !stringIsNumber(m[0])) {
 			let location = Location.create(state.textDocument.uri, Range.create(
 				state.textDocument.positionAt(globalIndex + m.index),
 				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
@@ -540,19 +540,19 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
 
-	if (!validCommandsLookup.get(command)) {
+	if (!validCommandsLookup.has(command)) {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandIndex, commandIndex + command.length,
 			`Command *${command} isn't a valid ChoiceScript command.`);
 		state.callbacks.onParseError(diagnostic);
 	}
-	else if (argumentRequiringCommandsLookup.get(command) && line.trim() == "") {
+	else if (argumentRequiringCommandsLookup.has(command) && line.trim() == "") {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandIndex, commandIndex + command.length,
 			`Command *${command} is missing its arguments.`);
 		state.callbacks.onParseError(diagnostic);
 	}
-	else if (startupCommandsLookup.get(command) && !uriIsStartupFile(state.textDocument.uri)) {
+	else if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandIndex, commandIndex + command.length,
 			`Command *${command} can only be used in startup.txt.`);
@@ -561,13 +561,13 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	let lineIndex = commandIndex + command.length + spacing.length;
 
-	if (symbolManipulationCommandsLookup.get(command)) {
+	if (symbolManipulationCommandsLookup.has(command)) {
 		parseSymbolManipulationCommand(command, line, lineIndex, state);
 	}
-	else if (variableReferenceCommandsLookup.get(command)) {
+	else if (variableReferenceCommandsLookup.has(command)) {
 		parseVariableReferenceCommand(command, line, lineIndex, state);
 	}
-	else if (flowControlCommandsLookup.get(command)) {
+	else if (flowControlCommandsLookup.has(command)) {
 		parseFlowControlCommand(command, commandIndex, line, lineIndex, state);
 	}
 	else if (command == "scene_list") {
