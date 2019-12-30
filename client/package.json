@@ -7,7 +7,7 @@
 	"publisher": "vscode",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mutantant/choicescript_vscode/"
+		"url": "https://github.com/sgranade/choicescript_vscode"
 	},
 	"engines": {
 		"vscode": "^1.33.0"

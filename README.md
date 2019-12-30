@@ -6,8 +6,10 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 
 * Autocomplete
 * Syntax highlighting
-* Verify and highlight errors
-* Change variable names project-wide
+* Error highlighting
+* Go to definition
+* Highlight usage
+* Rename variables project-wide
 * Snippets to match Choice of Games style rules
 
 ## Installation
@@ -26,8 +28,8 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 * Press `F1` to open the command palette
 * Type in `Preferences: Configure Language Specific Settings...` and run that command
-    * Select "ChoiceScript" from the dropdown
-    * Add the following text to the `settings.json` file that VS Code opens
+* Select "ChoiceScript" from the dropdown
+* Add the following text to the `settings.json` file that VS Code opens
 ```
 {
     "[choicescript]": {

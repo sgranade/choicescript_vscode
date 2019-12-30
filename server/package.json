@@ -9,7 +9,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mutantant/choicescript_vscode/"
+		"url": "https://github.com/sgranade/choicescript_vscode"
 	},
 	"dependencies": {
 		"globby": "^10.0.1",

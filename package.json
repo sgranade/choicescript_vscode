@@ -3,19 +3,18 @@
 	"displayName": "ChoiceScript Language Server",
 	"description": "ChoiceScript language support",
 	"version": "1.0.0",
-	"author": "KLNeidecker",
+	"author": "Stephen Granade",
 	"license": "MIT",
 	"contributors": [
 		{
-			"name": "Stephen Granade",
-			"email": "stephen@granades.com"
+			"name": "KLNeidecker"
 		}
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mutantant/choicescript_vscode/"
+		"url": "https://github.com/sgranade/choicescript_vscode"
 	},
-	"publisher": "KLNeidecker",
+	"publisher": "IFExtensions",
 	"categories": [
 		"Programming Languages",
 		"Linters",
@@ -104,7 +103,7 @@
 	"dependencies": {},
 	"__metadata": {
 		"id": "7ea4fade-d4bd-40b0-a1b6-ff4e57a15079",
-		"publisherDisplayName": "KLNeidecker",
+		"publisherDisplayName": "IFExtensions",
 		"publisherId": "f3bb5996-197b-4db3-8bc9-36a9d01defcc"
 	}
 }
