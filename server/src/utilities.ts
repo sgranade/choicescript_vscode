@@ -141,6 +141,16 @@ export function comparePositions(pos1: Position, pos2: Position): number {
 }
 
 /**
+ * Determine if a position is inside a range.
+ * @param position Position.
+ * @param range Range.
+ */
+export function positionInRange(position: Position, range: Range): boolean {
+	return (comparePositions(position, range.start) >= 0 &&
+		comparePositions(position, range.end) <= 0);
+}
+
+/**
  * Determine if one range is completely contained by a second.
  * @param range1 First range.
  * @param range2 Second range.

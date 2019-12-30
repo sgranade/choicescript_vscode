@@ -2,6 +2,7 @@ import {
 	TextDocument,
 	Position,
 	Range,
+	Location,
 	TextEdit,
 	CompletionItem,
 	CompletionItemKind
@@ -9,7 +10,7 @@ import {
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
-import { extractToMatchingDelimiter } from './utilities';
+import { extractToMatchingDelimiter, comparePositions, positionInRange } from './utilities';
 
 /**
  * Generator for mapping a function over an iterable.
@@ -20,6 +21,19 @@ import { extractToMatchingDelimiter } from './utilities';
 function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
 	for (var item of iterable) {
 		yield transform(item);
+	}
+}
+
+/**
+ * Generator for filtering an iterable.
+ * 
+ * @param iterable Iterable to filter over.
+ * @param transform Function to map over iterable.
+ */
+function* iteratorFilter<T>(iterable: Iterable<T>, filter: Function) {
+	for (var item of iterable) {
+		if (filter(item))
+			yield item;
 	}
 }
 
@@ -41,21 +55,39 @@ function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | Identifie
 	})));
 }
 
-function generateVariableCompletions(localVariablesIndex: ReadonlyIdentifierIndex, 
-	globalVariables: ReadonlyIdentifierIndex,
-	achievements: ReadonlyIdentifierIndex | undefined): CompletionItem[] {
-	let completions = Array.from(iteratorMap(localVariablesIndex.keys(), (x: string) => ({
-			label: x, 
+function generateVariableCompletions(document: TextDocument, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
+	// Only offer local variables that have been created, taking into account subroutine-defined variables
+	let localVariables = new Map(projectIndex.getLocalVariables(document.uri));
+	for (let [variable, location] of projectIndex.getSubroutineLocalVariables(document.uri).entries()) {
+		localVariables.set(variable, location);
+	}
+
+	let availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, location]: [string, Location]) => {
+		return comparePositions(location.range.end, position) <= 0; 
+	});
+
+	let completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, Location]) => ({
+			label: variable, 
 			kind: CompletionItemKind.Variable, 
 			data: "variable-local"
 	})));
-	completions.push(...Array.from(iteratorMap(globalVariables.keys(), (x: string) => ({
+
+	completions.push(...Array.from(iteratorMap(projectIndex.getGlobalVariables().keys(), (x: string) => ({
 		label: x,
 		kind: CompletionItemKind.Variable,
 		data: "variable-global"
 	}))));
-	if (achievements !== undefined) {
-		completions.push(...Array.from(iteratorMap(achievements.keys(), (x: string) => ({
+
+	let includeAchievements = false;
+	for (let scope of projectIndex.getVariableScopes(document.uri).achievementVarScopes) {
+		if (positionInRange(position, scope)) {
+			includeAchievements = true;
+			break;
+		}
+	}
+
+	if (includeAchievements) {
+		completions.push(...Array.from(iteratorMap(projectIndex.getAchievements().keys(), (x: string) => ({
 			label: "choice_achieved_" + x,
 			kind: CompletionItemKind.Variable,
 			data: "variable-achievement"
@@ -72,7 +104,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 	let text = document.getText();
 	let index = document.offsetAt(position);
 
-	let start: number | null = null;
+	let start: number | undefined = undefined;
 
 	for (var i = index; i >= 0; i--) {
 		if (text[i] == '*' || text[i] == '{') {
@@ -84,7 +116,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			break;
 		}
 	}
-	if (start !== null) {
+	if (start !== undefined) {
 		// Auto-complete commands
 		if (text[start] == '*') {
 			let tokens = text.slice(i+1, index).split(/\s+/);
@@ -130,10 +162,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "if":
 					case "elseif":
 					case "elsif":
-						completions = generateVariableCompletions(
-							projectIndex.getLocalVariables(document.uri), 
-							projectIndex.getGlobalVariables(),
-							projectIndex.getAchievements());
+						completions = generateVariableCompletions(document, position, projectIndex);
 						break;
 
 					case "achieve":
@@ -180,10 +209,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 
 			if (returnVariableCompletions)
-				completions = generateVariableCompletions(
-					projectIndex.getLocalVariables(document.uri), 
-					projectIndex.getGlobalVariables(),
-					undefined);
+				completions = generateVariableCompletions(document, position, projectIndex);
 		}
 	}
 	return completions;
