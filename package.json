@@ -1,10 +1,14 @@
 {
 	"name": "choicescript-vscode",
-	"displayName": "ChoiceScript Language Server",
-	"description": "ChoiceScript language support",
+	"displayName": "ChoiceScript Language",
+	"description": "ChoiceScript language support for VS Code",
 	"version": "1.0.0",
-	"author": "Stephen Granade",
-	"license": "MIT",
+	"author": {
+		"name": "Stephen Granade",
+		"email": "stephen@granades.com",
+		"url": "https://github.com/sgranade"
+	},
+	"license": "SEE LICENSE IN License.txt",
 	"contributors": [
 		{
 			"name": "KLNeidecker"
@@ -14,14 +18,16 @@
 		"type": "git",
 		"url": "https://github.com/sgranade/choicescript_vscode"
 	},
-	"publisher": "IFExtensions",
+	"publisher": "StephenGranade",
 	"categories": [
 		"Programming Languages",
 		"Linters",
 		"Snippets"
 	],
 	"keywords": [
-		"ChoiceScript"
+		"ChoiceScript",
+		"cyoa",
+		"interactive fiction"
 	],
 	"engines": {
 		"vscode": "^1.41.0"
@@ -108,10 +114,5 @@
 		"webpack": "^4.41.5",
 		"webpack-cli": "^3.3.10"
 	},
-	"dependencies": {},
-	"__metadata": {
-		"id": "7ea4fade-d4bd-40b0-a1b6-ff4e57a15079",
-		"publisherDisplayName": "IFExtensions",
-		"publisherId": "f3bb5996-197b-4db3-8bc9-36a9d01defcc"
-	}
+	"dependencies": {}
 }
