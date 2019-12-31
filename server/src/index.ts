@@ -1,6 +1,7 @@
 import { Location, Range, Diagnostic } from 'vscode-languageserver';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri } from './utilities';
+import { uriIsStartupFile } from './language';
 
 /**
  * Type for a mutable index of identifiers.
@@ -330,8 +331,20 @@ export class Index implements ProjectIndex {
 		return errors;
 	}
 	removeDocument(textDocumentUri: string) {
-		this._localVariables.delete(normalizeUri(textDocumentUri));
-		this._variableReferences.delete(normalizeUri(textDocumentUri));
-		this._localLabels.delete(normalizeUri(textDocumentUri));
+		let uri = normalizeUri(textDocumentUri);
+
+		if (uriIsStartupFile(uri)) {
+			this._globalVariables = new Map();
+			this._scenes = [];
+			this._achievements = new Map();
+		}
+
+		this._localVariables.delete(uri);
+		this._subroutineLocalVariables.delete(uri);
+		this._variableReferences.delete(uri);
+		this._localLabels.delete(uri);
+		this._flowControlEvents.delete(uri);
+		this._documentScopes.delete(uri);
+		this._parseErrors.delete(uri);
 	}
 }
