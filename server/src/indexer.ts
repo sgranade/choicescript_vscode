@@ -145,13 +145,11 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			else {
 				indexingState.globalVariables.set(symbol, location);
 			}
-			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
 			if (!indexingState.localVariables.has(symbol))
 				indexingState.localVariables.set(symbol, location);
-			state.callbacks.onVariableReference(symbol, location, state);
 		},
 
 		onLabelCreate: (symbol: string, location: Location, state: ParsingState) => {

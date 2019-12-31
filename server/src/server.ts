@@ -273,6 +273,14 @@ function generateRenames(textDocument: TextDocument, position: Position, newName
 		edits.push(change);
 	}
 
+	// Add in where the variable is defined
+	let edits = changes.get(variableDefinition.uri);
+	if (edits === undefined) { 
+		edits = [];
+		changes.set(variableDefinition.uri, edits);
+	}
+	edits.push(TextEdit.replace(variableDefinition.range, newName));
+
 	let workspaceEdit: WorkspaceEdit = {
 		changes: {
 		}
