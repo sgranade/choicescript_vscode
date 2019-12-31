@@ -14,7 +14,7 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 
 ## Installation
 
-[Install from the VSCode extension marketplace](https://marketplace.visualstudio.com/items?itemName=KLNeidecker.choicescript-vscode).
+[Install from the VSCode extension marketplace](https://marketplace.visualstudio.com/items?itemName=StephenGranade.choicescript-vscode).
 
 ## Use
 
