@@ -20,6 +20,8 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 
 Open your ChoiceScript folder, often named `mygame`, and the language server will index the entire project.
 
+Note that, since ChoiceScript files are just text files, the extension treats all `.txt` files as ChoiceScript files. To avoid that, only enable the extension for workspaces that contain your ChoiceScript game.
+
 ## Settings
 
 To use the style snippets that turn `...` into an ellipsis and `--` into an em-dash, [enable snippet tab completion](https://code.visualstudio.com/docs/editor/userdefinedsnippets#_creating-your-own-snippets). Then type three periods and hit tab to turn them into an ellipsis.

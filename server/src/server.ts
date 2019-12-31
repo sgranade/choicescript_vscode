@@ -2,7 +2,6 @@ import {
 	createConnection,
 	WorkspaceFolder,
 	TextDocuments,
-	TextDocument,
 	ProposedFeatures,
 	InitializeParams,
 	ReferenceParams,
@@ -14,9 +13,10 @@ import {
 	ReferenceContext,
 	RenameParams,
 	WorkspaceEdit,
-	TextEdit
+	TextEdit,
+	TextDocumentSyncKind
 } from 'vscode-languageserver';
-import { TextDocument as TextDocumentImplementation } from 'vscode-languageserver-textdocument';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 const fsPromises = require('fs').promises;
 import url = require('url');
 import globby = require('globby');
@@ -30,18 +30,27 @@ import { generateInitialCompletions } from './completions';
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 let connection = createConnection(ProposedFeatures.all);
+connection.console.info(`ChoiceScript language server running in node ${process.version}`);
 
 // Create a simple text document manager. The text document manager
 // supports full document sync only
-let documents: TextDocuments = new TextDocuments();
+let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 // TODO handle multiple directories with startup.txt
 let projectIndex = new Index();
 
 connection.onInitialize((params: InitializeParams) => {
+	const syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full;
 	return {
 		capabilities: {
-			textDocumentSync: documents.syncKind,
+			textDocumentSync: {
+				openClose: true,
+				change: syncKind,
+				willSaveWaitUntil: false,
+				save: {
+					includeText: false
+				}
+			},
 			completionProvider: {
 				resolveProvider: false,
 				triggerCharacters: [ '*', '{' ]
@@ -106,7 +115,7 @@ async function indexFile(path: string) {
 
 	try {
 		let data = await fsPromises.readFile(path, 'utf8');
-		let textDocument = TextDocumentImplementation.create(fileUri, 'ChoiceScript', 0, data);
+		let textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
 		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
 	}
 	catch (err) {

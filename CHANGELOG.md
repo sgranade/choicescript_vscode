@@ -1,24 +1,41 @@
 # Change Log
-All notable changes to the "cs" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+Changes to the plugin.
 
 ## [Unreleased]
 
-## [0.0.1 - 0.0.2]
-### Intial release and minor icon tweaks
-Basic syntax highlighting.
+## [1.0.0] - 2019-12-30
+### Added
+- IntelliSense automatic code completion for ChoiceScript commands like `*choice`.
+- Diagnostics to highlight errors.
+- Go to variable definition.
+- Highlight variable usage.
+- Rename variables project-wide.
+- Auto-indention after commands that require it, like `*choice` and `*if`.
+- Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography.
 
-## [0.0.3]
-### Minor changes to extra files, including changelog
+### Changed
+- Syntax highlighting now properly highlights multireplace.
 
 ## [0.0.4]
-### Fixes thanks to Stephen Granade
-- Now highlights *stat_chart (regex typo on my part), *bug, and *redirect_scene.
-- No longer highlights text between two or more ${variables}.
+### Added
+#### Syntax Highlighting
 - Recognizes the new variable format that drops the $ symbol, {variable}.
 - Correctly highlights uppercase variable syntax of $!{variable}, $!!{variable}, !{variable}, and !!{variable}.
-- An initial multireplace highlight. It's a greedy highlight and I will break it down so it doesn't highlight the entire line in one color later (as in the variables will stand out versus the multireplace text), but for now it will at least show a multireplace text exists and stands out from other commands.
+- An initial multireplace highlight.
+
+### Changed
+#### Syntax Highlighting
+- Now highlights *stat_chart, *bug, and *redirect_scene.
+- No longer highlights text between two or more ${variables}.
+
+## [0.0.3]
+### Added
+- Now includes a changelog.
+
+## [0.0.1 - 0.0.2]
+### Added
+- Basic syntax highlighting.
+
 
 ## [0.0.5]
 ### Additional keywords added

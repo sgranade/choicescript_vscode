@@ -24,7 +24,7 @@
 		"ChoiceScript"
 	],
 	"engines": {
-		"vscode": "^1.40.0"
+		"vscode": "^1.41.0"
 	},
 	"icon": "images/ChoiceOfGames.png",
 	"galleryBanner": {
@@ -82,9 +82,12 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+		"vscode:prepublish": "npm run webpack",
+		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+		"webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
+		"clean": "rimraf client/out && rimraf server/out",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
 	},
 	"devDependencies": {
@@ -94,11 +97,16 @@
 		"@types/node": "^12.11.7",
 		"@types/urijs": "^1.19.4",
 		"chai": "^4.2.0",
+		"merge-options": "^2.0.0",
 		"mocha": "^6.2.2",
+		"rimraf": "^3.0.0",
+		"ts-loader": "^6.2.1",
 		"ts-node": "^8.5.4",
 		"tslint": "^5.16.0",
 		"typescript": "^3.7.4",
-		"vscode-languageserver": "^5.2.1"
+		"vscode-languageserver": "^5.2.1",
+		"webpack": "^4.41.5",
+		"webpack-cli": "^3.3.10"
 	},
 	"dependencies": {},
 	"__metadata": {
