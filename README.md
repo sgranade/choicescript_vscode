@@ -4,13 +4,13 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 
 ## Features
 
-* Autocomplete
-* Syntax highlighting
-* Error highlighting
-* Go to definition
-* Highlight usage
-* Rename variables project-wide
-* Snippets to match Choice of Games style rules
+- Autocomplete
+- Syntax highlighting
+- Error highlighting
+- Go to definition
+- Highlight usage
+- Rename variables project-wide
+- Snippets to match Choice of Games style rules
 
 ## Installation
 
@@ -28,10 +28,10 @@ To use the style snippets that turn `...` into an ellipsis and `--` into an em-d
 
 For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying. To turn it off for ChoiceScript:
 
-* Press `F1` to open the command palette
-* Type in `Preferences: Configure Language Specific Settings...` and run that command
-* Select "ChoiceScript" from the dropdown
-* Add the following text to the `settings.json` file that VS Code opens
+- Press `F1` to open the command palette
+- Type in `Preferences: Configure Language Specific Settings...` and run that command
+- Select "ChoiceScript" from the dropdown
+- Add the following text to the `settings.json` file that VS Code opens
 ```
 {
     "[choicescript]": {
@@ -44,14 +44,19 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 }
 ```
 
+## Currently Unsupported Features
+
+- [Array notation](https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423). Right now it ignores arrays entirely.
+
+
 ## Release Notes
 
 ### [1.0.0]
 
 Created a language server for ChoiceScript, which provides the following features:
 
-* IntelliSense automatic code completion for ChoiceScript commands like `*choice`
-* Diagnostics to highlight errors
-* Variable name changes project-wide
-* Auto-indention after commands that require it, like `*choice` and `*if`
-* Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography
+- IntelliSense automatic code completion for ChoiceScript commands like `*choice`
+- Diagnostics to highlight errors
+- Variable name changes project-wide
+- Auto-indention after commands that require it, like `*choice` and `*if`
+- Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography

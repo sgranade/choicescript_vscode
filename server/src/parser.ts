@@ -76,12 +76,31 @@ export class ParsingState {
  * @param state Parsing state.
  */
 function parseExpression(expression: string, globalIndex: number, state: ParsingState) {
-	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
-	// As variable references and strings can contain other things, first handle them and remove them from the expression
-	let referenceOrStringPattern = /^(?<prefix>.*?)(?<delimiter>["{])(?<remainder>.*)$/;
-
+	// Deal with arrays first
+	let arrayPattern = /\w+\[/;
 	let m: RegExpExecArray | null;
-	while (m = referenceOrStringPattern.exec(expression)) {
+	while (m = arrayPattern.exec(expression)) {
+		let localIndex = m.index + m[0].length - 1;
+		while (expression[localIndex] == '[') {  // To deal with multi-dimensional arrays
+			localIndex++;
+			let reference = extractToMatchingDelimiter(expression, '[', ']', localIndex);
+			if (reference !== undefined) {
+				parseExpression(reference, globalIndex + localIndex, state);
+				localIndex += reference.length + 1;
+			}
+			else {
+				localIndex++;
+			}
+		}
+		// blank out the matched string
+		expression = expression.slice(0, m.index) + " ".repeat(localIndex - m.index) + expression.slice(localIndex);
+	}
+
+	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
+	// As variable references and strings can contain other things, handle them and remove them from the expression
+	let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{])(?<remainder>.*)$/;
+
+	while (m = recursivePatterns.exec(expression)) {
 		if (m.groups === undefined || m.groups.remainder === undefined)
 			continue;
 

@@ -2,6 +2,7 @@
 Changes to the plugin.
 
 ## [Unreleased]
+- Experimental array syntax is no longer flagged as an error
 
 ## [1.0.0] - 2019-12-31
 ### Added

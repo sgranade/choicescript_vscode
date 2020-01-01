@@ -585,6 +585,36 @@ describe("Parser", () => {
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
+
+		it("should not callback on arrays", () => {
+			let fakeDocument = createDocument("*set variable[other_var] 3");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("other_var");
+		});
+
+		it("should only callback on 2D array references", () => {
+			let fakeDocument = createDocument("*set variable[other_var][another_var] final_var");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(3);
+			expect(received[0].text).to.equal("other_var");
+			expect(received[1].text).to.equal("another_var");
+			expect(received[2].text).to.equal("final_var");
+		});
 	})
 	
 	describe("Replace Parsing", () => {
@@ -884,6 +914,38 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(12);
+		});
+
+		it("should only callback on array references", () => {
+			let fakeDocument = createDocument('*if variable[other_var] = "other_variable"');
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("other_var");
+			expect(received[0].location.range.start.line).to.equal(13);
+			expect(received[0].location.range.end.line).to.equal(22);
+		});
+	
+		it("should not callback on two-d arrays", () => {
+			let fakeDocument = createDocument('*if variable[other_var][another_var] = "other_variable"');
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[1].text).to.equal("another_var");
+			expect(received[1].location.range.start.line).to.equal(24);
+			expect(received[1].location.range.end.line).to.equal(35);
 		});
 	})
 	
