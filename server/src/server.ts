@@ -77,7 +77,7 @@ connection.onInitialized(() => {
 function findStartupFiles(workspaces: WorkspaceFolder[]) {
 	workspaces.forEach((workspace) => {
 		let rootPath = url.fileURLToPath(workspace.uri);
-		globby('startup.txt', {
+		globby('**/startup.txt', {
 			cwd: rootPath
 		}).then(paths => indexProject(paths))
 	});
@@ -92,6 +92,8 @@ function indexProject(pathsToProjectFiles: string[]) {
 		if (startupFilename) {
 			projectPath = projectPath.replace(startupFilename, '');
 		}
+
+		console.info(`Indexing the CS project at ${path}`);
 
 		// Index the startup.txt file
 		await indexFile(path);

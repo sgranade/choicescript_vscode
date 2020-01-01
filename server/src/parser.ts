@@ -318,6 +318,12 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 	return globalIndex;
 }
 
+/**
+ * Parse parameters created by *params
+ * @param line Line after *params that contains the parameters.
+ * @param lineGlobalIndex Location of the line in the text.
+ * @param state Indexing state.
+ */
 function parseParams(line: string, lineGlobalIndex: number, state: ParsingState) {
 	// Split into words
 	let wordsPattern = /\w+/g;

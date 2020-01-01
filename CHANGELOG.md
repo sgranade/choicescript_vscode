@@ -2,7 +2,9 @@
 Changes to the plugin.
 
 ## [Unreleased]
-- Experimental array syntax is no longer flagged as an error
+### Fixed
+- Experimental array syntax is no longer flagged as an error.
+- Properly indexes files when the workspace isn't opened in the scenes folder.
 
 ## [1.0.0] - 2019-12-31
 ### Added
