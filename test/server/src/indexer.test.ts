@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Range, Diagnostic } from 'vscode-languageserver';
+import { TextDocument, Position, Diagnostic } from 'vscode-languageserver';
 
 import { 
 	ProjectIndex, 

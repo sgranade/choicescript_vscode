@@ -5,6 +5,7 @@ Changes to the plugin.
 ### Fixed
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
+- Definitions now only allowed on actual variable or label references, not any old text in the document.
 
 ## [1.0.0] - 2019-12-31
 ### Added

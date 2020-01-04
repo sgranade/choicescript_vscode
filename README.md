@@ -47,7 +47,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 ## Currently Unsupported Features
 
 - [Array notation](https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423). Right now it ignores arrays entirely.
-
+- Variables are not identified in stat charts
 
 ## Release Notes
 

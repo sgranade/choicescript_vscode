@@ -24,8 +24,9 @@ import globby = require('globby');
 import { updateProjectIndex } from './indexer';
 import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
-import { extractSymbolAtIndex, uriIsStartupFile, variableIsAchievement } from './language';
+import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
+import { generateDefinition } from './definitions';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -169,43 +170,13 @@ connection.onCompletion(
 
 connection.onDefinition(
 	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
-		return generateDefinition(textDocumentPosition.textDocument.uri, textDocumentPosition.position, projectIndex);
+		let document = documents.get(textDocumentPosition.textDocument.uri);
+		if (document !== undefined) {
+			return generateDefinition(document, textDocumentPosition.position, projectIndex);
+		}
+		return undefined;
 	}
 );
-
-function generateDefinition(documentUri: string, position: Position, projectIndex: ProjectIndex): Definition | undefined {
-	let definition: Definition | undefined = undefined;
-
-	let document = documents.get(documentUri);
-	if (document === undefined) {
-		return definition;
-	}
-	let text = document.getText();
-	let index = document.offsetAt(position);
-	
-	// Get the symbol at this location
-	let symbol = extractSymbolAtIndex(text, index);
-
-	if (symbol !== undefined) {
-		let location = projectIndex.getLocalVariables(document.uri).get(symbol);
-		if (location === undefined) {
-			location = projectIndex.getGlobalVariables().get(symbol);
-		}
-		if (location === undefined) {
-			let achievements = projectIndex.getAchievements();
-			let codename = variableIsAchievement(symbol, achievements);
-			if (codename !== undefined) {
-				location = achievements.get(codename);
-			}
-		}
-	
-		if (location !== undefined) {
-			definition = location;
-		}
-	}
-
-	return definition;
-}
 
 connection.onReferences(
 	(referencesParams: ReferenceParams): Location[] => {

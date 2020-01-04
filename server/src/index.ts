@@ -2,6 +2,7 @@ import { Location, Range, Diagnostic } from 'vscode-languageserver';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri } from './utilities';
 import { uriIsStartupFile } from './language';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
  * Type for a mutable index of identifiers.
@@ -347,4 +348,56 @@ export class Index implements ProjectIndex {
 		this._documentScopes.delete(uri);
 		this._parseErrors.delete(uri);
 	}
+}
+
+/**
+ * Get the location where a variable was created.
+ * @param variable Variable to get.
+ * @param returnEffectiveLocations Whether to return effective creation locations or not. 
+ * @param document Document in which to look for local variables.
+ * @param index Project index.
+ */
+export function getVariableCreationLocation(
+	variable: string, considerEffectiveLocation: boolean, 
+	document: TextDocument, index: ProjectIndex): Location | undefined {
+	// Precedence order: effective location variable location; local; global
+	let location: Location | undefined = undefined;
+	if (considerEffectiveLocation) {
+		location = index.getSubroutineLocalVariables(document.uri).get(variable);
+		if (location !== undefined) {
+			return location;
+		}
+	}
+
+	location = index.getLocalVariables(document.uri).get(variable);
+	if (location !== undefined) {
+		return location;
+	}
+
+	location = index.getGlobalVariables().get(variable);
+
+	return location;
+}
+
+/**
+ * Get the location where a label was defined.
+ * @param label Label.
+ * @param scene Scene document in which the label should reside, or undefined.
+ * @param document Local document.
+ * @param index Project index.
+ */
+export function getLabelLocation(
+	label: string, scene: string | undefined, document: TextDocument,
+	index: ProjectIndex): Location | undefined {
+	let location: Location | undefined = undefined;
+
+	let uri: string | undefined = document.uri;
+	if (scene !== undefined) {
+		uri = index.getSceneUri(scene);
+	}
+	if (uri !== undefined) {
+		location = index.getLabels(uri).get(label);
+	}
+
+	return location;
 }

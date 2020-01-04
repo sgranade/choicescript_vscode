@@ -1,6 +1,6 @@
 import { TextDocument, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex } from "./index";
+import { ProjectIndex, getVariableCreationLocation, getLabelLocation } from "./index";
 import { 
 	builtinVariables,
 	uriIsStartupFile, 
@@ -12,7 +12,7 @@ import {
 	reuseCommands,
 	commandPattern
 } from './language';
-import { findLineBegin, getFilenameFromUri, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
+import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
@@ -41,45 +41,22 @@ class ValidationState {
 }
 
 /**
- * Get the location where a variable was created.
- * @param variable Variable to get.
- * @param state Validation state.
- */
-function getVariableCreationLocation(variable: string, state: ValidationState): Location | undefined {
-	// Precedence order: effective location variable location; local; global
-	let location = state.projectIndex.getSubroutineLocalVariables(state.textDocument.uri).get(variable);
-	if (location !== undefined) {
-		return location;
-	}
-
-	location = state.projectIndex.getLocalVariables(state.textDocument.uri).get(variable);
-	if (location !== undefined) {
-		return location;
-	}
-
-	location = state.projectIndex.getGlobalVariables().get(variable);
-
-	return location;
-}
-
-/**
  * Validate a reference to a label.
  * @param label Name of the label being referenced.
- * @param labelSourceUri Document where the label should live. If undefined, the textDocument's URI is used.
+ * @param scene Scene document where the label should live. If undefined, the textDocument's URI is used.
  * @param location Location of the label reference in the document.
  * @param state Validation state.
  */
 function validateLabelReference(
-	label: string, labelSourceUri: string | undefined, location: Location, state: ValidationState
+	label: string, scene: string | undefined, location: Location, state: ValidationState
 	): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	if (labelSourceUri === undefined)
-		labelSourceUri = state.textDocument.uri;
+	let labelLocation = getLabelLocation(label, scene, state.textDocument, state.projectIndex);
 
-	if (!state.projectIndex.getLabels(labelSourceUri).has(label)) {
+	if (labelLocation === undefined) {
 		diagnostic = createDiagnosticFromLocation(
 			DiagnosticSeverity.Error, location,
-			`Label "${label}" wasn't found in ${getFilenameFromUri(labelSourceUri)}`);
+			`Label "${label}" wasn't found`);
 	}
 	return diagnostic;
 }
@@ -120,7 +97,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 	}
 	for (let [variable, locations] of references.entries()) {
 		// Effective creation locations take precedence
-		let creationLocation = getVariableCreationLocation(variable, state);
+		let creationLocation = getVariableCreationLocation(variable, true, state.textDocument, state.projectIndex);
 
 		if (creationLocation) {
 			// Make sure we don't reference variables before they're created
@@ -183,14 +160,11 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 				diagnostics.push(diagnostic);
 			}
 			else if (event.label != "" && event.labelLocation !== undefined) {
-				let sceneDocumentUri = state.projectIndex.getSceneUri(event.scene);
-				if (sceneDocumentUri !== undefined) {
-					diagnostic = validateLabelReference(
-						event.label, sceneDocumentUri, event.labelLocation, state
-					);
-					if (diagnostic !== undefined)
-						diagnostics.push(diagnostic);
-				}
+				diagnostic = validateLabelReference(
+					event.label, event.scene, event.labelLocation, state
+				);
+				if (diagnostic !== undefined)
+					diagnostics.push(diagnostic);
 			}
 		}
 		else if (event.label != "" && event.labelLocation !== undefined) {
