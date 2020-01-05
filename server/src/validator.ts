@@ -40,6 +40,23 @@ class ValidationState {
 	}
 }
 
+function validateVariables(state: ValidationState): Diagnostic[] {
+	let diagnostics: Diagnostic[] = [];
+
+	// Make sure no local variables have the same name as global ones
+	let globalVariables = state.projectIndex.getGlobalVariables();
+	for (let [variable, location] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
+		if (globalVariables.has(variable)) {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Information, location,
+				`*temp variable "${variable}" has the same name as a global variable`
+				));
+		}
+	}
+
+	return diagnostics;
+}
+
 /**
  * Validate a reference to a label.
  * @param label Name of the label being referenced.
@@ -268,6 +285,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 	// Start with parse errors
 	let diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
+
+	// Validate variable creations
+	diagnostics.push(...validateVariables(state));
 
 	// Validate references
 	diagnostics.push(...validateReferences(state));

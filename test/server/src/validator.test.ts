@@ -125,7 +125,7 @@ describe("Validator", () => {
 		})
 	});
 	
-	describe("Variable Validation", () => {
+	describe("Variable Reference Validation", () => {
 		it("should flag missing variables", () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: VariableReferenceIndex = new Map([["unknown", [location]]])
@@ -302,6 +302,21 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
+
+	describe("Variable Creation Commands Validation", () => {
+		it("should flag local variables with the same name as global ones", () => {
+			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let globalVariables: IdentifierIndex = new Map([["global_var", createLocation]]);
+			let localVariables: IdentifierIndex = new Map([["global_var", Substitute.for<Location>()]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ globalVariables: globalVariables, localVariables: localVariables });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
+		})
+	})
 	
 	describe("Label Reference Commands Validation", () => {
 		it("should flag missing labels", () => {
