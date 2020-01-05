@@ -2,6 +2,9 @@
 Changes to the plugin.
 
 ## [Unreleased]
+### Added
+- Local *temp variables with the same name as *global variables now generate a warning.
+
 ### Fixed
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
