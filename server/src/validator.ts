@@ -51,12 +51,15 @@ function validateLabelReference(
 	label: string, scene: string | undefined, location: Location, state: ValidationState
 	): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
-	let labelLocation = getLabelLocation(label, scene, state.textDocument, state.projectIndex);
 
-	if (labelLocation === undefined) {
-		diagnostic = createDiagnosticFromLocation(
-			DiagnosticSeverity.Error, location,
-			`Label "${label}" wasn't found`);
+	if (!(label !== undefined && label[0] == '{')) {
+		let labelLocation = getLabelLocation(label, scene, state.textDocument, state.projectIndex);
+
+		if (labelLocation === undefined) {
+			diagnostic = createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, location,
+				`Label "${label}" wasn't found`);
+		}
 	}
 	return diagnostic;
 }
@@ -72,11 +75,13 @@ function validateSceneReference(
 	): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 
-	if (!state.projectIndex.getSceneList().includes(scene)) {
-		diagnostic = createDiagnosticFromLocation(
-			DiagnosticSeverity.Warning, location,
-			`Scene "${scene}" wasn't found in startup.txt`
-			);
+	if (!(scene !== undefined && scene[0] == '{')) {
+		if (!state.projectIndex.getSceneList().includes(scene)) {
+			diagnostic = createDiagnosticFromLocation(
+				DiagnosticSeverity.Warning, location,
+				`Scene "${scene}" wasn't found in startup.txt`
+				);
+		}
 	}
 
 	return diagnostic;

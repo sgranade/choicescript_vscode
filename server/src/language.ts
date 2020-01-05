@@ -196,7 +196,7 @@ export interface Multireplace {
  * @param section Document section beginning with the text right inside @{ and including the close }.
  * @param globalIndex Index into the section where the multireplace contents begin.
  */
-export function TokenizeMultireplace(section: string, globalIndex: number = 0): Multireplace | undefined {
+export function tokenizeMultireplace(section: string, globalIndex: number = 0): Multireplace | undefined {
 	let test: Token;
 	let body: Token[] = [];
 

@@ -322,6 +322,23 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
 		});
 	
+		it("should not flag a reference as missing labels", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "{local_label}",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ flowControlEvents: events });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
+	
 		it("should flag missing label locations", () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -477,6 +494,28 @@ describe("Validator", () => {
 	
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
+		});
+
+		it("should not flag references in labels, even in another scene", () => {
+			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "{missing_label}",
+				labelLocation: referenceLocation,
+				scene: "other-scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				flowControlEvents: events,
+				labels: sceneLabels, labelsUri: fakeSceneUri, 
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
 		});
 	});
 })

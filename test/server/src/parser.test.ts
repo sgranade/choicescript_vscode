@@ -150,6 +150,22 @@ describe("Parser", () => {
 			expect(received[0].labelLocation.range.end.line).to.equal(12);
 		})
 
+		it("should create a reference on goto with a reference scene", () => {
+			let fakeDocument = createDocument("*goto {variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(7);
+			expect(received[0].location.range.end.line).to.equal(15);
+		})
+
 		it("should deal with no scene on a goto", () => {
 			let fakeDocument = createDocument("*goto label");
 			let received: Array<FlowControlEvent> = [];
@@ -248,6 +264,23 @@ describe("Parser", () => {
 			expect(received[0].label).to.equal("labelname");
 			expect(received[0].labelLocation.range.start.line).to.equal(22);
 			expect(received[0].labelLocation.range.end.line).to.equal(31);
+		})
+
+		it("should create a reference if necessary from the label", () => {
+			let fakeDocument = createDocument("*goto_scene scenename {variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(23);
+			expect(received[0].location.range.end.line).to.equal(31);
+
 		})
 	})
 	

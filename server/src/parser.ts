@@ -7,7 +7,7 @@ import {
 	validCommands, 
 	multiStartPattern,
 	replacementStartPattern,
-	TokenizeMultireplace,
+	tokenizeMultireplace,
 	variableManipulationCommands,
 	variableReferenceCommands,
 	flowControlCommands,
@@ -271,7 +271,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 		sectionToDocumentDelta = 0;
 	}
 
-	let tokens = TokenizeMultireplace(section, localContentIndex);
+	let tokens = tokenizeMultireplace(section, localContentIndex);
 
 	if (tokens === undefined) {
 		let lineEndIndex = findLineEnd(section, localContentIndex);
@@ -501,31 +501,67 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 	let sceneLocation: Location | undefined = undefined;
 
 	if (command != "return") {
-		let m = line.match(/^(?<firstToken>[\w-]+)((?<spacing>[ \t]+)(?<secondToken>\w+))?/);
-		if (m !== null && m.groups !== undefined) {
-			if (command.includes("_scene")) {
-				scene = m.groups.firstToken;
-				sceneLocation = Location.create(state.textDocument.uri, Range.create(
-					state.textDocument.positionAt(lineGlobalIndex),
-					state.textDocument.positionAt(lineGlobalIndex + scene.length)
-				));
-	
-				if (m.groups.secondToken !== undefined) {
-					label = m.groups.secondToken;
-					let labelIndex = lineGlobalIndex + scene.length + m.groups.spacing.length;
-					labelLocation = Location.create(state.textDocument.uri, Range.create(
-						state.textDocument.positionAt(labelIndex),
-						state.textDocument.positionAt(labelIndex + label.length)
-					));
+		let firstToken = "";
+		let secondToken = "";
+		let spacing = "";
+		// Get the first token, which may be a {} reference
+		if (line[0] == '{') {
+			firstToken = '{' + extractToMatchingDelimiter(line, '{', '}', 1) + '}';
+		}
+		else {
+			let m = line.match(/^(?<firstToken>[\w-]+)/);
+			if (m !== null && m.groups !== undefined) {
+				firstToken = m.groups.firstToken;
+			}
+		}
+		if (firstToken != "") {
+			line = line.substring(firstToken.length);
+			let m = line.match(/^(?<spacing>[ \t]+)/);
+			if (m !== null && m.groups !== undefined) {
+				spacing = m.groups.spacing;
+				line = line.substring(spacing.length);
+				if (line[0] == '{') {
+					secondToken = '{' + extractToMatchingDelimiter(line, '{', '}', 1) + '}';
+				}
+				else {
+					m = line.match(/^(?<secondToken>\w+)/);
+					if (m !== null && m.groups !== undefined) {
+						secondToken = m.groups.secondToken;
+					}
 				}
 			}
-			else {
-				label = m.groups.firstToken;
+		}
+
+		// Evaluate expressions (if any)
+		if (firstToken != "" && firstToken[0] == '{') {
+			parseExpression(firstToken.slice(1, -1), lineGlobalIndex+1, state);
+		}
+		if (secondToken != "" && secondToken[0] == '{') {
+			parseExpression(secondToken.slice(1, -1), lineGlobalIndex+firstToken.length+spacing.length+1, state);
+		}
+	
+		if (command.includes("_scene")) {
+			scene = firstToken;
+			sceneLocation = Location.create(state.textDocument.uri, Range.create(
+				state.textDocument.positionAt(lineGlobalIndex),
+				state.textDocument.positionAt(lineGlobalIndex + scene.length)
+			));
+
+			if (secondToken != "") {
+				label = secondToken;
+				let labelIndex = lineGlobalIndex + scene.length + spacing.length;
 				labelLocation = Location.create(state.textDocument.uri, Range.create(
-					state.textDocument.positionAt(lineGlobalIndex),
-					state.textDocument.positionAt(lineGlobalIndex + label.length)
+					state.textDocument.positionAt(labelIndex),
+					state.textDocument.positionAt(labelIndex + label.length)
 				));
 			}
+		}
+		else {
+			label = firstToken;
+			labelLocation = Location.create(state.textDocument.uri, Range.create(
+				state.textDocument.positionAt(lineGlobalIndex),
+				state.textDocument.positionAt(lineGlobalIndex + label.length)
+			));
 		}
 	}
 

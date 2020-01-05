@@ -6,6 +6,7 @@ Changes to the plugin.
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
 - Definitions now only allowed on actual variable or label references, not any old text in the document.
+- References in *goto and *gosub commands are now indexed.
 
 ## [1.0.0] - 2019-12-31
 ### Added
