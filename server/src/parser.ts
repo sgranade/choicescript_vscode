@@ -15,7 +15,10 @@ import {
 	commandPattern,
 	argumentRequiringCommands,
 	startupCommands,
-	uriIsStartupFile
+	uriIsStartupFile,
+	extractTokenAtIndex,
+	statChartCommands,
+	statChartBlockCommands
 } from './language';
 import {
 	findLineEnd,
@@ -465,6 +468,110 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
 }
 
 /**
+ * Parse a stat chart.
+ * @param document Document text to scan.
+ * @param commandIndex Index after the "*" in the *stat_chart command.
+ * @param contentStartIndex Index at the start of the stat chart contents.
+ * @param state Parsing state.
+ */
+function parseStatChart(document: string, commandIndex: number, contentStartIndex: number, state: ParsingState) {
+	let subcommandPattern = /(?<padding>[ \t]+)(?<command>\S+)((?<spacing>[ \t]*)(?<remainder>.*))?(\r?\n)?/g;
+	let lineStart = contentStartIndex;
+
+	// No need to worry about ${} references in the stat chart, as the top-level parser
+	// will go back over the lines after the *stat_chart command and process them
+
+	subcommandPattern.lastIndex = lineStart;
+	let padding = "NONE";
+	let m: RegExpExecArray | null;
+
+	while (m = subcommandPattern.exec(document)) {
+		if (m.index !== lineStart) {
+			break;
+		}
+		if (padding == "NONE") {
+			padding = m.groups!.padding;
+		}
+		else if (m.groups!.padding.length < padding.length) {
+			break;
+		}
+		else if (m.groups!.padding != padding) {
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+				m.index, m.index + m[0].length,
+				"Line is indented too far.");
+			state.callbacks.onParseError(diagnostic);
+			break;
+		}
+
+		let command = m.groups!.command;
+		let commandStart = m.index + padding.length;
+
+		if (statChartCommands.includes(command)) {
+			let spacing = m.groups!.spacing;
+			if (spacing === undefined) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+					commandStart, commandStart + command.length,
+					`Missing variable after ${command}`);
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				let remainderStart = commandStart + command.length + spacing.length;
+				let variable = extractTokenAtIndex(document, remainderStart);
+				if (variable === undefined) {
+					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+						remainderStart, remainderStart,
+						"Not a valid variable.");
+					state.callbacks.onParseError(diagnostic);
+				}
+				else if (variable[0] == '{') {
+					parseExpression(variable?.slice(1, -1), remainderStart+1, state);
+				}
+				else {
+					let location = Location.create(state.textDocument.uri, Range.create(
+						state.textDocument.positionAt(remainderStart),
+						state.textDocument.positionAt(remainderStart + variable.length)
+					));
+					state.callbacks.onVariableReference(variable, location, state);
+				}
+			}
+
+			if (statChartBlockCommands.includes(command)) {
+				// Consume any sub-indented lines
+				lineStart = subcommandPattern.lastIndex;
+				while (true) {
+					let nextLineStart = findLineEnd(document, lineStart);
+					if (nextLineStart === undefined) {
+						break;
+					}
+					let line = document.slice(lineStart, nextLineStart);
+					let paddingMatch = line.match(/^(?<padding>\s+)/);
+					if (!paddingMatch || paddingMatch.groups!.padding.length <= padding.length) {
+						break;
+					}
+					lineStart = nextLineStart;
+				}
+				subcommandPattern.lastIndex = lineStart;
+			}
+		}
+		else {
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+				commandStart, commandStart + command.length,
+				`Must be one of ${statChartCommands.join(", ")}`);
+			state.callbacks.onParseError(diagnostic);
+		}
+
+		lineStart = subcommandPattern.lastIndex;
+	}
+
+	if (lineStart == contentStartIndex) {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			commandIndex - 1, commandIndex + "stat_chart".length,
+			`*stat_chart must have at least one stat`);
+		state.callbacks.onParseError(diagnostic);
+	}
+}
+
+/**
  * Parse a command that can reference variables, such as *if.
  * @param command ChoiceScript command, such as "if", that may contain a reference.
  * @param line The rest of the line after the command.
@@ -505,30 +612,15 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 		let secondToken = "";
 		let spacing = "";
 		// Get the first token, which may be a {} reference
-		if (line[0] == '{') {
-			firstToken = '{' + extractToMatchingDelimiter(line, '{', '}', 1) + '}';
-		}
-		else {
-			let m = line.match(/^(?<firstToken>[\w-]+)/);
-			if (m !== null && m.groups !== undefined) {
-				firstToken = m.groups.firstToken;
-			}
-		}
+		let token = extractTokenAtIndex(line, 0, "{}", "\\w-");
+		firstToken = (token !== undefined) ? token : "";
 		if (firstToken != "") {
 			line = line.substring(firstToken.length);
 			let m = line.match(/^(?<spacing>[ \t]+)/);
 			if (m !== null && m.groups !== undefined) {
 				spacing = m.groups.spacing;
-				line = line.substring(spacing.length);
-				if (line[0] == '{') {
-					secondToken = '{' + extractToMatchingDelimiter(line, '{', '}', 1) + '}';
-				}
-				else {
-					m = line.match(/^(?<secondToken>\w+)/);
-					if (m !== null && m.groups !== undefined) {
-						secondToken = m.groups.secondToken;
-					}
-				}
+				token = extractTokenAtIndex(line, spacing.length);
+				secondToken = (token !== undefined) ? token : "";
 			}
 		}
 
@@ -635,6 +727,12 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		let nextLineIndex = findLineEnd(document, commandIndex);
 		if (nextLineIndex !== undefined) {
 			parseScenes(document, nextLineIndex, state);
+		}
+	}
+	else if (command == "stat_chart") {
+		let nextLineIndex = findLineEnd(document, commandIndex);
+		if (nextLineIndex !== undefined) {
+			parseStatChart(document, commandIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "achievement") {

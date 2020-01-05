@@ -997,6 +997,107 @@ describe("Parser", () => {
 		});
 	})
 	
+	describe("Stat Chart Command Parsing", () => {
+		it("should callback on references in text commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\ttext text_var");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("text_var");
+			expect(received[0].location.range.start.line).to.equal(18);
+			expect(received[0].location.range.end.line).to.equal(26);
+		});
+
+		it("should handle variable references in text commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\ttext {text_var}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("text_var");
+			expect(received[0].location.range.start.line).to.equal(19);
+			expect(received[0].location.range.end.line).to.equal(27);
+		});
+
+		it("should handle variable replacements in text commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\ttext text_var ${title_var}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[1].text).to.equal("title_var");
+			expect(received[1].location.range.start.line).to.equal(29);
+			expect(received[1].location.range.end.line).to.equal(38);
+		});
+
+		it("should callback on references in percent commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\tpercent percent_var New Name");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("percent_var");
+			expect(received[0].location.range.start.line).to.equal(21);
+			expect(received[0].location.range.end.line).to.equal(32);
+		});
+
+		it("should callback on references in opposed_pair commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\topposed_pair pair_var\n\t\tThis\n\t\tThat");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("pair_var");
+			expect(received[0].location.range.start.line).to.equal(26);
+			expect(received[0].location.range.end.line).to.equal(34);
+		});
+
+		it("should callback on all references in a stat chart", () => {
+			let fakeDocument = createDocument("*stat_chart\n\topposed_pair pair_var\n\t\tThis\n\t\tThat\n\ttext text_var\n\tpercent percent_var Percentile");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(3);
+			expect(received[1].text).to.equal("text_var");
+			expect(received[1].location.range.start.line).to.equal(55);
+			expect(received[1].location.range.end.line).to.equal(63);
+			expect(received[2].text).to.equal("percent_var");
+			expect(received[2].location.range.start.line).to.equal(73);
+			expect(received[2].location.range.end.line).to.equal(84);
+		});
+	})
+	
 	describe("Achievement Parsing", () => {
 		it("should callback on an achievement", () => {
 			let fakeDocument = createDocument("*achievement code_name");
@@ -1171,6 +1272,38 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(0);
+		});
+
+		it("should raise an error for an empty *stat_chart", () => {
+			let fakeDocument = createDocument("*stat_chart\nI didn't enter any data");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("*stat_chart must have at least one stat");
+			expect(received[0].range.start.line).to.equal(0);
+			expect(received[0].range.end.line).to.equal(11);
+		});
+
+		it("should raise an error for an unrecognized *stat_chart sub-command", () => {
+			let fakeDocument = createDocument("*stat_chart\n\tunrecognized command");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
+			expect(received[0].range.start.line).to.equal(13);
+			expect(received[0].range.end.line).to.equal(25);
 		});
 	})
 })

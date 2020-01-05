@@ -66,6 +66,15 @@ export let variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectabl
  */
 export let flowControlCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene", "return" ];
 
+/**
+ * Sub-commands under a *stat_chart command.
+ */
+export let statChartCommands: ReadonlyArray<string> = [ "text", "percent", "opposed_pair" ];
+
+/**
+ * Sub-commands under a *stat_chart command that have at least one indented line after.
+ */
+export let statChartBlockCommands: ReadonlyArray<string> = [ "opposed_pair" ];
 
 /* COMPLETIONS */
 
@@ -171,6 +180,43 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 
 	let symbol = text.slice(start+1, end);
 	return symbol;
+}
+
+/**
+ * Extract a token from a string.
+ * 
+ * The token must be at the given index, or else `undefined` is returned.
+ * 
+ * Returns `undefined` if an opening delimiter is matched with no maching close delimiter found.
+ * @param text Text to extract a token from.
+ * @param index Index into the text from which to extract the token.
+ * @param delimiters Open/close delimiters to consider as a token. Uses {} by default.
+ * @param symbolChars Characters that are considered to make up a symbol. Uses \w by default.
+ */
+export function extractTokenAtIndex(
+	text: string, index: number, delimiters: string = "{}",
+	symbolChars: string = "\\w"): string | undefined {
+	if (delimiters.length % 2) {
+		throw Error(`Delimiters ${delimiters} are not paired`);
+	}
+	for (let i = 0; i < delimiters.length; i += 2) {
+		if (text[index] == delimiters[i]) {
+			let match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i+1], index+1);
+			if (match !== undefined) {
+				return delimiters[i] + match + delimiters[i+1];
+			}
+			return undefined;
+		}
+	}
+
+	let pattern = RegExp(`[${symbolChars}]+`, 'g');
+	pattern.lastIndex = index;
+	let m = pattern.exec(text);
+	if (m !== null && m.index == index) {
+		return m[0];
+	}
+
+	return undefined;
 }
 
 /**

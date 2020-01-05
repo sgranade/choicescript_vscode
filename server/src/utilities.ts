@@ -73,7 +73,7 @@ export function findLineEnd(document: string, startIndex: number): number | unde
  * @param section Section of text to scan.
  * @param openDelimiter Delimiter that opens the group.
  * @param closeDelimiter Delimiter that closes the group.
- * @returns String contained within the delimiters.
+ * @returns String contained within the delimiters, not including the closing delimiter.
  */
 export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {
 	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
