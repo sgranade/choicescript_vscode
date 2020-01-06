@@ -818,6 +818,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(20);
 			expect(received[0].location.range.end.line).to.equal(23);
 		});
+
+		it("should not choke on a mistakenly nested multi-replace", () => {
+			let fakeDocument = createDocument('@{var1 true bit | @{var2 other true bit | false bit}}');
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+	})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("var1");
+			expect(received[0].location.range.start.line).to.equal(2);
+			expect(received[0].location.range.end.line).to.equal(6);
+		});
 	})
 	
 	describe("Variable-Referencing Command Parsing", () => {

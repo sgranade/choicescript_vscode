@@ -156,10 +156,13 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  */
 function parseReference(section: string, openDelimiterLength: number, globalIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
-	let sectionToDocumentDelta = globalIndex;
+	let sectionToDocumentDelta: number;
 	if (localIndex === undefined) {
 		localIndex = globalIndex;
 		sectionToDocumentDelta = 0;
+	}
+	else {
+		sectionToDocumentDelta = globalIndex - localIndex;
 	}
 
 	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
@@ -195,16 +198,19 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
  * Strings can either be parsed from the large global document or from a subsection of it.
  * 
  * @param section Section being parsed.
- * @param globalIndex String contents's index in the global document.
+ * @param globalIndex String content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns Global index to the end of the string.
  */
 function parseString(section: string, globalIndex: number, localIndex: number, state: ParsingState): number {
-	let sectionToDocumentDelta = globalIndex;
+	let sectionToDocumentDelta: number;
 	if (localIndex === undefined) {
 		localIndex = globalIndex;
 		sectionToDocumentDelta = 0;
+	}
+	else {
+		sectionToDocumentDelta = globalIndex - localIndex;
 	}
 
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
@@ -219,14 +225,15 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 		let newGlobalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
-			newGlobalIndex = parseReplacement(section, m.groups.replacement.length, sectionToDocumentDelta, contentsLocalIndex, state);
+			newGlobalIndex = parseReplacement(
+				section, m.groups.replacement.length, contentsLocalIndex + sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
-			newGlobalIndex = parseMultireplacement(section, m.groups.multi.length, sectionToDocumentDelta, contentsLocalIndex, state);
+			newGlobalIndex = parseMultireplacement(
+				section, m.groups.multi.length, contentsLocalIndex + sectionToDocumentDelta, contentsLocalIndex, state);
 		}
 		else {
-			globalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
-			break;
+			newGlobalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
 		}
 
 		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
@@ -262,32 +269,37 @@ function parseReplacement(section: string, openDelimiterLength: number, globalIn
  * @param section Section being parsed.
  * @param openDelimiterLength Length of the opening delimiter (@{ or @!{ or @!!{).
  * @param globalIndex Multireplacement content's index in the global document.
- * @param localContentIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
  * @returns The global index to the end of the multireplacement.
  */
 function parseMultireplacement(section: string, openDelimiterLength: number, globalIndex: number, 
-	localContentIndex: number | undefined, state: ParsingState): number {
-	let sectionToDocumentDelta = globalIndex;
-	if (localContentIndex === undefined) {
-		localContentIndex = globalIndex;
+	localIndex: number | undefined, state: ParsingState): number {
+	let sectionToDocumentDelta: number;
+	if (localIndex === undefined) {
+		localIndex = globalIndex;
 		sectionToDocumentDelta = 0;
 	}
+	else {
+		sectionToDocumentDelta = globalIndex - localIndex;
+	}
 
-	let tokens = tokenizeMultireplace(section, localContentIndex);
+	let tokens = tokenizeMultireplace(section, localIndex);
 
 	if (tokens === undefined) {
-		let lineEndIndex = findLineEnd(section, localContentIndex);
+		let lineEndIndex = findLineEnd(section, localIndex);
 		if (lineEndIndex === undefined)
 			lineEndIndex = section.length;
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localContentIndex - openDelimiterLength + sectionToDocumentDelta, lineEndIndex + sectionToDocumentDelta,
+			localIndex - openDelimiterLength + sectionToDocumentDelta, lineEndIndex + sectionToDocumentDelta,
 			"Multireplace is missing its }");
 		state.callbacks.onParseError(diagnostic);
+		return globalIndex;
 	}
-	else if (tokens.test.text.trim() == "") {
+
+	if (tokens.test.text.trim() == "") {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localContentIndex - openDelimiterLength + sectionToDocumentDelta,
+			localIndex - openDelimiterLength + sectionToDocumentDelta,
 			tokens.endIndex + sectionToDocumentDelta,
 			"Multireplace is empty");
 		state.callbacks.onParseError(diagnostic);
@@ -538,7 +550,7 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 			if (statChartBlockCommands.includes(command)) {
 				// Consume any sub-indented lines
 				lineStart = subcommandPattern.lastIndex;
-				while (true) {
+				while (lineStart < document.length) {
 					let nextLineStart = findLineEnd(document, lineStart);
 					if (nextLineStart === undefined) {
 						break;
