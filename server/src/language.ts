@@ -231,6 +231,7 @@ export interface Token {
  * A tokenized multireplace @{variable if-true | if-false}
  */
 export interface Multireplace {
+	fullText: string,
 	test: Token,
 	body: Token[],
 	endIndex: number
@@ -243,31 +244,33 @@ export interface Multireplace {
  * @param globalIndex Index into the section where the multireplace contents begin.
  */
 export function tokenizeMultireplace(section: string, globalIndex: number = 0): Multireplace | undefined {
+	let fullText: string;
 	let test: Token;
 	let body: Token[] = [];
 
-	let multireplaceText = extractToMatchingDelimiter(section, "{", "}", globalIndex);
-	if (multireplaceText === undefined)
+	let workingText = extractToMatchingDelimiter(section, "{", "}", globalIndex);
+	if (workingText === undefined)
 		return undefined;
+	fullText = workingText;
 
-	let multireplaceEndLocalIndex = multireplaceText.length + 1;
+	let multireplaceEndLocalIndex = workingText.length + 1;
 	let testEndLocalIndex = 0;
 
-	if (multireplaceText[0] != '(') {
+	if (workingText[0] != '(') {
 		// The multireplace only has a bare symbol as its test
 		while (testEndLocalIndex < section.length) {
-			if (!/\w/.test(multireplaceText[testEndLocalIndex])) {
+			if (!/\w/.test(workingText[testEndLocalIndex])) {
 				break;
 			}
 			testEndLocalIndex++;
 		}
 		test = {
-			text: multireplaceText.slice(0, testEndLocalIndex),
+			text: workingText.slice(0, testEndLocalIndex),
 			index: globalIndex
 		};
 	}
 	else {
-		let testContents = extractToMatchingDelimiter(multireplaceText.slice(1), "(", ")");
+		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");
 		if (testContents === undefined) {
 			testContents = "";
 		}
@@ -278,8 +281,8 @@ export function tokenizeMultireplace(section: string, globalIndex: number = 0): 
 		testEndLocalIndex = testContents.length + 2;
 	}
 
-	multireplaceText = multireplaceText.slice(testEndLocalIndex);
-	let bareTokens = multireplaceText.split('|');
+	workingText = workingText.slice(testEndLocalIndex);
+	let bareTokens = workingText.split('|');
 	let runningIndex = 0;
 	for (let bareToken of bareTokens) {
 		let trimmed = bareToken.trim();
@@ -291,6 +294,7 @@ export function tokenizeMultireplace(section: string, globalIndex: number = 0): 
 	}
 
 	return {
+		fullText: fullText,
 		test: test,
 		body: body,
 		endIndex: globalIndex + multireplaceEndLocalIndex

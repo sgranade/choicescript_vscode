@@ -114,5 +114,13 @@ describe("Language Routines", () => {
 			expect(tokens.body[0].index).to.equal(22);
 			expect(tokens.body[1].index).to.equal(28);
 		});
+
+		it("should return the full text inside the multireplace", () => {
+			let text = "other text @{variable yes | no} extra content";
+	
+			let tokens = tokenizeMultireplace(text, 13);
+	
+			expect(tokens.fullText).to.equal("variable yes | no");
+		});
 	})
 })

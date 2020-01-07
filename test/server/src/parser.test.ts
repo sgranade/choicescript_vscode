@@ -825,7 +825,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-	})
+			})
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1290,6 +1290,22 @@ describe("Parser", () => {
 			expect(received.length).to.equal(0);
 		});
 
+		it("should flag a mistakenly nested multi-replace", () => {
+			let fakeDocument = createDocument('Previous line that is very very long\n@{var1 true bit | @{var2 other true bit | false bit}}\nNext line');
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Multireplaces cannot be nested");
+			expect(received[0].range.start.line).to.equal(55);
+			expect(received[0].range.end.line).to.equal(89);
+		});
+		
 		it("should raise an error for an empty *stat_chart", () => {
 			let fakeDocument = createDocument("*stat_chart\nI didn't enter any data");
 			let received: Array<Diagnostic> = [];

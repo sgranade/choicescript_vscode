@@ -193,7 +193,50 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
 }
 
 /**
- * Parse a string.
+ * Parse a bare string.
+ * 
+ * @param section Section being parsed.
+ * @param startGlobalIndex String content's starting index relative to the global document.
+ * @param startLocalIndex String content's starting index relative to the section.
+ * @param endLocalIndex String content's ending index relative to the section.
+ * @param state Parsing state.
+ */
+function parseBareString(
+	section: string, startGlobalIndex: number, startLocalIndex: number, endLocalIndex: number, state: ParsingState) {
+	let sectionToDocumentDelta = startGlobalIndex - startLocalIndex;
+
+	let subsection = section.slice(startLocalIndex, endLocalIndex);
+
+	// Deal with any replacements or multireplacements
+	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+	delimiterPattern.lastIndex = startLocalIndex;
+	let m: RegExpExecArray | null;
+	while (m = delimiterPattern.exec(subsection)) {
+		if (m.groups === undefined)
+			break;
+
+		let contentsLocalIndex = m.index + m[0].length;
+		let newGlobalIndex: number;
+
+		if (m.groups.replacement !== undefined) {
+			newGlobalIndex = parseReplacement(
+				section, m.groups.replacement.length, contentsLocalIndex + sectionToDocumentDelta, contentsLocalIndex, state);
+		}
+		else if (m.groups.multi !== undefined) {
+			newGlobalIndex = parseMultireplacement(
+				section, m.groups.multi.length, contentsLocalIndex + sectionToDocumentDelta, contentsLocalIndex, state);
+		}
+		else {
+			newGlobalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
+		}
+
+		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
+		startGlobalIndex = newGlobalIndex;
+	}
+}
+
+/**
+ * Parse a string in an expression as delimited by quote marks.
  * 
  * Strings can either be parsed from the large global document or from a subsection of it.
  * 
@@ -297,6 +340,27 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 		return globalIndex;
 	}
 
+	// Flag any nested multireplacements
+	let multiPattern = RegExp(multiStartPattern);
+	let m = tokens.fullText.match(multiPattern);
+	if (m !== null && m.index !== undefined) {
+		let startLocalIndex = localIndex + m.index;
+		let endLocalIndex: number;
+		let contents = extractToMatchingDelimiter(section, '{', '}', startLocalIndex + m[0].length);
+		if (contents !== undefined) {
+			// Starting index + opening delimiter length + contents length + closing delimiter length
+			endLocalIndex = startLocalIndex + m[0].length + contents.length + 1;
+		}
+		else {
+			endLocalIndex = startLocalIndex + tokens.fullText.length;
+		}
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			startLocalIndex + sectionToDocumentDelta,
+			endLocalIndex + sectionToDocumentDelta,
+			"Multireplaces cannot be nested");
+		state.callbacks.onParseError(diagnostic);
+	}
+
 	if (tokens.test.text.trim() == "") {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			localIndex - openDelimiterLength + sectionToDocumentDelta,
@@ -324,8 +388,10 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 
 		// The body portions are strings
 		for (let token of tokens.body) {
-			// Gotta append a quote mark so it'll behave properly
-			parseString(token.text + '"', token.index + sectionToDocumentDelta, 0, state);
+			// Since we can't nest multireplaces, and we've already flagged them above as errors,
+			// get rid of any opening multireplaces in the string
+			let text = token.text.replace('@{', '  ');
+			parseBareString(text, token.index + sectionToDocumentDelta, 0, token.text.length, state);
 		}
 		globalIndex = tokens.endIndex + sectionToDocumentDelta;
 	}
