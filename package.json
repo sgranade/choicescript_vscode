@@ -38,7 +38,9 @@
 		"theme": "dark"
 	},
 	"activationEvents": [
-		"onLanguage:choicescript"
+		"onLanguage:choicescript",
+		"onCommand:choicescript.italicize",
+		"onCommand:choicescript.bold"
 	],
 	"main": "./client/out/extension",
 	"contributes": {
@@ -54,6 +56,48 @@
 					".txt"
 				],
 				"configuration": "./language-configuration.json"
+			}
+		],
+		"commands": [
+			{
+				"command": "choicescript.italicize",
+				"title": "Italicize"
+			},
+			{
+				"command": "choicescript.bold",
+				"title": "Bold"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "choicescript.italicize",
+					"when": "editorLangId == choicescript"
+				},
+				{
+					"command": "choicescript.bold",
+					"when": "editorLangId == choicescript"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "choicescript.italicize",
+				"key": "ctrl+i",
+				"mac": "cmd+i",
+				"when": "editorTextFocus && editorLangId == choicescript"
+			},
+			{
+				"command": "choicescript.italicize",
+				"key": "ctrl+shift+i",
+				"mac": "cmd+shift+i",
+				"when": "editorTextFocus && editorLangId == choicescript"
+			},
+			{
+				"command": "choicescript.bold",
+				"key": "ctrl+shift+b",
+				"mac": "cmd+shift+b",
+				"when": "editorTextFocus && editorLangId == choicescript"
 			}
 		],
 		"grammars": [

@@ -3,6 +3,8 @@ Changes to the plugin.
 
 ## [Unreleased]
 ### Added
+- Italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i`.
+- Bold text using `Ctrl`+`Shift`+`b`.
 - Local *temp variables with the same name as *global variables now generate a warning.
 - *stat_chart commands are now parsed and errors flagged.
 - Nested multireplaces are now flagged as an error.
