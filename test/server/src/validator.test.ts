@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Location, Range, TextDocument } from 'vscode-languageserver';
+import { Location, Range, TextDocument, Position } from 'vscode-languageserver';
 
 import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex, FlowControlEvent } from '../../../server/src/index';
 import { generateDiagnostics } from '../../../server/src/validator';
@@ -13,6 +13,7 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
+	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return(Position.create(index, 0)); });
 	return fakeDocument;
 }
 
@@ -123,6 +124,27 @@ describe("Validator", () => {
 	
 			expect(diagnostics.length).to.equal(0);
 		})
+
+		it("should flag too-long options", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option has too many words seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(102);
+			expect(diagnostics[0].range.end.line).to.equal(110);
+		});
+
+		it("should not flag shorter options", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option has just enough words seven eight nine ten eleven twelve thirteen fourteen fifteen.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
 	});
 	
 	describe("Variable Reference Validation", () => {

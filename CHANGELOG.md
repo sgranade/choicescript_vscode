@@ -5,6 +5,7 @@ Changes to the plugin.
 ### Added
 - Italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i`.
 - Bold text using `Ctrl`+`Shift`+`b`.
+- Choices with more than 15 words are now flagged for review.
 - Local *temp variables with the same name as *global variables now generate a warning.
 - *stat_chart commands are now parsed and errors flagged.
 - Nested multireplaces are now flagged as an error.

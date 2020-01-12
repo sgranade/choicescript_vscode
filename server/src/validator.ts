@@ -10,7 +10,8 @@ import {
 	incorrectCommandPattern,
 	validCommands,
 	reuseCommands,
-	commandPattern
+	commandPattern,
+	choicePattern
 } from './language';
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
 
@@ -274,6 +275,29 @@ function validateCommandInLine(command: string, index: number, state: Validation
 }
 
 /**
+ * Validate a choice.
+ * 
+ * @param choice Text of the choice.
+ * @param index Location of the choice, starting with its leading "#".
+ * @param state Validation state.
+ * @returns Diagnostic message, if any.
+ */
+function validateChoice(choice: string, index: number, state: ValidationState): Diagnostic | undefined {
+	let diagnostic: Diagnostic | undefined = undefined;
+
+	// See if we've got more than 15 words
+	let m = choice.match(/(\S+?\s+?){15}/);
+	if (m != null && m[0].length < choice.length) {
+		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+			index + m[0].length, index + choice.length,
+			"Choice is more than 15 words long");
+	}
+
+	return diagnostic;
+}
+
+
+/**
  * Validate a text file and generate diagnostics against it.
  * 
  * @param textDocument Document to validate and generate diagnostics against
@@ -296,7 +320,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateFlowControlEvents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
-	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}`, 'g');
+	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${choicePattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while (m = matchPattern.exec(state.text)) {
@@ -312,6 +336,11 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			let diagnostic = validateCommandInLine(
 				m.groups.command, m.index + m.groups.commandPrefix.length, state
 			);
+			if (diagnostic !== undefined)
+				diagnostics.push(diagnostic);
+		}
+		else if (m.groups.choice !== undefined) {
+			let diagnostic = validateChoice(m.groups.choice, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

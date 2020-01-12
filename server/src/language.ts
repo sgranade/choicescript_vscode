@@ -155,6 +155,10 @@ export let multiStartPattern = "(?<multi>@!?!?{)";
  */
 export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
+ * Pattern to find a choice.
+ */
+export let choicePattern = "(?<choice>#.*)"
+/**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
