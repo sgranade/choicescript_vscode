@@ -18,7 +18,8 @@ import {
 	uriIsStartupFile,
 	extractTokenAtIndex,
 	statChartCommands,
-	statChartBlockCommands
+	statChartBlockCommands,
+	operators
 } from './language';
 import {
 	findLineEnd,
@@ -37,6 +38,7 @@ let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControl
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
 let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
 let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
+let operatorsLookup: ReadonlyMap<string, number> = new Map(operators.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
@@ -101,7 +103,8 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 
 	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
 	// As variable references and strings can contain other things, handle them and remove them from the expression
-	let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{])(?<remainder>.*)$/;
+	// Also handle parentheses
+	let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
 
 	while (m = recursivePatterns.exec(expression)) {
 		if (m.groups === undefined || m.groups.remainder === undefined)
@@ -118,8 +121,23 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 		if (openDelimiter == '{') {
 			endGlobalIndex = parseReference(m.groups.remainder, 1, globalIndex + remainderLocalIndex, 0, state);
 		}
-		else {
+		else if (openDelimiter == '"') {
 			endGlobalIndex = parseString(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
+		}
+		else {
+			let parensContents = extractToMatchingDelimiter(m.groups.remainder, '(', ')', 0);
+			if (parensContents === undefined) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+					globalIndex + openDelimiterLocalIndex,
+					globalIndex + openDelimiterLocalIndex + 1 + m.groups.remainder.length,
+					"Missing close parentheses");
+				state.callbacks.onParseError(diagnostic);
+				endGlobalIndex = globalIndex + remainderLocalIndex;
+			}
+			else {
+				parseExpression(parensContents, globalIndex + remainderLocalIndex, state);
+				endGlobalIndex = globalIndex + remainderLocalIndex + parensContents.length + 1;
+			}
 		}
 		let endLocalIndex = endGlobalIndex - globalIndex;
 
@@ -127,17 +145,33 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 		expression = expression.slice(0, openDelimiterLocalIndex) + " ".repeat(endLocalIndex - openDelimiterLocalIndex) + expression.slice(endLocalIndex);
 	}
 
-	// Split the remaining expression into words, since that's all we care about
-	let wordPattern = /\w+/g;
-	
-	while (m = wordPattern.exec(expression)) {
-		if (!validCommandsLookup.has(m[0]) && !namedOperatorsLookup.has(m[0]) && !functionsLookup.has(m[0]) && !namedValuesLookup.has(m[0]) && !stringIsNumber(m[0])) {
-			let location = Location.create(state.textDocument.uri, Range.create(
-				state.textDocument.positionAt(globalIndex + m.index),
-				state.textDocument.positionAt(globalIndex + m.index + m[0].length)
-			));
-			state.callbacks.onVariableReference(m[0], location, state);
+	// Split the remaining expression at word boundaries and process each cluster
+	let wordPattern = /^\w+$/;
+	let chunks = expression.split(/\b/);
+	let splitGlobalIndex = globalIndex;
+	for (let chunk of chunks) {
+		let tokenPattern = /\S+/g;
+		while (m = tokenPattern.exec(chunk)) {
+			let token = m[0];
+			if (wordPattern.test(token)) {
+				if (!validCommandsLookup.has(token) && !namedOperatorsLookup.has(token) 
+					&& !functionsLookup.has(token) && !namedValuesLookup.has(token) && !stringIsNumber(token)) {
+					let location = Location.create(state.textDocument.uri, Range.create(
+						state.textDocument.positionAt(splitGlobalIndex + m.index),
+						state.textDocument.positionAt(splitGlobalIndex + m.index + token.length)
+					));
+					state.callbacks.onVariableReference(token, location, state);
+				}
+			}
+			else if (!operatorsLookup.has(token)) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+					splitGlobalIndex + m.index,
+					splitGlobalIndex + m.index + token.length,
+					"Unknown operator");
+				state.callbacks.onParseError(diagnostic);
+			}
 		}
+		splitGlobalIndex += chunk.length;
 	}
 }
 

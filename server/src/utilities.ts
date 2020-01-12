@@ -68,11 +68,10 @@ export function findLineEnd(document: string, startIndex: number): number | unde
 /**
  * Scan text to find a matching delimiter, skipping escaped delimiters.
  * 
- * The passed section should begin with the first character past the opening delimiter.
- * 
  * @param section Section of text to scan.
  * @param openDelimiter Delimiter that opens the group.
  * @param closeDelimiter Delimiter that closes the group.
+ * @param startIndex Index inside of section where the delimited contents begin (after the opening delimiter).
  * @returns String contained within the delimiters, not including the closing delimiter.
  */
 export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {

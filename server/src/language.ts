@@ -122,6 +122,13 @@ export let builtinVariables: ReadonlyArray<string> = [
 ];
 
 /**
+ * Choicescript operators
+ */
+export let operators: ReadonlyArray<string> = [
+	"+", "-", "*", "/", "%", "^", "&", "#", "%+", "%-", "=", "<", ">", "<=", ">=", "!="
+];
+
+/**
  * ChoiceScript named operators
  */
 export let namedOperators: ReadonlyArray<string> = [

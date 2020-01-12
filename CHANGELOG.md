@@ -7,9 +7,11 @@ Changes to the plugin.
 - Bold text using `Ctrl`+`Shift`+`b`.
 - Choices with more than 15 words are now flagged for review.
 - Local *temp variables with the same name as *global variables now generate a warning.
-- Re-creating variables or labels are now flagged as an error.
-- *stat_chart commands are now parsed and errors flagged.
-- Nested multireplaces are now flagged as an error.
+- Error catching greatly expanded.
+	- Re-creating variables or labels are now flagged.
+	- *stat_chart commands are now parsed and errors flagged.
+	- Nested multireplaces are now flagged.
+	- Invalid operators are now flagged.
 
 ### Fixed
 - Experimental array syntax is no longer flagged as an error.

@@ -1229,6 +1229,38 @@ describe("Parser", () => {
 			expect(received[0].range.end.line).to.equal(31);
 		});
 
+		it("should flag unknown operators in a command", () => {
+			let fakeDocument = createDocument("*if not(var1&var2&(var3 & ! var4))");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Unknown operator");
+			expect(received[0].range.start.line).to.equal(26);
+			expect(received[0].range.end.line).to.equal(27);
+		});
+
+		it("should flag unbalanced parentheses in a command", () => {
+			let fakeDocument = createDocument("*if not(var1&var2&(var3)");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].message).to.include("Missing close parentheses");
+			expect(received[0].range.start.line).to.equal(7);
+			expect(received[0].range.end.line).to.equal(24);
+		});
+
 		it("should flag an empty multireplace", () => {
 			let fakeDocument = createDocument("multireplace @{} with errors");
 			let received: Array<Diagnostic> = [];
