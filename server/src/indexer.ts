@@ -153,7 +153,15 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onLabelCreate: (symbol: string, location: Location, state: ParsingState) => {
-			indexingState.labels.set(symbol, location);
+			if (indexingState.labels.has(symbol)) {
+				state.callbacks.onParseError(createDiagnosticFromLocation(
+					DiagnosticSeverity.Error, location,
+					`Label "${symbol}" was already created`
+				));
+			}
+			else {
+				indexingState.labels.set(symbol, location);
+			}
 		},
 
 		onVariableReference: (symbol: string, location: Location, state: ParsingState) => {

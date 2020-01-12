@@ -351,5 +351,22 @@ describe("Indexer", () => {
 			expect(received[0][0].range.start.line).to.equal(27);
 			expect(received[0][0].range.end.line).to.equal(35);
 		});
+
+		it("should flag attempts to re-create already-created labels", () => {
+			let fakeDocument = createDocument("*label previous_label\n*label previous_label");
+			let received: Array<Diagnostic[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+				(uri: string, errors: Diagnostic[]) => { received.push(errors) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].length).to.equal(1);
+			expect(received[0][0].message).to.include('Label "previous_label" was already created');
+			expect(received[0][0].range.start.line).to.equal(29);
+			expect(received[0][0].range.end.line).to.equal(43);
+		});
 	})
 })
