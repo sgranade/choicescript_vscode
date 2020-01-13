@@ -20,4 +20,5 @@ script:
   - npm test --silent
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -Z
+  - npm run report-coverage
+  - bash <(curl -s https://codecov.io/bash)
