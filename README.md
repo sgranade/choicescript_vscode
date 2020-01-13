@@ -1,6 +1,8 @@
 # ChoiceScript VS Code
 
 [![Build Status](https://travis-ci.com/sgranade/choicescript_vscode.svg?branch=master)](https://travis-ci.com/sgranade/choicescript_vscode.svg?branch=master)
+[![Coverage](https://codecov.io/gh/sgranade/choicescript_vscode/branch/master/graph/badge.svg)](https://codecov.io/gh/sgranade/choicescript_vscode)
+
 
 A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescript/), a language for writing choose-your-own-path text games.
 
