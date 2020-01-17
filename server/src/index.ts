@@ -262,14 +262,10 @@ export class Index implements ProjectIndex {
 		return this._startupFileUri;
 	}
 	getSceneUri(scene: string): string | undefined {
-		let sceneUri: string | undefined = undefined;
-		for (let key of this._localVariables.keys()) {
-			if (key.includes(scene)) {
-				sceneUri = key;
-				break;
-			}
+		if (this._startupFileUri == "") {
+			return undefined;
 		}
-		return sceneUri;
+		return this._startupFileUri.replace('startup', scene);
 	}
 	getSceneList(): ReadonlyArray<string> {
 		return this._scenes;

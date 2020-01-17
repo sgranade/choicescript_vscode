@@ -366,6 +366,7 @@ describe("Project Index", () => {
 			let otherSceneLabelsIndex: IdentifierIndex = new Map([["other_label", otherSceneLabelLocation]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
+			index.updateGlobalVariables('file:///startup.txt', new Map());
 			index.updateFlowControlEvents(documentUri, events);
 			index.updateLabels(documentUri, documentLabelsIndex);
 			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
