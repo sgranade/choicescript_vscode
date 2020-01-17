@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractTokenAtIndex, tokenizeMultireplace } from '../../../server/src/language';
+import { extractTokenAtIndex, tokenizeMultireplace, sceneFromUri } from '../../../server/src/language';
 
 describe("Language Routines", () => {
 	describe("Token Extraction", () => {
@@ -121,6 +121,24 @@ describe("Language Routines", () => {
 			let tokens = tokenizeMultireplace(text, 13);
 	
 			expect(tokens.fullText).to.equal("variable yes | no");
+		});
+	})
+
+	describe("Scene Name", () => {
+		it("should extract a scene name from a uri", () => {
+			let uri = 'file:///path/to/a/scene/file.txt';
+
+			let scene = sceneFromUri(uri);
+
+			expect(scene).to.equal("file");
+		});
+
+		it("should return undefined if the uri doesn't match", () => {
+			let uri = 'file:///path/to/meme.jpg';
+
+			let scene = sceneFromUri(uri);
+
+			expect(scene).to.be.undefined;
 		});
 	})
 })

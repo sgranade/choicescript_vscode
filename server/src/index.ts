@@ -1,7 +1,7 @@
-import { Location, Range, Diagnostic } from 'vscode-languageserver';
+import { Location, Range, Position, Diagnostic, ReferenceContext } from 'vscode-languageserver';
 
-import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri } from './utilities';
-import { uriIsStartupFile } from './language';
+import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, positionInRange } from './utilities';
+import { uriIsStartupFile, extractSymbolAtIndex, sceneFromUri } from './language';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
@@ -135,57 +135,63 @@ export interface ProjectIndex {
      */
 	getSceneUri(scene: string): string | undefined;
     /**
-     * Get global variables in a project.
-     */
-	getGlobalVariables(): ReadonlyIdentifierIndex;
-    /**
      * Get list of scenes in the project.
      */
 	getSceneList(): ReadonlyArray<string>;
     /**
-     * Get the local variables in a scene file.
-     * @param textDocumentUri Scene document URI.
+     * Get global variables in a project.
      */
-	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex;
+	getGlobalVariables(): ReadonlyIdentifierIndex;
+    /**
+     * Get the local variables in a scene file.
+     * @param sceneUri Scene document URI.
+     */
+	getLocalVariables(sceneUri: string): ReadonlyIdentifierIndex;
 	/**
 	 * Get the local variables defined in a scene file's subroutines.
-	 * @param textDocumentUri Scene document URI.
+	 * @param sceneUri Scene document URI.
 	 */
-	getSubroutineLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex;
+	getSubroutineLocalVariables(sceneUri: string): ReadonlyIdentifierIndex;
     /**
      * Get the labels in a scene file.
-     * @param textDocumentUri Scene document URI.
+     * @param sceneUri Scene document URI.
      */
-	getLabels(textDocumentUri: string): ReadonlyLabelIndex;
+	getLabels(sceneUri: string): ReadonlyLabelIndex;
     /**
      * Get the achievement codenames.
      */
 	getAchievements(): ReadonlyIdentifierIndex;
     /**
      * Get all references to variables in one scene document.
-     * @param textDocumentUri Scene document URI.
+     * @param sceneUri Scene document URI.
      */
-	getDocumentVariableReferences(textDocumentUri: string): ReadonlyVariableReferenceIndex;
+	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
     /**
      * Get all references to a variable across all documents.
      * @param variable Variable to find references to.
      */
 	getVariableReferences(variable: string): ReadonlyArray<Location>;
 	/**
-	 * Get all flow control events in a document.
-	 * @param textDocumentUri Scene document URI.
+	 * Get all flow control events in a scene document.
+	 * @param sceneUri Scene document URI.
 	 */
-	getFlowControlEvents(textDocumentUri: string): ReadonlyArray<FlowControlEvent>;
+	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent>;
+	/**
+	 * Get all references to a label.
+	 * @param label Label.
+	 * @param labelDefinitionDocumentUri Document in which the label is defined.
+	 */
+	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location>;
     /**
      * Get document scopes for a scene file.
-     * @param textDocumentUri Scene document URI.
+     * @param sceneUri Scene document URI.
      */
-	getVariableScopes(textDocumentUri: string): DocumentScopes;
+	getVariableScopes(sceneUri: string): DocumentScopes;
     /**
      * Get the parse errors.
-     * @param textDocumentUri Scene document URI.
+     * @param sceneUri Scene document URI.
      */
-	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic>;
+	getParseErrors(sceneUri: string): ReadonlyArray<Diagnostic>;
     /**
      * Remove a document from the project index.
      * @param textDocumentUri URI to document to remove.
@@ -265,26 +271,26 @@ export class Index implements ProjectIndex {
 		}
 		return sceneUri;
 	}
-	getGlobalVariables(): ReadonlyIdentifierIndex {
-		return this._globalVariables;
-	}
-	getLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
-		let index = this._localVariables.get(normalizeUri(textDocumentUri));
-		if (index === undefined)
-			index = new Map();
-		return index;
-	}
-	getSubroutineLocalVariables(textDocumentUri: string): ReadonlyIdentifierIndex {
-		let index = this._subroutineLocalVariables.get(normalizeUri(textDocumentUri));
-		if (index === undefined)
-			index = new Map();
-		return index;
-	}
 	getSceneList(): ReadonlyArray<string> {
 		return this._scenes;
 	}
-	getLabels(textDocumentUri: string): ReadonlyLabelIndex {
-		let index = this._localLabels.get(normalizeUri(textDocumentUri));
+	getGlobalVariables(): ReadonlyIdentifierIndex {
+		return this._globalVariables;
+	}
+	getLocalVariables(sceneUri: string): ReadonlyIdentifierIndex {
+		let index = this._localVariables.get(normalizeUri(sceneUri));
+		if (index === undefined)
+			index = new Map();
+		return index;
+	}
+	getSubroutineLocalVariables(sceneUri: string): ReadonlyIdentifierIndex {
+		let index = this._subroutineLocalVariables.get(normalizeUri(sceneUri));
+		if (index === undefined)
+			index = new Map();
+		return index;
+	}
+	getLabels(sceneUri: string): ReadonlyLabelIndex {
+		let index = this._localLabels.get(normalizeUri(sceneUri));
 		if (index === undefined)
 			index = new Map();
 		return index;
@@ -292,28 +298,42 @@ export class Index implements ProjectIndex {
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
 	}
-	getDocumentVariableReferences(textDocumentUri: string): ReadonlyVariableReferenceIndex {
-		let index = this._variableReferences.get(normalizeUri(textDocumentUri));
+	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex {
+		let index = this._variableReferences.get(normalizeUri(sceneUri));
 		if (index === undefined) {
 			index = new Map();
 		}
 		return index;
 	}
-	getVariableReferences(symbol: string): ReadonlyArray<Location> {
+	getVariableReferences(variable: string): ReadonlyArray<Location> {
 		let locations: Location[] = [];
 		for (let index of this._variableReferences.values()) {
-			let partialLocations = index.get(symbol);
+			let partialLocations = index.get(variable);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
 		}
 		return locations;
 	}
-	getFlowControlEvents(textDocumentUri: string): ReadonlyArray<FlowControlEvent> {
-		let index = this._flowControlEvents.get(normalizeUri(textDocumentUri));
+	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent> {
+		let index = this._flowControlEvents.get(normalizeUri(sceneUri));
 		if (index === undefined) {
 			index = [];
 		}
 		return index;
+	}
+	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location> {
+		let locations: Location[] = [];
+		let scene = sceneFromUri(labelDefinitionDocumentUri);
+		for (let [documentUri, events] of this._flowControlEvents) {
+			let matchingEvents = events.filter(event => {
+				return (event.labelLocation !== undefined && event.label == label);
+			});
+			let matchingLocations = matchingEvents.map(event => {
+				return event.labelLocation!;
+			});
+			locations.push(...matchingLocations);
+		}
+		return locations;
 	}
 	getVariableScopes(textDocumentUri: string): DocumentScopes {
 		let scopes = this._documentScopes.get(normalizeUri(textDocumentUri));
@@ -400,4 +420,68 @@ export function getLabelLocation(
 	}
 
 	return location;
+}
+
+/**
+ * Get all references to a symbol, if any.
+ * @param textDocument Document containing the reference.
+ * @param position Cursor position in the document.
+ * @param context Reference request context.
+ * @param projectIndex Project index.
+ */
+export function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
+	let text = textDocument.getText();
+	let cursorIndex = textDocument.offsetAt(position);
+	let symbol = extractSymbolAtIndex(text, cursorIndex);
+
+	let locations = [...projectIndex.getVariableReferences(symbol)];
+	if (locations.length > 0) {  // It's a variable
+		if (context.includeDeclaration) {
+			let declarationLocation = projectIndex.getLocalVariables(textDocument.uri).get(symbol);
+			if (declarationLocation === undefined)
+				declarationLocation = projectIndex.getGlobalVariables().get(symbol);
+	
+			if (declarationLocation !== undefined)
+				locations.push(declarationLocation);
+		}
+	}
+	else {
+		let labelDefinitionSceneUri: string | undefined;
+		// Get where the symbol is defined. If the cursor's at a label definition, that's easy.
+		// See if the cursor is at a label definition
+		let labelDefinitionLocation = projectIndex.getLabels(textDocument.uri).get(symbol);
+		if (labelDefinitionLocation !== undefined && positionInRange(position, labelDefinitionLocation.range)) {
+			labelDefinitionSceneUri = textDocument.uri;
+		}
+		else {
+			// We'll have to see if we can find the definition from flow control events
+			let flowControlEvents = projectIndex.getFlowControlEvents(textDocument.uri);
+			let matchingEvents = flowControlEvents.filter(event => {
+				return (
+					event.label == symbol && 
+					event.labelLocation !== undefined && 
+					positionInRange(position, event.labelLocation.range))
+			});
+			if (matchingEvents.length == 1) {
+				let event = matchingEvents[0];
+				if (event.scene == "") {
+					labelDefinitionSceneUri = textDocument.uri;
+				}
+				else {
+					labelDefinitionSceneUri = projectIndex.getSceneUri(event.scene);
+				}
+				if (labelDefinitionSceneUri !== undefined) {
+					labelDefinitionLocation = projectIndex.getLabels(labelDefinitionSceneUri).get(symbol);
+				}
+			}
+		}
+		if (labelDefinitionSceneUri !== undefined) {
+			locations = [...projectIndex.getLabelReferences(symbol, textDocument.uri)];
+			if (context.includeDeclaration && labelDefinitionLocation !== undefined) {
+				locations.push(labelDefinitionLocation);
+			}
+		}
+	}
+
+	return locations;
 }

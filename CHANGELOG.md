@@ -6,6 +6,7 @@ Changes to the plugin.
 - Italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i`.
 - Bold text using `Ctrl`+`Shift`+`b`.
 - Choices with more than 15 words are now flagged for review.
+- Highlight label usage.
 - Local *temp variables with the same name as *global variables now generate a warning.
 - Error catching greatly expanded.
 	- Re-creating variables or labels are now flagged.

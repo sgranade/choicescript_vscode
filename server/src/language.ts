@@ -339,6 +339,20 @@ export function variableIsPossibleParameter(variable: string): boolean {
 }
 
 /**
+ * Extract the scene name from a URI to a scene file.
+ * @param uri URI to the scene file.
+ */
+export function sceneFromUri(uri: string): string | undefined {
+	let m = /([\w-]+).txt$/.exec(uri);
+	if (m == null) {
+		return undefined;
+	}
+	else {
+		return m[1];
+	}
+}
+
+/**
  * Determine if a URI points to a ChoiceScript startup file.
  * 
  * @param uriString URI to see if it refers to the startup file.

@@ -10,7 +10,6 @@ import {
 	Position,
 	Location,
 	Definition,
-	ReferenceContext,
 	RenameParams,
 	WorkspaceEdit,
 	TextEdit,
@@ -22,7 +21,7 @@ import url = require('url');
 import globby = require('globby');
 
 import { updateProjectIndex } from './indexer';
-import { ProjectIndex, Index } from "./index";
+import { ProjectIndex, Index, generateReferences } from "./index";
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
@@ -187,25 +186,6 @@ connection.onReferences(
 		return generateReferences(document, referencesParams.position, referencesParams.context, projectIndex);
 	}
 )
-
-function generateReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
-	let text = textDocument.getText();
-	let index = textDocument.offsetAt(position);
-	let symbol = extractSymbolAtIndex(text, index);
-
-	let locations = [...projectIndex.getVariableReferences(symbol)];
-	
-	if (context.includeDeclaration) {
-		let declarationLocation = projectIndex.getLocalVariables(textDocument.uri).get(symbol);
-		if (declarationLocation === undefined)
-			declarationLocation = projectIndex.getGlobalVariables().get(symbol);
-
-		if (declarationLocation !== undefined)
-			locations.push(declarationLocation);
-	}
-
-	return locations;
-}
 
 connection.onRenameRequest(
 	(renameParams: RenameParams): WorkspaceEdit | null => {
