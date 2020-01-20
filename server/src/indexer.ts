@@ -19,6 +19,7 @@ class IndexingState {
 	scenes: Array<string> = [];
 	labels: IdentifierIndex = new Map();
 	achievements: IdentifierIndex = new Map();
+	achievementReferences: VariableReferenceIndex = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
 	parseErrors: Array<Diagnostic> = [];
 
@@ -193,6 +194,14 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.achievements.set(codename, location);
 		},
 
+		onAchievementReference: (codename: string, location: Location, state: ParsingState) => {
+			let referenceArray: Array<Location> | undefined = indexingState.achievementReferences.get(codename);
+			if (referenceArray === undefined)
+				referenceArray = [];
+			referenceArray.push(location);
+			indexingState.achievementReferences.set(codename, referenceArray);
+		},
+
 		onParseError: (error: Diagnostic) => {
 			indexingState.parseErrors.push(error);
 		}
@@ -211,6 +220,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateSubroutineLocalVariables(textDocument.uri, subroutineVariables);
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
+	index.updateAchievementReferences(textDocument.uri, indexingState.achievementReferences);
 	index.updateVariableScopes(textDocument.uri, scopes);
 	index.updateFlowControlEvents(textDocument.uri, indexingState.flowControlEvents);
 	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);

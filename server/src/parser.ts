@@ -52,6 +52,7 @@ export interface ParserCallbacks {
 		labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
+	onAchievementReference(codename: string, location: Location, state: ParsingState): void;
 	onParseError(error: Diagnostic): void;
 }
 
@@ -787,6 +788,20 @@ function parseAchievement(codename: string, startIndex: number, state: ParsingSt
 }
 
 /**
+ * Parse an achievement reference.
+ * @param codename Achievement's codename
+ * @param startIndex Index at the start of the codename.
+ * @param state Parsing state.
+ */
+function parseAchievementReference(codename: string, startIndex: number, state: ParsingState) {
+	let location = Location.create(state.textDocument.uri, Range.create(
+		state.textDocument.positionAt(startIndex),
+		state.textDocument.positionAt(startIndex + codename.length)
+	));
+	state.callbacks.onAchievementReference(codename, location, state);
+}
+
+/**
  * Parse a command line.
  * 
  * @param document Document being parsed.
@@ -852,6 +867,13 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		if (codenameMatch) {
 			let codename = codenameMatch[0];
 			parseAchievement(codename, lineIndex, state);
+		}
+	}
+	else if (command == "achieve") {
+		let codenameMatch = line.match(/^\S+/);
+		if (codenameMatch) {
+			let codename = codenameMatch[0];
+			parseAchievementReference(codename, lineIndex, state);
 		}
 	}
 }

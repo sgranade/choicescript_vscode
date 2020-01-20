@@ -1,7 +1,7 @@
 import { Position, Location, TextDocument, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
 import { ProjectIndex } from "./index";
-import { variableIsAchievement, extractSymbolAtIndex } from './language';
+import { variableIsAchievement } from './language';
 import { positionInRange } from './utilities';
 
 /**

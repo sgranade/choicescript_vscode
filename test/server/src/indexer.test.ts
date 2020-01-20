@@ -258,6 +258,20 @@ describe("Indexer", () => {
 			expect(receivedAchievements.length).to.equal(1);
 			expect(receivedAchievements[0]).has.keys(['code_name']);
 		});
+
+		it("should index a reference to an achievement", () => {
+			let fakeDocument = createDocument("*achieve code_name");
+			let receivedAchievementReferences: VariableReferenceIndex[] = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateAchievementReferences(Arg.any()).mimicks(
+				(uri, index) => { receivedAchievementReferences.push(index) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedAchievementReferences.length).to.equal(1);
+			expect(receivedAchievementReferences[0]).has.keys(['code_name']);
+		});
 	})
 	
 	describe("Label Indexing", () => {

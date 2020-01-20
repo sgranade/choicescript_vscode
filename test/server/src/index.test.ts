@@ -74,5 +74,38 @@ describe("Project Index", () => {
 			expect(references[1].range.start).to.eql({line: 7, character: 0});
 			expect(references[1].range.end).to.eql({line: 7, character: 7});
 		});
+
+		it("should find achievement references in a scene", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
+			let achievementReferences = new Map([["achieve", [referenceLocation]]]);
+			let index = new Index();
+			index.updateAchievementReferences(documentUri, achievementReferences);
+
+			let references = index.getDocumentAchievementReferences(documentUri);
+			let achieveReferences = references.get('achieve');
+
+			expect(Array.from(references.keys())).to.eql(["achieve"]);
+			expect(achieveReferences.length).to.equal(1);
+			expect(achieveReferences[0].range.start).to.eql({line: 1, character: 1});
+			expect(achieveReferences[0].range.end).to.eql({line: 1, character: 7});
+		});
+
+		it("should find achievement references across all scenes", () => {
+			let localReferenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
+			let localAchievementReferences = new Map([["achieve", [localReferenceLocation]]]);
+			let otherReferenceLocation = Location.create(otherSceneUri, Range.create(9, 1, 9, 7));
+			let otherAchievementReferences = new Map([["achieve", [otherReferenceLocation]]]);
+			let index = new Index();
+			index.updateAchievementReferences(documentUri, localAchievementReferences);
+			index.updateAchievementReferences(otherSceneUri, otherAchievementReferences);
+
+			let references = index.getAchievementReferences("achieve");
+
+			expect(references.length).to.equal(2);
+			expect(references[0].range.start).to.eql({line: 1, character: 1});
+			expect(references[0].range.end).to.eql({line: 1, character: 7});
+			expect(references[1].range.start).to.eql({line: 9, character: 1});
+			expect(references[1].range.end).to.eql({line: 9, character: 7});
+		});
 	});
 });

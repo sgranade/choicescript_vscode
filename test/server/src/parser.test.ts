@@ -1130,6 +1130,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(13);
 			expect(received[0].location.range.end.line).to.equal(22);
 		});
+
+		it("should callback on a reference to an achievement", () => {
+			let fakeDocument = createDocument("*achieve code_name");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onAchievementReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			})
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("code_name");
+			expect(received[0].location.range.start.line).to.equal(9);
+			expect(received[0].location.range.end.line).to.equal(18);
+		});
 	})
 
 	describe("Errors", () => {

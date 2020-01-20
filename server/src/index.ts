@@ -113,6 +113,15 @@ export interface ProjectIndex {
      * @param newIndex New index of achievement codenames.
      */
 	updateAchievements(newIndex: IdentifierIndex): void;
+	/**
+	 * Update the index of references to achivements.
+	 * 
+	 * This index is only to direct references to achievements, not to achievement-variable references
+	 * created by the *check_achievements command.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of references to achievements.
+	 */
+	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
     /**
      * Update the index of variable scopes.
      * @param textDocumentUri URI to document whose index is to be updated.
@@ -161,6 +170,22 @@ export interface ProjectIndex {
      * Get the achievement codenames.
      */
 	getAchievements(): ReadonlyIdentifierIndex;
+    /**
+     * Get all references to achievements in one scene document.
+	 * 
+	 * This only finds direct references to an achievement, not to achievement variables
+	 * created by *check_achivement commands.
+     * @param sceneUri Scene document URI.
+     */
+	getDocumentAchievementReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
+    /**
+     * Get all references to an achievement across all documents.
+	 * 
+	 * This only finds direct references to an achievement, not to achievement variables
+	 * created by *check_achivement commands.
+     * @param achievement Achievement to find references to.
+     */
+	getAchievementReferences(achievement: string): ReadonlyArray<Location>;
     /**
      * Get all references to variables in one scene document.
      * @param sceneUri Scene document URI.
@@ -212,6 +237,7 @@ export class Index implements ProjectIndex {
 	_localLabels: Map<string, IdentifierIndex>;
 	_flowControlEvents: Map<string, FlowControlEvent[]>;
 	_achievements: IdentifierIndex;
+	_achievementReferences: Map<string, VariableReferenceIndex>;
 	_documentScopes: Map<string, DocumentScopes>;
 	_parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
@@ -224,6 +250,7 @@ export class Index implements ProjectIndex {
 		this._localLabels = new Map();
 		this._flowControlEvents = new Map();
 		this._achievements = new Map();
+		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
 	}
@@ -251,6 +278,9 @@ export class Index implements ProjectIndex {
 	}
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
+	}
+	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
+		this._achievementReferences.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes) {
 		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);
@@ -293,6 +323,22 @@ export class Index implements ProjectIndex {
 	}
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
+	}
+	getDocumentAchievementReferences(sceneUri: string): ReadonlyVariableReferenceIndex {
+		let index = this._achievementReferences.get(normalizeUri(sceneUri));
+		if (index === undefined) {
+			index = new Map();
+		}
+		return index;
+	}
+	getAchievementReferences(achievement: string): ReadonlyArray<Location> {
+		let locations: Location[] = [];
+		for (let index of this._achievementReferences.values()) {
+			let partialLocations = index.get(achievement);
+			if (partialLocations !== undefined)
+				locations.push(...partialLocations);
+		}
+		return locations;
 	}
 	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex {
 		let index = this._variableReferences.get(normalizeUri(sceneUri));
