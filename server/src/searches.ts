@@ -84,13 +84,13 @@ export function findLabelLocation(
  * @param document Current document.
  * @param position Position in the document.
  * @param projectIndex Project index.
- * @returns Definition location and type, which are undefined if not found.
+ * @returns Symbol, location and type, which are all undefined if not found.
  */
 export function findDefinition(
 	document: TextDocument, position: Position, projectIndex: ProjectIndex): SymbolDefinition {
 	let definition: SymbolDefinition = { symbol: undefined, location: undefined, type: undefined };
 
-	// See if we have a created variable at this location
+	// See if we have a created local variable at this location
 	let localVariables = projectIndex.getLocalVariables(document.uri);
 	for (let [variable, location] of localVariables.entries()) {
 		if (positionInRange(position, location.range)) {
@@ -106,6 +106,18 @@ export function findDefinition(
 		}
 	}
 
+	// See if we have a created global variable at this location
+	if (projectIndex.isStartupFileUri(document.uri)) {
+		for (let [variable, location] of projectIndex.getGlobalVariables()) {
+			if (positionInRange(position, location.range)) {
+				definition.symbol = variable;
+				definition.location = location;
+				definition.type = DefinitionType.GlobalVariable;
+				return definition;
+			}
+		}
+	}
+
 	// See if we have a variable reference at this location
 	let references = projectIndex.getDocumentVariableReferences(document.uri);
 	for (let [variable, locations] of references.entries()) {
@@ -118,8 +130,8 @@ export function findDefinition(
 				definition.symbol = variable;
 				if (projectIndex.isStartupFileUri(definition.location.uri)) {
 					definition.type = DefinitionType.GlobalVariable;
-			}
-			else {
+				}
+				else {
 					definition.type = DefinitionType.LocalVariable;
 				}
 			}
@@ -176,14 +188,16 @@ export function findDefinition(
  * @param context Reference request context.
  * @param projectIndex Project index.
  */
-export function findReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
+export function findReferences(
+	textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex
+	): Location[] {
 	let locations: Location[] = [];
 
 	let definition = findDefinition(textDocument, position, projectIndex);
 	if ((definition.type == DefinitionType.GlobalVariable || definition.type == DefinitionType.LocalVariable)
 		&& definition.symbol !== undefined) {
 		if (definition.type == DefinitionType.GlobalVariable) {
-		locations = [...projectIndex.getVariableReferences(definition.symbol)];
+			locations = [...projectIndex.getVariableReferences(definition.symbol)];
 		}
 		else {
 			let localReferences = projectIndex.getDocumentVariableReferences(definition.location!.uri);
@@ -205,4 +219,99 @@ export function findReferences(textDocument: TextDocument, position: Position, c
 	}
 
 	return locations;
+}
+
+/**
+ * Generate renames for a symbol.
+ * @param textDocument Document containing the symbol to rename.
+ * @param position Cursor position.
+ * @param newName New name for the symbol.
+ * @param projectIndex Project index.
+ */
+export function generateRenames(
+	textDocument: TextDocument, position: Position, newName: string, projectIndex: ProjectIndex
+	): WorkspaceEdit | null {
+
+	let locationsToChange = findReferences(textDocument, position, {includeDeclaration: true}, projectIndex);
+
+	if (locationsToChange.length == 0) {
+		return null;
+	}
+
+	let changes: Map<string, TextEdit[]> = new Map();
+	for (let location of locationsToChange) {
+		let change = TextEdit.replace(location.range, newName);
+		let edits = changes.get(location.uri);
+		if (edits === undefined) {
+			edits = [];
+			changes.set(location.uri, edits);
+		}
+		edits.push(change);
+	}
+
+	let workspaceEdit: WorkspaceEdit = {
+		changes: {
+		}
+	};
+	for (let [uri, edits] of changes) {
+		workspaceEdit.changes![uri] = edits;
+	}
+
+	return workspaceEdit;
+
+	// let text = textDocument.getText();
+	// let index = textDocument.offsetAt(position);
+	// let symbol = extractSymbolAtIndex(text, index);
+	// let definitionLocation: Location | undefined = undefined;
+	// let referenceLocations: Location[] = [];
+
+	// let localVariables = projectIndex.getLocalVariables(textDocument.uri);
+	// if (localVariables !== undefined) {
+	// 	definitionLocation = localVariables.get(symbol);
+	// 	if (definitionLocation !== undefined) {
+			
+	// 	}
+	// }
+
+	// let variableDefinition = projectIndex.getGlobalVariables().get(symbol);
+	// if (variableDefinition === undefined) {
+	// 	let localVariables = projectIndex.getLocalVariables(textDocument.uri);
+	// 	if (localVariables !== undefined) {
+	// 		variableDefinition = localVariables.get(symbol);
+	// 	}
+	// }
+
+	// if (variableDefinition === undefined) {
+	// 	return null;
+	// }
+
+	// let changes: Map<string, TextEdit[]> = new Map();
+
+	// for (let location of projectIndex.getVariableReferences(symbol)) {
+	// 	let change = TextEdit.replace(location.range, newName);
+	// 	let edits = changes.get(location.uri);
+	// 	if (edits === undefined) {
+	// 		edits = [];
+	// 		changes.set(location.uri, edits);
+	// 	}
+	// 	edits.push(change);
+	// }
+
+	// // Add in where the variable is defined
+	// let edits = changes.get(variableDefinition.uri);
+	// if (edits === undefined) { 
+	// 	edits = [];
+	// 	changes.set(variableDefinition.uri, edits);
+	// }
+	// edits.push(TextEdit.replace(variableDefinition.range, newName));
+
+	// let workspaceEdit: WorkspaceEdit = {
+	// 	changes: {
+	// 	}
+	// };
+	// for (let [uri, edits] of changes) {
+	// 	workspaceEdit.changes![uri] = edits;
+	// }
+
+	// return workspaceEdit;
 }

@@ -208,7 +208,7 @@ describe("Definitions", () => {
 			expect(definition.symbol).to.equal("local_var");
 		});
 
-		it("should locate a definition from a global variable references", () => {
+		it("should locate a definition from a global variable reference", () => {
 			let createLocation = Location.create(globalUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
@@ -216,6 +216,23 @@ describe("Definitions", () => {
 			let variableReferences = new Map([[documentUri, localVariableReferences]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.GlobalVariable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
+		});
+
+		it("should locate a definition from a global variable definition", () => {
+			let createLocation = Location.create(globalUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
+			let localVariableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]]);
+			let variableReferences = new Map([[documentUri, localVariableReferences]]);
+			let fakeDocument = createDocument("placeholder", globalUri);
+			let position = Position.create(1, 2);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
 			let definition = findDefinition(fakeDocument, position, fakeIndex);
@@ -455,7 +472,7 @@ describe("Symbol References", () => {
 		expect(references[1].range.end).to.eql({line: 1, character: 5});
 	});
 
-	it("should give all variable references for global variables", () => {
+	it("should give all variable references for global variables on a reference", () => {
 		let createLocation = Location.create(globalUri, Range.create(1, 0, 1, 5));
 		let localReferenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 		let globalReferenceLocation = Location.create(globalUri, Range.create(3, 0, 3, 5));
@@ -465,6 +482,31 @@ describe("Symbol References", () => {
 		let variableReferences = new Map([[documentUri, localVariableReferences], [globalUri, globalVariableReferences]]);
 		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(2, 1);
+		let fakeContext = Substitute.for<ReferenceContext>();
+		fakeContext.includeDeclaration.returns(false);
+		let fakeIndex = createMockIndex({ globalVariables: globalVariablesIndex, variableReferences: variableReferences });
+
+		let references = findReferences(fakeDocument, position, fakeContext, fakeIndex);
+
+		expect(references.length).to.equal(2);
+		expect(references[0].uri).to.equal(documentUri);
+		expect(references[0].range.start).to.eql({line: 2, character: 0});
+		expect(references[0].range.end).to.eql({line: 2, character: 5});
+		expect(references[1].uri).to.equal(globalUri);
+		expect(references[1].range.start).to.eql({line: 3, character: 0});
+		expect(references[1].range.end).to.eql({line: 3, character: 5});
+	});
+
+	it("should give all variable references for global variables on the creation", () => {
+		let createLocation = Location.create(globalUri, Range.create(1, 0, 1, 5));
+		let localReferenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+		let globalReferenceLocation = Location.create(globalUri, Range.create(3, 0, 3, 5));
+		let globalVariablesIndex: Map<string, Location> = new Map([["global_var", createLocation]]);
+		let localVariableReferences: VariableReferenceIndex = new Map([["global_var", [localReferenceLocation]]]);
+		let globalVariableReferences: VariableReferenceIndex = new Map([["global_var", [globalReferenceLocation]]]);
+		let variableReferences = new Map([[documentUri, localVariableReferences], [globalUri, globalVariableReferences]]);
+		let fakeDocument = createDocument("Placeholder", globalUri);
+		let position = Position.create(1, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
 		let fakeIndex = createMockIndex({ globalVariables: globalVariablesIndex, variableReferences: variableReferences });
@@ -542,7 +584,7 @@ describe("Symbol References", () => {
 		let index = new Index();
 		index.updateFlowControlEvents(documentUri, events);
 		index.updateLabels(documentUri, documentLabelsIndex);
-		let fakeDocument = createDocument("Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nlocal_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(5, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
@@ -569,7 +611,7 @@ describe("Symbol References", () => {
 		let index = new Index();
 		index.updateFlowControlEvents(documentUri, events);
 		index.updateLabels(documentUri, documentLabelsIndex);
-		let fakeDocument = createDocument("Line 0\nLine 1\nlocal_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(2, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
@@ -596,7 +638,7 @@ describe("Symbol References", () => {
 		let index = new Index();
 		index.updateFlowControlEvents(documentUri, events);
 		index.updateLabels(documentUri, documentLabelsIndex);
-		let fakeDocument = createDocument("Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nlocal_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(5, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(true);
@@ -628,7 +670,7 @@ describe("Symbol References", () => {
 		index.updateFlowControlEvents(documentUri, events);
 		index.updateLabels(documentUri, documentLabelsIndex);
 		index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
-		let fakeDocument = createDocument("Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nlocal_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(5, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
@@ -660,7 +702,7 @@ describe("Symbol References", () => {
 		index.updateLabels(documentUri, documentLabelsIndex);
 		index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
 		index.updateSceneList([documentUri, otherSceneUri]);
-		let fakeDocument = createDocument("Line 0\nLine 1\nother_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(2, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
@@ -690,7 +732,7 @@ describe("Symbol References", () => {
 		index.updateFlowControlEvents(documentUri, events);
 		index.updateLabels(documentUri, documentLabelsIndex);
 		index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
-		let fakeDocument = createDocument("Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nlocal_label");
+		let fakeDocument = createDocument("Placeholder");
 		let position = Position.create(5, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
@@ -703,4 +745,263 @@ describe("Symbol References", () => {
 	});
 });
 
+describe("Symbol Renames", () => {
+	describe("Variable Renames", () => {
+		it("should rename local variables at definitions", () => {
+			let createLocalLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let localVariablesIndex: Map<string, Location> = new Map([["local_var", createLocalLocation]]);
+			let localVariables = new Map([[documentUri, localVariablesIndex]]);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(1, 1);
+			let fakeIndex = createMockIndex({ localVariables: localVariables });
 	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "local_var", fakeIndex);
+			let allChanges = renames.changes;
+			let changes = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(changes.length).to.equal(1);
+			expect(changes[0].range.start).to.eql({line: 1, character: 0 });
+			expect(changes[0].range.end).to.eql({line: 1, character: 5});
+		});
+	
+		it("should rename local variables at references", () => {
+			let createLocalLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let localReferenceLocation = Location.create(documentUri, Range.create(3, 0, 3, 5));
+			let localVariablesIndex: Map<string, Location> = new Map([["local_var", createLocalLocation]]);
+			let localVariables = new Map([[documentUri, localVariablesIndex]]);
+			let localVariableReferences: VariableReferenceIndex = new Map([["local_var", [localReferenceLocation]]]);
+			let variableReferences = new Map([[documentUri, localVariableReferences]]);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(3, 1);
+			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_var_name", fakeIndex);
+			let allChanges = renames.changes;
+			let changes = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(changes.length).to.equal(2);
+			expect(changes[0].range.start).to.eql({line: 3, character: 0 });
+			expect(changes[0].range.end).to.eql({line: 3, character: 5});
+			expect(changes[1].range.start).to.eql({line: 1, character: 0 });
+			expect(changes[1].range.end).to.eql({line: 1, character: 5});
+		});
+	
+		it("should rename global variables at references", () => {
+			let createGlobalLocation = Location.create(globalUri, Range.create(2, 0, 2, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createGlobalLocation]]);
+			let localReferenceLocation = Location.create(documentUri, Range.create(3, 0, 3, 5));
+			let localVariableReferences: VariableReferenceIndex = new Map([["global_var", [localReferenceLocation]]]);
+			let variableReferences = new Map([[documentUri, localVariableReferences]]);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(3, 1);
+			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_var_name", fakeIndex);
+			let allChanges = renames.changes;
+			let localChanges = allChanges[documentUri];
+			let globalChanges = allChanges[globalUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri, globalUri]);
+			expect(localChanges.length).to.equal(1);
+			expect(globalChanges.length).to.equal(1);
+			expect(localChanges[0].range.start).to.eql({line: 3, character: 0 });
+			expect(localChanges[0].range.end).to.eql({line: 3, character: 5});
+			expect(globalChanges[0].range.start).to.eql({line: 2, character: 0 });
+			expect(globalChanges[0].range.end).to.eql({line: 2, character: 5});
+		});
+	
+		it("should only rename local variables locally", () => {
+			let createLocalLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let createGlobalLocation = Location.create(globalUri, Range.create(2, 0, 2, 5));
+			let localReferenceLocation = Location.create(documentUri, Range.create(3, 0, 3, 5));
+			let localVariablesIndex: Map<string, Location> = new Map([["shared_var_name", createLocalLocation]]);
+			let localVariables = new Map([[documentUri, localVariablesIndex]]);
+			let globalVariables: Map<string, Location> = new Map([["shared_var_name", createGlobalLocation]]);
+			let localVariableReferences: VariableReferenceIndex = new Map([["shared_var_name", [localReferenceLocation]]]);
+			let variableReferences = new Map([[documentUri, localVariableReferences]]);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(3, 1);
+			let fakeIndex = createMockIndex({ 
+				localVariables: localVariables, globalVariables: globalVariables, variableReferences: variableReferences
+			});
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_var_name", fakeIndex);
+			let allChanges = renames.changes;
+			let localChanges = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(localChanges.length).to.equal(2);
+			expect(localChanges[0].range.start).to.eql({line: 3, character: 0 });
+			expect(localChanges[0].range.end).to.eql({line: 3, character: 5});
+			expect(localChanges[1].range.start).to.eql({line: 1, character: 0 });
+			expect(localChanges[1].range.end).to.eql({line: 1, character: 5});
+		});
+	});
+	describe("Label Renames", () => {
+		it("should rename all matching label references on a label definition", () => {
+			let referenceLocation1 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let referenceLocation2 = Location.create(documentUri, Range.create(4, 0, 4, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation1,
+				scene: ""
+			},
+			{
+				command: "gosub",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation2,
+				scene: ""
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			// The logic for finding label references is complex enough that I'll use an actual Index
+			let index = new Index();
+			index.updateFlowControlEvents(documentUri, events);
+			index.updateLabels(documentUri, documentLabelsIndex);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(5, 1);
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_label", index);
+			let allChanges = renames.changes;
+			let localChanges = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(localChanges.length).to.equal(3);
+			expect(localChanges[0].range.start).to.eql({line: 2, character: 0 });
+			expect(localChanges[0].range.end).to.eql({line: 2, character: 5});
+			expect(localChanges[1].range.start).to.eql({line: 4, character: 0 });
+			expect(localChanges[1].range.end).to.eql({line: 4, character: 5});
+			expect(localChanges[2].range.start).to.eql({line: 5, character: 0 });
+			expect(localChanges[2].range.end).to.eql({line: 5, character: 5});
+		});
+	
+		it("should rename all matching label references on a label reference", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let definitionLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", definitionLocation]]);
+			// The logic for finding label references is complex enough that I'll use an actual Index
+			let index = new Index();
+			index.updateFlowControlEvents(documentUri, events);
+			index.updateLabels(documentUri, documentLabelsIndex);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(2, 1);
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_label", index);
+			let allChanges = renames.changes;
+			let localChanges = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(localChanges.length).to.equal(2);
+			expect(localChanges[0].range.start).to.eql({line: 2, character: 0 });
+			expect(localChanges[0].range.end).to.eql({line: 2, character: 5});
+			expect(localChanges[1].range.start).to.eql({line: 5, character: 0 });
+			expect(localChanges[1].range.end).to.eql({line: 5, character: 5});
+		});
+	
+		it("should not rename labels with the same name in a different scene", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
+			let otherSceneLabelsIndex: IdentifierIndex = new Map([["local_label", otherSceneLabelLocation]]);
+			// The logic for finding label references is complex enough that I'll use an actual Index
+			let index = new Index();
+			index.updateFlowControlEvents(documentUri, events);
+			index.updateLabels(documentUri, documentLabelsIndex);
+			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(5, 1);
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_label", index);
+			let allChanges = renames.changes;
+			let localChanges = allChanges[documentUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri]);
+			expect(localChanges.length).to.equal(2);
+			expect(localChanges[0].range.start).to.eql({line: 2, character: 0 });
+			expect(localChanges[0].range.end).to.eql({line: 2, character: 5});
+			expect(localChanges[1].range.start).to.eql({line: 5, character: 0 });
+			expect(localChanges[1].range.end).to.eql({line: 5, character: 5});
+		});
+	
+		it("should rename labels in a different scene on a reference", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto-scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "other_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene"
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
+			let otherSceneLabelsIndex: IdentifierIndex = new Map([["other_label", otherSceneLabelLocation]]);
+			// The logic for finding label references is complex enough that I'll use an actual Index
+			let index = new Index();
+			index.updateGlobalVariables('file:///startup.txt', new Map());
+			index.updateFlowControlEvents(documentUri, events);
+			index.updateLabels(documentUri, documentLabelsIndex);
+			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.updateSceneList([documentUri, otherSceneUri]);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(2, 1);
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_label", index);
+			let allChanges = renames.changes;
+			let otherChanges = allChanges[otherSceneUri];
+	
+			expect(Object.keys(allChanges)).to.eql([documentUri, otherSceneUri]);
+			expect(otherChanges.length).to.equal(1);
+			expect(otherChanges[0].range.start).to.eql({line: 7, character: 0 });
+			expect(otherChanges[0].range.end).to.eql({line: 7, character: 7});
+		});
+	
+		it("should rename label references in a different scene on a label definition", () => {
+			let referenceLocation = Location.create(otherSceneUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto-scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: "faker"
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			// The logic for finding label references is complex enough that I'll use an actual Index
+			let index = new Index();
+			index.updateFlowControlEvents(otherSceneUri, events);
+			index.updateLabels(documentUri, documentLabelsIndex);
+			let fakeDocument = createDocument("Placeholder");
+			let position = Position.create(5, 1);
+	
+			let renames: WorkspaceEdit = generateRenames(fakeDocument, position, "new_label", index);
+			let allChanges = renames.changes;
+			let otherChanges = allChanges[otherSceneUri];
+	
+			expect(Object.keys(allChanges)).to.eql([otherSceneUri, documentUri]);
+			expect(otherChanges.length).to.equal(1);
+			expect(otherChanges[0].range.start).to.eql({line: 2, character: 0 });
+			expect(otherChanges[0].range.end).to.eql({line: 2, character: 5});
+		});
+	});
+});

@@ -7,12 +7,10 @@ import {
 	ReferenceParams,
 	CompletionItem,
 	TextDocumentPositionParams,
-	Position,
 	Location,
 	Definition,
 	RenameParams,
 	WorkspaceEdit,
-	TextEdit,
 	TextDocumentSyncKind
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -23,9 +21,9 @@ import globby = require('globby');
 import { updateProjectIndex } from './indexer';
 import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
-import { extractSymbolAtIndex, uriIsStartupFile } from './language';
+import { uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { findDefinition, findReferences } from './searches';
+import { findDefinition, findReferences, generateRenames } from './searches';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -197,54 +195,6 @@ connection.onRenameRequest(
 		return generateRenames(document, renameParams.position, renameParams.newName, projectIndex);
 	}
 )
-
-function generateRenames(textDocument: TextDocument, position: Position, newName: string, projectIndex: ProjectIndex): WorkspaceEdit | null {
-	let text = textDocument.getText();
-	let index = textDocument.offsetAt(position);
-	let symbol = extractSymbolAtIndex(text, index);
-
-	let variableDefinition = projectIndex.getGlobalVariables().get(symbol);
-	if (variableDefinition === undefined) {
-		let localVariables = projectIndex.getLocalVariables(textDocument.uri);
-		if (localVariables !== undefined) {
-			variableDefinition = localVariables.get(symbol);
-		}
-	}
-
-	if (variableDefinition === undefined) {
-		return null;
-	}
-
-	let changes: Map<string, TextEdit[]> = new Map();
-
-	for (let location of projectIndex.getVariableReferences(symbol)) {
-		let change = TextEdit.replace(location.range, newName);
-		let edits = changes.get(location.uri);
-		if (edits === undefined) {
-			edits = [];
-			changes.set(location.uri, edits);
-		}
-		edits.push(change);
-	}
-
-	// Add in where the variable is defined
-	let edits = changes.get(variableDefinition.uri);
-	if (edits === undefined) { 
-		edits = [];
-		changes.set(variableDefinition.uri, edits);
-	}
-	edits.push(TextEdit.replace(variableDefinition.range, newName));
-
-	let workspaceEdit: WorkspaceEdit = {
-		changes: {
-		}
-	};
-	for (let [uri, edits] of changes) {
-		workspaceEdit.changes![uri] = edits;
-	}
-
-	return workspaceEdit;
-}
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
