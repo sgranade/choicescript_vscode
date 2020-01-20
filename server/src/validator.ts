@@ -1,6 +1,7 @@
 import { TextDocument, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { ProjectIndex, getVariableCreationLocation, getLabelLocation } from "./index";
+import { ProjectIndex } from "./index";
+import { findVariableCreationLocation, findLabelLocation } from "./searches";
 import { 
 	builtinVariables,
 	uriIsStartupFile, 
@@ -71,7 +72,7 @@ function validateLabelReference(
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (!(label !== undefined && label[0] == '{')) {
-		let labelLocation = getLabelLocation(label, scene, state.textDocument, state.projectIndex);
+		let labelLocation = findLabelLocation(label, scene, state.textDocument, state.projectIndex);
 
 		if (labelLocation === undefined) {
 			diagnostic = createDiagnosticFromLocation(
@@ -120,7 +121,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 	}
 	for (let [variable, locations] of references.entries()) {
 		// Effective creation locations take precedence
-		let creationLocation = getVariableCreationLocation(variable, true, state.textDocument, state.projectIndex);
+		let creationLocation = findVariableCreationLocation(variable, true, state.textDocument, state.projectIndex);
 
 		if (creationLocation) {
 			// Make sure we don't reference variables before they're created

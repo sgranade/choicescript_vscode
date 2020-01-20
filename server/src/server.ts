@@ -21,11 +21,11 @@ import url = require('url');
 import globby = require('globby');
 
 import { updateProjectIndex } from './indexer';
-import { ProjectIndex, Index, generateReferences } from "./index";
+import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { findDefinition } from './searches';
+import { findDefinition, findReferences } from './searches';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -184,7 +184,7 @@ connection.onReferences(
 		if (document === undefined) {
 			return [];
 		}
-		return generateReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+		return findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
 	}
 )
 
