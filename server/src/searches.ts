@@ -182,7 +182,16 @@ export function findReferences(textDocument: TextDocument, position: Position, c
 	let definition = findDefinition(textDocument, position, projectIndex);
 	if ((definition.type == DefinitionType.GlobalVariable || definition.type == DefinitionType.LocalVariable)
 		&& definition.symbol !== undefined) {
+		if (definition.type == DefinitionType.GlobalVariable) {
 		locations = [...projectIndex.getVariableReferences(definition.symbol)];
+		}
+		else {
+			let localReferences = projectIndex.getDocumentVariableReferences(definition.location!.uri);
+			let possibleLocations = localReferences.get(definition.symbol);
+			if (possibleLocations !== undefined) {
+				locations = possibleLocations;
+			}
+		}
 		if (context.includeDeclaration && definition.location !== undefined) {
 			locations.push(definition.location);
 		}
