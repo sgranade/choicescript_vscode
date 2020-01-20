@@ -4,15 +4,27 @@ import { ProjectIndex, getVariableCreationLocation, getLabelLocation } from "./i
 import { variableIsAchievement } from './language';
 import { positionInRange } from './utilities';
 
+export enum DefinitionType {
+	Variable,
+	Achievement,
+	Label
+}
+
+export interface LocationAndType {
+	location?: Location,
+	type?: DefinitionType
+}
+
 /**
- * Get the definition of a symbol at a position.
+ * Find where a symbol at a position is defined in the project.
  * @param document Current document.
  * @param position Position in the document.
  * @param projectIndex Project index.
+ * @returns Definition location and type, which are undefined if not found.
  */
-export function generateDefinition(
-	document: TextDocument, position: Position, projectIndex: ProjectIndex): Location | undefined {
-	let definition: Location | undefined = undefined;
+export function findDefinition(
+	document: TextDocument, position: Position, projectIndex: ProjectIndex): LocationAndType {
+	let definition: LocationAndType = { location: undefined, type: undefined };
 
 	// See if we have a local reference at this location
 	let references = projectIndex.getDocumentVariableReferences(document.uri);
@@ -21,12 +33,16 @@ export function generateDefinition(
 			return (positionInRange(position, location.range));
 		})
 		if (match !== undefined) {
-			definition = getVariableCreationLocation(variable, false, document, projectIndex);
-			if (definition === undefined) {
+			definition.location = getVariableCreationLocation(variable, false, document, projectIndex);
+			if (definition.location !== undefined) {
+				definition.type = DefinitionType.Variable;
+			}
+			else {
 				let achievements = projectIndex.getAchievements();
 				let codename = variableIsAchievement(variable, achievements);
 				if (codename !== undefined) {
-					definition = achievements.get(codename);
+					definition.location = achievements.get(codename);
+					definition.type = DefinitionType.Achievement;
 				}
 			}
 
@@ -41,7 +57,10 @@ export function generateDefinition(
 			positionInRange(position, event.labelLocation.range));
 	});
 	if (event !== undefined) {
-		definition = getLabelLocation(event.label, event.scene, document, projectIndex);
+		definition.location = getLabelLocation(event.label, event.scene, document, projectIndex);
+		if (definition.location !== undefined) {
+			definition.type = DefinitionType.Label;
+		}
 
 		return definition; // Found or not, we had a reference match, so return
 	}

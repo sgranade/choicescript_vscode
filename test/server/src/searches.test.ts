@@ -10,7 +10,7 @@ import {
 	FlowControlEvent, 
 	DocumentScopes 
 } from '../../../server/src/index';
-import { generateDefinition } from '../../../server/src/definitions';
+import { findDefinition, DefinitionType } from '../../../server/src/searches';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
@@ -111,12 +111,13 @@ describe("Definitions", () => {
 			let position = Position.create(0, 16);
 			let fakeIndex = createIndex({ localVariables: localVariables });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition).to.be.undefined;
+			expect(definition.type).to.be.undefined;
+			expect(definition.location).to.be.undefined;
 		});
 
-		it("should locate local references", () => {
+		it("should locate local variable references", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
@@ -125,13 +126,14 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition.range.start).to.eql({line: 1, character: 0});
-			expect(definition.range.end).to.eql({line: 1, character: 5});
+			expect(definition.type).to.equal(DefinitionType.Variable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
 		});
 
-		it("should locate global references", () => {
+		it("should locate global variable references", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
@@ -140,10 +142,11 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition.range.start).to.eql({line: 1, character: 0});
-			expect(definition.range.end).to.eql({line: 1, character: 5});
+			expect(definition.type).to.equal(DefinitionType.Variable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
 		});
 
 		it("should locate achievement references", () => {
@@ -155,12 +158,15 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition.range.start).to.eql({line: 5, character: 0});
-			expect(definition.range.end).to.eql({line: 5, character: 5});
+			expect(definition.type).to.equal(DefinitionType.Achievement);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
 		});
+	});
 
+	describe("Variable Definitions", () => {
 		it("should locate local labels", () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -176,10 +182,11 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createIndex({ labels: labelsIndex, flowControlEvents: events });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition.range.start).to.eql({line: 5, character: 0});
-			expect(definition.range.end).to.eql({line: 5, character: 5});
+			expect(definition.type).to.equal(DefinitionType.Label);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
 		});
 
 		it("should locate global labels", () => {
@@ -197,11 +204,12 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createIndex({ labels: labelsIndex, sceneFileUri: fakeSceneUri, flowControlEvents: events });
 	
-			let definition = generateDefinition(fakeDocument, position, fakeIndex);
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
 	
-			expect(definition.uri).to.equal(fakeSceneUri);
-			expect(definition.range.start).to.eql({line: 5, character: 0});
-			expect(definition.range.end).to.eql({line: 5, character: 5});
+			expect(definition.type).to.equal(DefinitionType.Label);
+			expect(definition.location.uri).to.equal(fakeSceneUri);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
 		});
 	});
 });

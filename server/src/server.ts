@@ -25,7 +25,7 @@ import { ProjectIndex, Index, generateReferences } from "./index";
 import { generateDiagnostics } from './validator';
 import { extractSymbolAtIndex, uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { generateDefinition } from './definitions';
+import { findDefinition } from './searches';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -171,7 +171,8 @@ connection.onDefinition(
 	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
 		let document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document !== undefined) {
-			return generateDefinition(document, textDocumentPosition.position, projectIndex);
+			let definitionAndLocation = findDefinition(document, textDocumentPosition.position, projectIndex);
+			return definitionAndLocation.location;
 		}
 		return undefined;
 	}
