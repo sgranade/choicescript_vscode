@@ -96,7 +96,11 @@ function createMockIndex({
 	});
 	fakeIndex.getSceneList().returns(sceneList);
 	fakeIndex.getLabels(Arg.any()).mimicks((uri: string) => {
-		return labels.get(uri);
+		let l = labels.get(uri);
+		if (l !== undefined) {
+			return l;
+		}
+		return new Map();
 	});
 	fakeIndex.getAchievements(Arg.any()).returns(achievements);
 	fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
@@ -118,14 +122,253 @@ function createMockIndex({
 	return fakeIndex;
 }
 
+describe("Definitions", () => {
+	describe("Variable Definitions", () => {
+		it("should not give definitions for non-references", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let fakeDocument = createDocument("Non-reference local_var");
+			let position = Position.create(0, 16);
+			let fakeIndex = createMockIndex({ localVariables: localVariables });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.be.undefined;
+			expect(definition.location).to.be.undefined;
+		});
+
+		it("should locate local variable references", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Variable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
+		});
+
+		it("should locate local variable references on a variable definition", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(1, 2);
+			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Variable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
+		});
+
+		it("should return local variable symbol names", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.symbol).to.equal("local_var");
+		});
+
+		it("should locate global variable references", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Variable);
+			expect(definition.location.range.start).to.eql({line: 1, character: 0});
+			expect(definition.location.range.end).to.eql({line: 1, character: 5});
+		});
+
+		it("should return global variable names", () => {
+			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.symbol).to.equal("global_var");
+		});
+
+		it("should locate achievement references", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let achievementsIndex: IdentifierIndex = new Map([["codename", achievementLocation]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Achievement);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
+		});
+
+		it("should return achievement codenames", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let achievementsIndex: IdentifierIndex = new Map([["codename", achievementLocation]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.symbol).to.equal("codename");
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
+		});
+	});
+
+	describe("Label Definitions", () => {
+		it("should locate local labels", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labels = new Map([[documentUri, labelsIndex]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Label);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
+		});
+
+		it("should locate local labels on a label definition", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labels = new Map([[documentUri, labelsIndex]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(5, 2);
+			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Label);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
+		});
+
+		it("should return local label names", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto",
+				commandLocation: Substitute.for<Location>(),
+				label: "local_label",
+				labelLocation: referenceLocation,
+				scene: ""
+			}];
+			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
+			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labels = new Map([[documentUri, labelsIndex]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.symbol).to.equal("local_label");
+		});
+
+		it("should locate global labels", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "other_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene"
+			}];
+			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
+			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
+			let labels = new Map([[otherSceneUri, labelsIndex]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.type).to.equal(DefinitionType.Label);
+			expect(definition.location.uri).to.equal(otherSceneUri);
+			expect(definition.location.range.start).to.eql({line: 5, character: 0});
+			expect(definition.location.range.end).to.eql({line: 5, character: 5});
+		});
+
+		it("should return global label names", () => {
+			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "other_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene"
+			}];
+			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
+			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
+			let labels = new Map([[otherSceneUri, labelsIndex]]);
+			let fakeDocument = createDocument("placeholder");
+			let position = Position.create(2, 2);
+			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
+	
+			let definition = findDefinition(fakeDocument, position, fakeIndex);
+	
+			expect(definition.symbol).to.equal("other_label");
+		});
+	});
+});
+
 describe("Symbol References", () => {
 	it("should give all variable references", () => {
 		let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
 		let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 		let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
 		let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
-		let fakeDocument = createDocument("Non-reference local_var");
-		let position = Position.create(0, 16);
+		let fakeDocument = createDocument("Placeholder");
+		let position = Position.create(2, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(false);
 		let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
@@ -142,8 +385,8 @@ describe("Symbol References", () => {
 		let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 		let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
 		let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
-		let fakeDocument = createDocument("Non-reference local_var");
-		let position = Position.create(0, 16);
+		let fakeDocument = createDocument("Placeholder");
+		let position = Position.create(2, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(true);
 		let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
@@ -162,8 +405,8 @@ describe("Symbol References", () => {
 		let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 		let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
 		let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
-		let fakeDocument = createDocument("Non-reference global_var");
-		let position = Position.create(0, 16);
+		let fakeDocument = createDocument("Placeholder");
+		let position = Position.create(2, 1);
 		let fakeContext = Substitute.for<ReferenceContext>();
 		fakeContext.includeDeclaration.returns(true);
 		let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
@@ -353,116 +596,3 @@ describe("Symbol References", () => {
 	});
 });
 
-describe("Definitions", () => {
-	describe("Variable Definitions", () => {
-		it("should not give definitions for non-references", () => {
-			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
-			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let fakeDocument = createDocument("Non-reference local_var");
-			let position = Position.create(0, 16);
-			let fakeIndex = createMockIndex({ localVariables: localVariables });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.be.undefined;
-			expect(definition.location).to.be.undefined;
-		});
-
-		it("should locate local variable references", () => {
-			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
-			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
-			let fakeDocument = createDocument("placeholder");
-			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.equal(DefinitionType.Variable);
-			expect(definition.location.range.start).to.eql({line: 1, character: 0});
-			expect(definition.location.range.end).to.eql({line: 1, character: 5});
-		});
-
-		it("should locate global variable references", () => {
-			let createLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
-			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
-			let fakeDocument = createDocument("placeholder");
-			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.equal(DefinitionType.Variable);
-			expect(definition.location.range.start).to.eql({line: 1, character: 0});
-			expect(definition.location.range.end).to.eql({line: 1, character: 5});
-		});
-
-		it("should locate achievement references", () => {
-			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
-			let achievementsIndex: IdentifierIndex = new Map([["codename", achievementLocation]]);
-			let fakeDocument = createDocument("placeholder");
-			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.equal(DefinitionType.Achievement);
-			expect(definition.location.range.start).to.eql({line: 5, character: 0});
-			expect(definition.location.range.end).to.eql({line: 5, character: 5});
-		});
-	});
-
-	describe("Label Definitions", () => {
-		it("should locate local labels", () => {
-			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let events: FlowControlEvent[] = [{
-				command: "goto",
-				commandLocation: Substitute.for<Location>(),
-				label: "local_label",
-				labelLocation: referenceLocation,
-				scene: ""
-			}];
-			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
-			let labels = new Map([[documentUri, labelsIndex]]);
-			let fakeDocument = createDocument("placeholder");
-			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.equal(DefinitionType.Label);
-			expect(definition.location.range.start).to.eql({line: 5, character: 0});
-			expect(definition.location.range.end).to.eql({line: 5, character: 5});
-		});
-
-		it("should locate global labels", () => {
-			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let events: FlowControlEvent[] = [{
-				command: "goto_scene",
-				commandLocation: Substitute.for<Location>(),
-				label: "other_label",
-				labelLocation: referenceLocation,
-				scene: "other-scene"
-			}];
-			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
-			let labels = new Map([[otherSceneUri, labelsIndex]]);
-			let fakeDocument = createDocument("placeholder");
-			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
-	
-			let definition = findDefinition(fakeDocument, position, fakeIndex);
-	
-			expect(definition.type).to.equal(DefinitionType.Label);
-			expect(definition.location.uri).to.equal(otherSceneUri);
-			expect(definition.location.range.start).to.eql({line: 5, character: 0});
-			expect(definition.location.range.end).to.eql({line: 5, character: 5});
-		});
-	});
-});

@@ -14,9 +14,10 @@ export enum DefinitionType {
 }
 
 /**
- * Location and type of a symbol definition.
+ * A symbol definition.
  */
-export interface LocationAndType {
+export interface SymbolDefinition {
+	symbol?: string,
 	location?: Location,
 	type?: DefinitionType
 }
@@ -62,79 +63,19 @@ export function findLabelLocation(
 	index: ProjectIndex): Location | undefined {
 	let location: Location | undefined = undefined;
 
-	let uri: string | undefined = document.uri;
-	if (scene !== undefined && scene != "") {
+	let uri: string | undefined;
+	if (scene === undefined || scene == "") {
+		uri = document.uri;
+	}
+	else {
 		uri = index.getSceneUri(scene);
 	}
+
 	if (uri !== undefined) {
 		location = index.getLabels(uri).get(label);
 	}
 
 	return location;
-}
-
-/**
- * Find all references to a symbol, if any.
- * @param textDocument Document containing the reference.
- * @param position Cursor position in the document.
- * @param context Reference request context.
- * @param projectIndex Project index.
- */
-export function findReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
-	let text = textDocument.getText();
-	let cursorIndex = textDocument.offsetAt(position);
-	let symbol = extractSymbolAtIndex(text, cursorIndex);
-
-	let locations = [...projectIndex.getVariableReferences(symbol)];
-	if (locations.length > 0) {  // It's a variable
-		if (context.includeDeclaration) {
-			let declarationLocation = projectIndex.getLocalVariables(textDocument.uri).get(symbol);
-			if (declarationLocation === undefined)
-				declarationLocation = projectIndex.getGlobalVariables().get(symbol);
-	
-			if (declarationLocation !== undefined)
-				locations.push(declarationLocation);
-		}
-	}
-	else {
-		let labelDefinitionSceneUri: string | undefined;
-		// Get where the symbol is defined. If the cursor's at a label definition, that's easy.
-		// See if the cursor is at a label definition
-		let labelDefinitionLocation = projectIndex.getLabels(textDocument.uri).get(symbol);
-		if (labelDefinitionLocation !== undefined && positionInRange(position, labelDefinitionLocation.range)) {
-			labelDefinitionSceneUri = textDocument.uri;
-		}
-		else {
-			// We'll have to see if we can find the definition from flow control events
-			let flowControlEvents = projectIndex.getFlowControlEvents(textDocument.uri);
-			let matchingEvents = flowControlEvents.filter(event => {
-				return (
-					event.label == symbol && 
-					event.labelLocation !== undefined && 
-					positionInRange(position, event.labelLocation.range))
-			});
-			if (matchingEvents.length == 1) {
-				let event = matchingEvents[0];
-				if (event.scene == "") {
-					labelDefinitionSceneUri = textDocument.uri;
-				}
-				else {
-					labelDefinitionSceneUri = projectIndex.getSceneUri(event.scene);
-				}
-				if (labelDefinitionSceneUri !== undefined) {
-					labelDefinitionLocation = projectIndex.getLabels(labelDefinitionSceneUri).get(symbol);
-				}
-			}
-		}
-		if (labelDefinitionSceneUri !== undefined) {
-			locations = [...projectIndex.getLabelReferences(symbol, textDocument.uri)];
-			if (context.includeDeclaration && labelDefinitionLocation !== undefined) {
-				locations.push(labelDefinitionLocation);
-			}
-		}
-	}
-
-	return locations;
 }
 
 /**
@@ -145,10 +86,21 @@ export function findReferences(textDocument: TextDocument, position: Position, c
  * @returns Definition location and type, which are undefined if not found.
  */
 export function findDefinition(
-	document: TextDocument, position: Position, projectIndex: ProjectIndex): LocationAndType {
-	let definition: LocationAndType = { location: undefined, type: undefined };
+	document: TextDocument, position: Position, projectIndex: ProjectIndex): SymbolDefinition {
+	let definition: SymbolDefinition = { symbol: undefined, location: undefined, type: undefined };
 
-	// See if we have a local reference at this location
+	// See if we have a created variable at this location
+	let localVariables = projectIndex.getLocalVariables(document.uri);
+	for (let [variable, location] of localVariables.entries()) {
+		if (positionInRange(position, location.range)) {
+			definition.symbol = variable;
+			definition.location = location;
+			definition.type = DefinitionType.Variable;
+			return definition;
+		}
+	}
+
+	// See if we have a variable reference at this location
 	let references = projectIndex.getDocumentVariableReferences(document.uri);
 	for (let [variable, locations] of references.entries()) {
 		let match = locations.find((location) => {
@@ -157,18 +109,31 @@ export function findDefinition(
 		if (match !== undefined) {
 			definition.location = findVariableCreationLocation(variable, false, document, projectIndex);
 			if (definition.location !== undefined) {
+				definition.symbol = variable;
 				definition.type = DefinitionType.Variable;
 			}
 			else {
 				let achievements = projectIndex.getAchievements();
 				let codename = variableIsAchievement(variable, achievements);
 				if (codename !== undefined) {
+					definition.symbol = codename;
 					definition.location = achievements.get(codename);
 					definition.type = DefinitionType.Achievement;
 				}
 			}
 
 			return definition; // Found or not, we had a reference match, so return
+		}
+	}
+
+	// See if we have a created label at this location
+	let labels = projectIndex.getLabels(document.uri);
+	for (let [label, location] of labels.entries()) {
+		if (positionInRange(position, location.range)) {
+			definition.symbol = label;
+			definition.location = location;
+			definition.type = DefinitionType.Label;
+			return definition;
 		}
 	}
 
@@ -181,6 +146,7 @@ export function findDefinition(
 	if (event !== undefined) {
 		definition.location = findLabelLocation(event.label, event.scene, document, projectIndex);
 		if (definition.location !== undefined) {
+			definition.symbol = event.label;
 			definition.type = DefinitionType.Label;
 		}
 
@@ -188,4 +154,36 @@ export function findDefinition(
 	}
 
 	return definition;
+}
+
+/**
+ * Find all references, if any, to a symbol at a position in a document.
+ * 
+ * The symbol can be a variable or label.
+ * @param textDocument Document containing the reference.
+ * @param position Cursor position in the document.
+ * @param context Reference request context.
+ * @param projectIndex Project index.
+ */
+export function findReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
+	let text = textDocument.getText();
+	let cursorIndex = textDocument.offsetAt(position);
+	let locations: Location[] = [];
+
+	let definition = findDefinition(textDocument, position, projectIndex);
+	if (definition.type == DefinitionType.Variable && definition.symbol !== undefined) {
+		locations = [...projectIndex.getVariableReferences(definition.symbol)];
+		if (context.includeDeclaration && definition.location !== undefined) {
+			locations.push(definition.location);
+		}
+	}
+	else if (definition.type == DefinitionType.Label && definition.symbol !== undefined) {
+		locations = [...projectIndex.getLabelReferences(definition.symbol, textDocument.uri)];
+		if (context.includeDeclaration && definition.location !== undefined) {
+			locations.push(definition.location);
+		}
+
+	}
+
+	return locations;
 }
