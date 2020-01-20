@@ -1,4 +1,4 @@
-import { Position, Location, TextDocument, ReferenceContext } from 'vscode-languageserver';
+import { Position, Location, TextDocument, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
 import { ProjectIndex } from "./index";
 import { variableIsAchievement, extractSymbolAtIndex } from './language';
@@ -8,7 +8,8 @@ import { positionInRange } from './utilities';
  * Type of the symbol being defined.
  */
 export enum DefinitionType {
-	Variable,
+	LocalVariable,
+	GlobalVariable,
 	Achievement,
 	Label
 }
@@ -95,7 +96,12 @@ export function findDefinition(
 		if (positionInRange(position, location.range)) {
 			definition.symbol = variable;
 			definition.location = location;
-			definition.type = DefinitionType.Variable;
+			if (projectIndex.isStartupFileUri(document.uri)) {
+				definition.type = DefinitionType.GlobalVariable;
+			}
+			else {
+				definition.type = DefinitionType.LocalVariable;
+			}
 			return definition;
 		}
 	}
@@ -110,7 +116,12 @@ export function findDefinition(
 			definition.location = findVariableCreationLocation(variable, false, document, projectIndex);
 			if (definition.location !== undefined) {
 				definition.symbol = variable;
-				definition.type = DefinitionType.Variable;
+				if (projectIndex.isStartupFileUri(definition.location.uri)) {
+					definition.type = DefinitionType.GlobalVariable;
+			}
+			else {
+					definition.type = DefinitionType.LocalVariable;
+				}
 			}
 			else {
 				let achievements = projectIndex.getAchievements();
@@ -166,12 +177,11 @@ export function findDefinition(
  * @param projectIndex Project index.
  */
 export function findReferences(textDocument: TextDocument, position: Position, context: ReferenceContext, projectIndex: ProjectIndex): Location[] {
-	let text = textDocument.getText();
-	let cursorIndex = textDocument.offsetAt(position);
 	let locations: Location[] = [];
 
 	let definition = findDefinition(textDocument, position, projectIndex);
-	if (definition.type == DefinitionType.Variable && definition.symbol !== undefined) {
+	if ((definition.type == DefinitionType.GlobalVariable || definition.type == DefinitionType.LocalVariable)
+		&& definition.symbol !== undefined) {
 		locations = [...projectIndex.getVariableReferences(definition.symbol)];
 		if (context.includeDeclaration && definition.location !== undefined) {
 			locations.push(definition.location);

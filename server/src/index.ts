@@ -126,9 +126,9 @@ export interface ProjectIndex {
      */
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void;
     /**
-     * Get the URI to the project's startup.txt file.
+     * Determine if a document URI is the project's startup.txt file.
      */
-	getStartupFileUri(): string;
+	isStartupFileUri(uri: string): boolean;
     /**
      * Get the URI to a scene file.
      * @param scene Scene name.
@@ -258,8 +258,8 @@ export class Index implements ProjectIndex {
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]) {
 		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
 	}
-	getStartupFileUri(): string {
-		return this._startupFileUri;
+	isStartupFileUri(uri: string): boolean {
+		return this._startupFileUri == normalizeUri(uri);
 	}
 	getSceneUri(scene: string): string | undefined {
 		if (this._startupFileUri == "") {

@@ -77,8 +77,10 @@ function createIndex({
 		fakeIndex.getGlobalVariables().returns(globalVariables);
 		fakeIndex.getLocalVariables(Arg.any()).returns(localVariables);
 		fakeIndex.getSubroutineLocalVariables(Arg.any()).returns(subroutineVariables);
-		fakeIndex.getStartupFileUri().returns(startupUri);
-		fakeIndex.getSceneUri(Arg.any()).returns(sceneFileUri);
+		fakeIndex.isStartupFileUri(Arg.any()).mimicks(uri => {
+			return uri == startupUri;
+		});
+			fakeIndex.getSceneUri(Arg.any()).returns(sceneFileUri);
 		fakeIndex.getSceneList().returns(sceneList);
 		if (labelsUri === undefined) {
 			fakeIndex.getLabels(Arg.any()).returns(labels);
