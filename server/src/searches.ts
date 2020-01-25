@@ -203,7 +203,7 @@ export function findReferences(
 			let localReferences = projectIndex.getDocumentVariableReferences(definition.location!.uri);
 			let possibleLocations = localReferences.get(definition.symbol);
 			if (possibleLocations !== undefined) {
-				locations = possibleLocations;
+				locations = [...possibleLocations];
 			}
 		}
 		if (context.includeDeclaration && definition.location !== undefined) {
