@@ -56,6 +56,9 @@
 				},
 				{
 					"include": "#variable-display"
+				},
+				{
+					"include": "#todos"
 				}
 			]
 		},
@@ -106,6 +109,9 @@
 				{
 					"name": "string.interpolated",
 					"match": "\\|"
+				},
+				{
+					"include": "#todos"
 				}
 			]
 		},
