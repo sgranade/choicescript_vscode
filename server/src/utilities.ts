@@ -17,6 +17,31 @@ export class CaseInsensitiveMap<T, U> extends Map<T, U> {
 		}
 		return super.get(key);
 	}
+	has(key: T): boolean {
+		if (typeof key === 'string') {
+			key = <T><any>key.toLowerCase();
+		}
+		return super.has(key);
+	}
+}
+
+/**
+ * Convert a map to a case-insensitive map, combining array values instead of overwriting them.
+ * @param map Original map.
+ */
+export function mapToUnionedCaseInsensitiveMap<K, V extends Array<any>>(map: Map<K, V>): CaseInsensitiveMap<K, V> {
+	let newMap = new CaseInsensitiveMap<K, V>();
+	for (let [key, value] of map) {
+		let oldArray = newMap.get(key);
+		if (oldArray !== undefined) {
+			oldArray.push(...value);
+		}
+		else {
+			newMap.set(key, value);
+		}
+	}
+
+	return newMap;
 }
 
 export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;

@@ -5,7 +5,8 @@ import { Location, Range } from 'vscode-languageserver';
 
 import { 
 	Index,
-	FlowControlEvent, 
+	FlowControlEvent,
+	VariableReferenceIndex, 
 } from '../../../server/src/index';
 
 const documentUri: string = "file:///faker.txt";
@@ -13,6 +14,26 @@ const otherSceneUri: string = "file:///other-scene.txt";
 
 describe("Project Index", () => {
 	describe("Index", () => {
+		it("should combine variable references with differing capitalizations", () => {
+			let referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			let referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			let originalReferences: VariableReferenceIndex = new Map([
+				["variable", [referenceLocation1]],
+				["vArIaBlE", [referenceLocation2]]
+			]);
+			let index = new Index();
+			index.updateVariableReferences(documentUri, originalReferences);
+
+			let references = index.getVariableReferences("variable");
+
+			expect(references.length).to.equal(2);
+			expect(references[0].range.start).to.eql({line: 1, character: 0});
+			expect(references[0].range.end).to.eql({line: 1, character: 5});
+			expect(references[1].range.start).to.eql({line: 2, character: 0});
+			expect(references[1].range.end).to.eql({line: 2, character: 5});
+		});
+
+
 		it("should find label references in a scene", () => {
 			let events: FlowControlEvent[] = [
 				{

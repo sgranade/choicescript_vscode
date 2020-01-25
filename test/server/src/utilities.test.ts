@@ -1,9 +1,19 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap } from '../../../server/src/utilities';
 
 describe("Utilities", () => {
+	describe("Case-Insensitive Map", () => {
+		it("should create unions from keys that are arrays", () => {
+			let map = new Map([['key', [1, 2]], ['kEY', [3, 4]]]);
+
+			let caseInsensitiveMap = mapToUnionedCaseInsensitiveMap(map);
+
+			expect(map.get("key")).to.eql([1, 2, 3, 4]);
+		})
+	});
+
 	describe("Delimiter Extraction", () => {
 		it("should handle parentheses in parentheses", () => {
 			let text = "out (in) out) and so on";

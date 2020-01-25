@@ -19,7 +19,7 @@ export type VariableReferenceIndex = CaseInsensitiveMap<string, Array<Location>>
 /**
  * Type for an immutable index of references to variables.
  */
-export type ReadonlyVariableReferenceIndex = ReadonlyCaseInsensitiveMap<string, Array<Location>>;
+export type ReadonlyVariableReferenceIndex = ReadonlyCaseInsensitiveMap<string, ReadonlyArray<Location>>;
 /**
  * Type for a mutable index of labels.
  */
@@ -35,7 +35,7 @@ export type LabelReferenceIndex = Map<string, Array<Location>>;
 /**
  * Type for an immutable index of references to labels.
  */
-export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, Array<Location>>;
+export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, ReadonlyArray<Location>>;
 
 /**
  * *goto, *gosub, *goto_scene, *gosub_scene, and *return events
@@ -265,7 +265,7 @@ export class Index implements ProjectIndex {
 		this._subroutineLocalVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
-		this._variableReferences.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+		this._variableReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
 		this._scenes = scenes;
@@ -280,7 +280,7 @@ export class Index implements ProjectIndex {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
 	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
-		this._achievementReferences.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+		this._achievementReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes) {
 		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);

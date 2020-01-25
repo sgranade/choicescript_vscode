@@ -177,14 +177,14 @@ connection.onDefinition(
 );
 
 connection.onReferences(
-	(referencesParams: ReferenceParams): Location[] => {
+	(referencesParams: ReferenceParams): Location[] | undefined => {
 		let document = documents.get(referencesParams.textDocument.uri);
 		if (document === undefined) {
-			return [];
+			return undefined;
 		}
 		return findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
 	}
-)
+);
 
 connection.onRenameRequest(
 	(renameParams: RenameParams): WorkspaceEdit | null => {
@@ -194,7 +194,7 @@ connection.onRenameRequest(
 		}
 		return generateRenames(document, renameParams.position, renameParams.newName, projectIndex);
 	}
-)
+);
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
