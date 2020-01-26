@@ -1,6 +1,7 @@
 import { Location, Range, Diagnostic } from 'vscode-languageserver';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
+import { uriIsStartupFile, sceneFromUri } from './language';
 
 /**
  * Type for a mutable index of identifiers.

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractTokenAtIndex, tokenizeMultireplace, sceneFromUri } from '../../../server/src/language';
+import { extractTokenAtIndex, tokenizeMultireplace, sceneFromUri, convertAchievementToVariable } from '../../../server/src/language';
 
 describe("Language Routines", () => {
 	describe("Token Extraction", () => {
@@ -139,6 +139,16 @@ describe("Language Routines", () => {
 			let scene = sceneFromUri(uri);
 
 			expect(scene).to.be.undefined;
+		});
+	})
+
+	describe("Achievement Variable Name", () => {
+		it("should turn an achievement codename into an achievement variable", () => {
+			let codename = 'codename';
+
+			let variable = convertAchievementToVariable(codename);
+
+			expect(variable).to.equal("choice_achieved_codename");
 		});
 	})
 })

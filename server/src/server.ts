@@ -170,7 +170,9 @@ connection.onDefinition(
 		let document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document !== undefined) {
 			let definitionAndLocation = findDefinition(document, textDocumentPosition.position, projectIndex);
-			return definitionAndLocation.location;
+			if (definitionAndLocation !== undefined) {
+				return definitionAndLocation.location;
+			}
 		}
 		return undefined;
 	}
@@ -182,7 +184,8 @@ connection.onReferences(
 		if (document === undefined) {
 			return undefined;
 		}
-		return findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+		let references = findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+		return references?.map(reference => { return reference.location; })
 	}
 );
 

@@ -331,6 +331,15 @@ export function variableIsAchievement(variable: string, achievements: ReadonlyId
 }
 
 /**
+ * Convert an achievement codename into the name of its auto-created achievement variable.
+ * @param achievement The achievement codename.
+ * @returns The achievement variable related to the codename.
+ */
+export function convertAchievementToVariable(achievement: string): string {
+	return `choice_achieved_${achievement}`;
+}
+
+/**
  * Determine if a variable name could be an auto-created parameter variable.
  * @param variable Variable name.
  */

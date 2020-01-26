@@ -5,11 +5,13 @@ Changes to the plugin.
 ### Added
 - Italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i`.
 - Bold text using `Ctrl`+`Shift`+`b`.
-- Choices with more than 15 words are now flagged for review.
-- Highlight label usage.
+- Find where labels are referenced.
 - Rename labels.
-- Local *temp variables with the same name as *global variables now generate a warning.
+- Find where achievements are referenced.
+- Rename achievements.
+- Choices with more than 15 words are now flagged for review.
 - Error catching greatly expanded.
+	- Local *temp variables with the same name as *global variables now generate a warning.
 	- Re-creating variables or labels are now flagged.
 	- *stat_chart commands are now parsed and errors flagged.
 	- Nested multireplaces are now flagged.
@@ -18,7 +20,7 @@ Changes to the plugin.
 ### Fixed
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
-- Definitions now only allowed on actual variable or label references, not any old text in the document.
+- Definitions now only allowed on actual variable, label, or achievement references, not any old text in the document.
 - References in *goto and *gosub commands are now indexed.
 - References in *stat_chart are now indexed.
 - Fixed potential endless recursion in parser.
