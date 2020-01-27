@@ -8,6 +8,7 @@ import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
+const startupUri: string = "file:///startup.txt";
 
 function createDocument(text: string, uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
@@ -189,6 +190,28 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
 		});
 
+		it("should not flag a local variable referenced before it's created if a global variable exists", () => {
+			let localCreateLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let globalCreateLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let localVariables: Map<string, Location> = new Map([["var", localCreateLocation]]);
+			let globalVariables: Map<string, Location> = new Map([["var", globalCreateLocation]]);
+			let variableReferences: VariableReferenceIndex = new Map([["var", [referenceLocation]]])
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ 
+				startupUri: startupUri,
+				localVariables: localVariables,
+				globalVariables: globalVariables,
+				variableReferences: variableReferences 
+			});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			// We'll get a warning about a local var having the same name as a global var, but no error
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include('"var" has the same name as a global');
+		});
+
 		it("should not flag a local variable created through a gosub", () => {
 			let gosubLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
@@ -220,11 +243,11 @@ describe("Validator", () => {
 		});
 
 		it("should flag a global variable referenced before it's created", () => {
-			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let createLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
+			let referenceLocation = Location.create(startupUri, Range.create(1, 0, 1, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
 			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
-			let fakeDocument = createDocument("placeholder");
+			let fakeDocument = createDocument("placeholder", startupUri);
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);

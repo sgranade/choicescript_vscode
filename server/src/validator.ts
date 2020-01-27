@@ -130,11 +130,17 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				(comparePositions(location.range.end, creationLocation!.range.start) < 0))
 			});
 			if (badLocations.length > 0) {
-				let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
-					return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
-						`Variable "${variable}" used before it was created`);
-				})
-				diagnostics.push(...newDiagnostics);
+				// Handle the edge case where a local variable is referenced before it's created,
+				// but there's a global variable with the same name
+				let tempy1 = uriIsStartupFile(state.textDocument.uri);
+				let tempy2 = state.projectIndex.getGlobalVariables();
+				if (uriIsStartupFile(state.textDocument.uri) || !state.projectIndex.getGlobalVariables().has(variable)) {
+					let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
+						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
+							`Variable "${variable}" used before it was created`);
+					})
+					diagnostics.push(...newDiagnostics);
+				}
 			}
 		}
 		else if (!builtinVariablesLookup.has(variable)) {
