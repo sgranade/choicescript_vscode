@@ -15,6 +15,14 @@ describe("Utilities", () => {
 	});
 
 	describe("Delimiter Extraction", () => {
+		it("should handle strings", () => {
+			let text = 'string" and not';
+	
+			let extract = extractToMatchingDelimiter(text, '"', '"');
+	
+			expect(extract).to.equal("string");
+		});
+	
 		it("should handle parentheses in parentheses", () => {
 			let text = "out (in) out) and so on";
 	

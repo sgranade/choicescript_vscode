@@ -109,16 +109,16 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 	let m: RegExpExecArray | null;
 
 	while (m = match.exec(section)) {
-		if (m[0] == openDelimiter) {
-			delimiterCount++;
-		}
-		else if (m[0] == closeDelimiter) {
+		if (m[0] == closeDelimiter) {
 			if (delimiterCount)
 				delimiterCount--;
 			else {
 				matchEnd = m.index;
 				break;
 			}
+		}
+		else if (m[0] == openDelimiter) {
+			delimiterCount++;
 		}
 	}
 

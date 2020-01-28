@@ -539,10 +539,12 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(17);
-			expect(received[0].location.range.end.line).to.equal(31);
-			expect(received[1].text).to.equal("variable");
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(5);
+			expect(received[0].location.range.end.line).to.equal(13);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(17);
+			expect(received[1].location.range.end.line).to.equal(31);
 		});
 	
 		it("should callback on multireplacements in strings", () => {
@@ -556,10 +558,10 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(17);
-			expect(received[0].location.range.end.line).to.equal(31);
-			expect(received[1].text).to.equal("variable");
+			expect(received[0].text).to.equal("variable");
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(17);
+			expect(received[1].location.range.end.line).to.equal(31);
 		});
 	
 		it("should not callback on variable references in strings", () => {
@@ -896,13 +898,13 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(18);
-			expect(received[0].location.range.end.line).to.equal(32);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(18);
+			expect(received[1].location.range.end.line).to.equal(32);
 		});
 	
 		it("should callback on complex variable replacements in strings", () => {
-			let fakeDocument = createDocument('*if variable = "${"this" & other_variable}"');
+			let fakeDocument = createDocument('*if variable = "${other_variable}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
@@ -912,9 +914,9 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(27);
-			expect(received[0].location.range.end.line).to.equal(41);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(18);
+			expect(received[1].location.range.end.line).to.equal(32);
 		});
 	
 		it("should callback on multireplacements in strings", () => {
@@ -928,9 +930,9 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(18);
-			expect(received[0].location.range.end.line).to.equal(32);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(18);
+			expect(received[1].location.range.end.line).to.equal(32);
 		});
 	
 		it("should callback on multireplacements with replacements in strings", () => {
@@ -944,9 +946,9 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].text).to.equal("other_variable");
-			expect(received[0].location.range.start.line).to.equal(25);
-			expect(received[0].location.range.end.line).to.equal(39);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(25);
+			expect(received[1].location.range.end.line).to.equal(39);
 		});
 	
 		it("should not callback on choice text after a reference command", () => {
@@ -1246,7 +1248,7 @@ describe("Parser", () => {
 		});
 
 		it("should flag unknown operators in a command", () => {
-			let fakeDocument = createDocument("*if not(var1&var2&(var3 & ! var4))");
+			let fakeDocument = createDocument("*if not(var1&(var3 & ! var4))");
 			let received: Array<Diagnostic> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -1257,12 +1259,12 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].message).to.include("Unknown operator");
-			expect(received[0].range.start.line).to.equal(26);
-			expect(received[0].range.end.line).to.equal(27);
+			expect(received[0].range.start.line).to.equal(21);
+			expect(received[0].range.end.line).to.equal(22);
 		});
 
 		it("should flag unbalanced parentheses in a command", () => {
-			let fakeDocument = createDocument("*if not(var1&var2&(var3)");
+			let fakeDocument = createDocument("*if not(var1&(var2&var3)");
 			let received: Array<Diagnostic> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {

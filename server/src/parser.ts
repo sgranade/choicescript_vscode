@@ -76,15 +76,152 @@ export class ParsingState {
 }
 
 /**
- * Parse an expression.
- * @param expression String containing the expression (and only the expression).
+ * Type of a token.
+ */
+enum TokenType {
+	Operator,
+	UnknownOperator,
+	NamedOperator,
+	NamedValue,
+	Function,
+	Number,
+	VariableReference,
+	Variable,
+	String,
+	Parentheses,
+	Unprocessed
+}
+
+/**
+ * Token in an expression.
+ */
+interface Token {
+	contents: string,
+	type: TokenType,
+	index: number
+}
+
+/**
+ * Tokenize an unprocessed token.
+ * @param unprocessed Unprocessed token.
+ */
+function tokenizeUnprocessedToken(unprocessed: Token): Token[] {
+	let tokens: Token[] = [];
+
+	// Split the unprocessed token at word boundaries and process each cluster
+	let wordPattern = /^\w+$/;
+	let chunks = unprocessed.contents.split(/\b/);
+	let splitIndex = unprocessed.index;
+	for (let chunk of chunks) {
+		// Process the cluster
+		let tokenPattern = /\S+/g;
+		let m: RegExpExecArray | null;
+		while (m = tokenPattern.exec(chunk)) {
+			let tokenContents = m[0];
+			let type: TokenType;
+			if (wordPattern.test(tokenContents)) {
+				// Identify word-based tokens
+				if (namedOperatorsLookup.has(tokenContents)) {
+					type = TokenType.NamedOperator;
+				}
+				else if (functionsLookup.has(tokenContents)) {
+					type = TokenType.Function;
+				}
+				else if (namedValuesLookup.has(tokenContents)) {
+					type = TokenType.NamedValue;
+				}
+				else if (stringIsNumber(tokenContents)) {
+					type = TokenType.Number;
+				}
+				else {
+					type = TokenType.Variable;
+				}
+			}
+			else {
+				if (operatorsLookup.has(tokenContents)) {
+					type = TokenType.Operator;
+				}
+				else {
+					type = TokenType.UnknownOperator;
+				}
+			}
+			tokens.push({contents: tokenContents, type: type, index: splitIndex + m.index});
+		}
+		splitIndex += chunk.length;
+	}
+
+	return tokens;
+}
+
+/**
+ * Tokenize an expression to pull out recursive expressions like {}, "", and ().
+ * @param expression Expression to tokenize.
+ * @returns Unprocessed and recursive expression tokens.
+ */
+function tokenizeRecursiveExpressions(expression: string): Token[] {
+	let partialTokens: Token[] = [];
+
+	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
+	// As variable references, strings, and parentheses can contain other things, tokenize them first
+	let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
+	let tokenizingIndex = 0;
+	let tokenizingExpression = expression;
+	let m: RegExpExecArray | null;
+	while (m = recursivePatterns.exec(tokenizingExpression)) {
+		if (m.groups === undefined || m.groups.remainder === undefined)
+			continue;
+
+		let openDelimiter = m.groups.delimiter;
+		let openDelimiterIndex = 0;
+		// Save the prefix string, if it exists
+		if (m.groups.prefix !== undefined && m.groups.prefix != "") {
+			partialTokens.push({contents: m.groups.prefix, index: tokenizingIndex, type: TokenType.Unprocessed});
+			openDelimiterIndex += m.groups.prefix.length;
+		}
+
+		let closeDelimiter = '';
+		let tokenType: TokenType;
+		if (openDelimiter == '{') {
+			closeDelimiter = '}';
+			tokenType = TokenType.VariableReference;
+		}
+		else if (openDelimiter == '"') {
+			closeDelimiter = '"';
+			tokenType = TokenType.String;
+		}
+		else {
+			closeDelimiter = ')';
+			tokenType = TokenType.Parentheses;
+		}
+		let contents = extractToMatchingDelimiter(m.groups.remainder, openDelimiter, closeDelimiter, 0);
+		if (contents === undefined) {
+			contents = m.groups.remainder;
+		}
+		else {
+			contents += closeDelimiter;
+		}
+		partialTokens.push({contents: contents, index: tokenizingIndex + openDelimiterIndex + 1, type: tokenType});
+		tokenizingExpression = tokenizingExpression.slice(openDelimiterIndex + 1 + contents.length);
+		tokenizingIndex += openDelimiterIndex + 1 + contents.length;
+	}
+
+	// Put the remaining unmatched text on the token stack
+	partialTokens.push({contents: tokenizingExpression, index: tokenizingIndex, type: TokenType.Unprocessed});
+
+	return partialTokens;
+}
+
+/**
+ * Tokenize an expression.
+ * @param expression Expression to tokenize.
  * @param globalIndex Expression's index in the document being indexed.
  * @param state Parsing state.
  */
-function parseExpression(expression: string, globalIndex: number, state: ParsingState) {
-	// Deal with arrays first
-	let arrayPattern = /\w+\[/;
+function tokenizeExpression(expression: string, globalIndex: number, state: ParsingState): Token[] {
 	let m: RegExpExecArray | null;
+
+	// Deal with arrays first by not dealing with them at all
+	let arrayPattern = /\w+\[/;
 	while (m = arrayPattern.exec(expression)) {
 		let localIndex = m.index + m[0].length - 1;
 		while (expression[localIndex] == '[') {  // To deal with multi-dimensional arrays
@@ -103,76 +240,59 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
 	}
 
 	// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
-	// As variable references and strings can contain other things, handle them and remove them from the expression
-	// Also handle parentheses
-	let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
+	// As variable references, strings, and parentheses can contain other things, tokenize them first
+	let partialTokens: Token[] = tokenizeRecursiveExpressions(expression);
 
-	while (m = recursivePatterns.exec(expression)) {
-		if (m.groups === undefined || m.groups.remainder === undefined)
-			continue;
-
-		let openDelimiter = m.groups.delimiter;
-		let openDelimiterLocalIndex = 0;
-		let remainderLocalIndex = 1;
-		if (m.groups.prefix !== undefined) {
-			openDelimiterLocalIndex += m.groups.prefix.length;
-			remainderLocalIndex += m.groups.prefix.length;
-		}
-		let endGlobalIndex = 0;
-		if (openDelimiter == '{') {
-			endGlobalIndex = parseReference(m.groups.remainder, 1, globalIndex + remainderLocalIndex, 0, state);
-		}
-		else if (openDelimiter == '"') {
-			endGlobalIndex = parseString(m.groups.remainder, globalIndex + remainderLocalIndex, 0, state);
+	// Now go back and tokenize the non-processed bits
+	let tokens: Token[] = [];
+	for (let token of partialTokens) {
+		if (token.type == TokenType.Unprocessed) {
+			tokens.push(...tokenizeUnprocessedToken(token));
 		}
 		else {
-			let parensContents = extractToMatchingDelimiter(m.groups.remainder, '(', ')', 0);
-			if (parensContents === undefined) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + openDelimiterLocalIndex,
-					globalIndex + openDelimiterLocalIndex + 1 + m.groups.remainder.length,
-					"Missing close parentheses");
-				state.callbacks.onParseError(diagnostic);
-				endGlobalIndex = globalIndex + remainderLocalIndex;
-			}
-			else {
-				parseExpression(parensContents, globalIndex + remainderLocalIndex, state);
-				endGlobalIndex = globalIndex + remainderLocalIndex + parensContents.length + 1;
-			}
+			tokens.push(token);
 		}
-		let endLocalIndex = endGlobalIndex - globalIndex;
-
-		// blank out the matched string
-		expression = expression.slice(0, openDelimiterLocalIndex) + " ".repeat(endLocalIndex - openDelimiterLocalIndex) + expression.slice(endLocalIndex);
 	}
 
-	// Split the remaining expression at word boundaries and process each cluster
-	let wordPattern = /^\w+$/;
-	let chunks = expression.split(/\b/);
-	let splitGlobalIndex = globalIndex;
-	for (let chunk of chunks) {
-		let tokenPattern = /\S+/g;
-		while (m = tokenPattern.exec(chunk)) {
-			let token = m[0];
-			if (wordPattern.test(token)) {
-				if (!validCommandsLookup.has(token) && !namedOperatorsLookup.has(token) 
-					&& !functionsLookup.has(token) && !namedValuesLookup.has(token) && !stringIsNumber(token)) {
-					let location = Location.create(state.textDocument.uri, Range.create(
-						state.textDocument.positionAt(splitGlobalIndex + m.index),
-						state.textDocument.positionAt(splitGlobalIndex + m.index + token.length)
-					));
-					state.callbacks.onVariableReference(token, location, state);
-				}
-			}
-			else if (!operatorsLookup.has(token)) {
+	return tokens;
+}
+
+/**
+ * Parse an expression.
+ * @param expression String containing the expression (and only the expression).
+ * @param globalIndex Expression's index in the document being indexed.
+ * @param state Parsing state.
+ */
+function parseExpression(expression: string, globalIndex: number, state: ParsingState) {
+	let tokens = tokenizeExpression(expression, globalIndex, state);
+
+	for (let token of tokens) {
+		let tokenGlobalIndex = globalIndex + token.index;
+		switch (token.type) {
+			case TokenType.VariableReference:
+				parseReference(token.contents, 0, tokenGlobalIndex, 0, state);
+				break;
+			case TokenType.String:
+				parseString(token.contents, tokenGlobalIndex, 0, state);
+				break;
+			case TokenType.Parentheses:
+				parseParentheses(token.contents, tokenGlobalIndex, 0, state);
+				break;
+			case TokenType.Variable:
+				let location = Location.create(state.textDocument.uri, Range.create(
+					state.textDocument.positionAt(tokenGlobalIndex),
+					state.textDocument.positionAt(tokenGlobalIndex + token.contents.length)
+				));
+				state.callbacks.onVariableReference(token.contents, location, state);
+				break;
+			case TokenType.UnknownOperator:
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					splitGlobalIndex + m.index,
-					splitGlobalIndex + m.index + token.length,
+					tokenGlobalIndex,
+					tokenGlobalIndex + token.contents.length,
 					"Unknown operator");
 				state.callbacks.onParseError(diagnostic);
-			}
+				break;
 		}
-		splitGlobalIndex += chunk.length;
 	}
 }
 
@@ -316,6 +436,47 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 
 		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
 		globalIndex = newGlobalIndex;
+	}
+
+	return globalIndex;
+}
+
+/**
+ * Parse a parenthesized expression (expr).
+ * 
+ * Parentheses can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param section Section being parsed.
+ * @param globalIndex Parenthesized content's index in the global document.
+ * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param state Parsing state.
+ */
+function parseParentheses(section: string, globalIndex: number,
+	localIndex: number | undefined, state: ParsingState): number {
+	let sectionToDocumentDelta: number;
+	if (localIndex === undefined) {
+		localIndex = globalIndex;
+		sectionToDocumentDelta = 0;
+	}
+	else {
+		sectionToDocumentDelta = globalIndex - localIndex;
+	}
+
+	let reference = extractToMatchingDelimiter(section, '(', ')', localIndex);
+	if (reference === undefined) {
+		let lineEndIndex = findLineEnd(section, localIndex);
+		if (lineEndIndex === undefined)
+			lineEndIndex = section.length;
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			localIndex - 1 + sectionToDocumentDelta,
+			lineEndIndex + sectionToDocumentDelta,
+			"Missing close parentheses");
+		state.callbacks.onParseError(diagnostic);
+	}
+	else {
+		// Parentheses contain expressions, so let the expression indexer handle that
+		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
+		globalIndex = sectionToDocumentDelta + localIndex + reference.length + 1;
 	}
 
 	return globalIndex;

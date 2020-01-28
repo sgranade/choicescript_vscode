@@ -1,4 +1,3 @@
-import * as URI from 'urijs';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
@@ -233,7 +232,7 @@ export function extractTokenAtIndex(
 /**
  * A token in a string.
  */
-export interface Token {
+interface Token {
 	text: string,
 	index: number
 }
@@ -241,7 +240,7 @@ export interface Token {
 /**
  * A tokenized multireplace @{variable if-true | if-false}
  */
-export interface Multireplace {
+interface Multireplace {
 	fullText: string,
 	test: Token,
 	body: Token[],
