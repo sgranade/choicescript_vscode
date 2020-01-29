@@ -3,16 +3,22 @@
 	"name": "ChoiceScript",
 	"patterns": [
 		{
-			"include": "#keywords"
+			"include": "#keyword"
 		},
 		{
-			"include": "#comments"
+			"include": "#comment"
 		},
 		{
-			"include": "#choices"
+			"include": "#command-with-expression"
 		},
 		{
-			"include": "#todos"
+			"include": "#label-creation-command"
+		},
+		{
+			"include": "#choice"
+		},
+		{
+			"include": "#todo"
 		},
 		{
 			"include": "#variable-display"
@@ -24,29 +30,51 @@
 			"include": "#multireplace"
 		},
 		{
-			"include": "#operators"
+			"include": "#operator"
+		},
+		{
+			"include": "#markup"
 		}
 	],
 	"repository": {
-		"keywords": {
+		"keyword": {
 			"name": "keyword.control.cs",
-			"match": "(?<!\\*)\\*((fake_)?choice|create|temp|delete|set|(else?|selectable_)?if|else|(disable|hide|allow)_reuse|label|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line)_break|params|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
+			"match": "(?<!\\*)\\*((fake_)?choice|else|(disable|hide|allow)_reuse|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line)_break|params|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
 		},
-		"comments": {
+		"comment": {
 			"name": "comment.line.cs",
 			"begin": "^\\s*\\*comment",
 			"end": "(?=$)",
 			"patterns": [{
-				"include": "#todos"
+				"include": "#todo"
 			}]
 		},
-		"todos": {
-			"patterns": [{
-				"name": "invalid.illegal.cs",
-				"match": "todo|TODO"
-			}]
+		"command-with-expression": {
+			"begin": "(?<!\\*)(\\*(create|temp|set|delete|(else?|selectable_)?if)\\b)",
+			"end": "(?=$)",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.cs"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
 		},
-		"choices": {
+		"label-creation-command": {
+			"match": "(?<!\\*)(\\*label)(\\s*(\\w+))",
+			"captures": {
+				"1": {
+					"name": "keyword.control.cs"
+				},
+				"3": {
+					"name": "entity.name.section"
+				}
+			}
+		},
+		"choice": {
 			"name": "entity.name.function",
 			"begin": "(^|\\s+)#",
 			"end": "(?=$)",
@@ -58,22 +86,34 @@
 					"include": "#variable-display"
 				},
 				{
-					"include": "#todos"
+					"include": "#todo"
 				}
 			]
 		},
 		"variable-display": {
-			"name": "constant.language.cs",
 			"begin": "\\$!?!?\\{",
 			"end": "\\}",
+			"beginCaptures": {
+				"0": {
+					"name": "string.interpolated"
+				}
+			},
+			"endCaptures": {
+				"0": {
+					"name": "string.interpolated"
+				}
+			},
 			"patterns": [{
-				"include": "#variable-substitution"
+				"include": "#expression"
 			}]
 		},
 		"variable-substitution": {
-			"name": "variable.other",
+			"name": "constant.language.cs",
 			"begin": "(?<![$@]|[$@]!|[$@]!!){",
-			"end": "\\}"
+			"end": "\\}",
+			"patterns": [{
+				"include": "#expression"
+			}]
 		},
 		"multireplace": {
 			"begin": "(@!?!?\\{)",
@@ -92,16 +132,27 @@
 				{
 					"name": "variable.other",
 					"comment": "Bare variable at start of multireplace",
-					"match": "\\G\\s*([a-z]\\w*)"
+					"match": "\\G\\s*([A-Za-z]\\w*)"
 				},
 				{
-					"name": "variable.other",
 					"comment": "Expression in parentheses at start of multireplace",
-					"begin": "\\G\\s*\\(",
-					"end": "\\)\\s+",
-					"patterns": [{
-						"include": "#variable-substitution"
-					}]
+					"begin": "\\G\\s*(\\()",
+					"end": "(\\))\\s+",
+					"beginCaptures": {
+						"1": {
+							"name": "variable.language.other"
+						}
+					},
+					"endCaptures": {
+						"1": {
+							"name": "variable.language.other"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#expression"
+						}
+					]
 				},
 				{
 					"include": "#variable-display"
@@ -109,14 +160,37 @@
 				{
 					"name": "string.interpolated",
 					"match": "\\|"
-				},
-				{
-					"include": "#todos"
 				}
 			]
 		},
-		"operators": {
-			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/|%+|%-)|(&)",
+		"expression": {
+			"comment": "Any portion of the file that contains, in effect, code",
+			"patterns": [
+				{
+					"include": "#function"
+				},
+				{
+					"include": "#variable-substitution"
+				},
+				{
+					"include": "#string"
+				},
+				{
+					"include": "#operator"
+				},
+				{
+					"include": "#literal"
+				},
+				{
+					"include": "#number"
+				},
+				{
+					"include": "#variable-name"
+				}
+			]
+		},
+		"operator": {
+			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/|%+|%-)|(&)|(and|or)",
 			"captures": {
 				"1": {
 					"name": "keyword.operator.comparison.cs"
@@ -126,15 +200,62 @@
 				},
 				"3": {
 					"name": "keyword.operator.string.cs"
+				},
+				"4": {
+					"name": "keyword.operator.logical.cs"
 				}
 			}
 		},
-		"literals": {
+		"function": {
+			"name": "entity.name.function.cs",
+			"match": "(not|round|timestamp|log|length|auto)"
+		},
+		"literal": {
 			"name": "constant.language.cs",
 			"match": "true|false"
 		},
 		"variable-name": {
-			"match": "[a-z]\\w*"
+			"name": "variable.other",
+			"match": "[A-Za-z]\\w*"
+		},
+		"number": {
+			"name": "constant.numeric",
+			"match": "\\b\\d+\\b"
+		},
+		"string": {
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"include": "#variable-display"
+				}
+			]
+		},
+		"todo": {
+			"patterns": [{
+				"name": "invalid.illegal.cs",
+				"match": "todo|TODO"
+			}]
+		},
+		"markup": {
+			"patterns": [
+				{
+					"include": "#italics"
+				},
+				{
+					"include": "#bold"
+				}
+			]
+		},
+		"italics": {
+			"begin": "\\[i\\]",
+			"end": "\\[/i\\]",
+			"contentName": "markup.italic"
+		},
+		"bold": {
+			"begin": "\\[b\\]",
+			"end": "\\[/b\\]",
+			"contentName": "markup.bold"
 		}
 	},
 	"scopeName": "source.cs"
