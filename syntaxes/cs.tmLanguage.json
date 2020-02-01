@@ -3,16 +3,10 @@
 	"name": "ChoiceScript",
 	"patterns": [
 		{
-			"include": "#keyword"
-		},
-		{
 			"include": "#comment"
 		},
 		{
-			"include": "#command-with-expression"
-		},
-		{
-			"include": "#label-creation-command"
+			"include": "#command"
 		},
 		{
 			"include": "#choice"
@@ -37,10 +31,6 @@
 		}
 	],
 	"repository": {
-		"keyword": {
-			"name": "keyword.control.cs",
-			"match": "(?<!\\*)\\*((fake_)?choice|else|(disable|hide|allow)_reuse|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line)_break|params|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
-		},
 		"comment": {
 			"name": "comment.line.cs",
 			"begin": "^\\s*\\*comment",
@@ -49,9 +39,44 @@
 				"include": "#todo"
 			}]
 		},
+		"command": {
+			"comment": "Any command and its contents",
+			"patterns": [
+				{
+					"include": "#regular-command"
+				},
+				{
+					"include": "#command-with-expression"
+				},
+				{
+					"include": "#command-with-expression-and-optional-choice"
+				},
+				{
+					"include": "#label-creation-command"
+				}
+			]
+		},
+		"regular-command": {
+			"name": "keyword.control.cs",
+			"match": "(?<!\\*)\\*((fake_)?choice|else|(disable|hide|allow)_reuse|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line)_break|params|title|author|input_(text|number)|rand|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
+		},
 		"command-with-expression": {
-			"begin": "(?<!\\*)(\\*(create|temp|set|delete|(else?|selectable_)?if)\\b)",
+			"begin": "(?<!\\*)(\\*(create|temp|set|delete|elseif)\\b)",
 			"end": "(?=$)",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.cs"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		"command-with-expression-and-optional-choice": {
+			"begin": "(?<!\\*)(\\*((selectable_)?if)\\b)",
+			"end": "(?=$| #)",
 			"beginCaptures": {
 				"1": {
 					"name": "keyword.control.cs"
