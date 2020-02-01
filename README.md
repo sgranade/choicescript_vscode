@@ -52,9 +52,15 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 ## Currently Unsupported Features
 
 - [Array notation](https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423). Right now it ignores arrays entirely.
-- Variables are not identified in stat charts
 
 ## Release Notes
+
+### [1.1.0]
+
+- Added ability to italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i` and bold text using `Ctrl`+`Shift`+`b`.
+- Labels and achievements can now be found and renamed.
+- Choices with more than 15 words are now flagged for review.
+- Error catching greatly expanded.
 
 ### [1.0.0]
 
