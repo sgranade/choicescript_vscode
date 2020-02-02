@@ -141,6 +141,19 @@ export let namedValues: ReadonlyArray<string> = [
 	"true", "false"
 ];
 
+/**
+ * ChoiceScript operators that act on numbers
+ */
+export let numberSetOperators: ReadonlyArray<string> = [
+	"+", "-", "*", "/", "%", "^", "%+", "%-"
+]
+
+/**
+ * ChoiceScript operators that act on strings
+ */
+export let stringSetOperators: ReadonlyArray<string> = [
+	"&", "#"
+]
 
 /* PATTERNS */
 
