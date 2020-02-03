@@ -1,13 +1,9 @@
 import { Range, Location, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { 
-	functions, 
-	namedOperators,
-	namedValues,
 	validCommands, 
 	multiStartPattern,
 	replacementStartPattern,
-	tokenizeMultireplace,
 	variableManipulationCommands,
 	variableReferenceCommands,
 	flowControlCommands,
@@ -19,14 +15,17 @@ import {
 	extractTokenAtIndex,
 	statChartCommands,
 	statChartBlockCommands,
-	operators,
 	numberSetOperators,
 	stringSetOperators
 } from './language';
 import {
+	Expression,
+	ExpressionTokenType,
+	tokenizeMultireplace
+} from './tokens';
+import {
 	findLineEnd,
 	extractToMatchingDelimiter,
-	stringIsNumber,
 	createDiagnostic
 } from './utilities';
 
@@ -37,10 +36,6 @@ let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
-let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
-let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
-let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
-let operatorsLookup: ReadonlyMap<string, number> = new Map(operators.map(x => [x, 1]));
 let numberSetOperatorsLookup: ReadonlyMap<string, number> = new Map(numberSetOperators.map(x => [x, 1]));
 let stringSetOperatorsLookup: ReadonlyMap<string, number> = new Map(stringSetOperators.map(x => [x, 1]));
 
@@ -102,288 +97,6 @@ enum ParseElement {
 }
 
 /**
- * Type of a token.
- */
-enum TokenType {
-	Operator,			// +, -, %+
-	UnknownOperator,	// Unrecognized symbol
-	NamedOperator,		// and, or, modulo
-	NamedValue,			// true, false
-	Function,			// not, round
-	FunctionAndContents,	// not(...), round(...)
-	Number,				// 1, 3.4
-	VariableReference,	// {var}
-	Variable,			// var
-	String,				// "I'm a string!"
-	Parentheses,		// (1+2)
-	Unprocessed			// Haven't processed yet
-}
-
-/**
- * Token in an expression.
- */
-interface Token {
-	contents: string,
-	type: TokenType,
-	index: number
-}
-
-class Expression {
-	readonly bareExpression: string;
-	readonly globalIndex: number;
-	readonly tokens: Token[];
-	readonly combinedTokens: Token[];
-	readonly parseErrors: Diagnostic[];
-
-	constructor(bareExpression: string, globalIndex: number, state: ParsingState) {
-		this.parseErrors = [];
-		this.bareExpression = bareExpression;
-		this.globalIndex = globalIndex;
-		this.tokens = this.tokenizeExpression(bareExpression, globalIndex, state);
-		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, state);
-	}
-
-	/**
-	 * Slice an expression into a sub-expression by the tokens.
-	 * @param state: Parsing state
-     * @param start The beginning token of the specified portion of the expression.
-     * @param end The end token of the specified portion of the expression. This is exclusive of the token at the index 'end'.
-	 */
-	slice(state: ParsingState, start?: number, end?: number): Expression {
-		if (start === undefined || start < 0) {
-			start = 0;
-		}
-		if (end === undefined) {
-			end = this.tokens.length;
-		}
-
-		let startIndex: number;
-		let endIndex: number;
-		if (start >= this.tokens.length) {
-			startIndex = this.bareExpression.length;
-		}
-		else {
-			startIndex = this.tokens[start].index;
-		}
-		if (end >= this.tokens.length) {
-			endIndex = this.bareExpression.length;
-		}
-		else {
-			endIndex = this.tokens[end].index;
-		}
-		let subExpression = this.bareExpression.slice(startIndex, endIndex);
-		return new Expression(subExpression, this.globalIndex + startIndex, state);
-	}
-
-	/**
-	 * Tokenize an unprocessed token.
-	 * @param unprocessed Unprocessed token.
-	 */
-	private tokenizeUnprocessedToken(unprocessed: Token): Token[] {
-		let tokens: Token[] = [];
-
-		// Split the unprocessed token at word boundaries and process each cluster
-		let wordPattern = /^\w+$/;
-		let chunks = unprocessed.contents.split(/\b/);
-		let splitIndex = unprocessed.index;
-		for (let chunk of chunks) {
-			// Process the cluster
-			let tokenPattern = /\S+/g;
-			let m: RegExpExecArray | null;
-			while (m = tokenPattern.exec(chunk)) {
-				let tokenContents = m[0];
-				let type: TokenType;
-				if (wordPattern.test(tokenContents)) {
-					// Identify word-based tokens
-					if (namedOperatorsLookup.has(tokenContents)) {
-						type = TokenType.NamedOperator;
-					}
-					else if (functionsLookup.has(tokenContents)) {
-						type = TokenType.Function;
-					}
-					else if (namedValuesLookup.has(tokenContents)) {
-						type = TokenType.NamedValue;
-					}
-					else if (stringIsNumber(tokenContents)) {
-						type = TokenType.Number;
-					}
-					else {
-						type = TokenType.Variable;
-					}
-				}
-				else {
-					if (operatorsLookup.has(tokenContents)) {
-						type = TokenType.Operator;
-					}
-					else {
-						type = TokenType.UnknownOperator;
-					}
-				}
-				tokens.push({ contents: tokenContents, type: type, index: splitIndex + m.index });
-			}
-			splitIndex += chunk.length;
-		}
-
-		return tokens;
-	}
-
-	/**
-	 * Tokenize an expression to pull out recursive expressions like {}, "", and ().
-	 * @param expression Expression to tokenize.
-	 * @returns Unprocessed and recursive expression tokens.
-	 */
-	private tokenizeRecursiveExpressions(expression: string): Token[] {
-		let partialTokens: Token[] = [];
-
-		// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
-		// As variable references, strings, and parentheses can contain other things, tokenize them first
-		let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
-		let tokenizingIndex = 0;
-		let tokenizingExpression = expression;
-		let m: RegExpExecArray | null;
-		while (m = recursivePatterns.exec(tokenizingExpression)) {
-			if (m.groups === undefined || m.groups.remainder === undefined)
-				continue;
-
-			let openDelimiter = m.groups.delimiter;
-			let openDelimiterIndex = 0;
-			// Save the prefix string, if it exists
-			if (m.groups.prefix !== undefined && m.groups.prefix != "") {
-				partialTokens.push({ contents: m.groups.prefix, index: tokenizingIndex, type: TokenType.Unprocessed });
-				openDelimiterIndex += m.groups.prefix.length;
-			}
-
-			let closeDelimiter = '';
-			let tokenType: TokenType;
-			if (openDelimiter == '{') {
-				closeDelimiter = '}';
-				tokenType = TokenType.VariableReference;
-			}
-			else if (openDelimiter == '"') {
-				closeDelimiter = '"';
-				tokenType = TokenType.String;
-			}
-			else {
-				closeDelimiter = ')';
-				tokenType = TokenType.Parentheses;
-			}
-			let contents = extractToMatchingDelimiter(m.groups.remainder, openDelimiter, closeDelimiter, 0);
-			if (contents === undefined) {
-				contents = m.groups.remainder;
-			}
-			else {
-				contents += closeDelimiter;
-
-			}
-			contents = openDelimiter + contents;
-			partialTokens.push({ contents: contents, index: tokenizingIndex + openDelimiterIndex, type: tokenType });
-			tokenizingExpression = tokenizingExpression.slice(openDelimiterIndex +  contents.length);
-			tokenizingIndex += openDelimiterIndex + contents.length;
-		}
-
-		// Put the remaining unmatched text on the token stack
-		partialTokens.push({ contents: tokenizingExpression, index: tokenizingIndex, type: TokenType.Unprocessed });
-
-		return partialTokens;
-	}
-
-	/**
-	 * Tokenize an expression.
-	 * @param expression Expression to tokenize.
-	 * @param globalIndex Expression's index in the document being indexed.
-	 * @param state Parsing state.
-	 */
-	private tokenizeExpression(expression: string, globalIndex: number, state: ParsingState): Token[] {
-		let m: RegExpExecArray | null;
-
-		// Deal with arrays first by not dealing with them at all
-		let arrayPattern = /(\w+)\[/;
-		while (m = arrayPattern.exec(expression)) {
-			let localIndex = m.index + m[0].length - 1;
-			while (expression[localIndex] == '[') {  // To deal with multi-dimensional arrays
-				localIndex++;
-				let reference = extractToMatchingDelimiter(expression, '[', ']', localIndex);
-				if (reference !== undefined) {
-					parseExpression(reference, globalIndex + localIndex, state);
-					localIndex += reference.length + 1;
-				}
-				else {
-					localIndex++;
-				}
-			}
-			// blank out the matched string
-			expression = expression.slice(0, m.index) + " ".repeat(localIndex - m.index) + expression.slice(localIndex);
-		}
-
-		// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
-		// As variable references, strings, and parentheses can contain other things, tokenize them first
-		let partialTokens: Token[] = this.tokenizeRecursiveExpressions(expression);
-
-		// Now go back and tokenize the non-processed bits
-		let tokens: Token[] = [];
-		for (let token of partialTokens) {
-			if (token.type == TokenType.Unprocessed) {
-				tokens.push(...this.tokenizeUnprocessedToken(token));
-			}
-			else {
-				tokens.push(token);
-			}
-		}
-
-		return tokens;
-	}
-
-	/**
- 	 * Combine tokens as needed.
-  	 * 
-  	 * Tokens like functions are combined with their following parentheses.
-  	 * @param tokens Tokens to process.
-  	 * @param globalIndex Starting global index of the list of tokens.
-  	 * @param state Parsing state.
-  	 */
-	private combineTokens(tokens: Token[], globalIndex: number, state: ParsingState): Token[] {
-		let combinedTokens: Token[] = [];
-		let index = -1;
-
-		while (++index < tokens.length) {
-			let token = tokens[index];
-			if (token.type == TokenType.Function) {
-				// Combine functions and parentheses, or flag an error if they're missing
-				// We're about to combine tokens, so move the index forward
-				index++;
-				if (index >= tokens.length) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + token.index, globalIndex + token.index + token.contents.length,
-						"Function is missing its arguments");
-					this.parseErrors.push(diagnostic);
-				}
-				else {
-					let secondToken = tokens[index];
-					if (secondToken.type != TokenType.Parentheses) {
-						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-							globalIndex + token.index, globalIndex + token.index + token.contents.length,
-							"Function must be followed by parentheses");
-						this.parseErrors.push(diagnostic);
-					}
-					else {
-						// Replace the token with a combined token
-						token = {
-							type: TokenType.FunctionAndContents,
-							contents: token.contents +
-								' '.repeat(secondToken.index - token.index - token.contents.length) +
-								secondToken.contents,
-							index: token.index
-						};
-					}
-				}
-			}
-			combinedTokens.push(token);
-		}
-		return combinedTokens;
-	}
-}
-
-/**
  * Validate the expression in a *set command.
  * 
  * @param tokenizedExpression The expression that follows the variable's name in the command.
@@ -404,37 +117,37 @@ function validateSetCommandExpression(tokenizedExpression: Expression, globalInd
 	//   - concatenate ("foo" & var)
 	//   - parentheses
 	switch (tokens[0].type) {
-		case TokenType.Operator:
+		case ExpressionTokenType.Operator:
 			// ex: *set var +3
 			// The only thing we allow is a single element after the operator
 			if (tokens.length > 2) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[2].index,
-					globalIndex + lastToken.index + lastToken.contents.length,
+					globalIndex + lastToken.index + lastToken.text.length,
 					"Too many elements - are you missing parentheses?");
 				state.callbacks.onParseError(diagnostic);
 			}
 			else if (
-				tokens[1].type != TokenType.Number &&
-				tokens[1].type != TokenType.VariableReference &&
-				tokens[1].type != TokenType.Variable &&
-				tokens[1].type != TokenType.Parentheses
+				tokens[1].type != ExpressionTokenType.Number &&
+				tokens[1].type != ExpressionTokenType.VariableReference &&
+				tokens[1].type != ExpressionTokenType.Variable &&
+				tokens[1].type != ExpressionTokenType.Parentheses
 			) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[1].index,
-					globalIndex + tokens[1].index + tokens[1].contents.length,
+					globalIndex + tokens[1].index + tokens[1].text.length,
 					"Not a number, variable, or variable reference");
 				state.callbacks.onParseError(diagnostic);
 			}
 			break;
-		case TokenType.Number:
-		case TokenType.NamedValue:
-		case TokenType.Variable:
-		case TokenType.VariableReference:
-		case TokenType.Parentheses:
-		case TokenType.String:
-		case TokenType.FunctionAndContents:
-		case TokenType.Function:  // For functions that miss their contents
+		case ExpressionTokenType.Number:
+		case ExpressionTokenType.NamedValue:
+		case ExpressionTokenType.Variable:
+		case ExpressionTokenType.VariableReference:
+		case ExpressionTokenType.Parentheses:
+		case ExpressionTokenType.String:
+		case ExpressionTokenType.FunctionAndContents:
+		case ExpressionTokenType.Function:  // For functions that miss their contents
 			// We only allow the token by itself or math
 			if (tokens.length == 1) {
 				break;
@@ -442,55 +155,55 @@ function validateSetCommandExpression(tokenizedExpression: Expression, globalInd
 			if (tokens.length > 3) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[3].index,
-					globalIndex + lastToken.index + lastToken.contents.length,
+					globalIndex + lastToken.index + lastToken.text.length,
 					"Too many elements - are you missing parentheses?");
 				state.callbacks.onParseError(diagnostic);
 			}
-			if (tokens[1].type != TokenType.Operator &&
-				tokens[1].type != TokenType.NamedOperator) {
+			if (tokens[1].type != ExpressionTokenType.Operator &&
+				tokens[1].type != ExpressionTokenType.NamedOperator) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[1].index,
-					globalIndex + tokens[1].index + tokens[1].contents.length,
+					globalIndex + tokens[1].index + tokens[1].text.length,
 					"Missing operator like + or -");
 				state.callbacks.onParseError(diagnostic);
 			}
-			else if (tokens[0].type == TokenType.Number) {
-				if (!(numberSetOperatorsLookup.has(tokens[1].contents))) {
+			else if (tokens[0].type == ExpressionTokenType.Number) {
+				if (!(numberSetOperatorsLookup.has(tokens[1].text))) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[1].index,
-						globalIndex + tokens[1].index + tokens[1].contents.length,
+						globalIndex + tokens[1].index + tokens[1].text.length,
 						"Operator isn't allowed for numbers");
 					state.callbacks.onParseError(diagnostic);
 				}
-				else if (tokens[2].type != TokenType.Number &&
-					tokens[2].type != TokenType.VariableReference &&
-					tokens[2].type != TokenType.Variable &&
-					tokens[2].type != TokenType.FunctionAndContents &&
-					tokens[2].type != TokenType.Function &&
-					tokens[2].type != TokenType.Parentheses) {
+				else if (tokens[2].type != ExpressionTokenType.Number &&
+					tokens[2].type != ExpressionTokenType.VariableReference &&
+					tokens[2].type != ExpressionTokenType.Variable &&
+					tokens[2].type != ExpressionTokenType.FunctionAndContents &&
+					tokens[2].type != ExpressionTokenType.Function &&
+					tokens[2].type != ExpressionTokenType.Parentheses) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[2].index,
-						globalIndex + tokens[2].index + tokens[2].contents.length,
+						globalIndex + tokens[2].index + tokens[2].text.length,
 						"Must be a number, variable, function, or parentheses");
 					state.callbacks.onParseError(diagnostic);
 				}
 			}
-			else if (tokens[0].type == TokenType.String) {
-				if (!(stringSetOperatorsLookup.has(tokens[1].contents))) {
+			else if (tokens[0].type == ExpressionTokenType.String) {
+				if (!(stringSetOperatorsLookup.has(tokens[1].text))) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[1].index,
-						globalIndex + tokens[1].index + tokens[1].contents.length,
+						globalIndex + tokens[1].index + tokens[1].text.length,
 						"Operator isn't allowed for strings");
 					state.callbacks.onParseError(diagnostic);
 				}
-				else if (tokens[2].type != TokenType.String &&
-					tokens[2].type != TokenType.VariableReference &&
-					tokens[2].type != TokenType.Variable &&
-					tokens[2].type != TokenType.FunctionAndContents &&
-					tokens[2].type != TokenType.Parentheses) {
+				else if (tokens[2].type != ExpressionTokenType.String &&
+					tokens[2].type != ExpressionTokenType.VariableReference &&
+					tokens[2].type != ExpressionTokenType.Variable &&
+					tokens[2].type != ExpressionTokenType.FunctionAndContents &&
+					tokens[2].type != ExpressionTokenType.Parentheses) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[2].index,
-						globalIndex + tokens[2].index + tokens[2].contents.length,
+						globalIndex + tokens[2].index + tokens[2].text.length,
 						"Must be a string, variable, function, or parentheses");
 					state.callbacks.onParseError(diagnostic);
 				}
@@ -499,7 +212,7 @@ function validateSetCommandExpression(tokenizedExpression: Expression, globalInd
 		default:
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				globalIndex + tokens[0].index,
-				globalIndex + tokens[0].index + tokens[0].contents.length,
+				globalIndex + tokens[0].index + tokens[0].text.length,
 				"Must be a string, variable, or parentheses");
 			state.callbacks.onParseError(diagnostic);
 			break;
@@ -535,26 +248,26 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
 	for (let token of tokenizedExpression.tokens) {
 		let tokenGlobalIndex = globalIndex + token.index;
 		switch (token.type) {
-			case TokenType.VariableReference:
-				parseReference(token.contents, 0, tokenGlobalIndex, 1, state);
+			case ExpressionTokenType.VariableReference:
+				parseReference(token.text, 0, tokenGlobalIndex, 1, state);
 				break;
-			case TokenType.String:
-				parseString(token.contents, tokenGlobalIndex, 1, state);
+			case ExpressionTokenType.String:
+				parseString(token.text, tokenGlobalIndex, 1, state);
 				break;
-			case TokenType.Parentheses:
-				parseParentheses(token.contents, tokenGlobalIndex, 1, state);
+			case ExpressionTokenType.Parentheses:
+				parseParentheses(token.text, tokenGlobalIndex, 1, state);
 				break;
-			case TokenType.Variable:
+			case ExpressionTokenType.Variable:
 				let location = Location.create(state.textDocument.uri, Range.create(
 					state.textDocument.positionAt(tokenGlobalIndex),
-					state.textDocument.positionAt(tokenGlobalIndex + token.contents.length)
+					state.textDocument.positionAt(tokenGlobalIndex + token.text.length)
 				));
-				state.callbacks.onVariableReference(token.contents, location, state);
+				state.callbacks.onVariableReference(token.text, location, state);
 				break;
-			case TokenType.UnknownOperator:
+			case ExpressionTokenType.UnknownOperator:
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					tokenGlobalIndex,
-					tokenGlobalIndex + token.contents.length,
+					tokenGlobalIndex + token.text.length,
 					"Unknown operator");
 				state.callbacks.onParseError(diagnostic);
 				break;
@@ -573,7 +286,7 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
  * @returns Tokenized expression.
  */
 function parseExpression(expression: string, globalIndex: number, state: ParsingState): Expression {
-	let tokenizedExpression = new Expression(expression, globalIndex, state);
+	let tokenizedExpression = new Expression(expression, globalIndex, state.textDocument);
 	parseTokenizedExpression(tokenizedExpression, globalIndex, state);
 	return tokenizedExpression;
 }
@@ -825,7 +538,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 	else {
 		// Flag any nested multireplacements
 		let multiPattern = RegExp(multiStartPattern);
-		let m = tokens.fullText.match(multiPattern);
+		let m = tokens.text.match(multiPattern);
 		if (m !== null && m.index !== undefined) {
 			let startLocalIndex = localIndex + m.index;
 			let endLocalIndex: number;
@@ -835,7 +548,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 				endLocalIndex = startLocalIndex + m[0].length + contents.length + 1;
 			}
 			else {
-				endLocalIndex = startLocalIndex + tokens.fullText.length;
+				endLocalIndex = startLocalIndex + tokens.text.length;
 			}
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				startLocalIndex + sectionToDocumentDelta,
@@ -913,7 +626,7 @@ function parseParams(line: string, lineGlobalIndex: number, state: ParsingState)
  * @param state Indexing state.
  */
 function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
-	let tokenizedExpression = new Expression(line, lineGlobalIndex, state);
+	let tokenizedExpression = new Expression(line, lineGlobalIndex, state.textDocument);
 	let tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
@@ -924,21 +637,21 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 		return;
 	}
 	// The first token must be a variable or a variable reference
-	if (tokens[0].type != TokenType.Variable && tokens[0].type != TokenType.VariableReference) {
+	if (tokens[0].type != ExpressionTokenType.Variable && tokens[0].type != ExpressionTokenType.VariableReference) {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			lineGlobalIndex + tokens[0].index,
-			lineGlobalIndex + tokens[0].index + tokens[0].contents.length,
+			lineGlobalIndex + tokens[0].index + tokens[0].text.length,
 			"Not a variable or variable reference");
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
-		parseTokenizedExpression(tokenizedExpression.slice(state, 0, 1), lineGlobalIndex, state);
+		parseTokenizedExpression(tokenizedExpression.slice(0, 1), lineGlobalIndex, state);
 	}
 
 	// Now parse the remaining elements as an expression and then validate them as part of a *set command
-	let remainingExpression = tokenizedExpression.slice(state, 1);
+	let remainingExpression = tokenizedExpression.slice(1);
 	if (remainingExpression.tokens.length == 0) {
-		let index = lineGlobalIndex + tokens[0].index + tokens[0].contents.length;
+		let index = lineGlobalIndex + tokens[0].index + tokens[0].text.length;
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			index, index,
 			"Missing value to set the variable to");

@@ -217,7 +217,9 @@ export function extractSymbolAtIndex(text: string, index: number): string {
  * @param symbolChars Characters that are considered to make up a symbol. Uses \w by default.
  */
 export function extractTokenAtIndex(
-	text: string, index: number, delimiters: string = "{}",
+	text: string,
+	index: number,
+	delimiters: string = "{}",
 	symbolChars: string = "\\w"): string | undefined {
 	if (delimiters.length % 2) {
 		throw Error(`Delimiters ${delimiters} are not paired`);
@@ -240,88 +242,6 @@ export function extractTokenAtIndex(
 	}
 
 	return undefined;
-}
-
-/**
- * A token in a string.
- */
-interface Token {
-	text: string,
-	index: number
-}
-
-/**
- * A tokenized multireplace @{variable if-true | if-false}
- */
-interface Multireplace {
-	fullText: string,
-	test: Token,
-	body: Token[],
-	endIndex: number
-}
-
-/**
- * Break a multireplace into tokens.
- * 
- * @param section Document section beginning with the text right inside @{ and including the close }.
- * @param globalIndex Index into the section where the multireplace contents begin.
- */
-export function tokenizeMultireplace(section: string, globalIndex: number = 0): Multireplace | undefined {
-	let fullText: string;
-	let test: Token;
-	let body: Token[] = [];
-
-	let workingText = extractToMatchingDelimiter(section, "{", "}", globalIndex);
-	if (workingText === undefined)
-		return undefined;
-	fullText = workingText;
-
-	let multireplaceEndLocalIndex = workingText.length + 1;
-	let testEndLocalIndex = 0;
-
-	if (workingText[0] != '(') {
-		// The multireplace only has a bare symbol as its test
-		while (testEndLocalIndex < section.length) {
-			if (!/\w/.test(workingText[testEndLocalIndex])) {
-				break;
-			}
-			testEndLocalIndex++;
-		}
-		test = {
-			text: workingText.slice(0, testEndLocalIndex),
-			index: globalIndex
-		};
-	}
-	else {
-		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");
-		if (testContents === undefined) {
-			testContents = "";
-		}
-		test = {
-			text: testContents,
-			index: globalIndex + 1
-		}
-		testEndLocalIndex = testContents.length + 2;
-	}
-
-	workingText = workingText.slice(testEndLocalIndex);
-	let bareTokens = workingText.split('|');
-	let runningIndex = 0;
-	for (let bareToken of bareTokens) {
-		let trimmed = bareToken.trim();
-		body.push({
-			text: trimmed,
-			index: globalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
-		});
-		runningIndex += bareToken.length + 1;
-	}
-
-	return {
-		fullText: fullText,
-		test: test,
-		body: body,
-		endIndex: globalIndex + multireplaceEndLocalIndex
-	};
 }
 
 /**

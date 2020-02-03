@@ -631,11 +631,10 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
-			expect(received[0].text).to.equal("other_var");
+			expect(received.length).to.equal(0);
 		});
 
-		it("should only callback on 2D array references", () => {
+		it("should not callback on 2D array references", () => {
 			let fakeDocument = createDocument("*set variable[other_var][another_var] final_var");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -645,10 +644,8 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(3);
-			expect(received[0].text).to.equal("other_var");
-			expect(received[1].text).to.equal("another_var");
-			expect(received[2].text).to.equal("final_var");
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("final_var");
 		});
 	})
 	
@@ -967,7 +964,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(12);
 		});
 
-		it("should only callback on array references", () => {
+		it("should not callback on array references", () => {
 			let fakeDocument = createDocument('*if variable[other_var] = "other_variable"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -977,13 +974,10 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
-			expect(received[0].text).to.equal("other_var");
-			expect(received[0].location.range.start.line).to.equal(13);
-			expect(received[0].location.range.end.line).to.equal(22);
+			expect(received.length).to.equal(0);
 		});
 	
-		it("should not callback on two-d arrays", () => {
+		it("should not callback on 2D arrays", () => {
 			let fakeDocument = createDocument('*if variable[other_var][another_var] = "other_variable"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -993,10 +987,7 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(2);
-			expect(received[1].text).to.equal("another_var");
-			expect(received[1].location.range.start.line).to.equal(24);
-			expect(received[1].location.range.end.line).to.equal(35);
+			expect(received.length).to.equal(0);
 		});
 	})
 	
@@ -1329,40 +1320,8 @@ describe("Parser", () => {
 		});
 
 		describe("Variable Reference Commands", () => {
-			it("should flag unbalanced operators", () => {
-				let fakeDocument = createDocument("*if +var1");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				})
-		
-				parse(fakeDocument, fakeCallbacks);
-		
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Unknown operator");
-				expect(received[0].range.start.line).to.equal(21);
-				expect(received[0].range.end.line).to.equal(22);
-			});
-
 			it("should flag non-boolean results", () => {
 				let fakeDocument = createDocument("*if 1");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				})
-		
-				parse(fakeDocument, fakeCallbacks);
-		
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Unknown operator");
-				expect(received[0].range.start.line).to.equal(21);
-				expect(received[0].range.end.line).to.equal(22);
-			});
-	
-			it("should flag unknown operators", () => {
-				let fakeDocument = createDocument("*if not(var1&(var3 & ! var4))");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
