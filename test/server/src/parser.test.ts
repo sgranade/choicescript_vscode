@@ -1319,6 +1319,37 @@ describe("Parser", () => {
 			});
 		});
 
+		describe("Variable Creation Commands", () => {
+			it("should flag *create commands with no value to set the variable to", () => {
+				let fakeDocument = createDocument("*create variable");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing value to set the variable to");
+				expect(received[0].range.start.line).to.equal(16);
+				expect(received[0].range.end.line).to.equal(16);
+			});
+
+			it("should be okay with *temp commands with no value to set the variable to", () => {
+				let fakeDocument = createDocument("*temp variable");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+		});
+
 		describe("Variable Reference Commands", () => {
 			it("should flag non-boolean results", () => {
 				let fakeDocument = createDocument("*if 1");

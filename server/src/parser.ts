@@ -97,13 +97,13 @@ enum ParseElement {
 }
 
 /**
- * Validate the expression in a *set command.
+ * Validate an expression that sets a variable value.
  * 
- * @param tokenizedExpression The expression that follows the variable's name in the command.
+ * @param tokenizedExpression The expression that sets a variable's value.
  * @param globalIndex Global index to the start of the tokens.
  * @param state Parsing state.
  */
-function validateSetCommandExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
+function validateValueSettingExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
 	let tokens = tokenizedExpression.combinedTokens;
 	if (tokens.length == 0) {
 		return;
@@ -111,7 +111,7 @@ function validateSetCommandExpression(tokenizedExpression: Expression, globalInd
 
 	let lastToken = tokens[tokens.length - 1];
 
-	// *set commands' expressions can be:
+	// Variable setting expressions can be:
 	//   - a literal (number, bool, string, variable, variable reference)
 	//   - math (2 + 3, or with the leading operand missing: + 3, %+10)
 	//   - concatenate ("foo" & var)
@@ -659,7 +659,7 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 	}
 	else {
 		parseTokenizedExpression(remainingExpression, remainingExpression.globalIndex, state);
-		validateSetCommandExpression(remainingExpression, remainingExpression.globalIndex, state);
+		validateValueSettingExpression(remainingExpression, remainingExpression.globalIndex, state);
 	}
 }
 
@@ -701,15 +701,23 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 			case "create":
 				// *create instantiates global variables
 				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
-				if (expression !== undefined) {
-					parseExpression(expression, expressionGlobalIndex, state);
+				if (expression === undefined) {
+					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+						lineGlobalIndex + symbol.length, lineGlobalIndex + symbol.length,
+						"Missing value to set the variable to");
+					state.callbacks.onParseError(diagnostic);
+				}
+				else {
+					let tokenizedExpression = parseExpression(expression, expressionGlobalIndex, state);
+					validateValueSettingExpression(tokenizedExpression, expressionGlobalIndex, state);
 				}
 				break;
 			case "temp":
 				// *temp instantiates variables local to the scene file
 				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
 				if (expression !== undefined) {
-					parseExpression(expression, expressionGlobalIndex, state);
+					let tokenizedExpression = parseExpression(expression, expressionGlobalIndex, state);
+					validateValueSettingExpression(tokenizedExpression, expressionGlobalIndex, state);
 				}
 				break;
 			case "label":
