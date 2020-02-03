@@ -590,6 +590,7 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  * @param globalIndex Reference content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
+ * @returns The local index to the end of the variable reference.
  */
 function parseReference(section: string, openDelimiterLength: number, globalIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
@@ -603,6 +604,7 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
 	else {
 		sectionToDocumentDelta = globalIndex;
 	}
+	let newLocalIndex = localIndex;
 
 	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
 	if (reference === undefined) {
@@ -625,11 +627,11 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
 	else {
 		// References contain expressions, so let the expression parser handle that
 		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
-		globalIndex = sectionToDocumentDelta + localIndex + reference.length + 1;
+		newLocalIndex = localIndex + reference.length + 1;
 	}
 
 	state.parseStack.pop();
-	return globalIndex;
+	return newLocalIndex;
 }
 
 /**
@@ -646,8 +648,6 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
  */
 function parseBareString(
 	section: string, startGlobalIndex: number, startLocalIndex: number, endLocalIndex: number, state: ParsingState) {
-	let sectionToDocumentDelta = startGlobalIndex - startLocalIndex;
-
 	let subsection = section.slice(startLocalIndex, endLocalIndex);
 
 	// Deal with any replacements or multireplacements
@@ -659,22 +659,21 @@ function parseBareString(
 			break;
 
 		let contentsLocalIndex = m.index + m[0].length;
-		let newGlobalIndex: number;
+		let newLocalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
-			newGlobalIndex = parseReplacement(
+			newLocalIndex = parseReplacement(
 				section, m.groups.replacement.length, startGlobalIndex, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
-			newGlobalIndex = parseMultireplacement(
+			newLocalIndex = parseMultireplacement(
 				section, m.groups.multi.length, startGlobalIndex, contentsLocalIndex, state);
 		}
 		else {
-			newGlobalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
+			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
 		}
 
-		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
-		//startGlobalIndex = newGlobalIndex;
+		delimiterPattern.lastIndex = newLocalIndex;
 	}
 }
 
@@ -687,16 +686,11 @@ function parseBareString(
  * @param globalIndex String content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
- * @returns Global index to the end of the string.
+ * @returns Local index to the end of the string.
  */
 function parseString(section: string, globalIndex: number, localIndex: number, state: ParsingState): number {
-	let sectionToDocumentDelta: number;
 	if (localIndex === undefined) {
 		localIndex = globalIndex;
-		sectionToDocumentDelta = 0;
-	}
-	else {
-		sectionToDocumentDelta = globalIndex;
 	}
 
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
@@ -708,24 +702,25 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 			break;
 
 		let contentsLocalIndex = m.index + m[0].length;
-		let newGlobalIndex: number;
+		let newLocalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
-			newGlobalIndex = parseReplacement(
+			newLocalIndex = parseReplacement(
 				section, m.groups.replacement.length, globalIndex, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
-			newGlobalIndex = parseMultireplacement(
+			newLocalIndex = parseMultireplacement(
 				section, m.groups.multi.length, globalIndex, contentsLocalIndex, state);
 		}
 		else {
-			newGlobalIndex = contentsLocalIndex + sectionToDocumentDelta;  // b/c contentsIndex points beyond the end of the string
+			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
 		}
 
-		delimiterPattern.lastIndex = newGlobalIndex - sectionToDocumentDelta;
+		delimiterPattern.lastIndex = newLocalIndex;
+		localIndex = newLocalIndex;
 	}
 
-	return globalIndex;
+	return localIndex;
 }
 
 /**
@@ -737,6 +732,7 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
  * @param globalIndex Parenthesized content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
+ * @returns Local index to the end of the expression.
  */
 function parseParentheses(section: string, globalIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
@@ -765,11 +761,11 @@ function parseParentheses(section: string, globalIndex: number,
 	else {
 		// Parentheses contain expressions, so let the expression indexer handle that
 		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
-		globalIndex = sectionToDocumentDelta + localIndex + reference.length + 1;
+		localIndex += reference.length + 1;
 	}
 
 	state.parseStack.pop();
-	return globalIndex;
+	return localIndex;
 }
 
 /**
@@ -782,7 +778,7 @@ function parseParentheses(section: string, globalIndex: number,
  * @param globalIndex Replacement content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
- * @returns The global index to the end of the replacement.
+ * @returns The local index to the end of the replacement.
  */
 function parseReplacement(section: string, openDelimiterLength: number, globalIndex: number, 
 	localIndex: number | undefined, state: ParsingState): number {
@@ -800,7 +796,7 @@ function parseReplacement(section: string, openDelimiterLength: number, globalIn
  * @param globalIndex Multireplacement content's index in the global document.
  * @param localIndex The content's index in the section. If undefined, globalIndex is used.
  * @param state Parsing state.
- * @returns The global index to the end of the multireplacement.
+ * @returns The local index to the end of the multireplacement.
  */
 function parseMultireplacement(section: string, openDelimiterLength: number, globalIndex: number, 
 	localIndex: number | undefined, state: ParsingState): number {
@@ -880,12 +876,12 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 				let text = token.text.replace('@{', '  ');
 				parseBareString(text, token.index + sectionToDocumentDelta, 0, token.text.length, state);
 			}
-			globalIndex = tokens.endIndex + sectionToDocumentDelta;
+			localIndex = tokens.endIndex;
 		}
 	}
 
 	state.parseStack.pop();
-	return globalIndex;
+	return localIndex;
 }
 
 /**
