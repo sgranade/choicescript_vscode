@@ -274,6 +274,9 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 				}
 			}
 			break;
+		case ExpressionTokenType.UnknownOperator:
+			// Already handled elsewhere
+			break;
 		default:
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				globalIndex + tokens[0].index,

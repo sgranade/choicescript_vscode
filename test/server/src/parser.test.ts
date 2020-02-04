@@ -1478,6 +1478,54 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(6);
 			});
 	
+			it("should flag a missing symbol after a bare math operator", () => {
+				let fakeDocument = createDocument("*set var +");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing number after the operator");
+				expect(received[0].range.start.line).to.equal(10);
+				expect(received[0].range.end.line).to.equal(10);
+			});
+	
+			it("should flag too many symbols after a bare math operator", () => {
+				let fakeDocument = createDocument("*set var +1 + 2");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Too many elements");
+				expect(received[0].range.start.line).to.equal(12);
+				expect(received[0].range.end.line).to.equal(15);
+			});
+	
+			it("should flag a non-number symbol after a bare math operator", () => {
+				let fakeDocument = createDocument('*set var +"nope"');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Not a number");
+				expect(received[0].range.start.line).to.equal(10);
+				expect(received[0].range.end.line).to.equal(16);
+			});
+	
 			it("should flag when there's no value to set the variable to", () => {
 				let fakeDocument = createDocument("*set variable");
 				let received: Array<Diagnostic> = [];
@@ -1505,6 +1553,102 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(0);
+			});
+	
+			it("should flag a missing operator", () => {
+				let fakeDocument = createDocument('*set var 1 4');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing operator");
+				expect(received[0].range.start.line).to.equal(11);
+				expect(received[0].range.end.line).to.equal(12);
+			});
+	
+			it("should flag a missing number after an operator", () => {
+				let fakeDocument = createDocument('*set var 1 +');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing number after the operator");
+				expect(received[0].range.start.line).to.equal(12);
+				expect(received[0].range.end.line).to.equal(12);
+			});
+	
+			it("should flag a not-number after a math operator", () => {
+				let fakeDocument = createDocument('*set var 1 + "nope"');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be a number");
+				expect(received[0].range.start.line).to.equal(13);
+				expect(received[0].range.end.line).to.equal(19);
+			});
+	
+			it("should flag a not-string operator after a string", () => {
+				let fakeDocument = createDocument('*set var "yep" + "nope"');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Operator isn't allowed for strings");
+				expect(received[0].range.start.line).to.equal(15);
+				expect(received[0].range.end.line).to.equal(16);
+			});
+	
+			it("should flag a not-string value after a string operator", () => {
+				let fakeDocument = createDocument('*set var "yep" & 1');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be a string");
+				expect(received[0].range.start.line).to.equal(17);
+				expect(received[0].range.end.line).to.equal(18);
+			});
+	
+			it("should flag a non-number operator at the start of the expression", () => {
+				let fakeDocument = createDocument("*set variable and true");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be a string, variable, or parentheses");
+				expect(received[0].range.start.line).to.equal(14);
+				expect(received[0].range.end.line).to.equal(17);
 			});
 	
 			it("should flag unknown operators", () => {
