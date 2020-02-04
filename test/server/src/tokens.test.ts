@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Location, Diagnostic } from 'vscode-languageserver';
+import { TextDocument, Position } from 'vscode-languageserver';
 
-import { Expression, tokenizeMultireplace } from '../../../server/src/tokens';
+import { Expression, tokenizeMultireplace, ExpressionTokenType } from '../../../server/src/tokens';
 
 function createDocument(text: string, uri: string = "file:///scene.txt"): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
@@ -15,6 +15,16 @@ function createDocument(text: string, uri: string = "file:///scene.txt"): Substi
 
 describe("Tokenizing", () => {
 	describe("Expressions", () => {
+		it("should tokenize floating point numbers", () => {
+			let text = "1.1";
+			let fakeDocument = createDocument(text);
+
+			let expression = new Expression(text, 2, fakeDocument);
+
+			expect(expression.tokens.length).to.equal(1);
+			expect(expression.tokens[0].type).to.equal(ExpressionTokenType.Number);
+		});
+
 		it("should flag functions with no arguments", () => {
 			let text = "true & not";
 			let fakeDocument = createDocument(text);

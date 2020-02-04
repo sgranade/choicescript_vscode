@@ -130,14 +130,18 @@ export let operators: ReadonlyArray<string> = [
 /**
  * ChoiceScript named operators
  */
-export let namedOperators: ReadonlyArray<string> = [
-	"and", "or", "modulo"
+export let booleanNamedOperators: ReadonlyArray<string> = [
+	"and", "or"
+];
+
+export let numericNamedOperators: ReadonlyArray<string> = [
+	"modulo"
 ];
 
 /**
  * ChoiceScript named values
  */
-export let namedValues: ReadonlyArray<string> = [
+export let booleanNamedValues: ReadonlyArray<string> = [
 	"true", "false"
 ];
 

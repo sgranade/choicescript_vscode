@@ -4,6 +4,7 @@ Changes to the plugin.
 ## Unreleased
 ### Added
 - Problems with *set commands are now flagged.
+- Problems with *if and *elseif commands are now flagged.
 
 ## [1.1.0] - 2020-02-01
 ### Added

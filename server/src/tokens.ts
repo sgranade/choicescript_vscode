@@ -1,11 +1,12 @@
 import { Diagnostic, TextDocument, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic } from './utilities';
-import { functions, namedOperators, namedValues, operators } from './language';
+import { functions, booleanNamedOperators, numericNamedOperators, booleanNamedValues, operators } from './language';
 
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
-let namedOperatorsLookup: ReadonlyMap<string, number> = new Map(namedOperators.map(x => [x, 1]));
-let namedValuesLookup: ReadonlyMap<string, number> = new Map(namedValues.map(x => [x, 1]));
+let booleanNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(booleanNamedOperators.map(x => [x, 1]));
+let numericNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(numericNamedOperators.map(x => [x, 1]));
+let booleanNamedValuesLookup: ReadonlyMap<string, number> = new Map(booleanNamedValues.map(x => [x, 1]));
 let operatorsLookup: ReadonlyMap<string, number> = new Map(operators.map(x => [x, 1]));
 
 
@@ -15,8 +16,9 @@ let operatorsLookup: ReadonlyMap<string, number> = new Map(operators.map(x => [x
 export enum ExpressionTokenType {
 	Operator,			// +, -, %+
 	UnknownOperator,	// Unrecognized symbol
-	NamedOperator,		// and, or, modulo
-	NamedValue,			// true, false
+	BooleanNamedOperator,	// and, or
+	NumericNamedOperator,	// modulo
+	BooleanNamedValue,			// true, false
 	Function,			// not, round
 	FunctionAndContents,	// not(...), round(...)
 	Number,				// 1, 3.4
@@ -96,26 +98,42 @@ export class Expression {
 		let wordPattern = /^\w+$/;
 		let chunks = unprocessed.text.split(/\b/);
 		let splitIndex = unprocessed.index;
-		for (let chunk of chunks) {
+		for (let i = 0; i < chunks.length; i++) {
+			let chunk = chunks[i];
+			// The word boundary split breaks apart floating point numbers because of the period
+			// so glue those back together. Numbers are guaranteed to have no spaces around them
+			// since that's a word boundary -- a transition from number to space or space to number.
+			if (stringIsNumber(chunk) && i + 1 < chunks.length && chunks[i+1] == ".") {
+				chunk = chunk + ".";
+				i++;
+				if (i + 1 < chunks.length && stringIsNumber(chunks[i+1])) {
+					chunk = chunk + chunks[i+1];
+					i++;
+				}
+			}
 			// Process the cluster
 			let tokenPattern = /\S+/g;
 			let m: RegExpExecArray | null;
 			while (m = tokenPattern.exec(chunk)) {
 				let tokenContents = m[0];
 				let type: ExpressionTokenType;
-				if (wordPattern.test(tokenContents)) {
+				// Need to test numbers separately since floating point numbers don't match the token word pattern
+				if (stringIsNumber(tokenContents)) {
+					type = ExpressionTokenType.Number;
+				}
+				else if (wordPattern.test(tokenContents)) {
 					// Identify word-based tokens
-					if (namedOperatorsLookup.has(tokenContents)) {
-						type = ExpressionTokenType.NamedOperator;
+					if (booleanNamedOperatorsLookup.has(tokenContents)) {
+						type = ExpressionTokenType.BooleanNamedOperator;
+					}
+					else if (numericNamedOperatorsLookup.has(tokenContents)) {
+						type = ExpressionTokenType.NumericNamedOperator;
 					}
 					else if (functionsLookup.has(tokenContents)) {
 						type = ExpressionTokenType.Function;
 					}
-					else if (namedValuesLookup.has(tokenContents)) {
-						type = ExpressionTokenType.NamedValue;
-					}
-					else if (stringIsNumber(tokenContents)) {
-						type = ExpressionTokenType.Number;
+					else if (booleanNamedValuesLookup.has(tokenContents)) {
+						type = ExpressionTokenType.BooleanNamedValue;
 					}
 					else {
 						type = ExpressionTokenType.Variable;

@@ -1362,9 +1362,25 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Unknown operator");
-				expect(received[0].range.start.line).to.equal(21);
-				expect(received[0].range.end.line).to.equal(22);
+				expect(received[0].message).to.include("Must be true, false, variable");
+				expect(received[0].range.start.line).to.equal(4);
+				expect(received[0].range.end.line).to.equal(5);
+			});
+	
+			it("should flag non-boolean functions", () => {
+				let fakeDocument = createDocument("*if round(2)");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Only boolean functions");
+				expect(received[0].range.start.line).to.equal(4);
+				expect(received[0].range.end.line).to.equal(12);
 			});
 	
 			it("should flag unbalanced parentheses", () => {
@@ -1394,8 +1410,8 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Too many conditions without parentheses");
-				expect(received[0].range.start.line).to.equal(4);
+				expect(received[0].message).to.include("Too many elements - are you missing parentheses");
+				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(27);
 			});
 	
@@ -1413,7 +1429,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag a not that's missing parentheses", () => {
-				let fakeDocument = createDocument("*if not 1 > 2");
+				let fakeDocument = createDocument("*if not true");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -1423,9 +1439,25 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Operators only take two arguments");
-				expect(received[0].range.start.line).to.equal(7);
-				expect(received[0].range.end.line).to.equal(24);
+				expect(received[0].message).to.include("Function must be followed by");
+				expect(received[0].range.start.line).to.equal(4);
+				expect(received[0].range.end.line).to.equal(7);
+			});
+
+			it("should flag a non-boolean function", () => {
+				let fakeDocument = createDocument("*if round(1.1)");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Only boolean functions");
+				expect(received[0].range.start.line).to.equal(4);
+				expect(received[0].range.end.line).to.equal(14);
 			});
 		});
 
