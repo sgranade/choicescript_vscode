@@ -16,12 +16,15 @@ import {
 	statChartCommands,
 	statChartBlockCommands,
 	numberSetOperators,
-	stringSetOperators
+	stringSetOperators,
+	numberFunctions,
+	booleanFunctions
 } from './language';
 import {
 	Expression,
 	ExpressionTokenType,
-	tokenizeMultireplace
+	tokenizeMultireplace,
+	ExpressionToken
 } from './tokens';
 import {
 	findLineEnd,
@@ -30,6 +33,8 @@ import {
 } from './utilities';
 
 
+let numberFunctionsLookup: ReadonlyMap<string, number> = new Map(numberFunctions.map(x => [x, 1]));
+let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
@@ -97,6 +102,67 @@ enum ParseElement {
 }
 
 /**
+ * Determine if an expression token is compatible with a number.
+ * @param type Type of the expression token.
+ */
+function isNumberCompatible(token: ExpressionToken): boolean {
+	let isNumberFunction = false;
+	if (token.type == ExpressionTokenType.Function && numberFunctionsLookup.has(token.text)) {
+		isNumberFunction = true;
+	}
+	else if (token.type == ExpressionTokenType.FunctionAndContents) {
+		let functionName = token.text.split('(')[0];
+		isNumberFunction = numberFunctionsLookup.has(functionName);
+	}
+	return (isNumberFunction ||
+		token.type == ExpressionTokenType.Number ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
+/**
+ * Determine if an expression token is compatible with a boolean.
+ * @param type Type of the expression token.
+ */
+function isBooleanCompatible(token: ExpressionToken): boolean {
+	let isBooleanFunction = false;
+	if (token.type == ExpressionTokenType.Function && booleanFunctionsLookup.has(token.text)) {
+		isBooleanFunction = true;
+	}
+	else if (token.type == ExpressionTokenType.FunctionAndContents) {
+		let functionName = token.text.split('(')[0];
+		isBooleanFunction = booleanFunctionsLookup.has(functionName);
+	}
+	return (isBooleanFunction ||
+		token.type == ExpressionTokenType.BooleanNamedValue ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
+/**
+ * Determine if an expression token is compatible with a string.
+ * @param type Type of the expression token.
+ */
+function isStringCompatible(token: ExpressionToken): boolean {
+	return (token.type == ExpressionTokenType.String ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
+/**
+ * Determine if an expression token is any kind of operator.
+ * @param type Type of the expression token.
+ */
+function isAnyOperator(token: ExpressionToken): boolean {
+	return (token.type == ExpressionTokenType.Operator ||
+		token.type == ExpressionTokenType.BooleanNamedOperator ||
+		token.type == ExpressionTokenType.NumericNamedOperator);
+}
+
+/**
  * Validate an expression that sets a variable value.
  * 
  * @param tokenizedExpression The expression that sets a variable's value.
@@ -134,12 +200,7 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 					"Missing number after the operator");
 				state.callbacks.onParseError(diagnostic);
 			}
-			else if (
-				tokens[1].type != ExpressionTokenType.Number &&
-				tokens[1].type != ExpressionTokenType.VariableReference &&
-				tokens[1].type != ExpressionTokenType.Variable &&
-				tokens[1].type != ExpressionTokenType.Parentheses
-			) {
+			else if (!isNumberCompatible(tokens[1])) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[1].index,
 					globalIndex + tokens[1].index + tokens[1].text.length,
@@ -166,9 +227,7 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 					"Too many elements - are you missing parentheses?");
 				state.callbacks.onParseError(diagnostic);
 			}
-			if (tokens[1].type != ExpressionTokenType.Operator &&
-				tokens[1].type != ExpressionTokenType.BooleanNamedOperator &&
-				tokens[1].type != ExpressionTokenType.NumericNamedOperator) {
+			if (!isAnyOperator(tokens[1])) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[1].index,
 					globalIndex + tokens[1].index + tokens[1].text.length,
@@ -190,12 +249,7 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 						"Operator isn't allowed for numbers");
 					state.callbacks.onParseError(diagnostic);
 				}
-				else if (tokens[2].type != ExpressionTokenType.Number &&
-					tokens[2].type != ExpressionTokenType.VariableReference &&
-					tokens[2].type != ExpressionTokenType.Variable &&
-					tokens[2].type != ExpressionTokenType.FunctionAndContents &&
-					tokens[2].type != ExpressionTokenType.Function &&
-					tokens[2].type != ExpressionTokenType.Parentheses) {
+				else if (!isNumberCompatible(tokens[2])) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[2].index,
 						globalIndex + tokens[2].index + tokens[2].text.length,
@@ -211,11 +265,7 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 						"Operator isn't allowed for strings");
 					state.callbacks.onParseError(diagnostic);
 				}
-				else if (tokens[2].type != ExpressionTokenType.String &&
-					tokens[2].type != ExpressionTokenType.VariableReference &&
-					tokens[2].type != ExpressionTokenType.Variable &&
-					tokens[2].type != ExpressionTokenType.FunctionAndContents &&
-					tokens[2].type != ExpressionTokenType.Parentheses) {
+				else if (!isStringCompatible(tokens[2])) {
 					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 						globalIndex + tokens[2].index,
 						globalIndex + tokens[2].index + tokens[2].text.length,
@@ -974,11 +1024,7 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 					state.callbacks.onParseError(diagnostic);
 				}
 			}
-			else if (tokens[2].type != ExpressionTokenType.BooleanNamedValue &&
-				tokens[2].type != ExpressionTokenType.VariableReference &&
-				tokens[2].type != ExpressionTokenType.Variable &&
-				tokens[2].type != ExpressionTokenType.Parentheses
-			) {
+			else if (!isBooleanCompatible(tokens[2])) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[2].index,
 					globalIndex + tokens[2].index + tokens[2].text.length,

@@ -111,6 +111,17 @@ export let functions: ReadonlyArray<string> = [
 ];
 
 /**
+ * ChoiceScript functions that return numbers
+ */
+export let numberFunctions: ReadonlyArray<string> = [
+	"round", "length", "log", "timestamp"
+];
+
+export let booleanFunctions: ReadonlyArray<string> = [
+	"not"
+];
+
+/**
  * ChoiceScript built-in variables
  */
 export let builtinVariables: ReadonlyArray<string> = [
