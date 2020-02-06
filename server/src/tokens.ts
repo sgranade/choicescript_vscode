@@ -1,23 +1,39 @@
 import { Diagnostic, TextDocument, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic } from './utilities';
-import { functions, booleanNamedOperators, numericNamedOperators, booleanNamedValues, operators } from './language';
+import { 
+	functions, 
+	booleanNamedOperators, 
+	numericNamedOperators, 
+	booleanNamedValues, 
+	mathOperators, 
+	comparisonOperators, 
+	stringOperators, 
+	numberFunctions, 
+	booleanFunctions 
+} from './language';
 
 let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
+let numberFunctionsLookup: ReadonlyMap<string, number> = new Map(numberFunctions.map(x => [x, 1]));
+let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 let booleanNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(booleanNamedOperators.map(x => [x, 1]));
 let numericNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(numericNamedOperators.map(x => [x, 1]));
 let booleanNamedValuesLookup: ReadonlyMap<string, number> = new Map(booleanNamedValues.map(x => [x, 1]));
-let operatorsLookup: ReadonlyMap<string, number> = new Map(operators.map(x => [x, 1]));
+let mathOperatorsLookup: ReadonlyMap<string, number> = new Map(mathOperators.map(x => [x, 1]));
+let comparisonOperatorsLookup: ReadonlyMap<string, number> = new Map(comparisonOperators.map(x => [x, 1]));
+let stringOperatorsLookup: ReadonlyMap<string, number> = new Map(stringOperators.map(x => [x, 1]));
 
 
 /**
  * Type of a token in an expression.
  */
 export enum ExpressionTokenType {
-	Operator,			// +, -, %+
-	UnknownOperator,	// Unrecognized symbol
+	MathOperator,		// +, -, %+
+	ComparisonOperator,	// <, >=, !=
+	StringOperator,		// &, #
 	BooleanNamedOperator,	// and, or
 	NumericNamedOperator,	// modulo
+	UnknownOperator,	// Unrecognized symbol
 	BooleanNamedValue,			// true, false
 	Function,			// not, round
 	FunctionAndContents,	// not(...), round(...)
@@ -30,6 +46,20 @@ export enum ExpressionTokenType {
 }
 
 /**
+ * Result of evaluating the expression
+ */
+export enum ExpressionResultType {
+	Empty,
+	Number,
+	Boolean,
+	String,
+	Mixed,		// The expression doesn't have a valid result
+	Unknowable,	// Variable or parentheses or other non-eval'able value
+	Error,
+	Unprocessed
+}
+
+/**
  * Token in an expression.
  */
 export interface ExpressionToken {
@@ -38,21 +68,46 @@ export interface ExpressionToken {
 	index: number
 }
 
+/**
+ * Determine if an expression token is compatible with a number.
+ * @param type Type of the expression token.
+ */
+function isNumberCompatible(token: ExpressionToken): boolean {
+	let isNumberFunction = false;
+	if (token.type == ExpressionTokenType.Function && numberFunctionsLookup.has(token.text)) {
+		isNumberFunction = true;
+	}
+	else if (token.type == ExpressionTokenType.FunctionAndContents) {
+		let functionName = token.text.split('(')[0];
+		isNumberFunction = numberFunctionsLookup.has(functionName);
+	}
+	return (isNumberFunction ||
+		token.type == ExpressionTokenType.Number ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
 export class Expression {
 	readonly bareExpression: string;
 	readonly globalIndex: number;
 	readonly tokens: ExpressionToken[];
 	readonly combinedTokens: ExpressionToken[];
+	readonly resultType: ExpressionResultType;
 	readonly parseErrors: Diagnostic[];
+	readonly validateErrors: Diagnostic[];
 	private textDocument: TextDocument;
 
 	constructor(bareExpression: string, globalIndex: number, textDocument: TextDocument) {
 		this.parseErrors = [];
-		this.bareExpression = bareExpression;
+		this.validateErrors = [];
+		this.textDocument = textDocument;
 		this.globalIndex = globalIndex;
+
+		this.bareExpression = bareExpression;
 		this.tokens = this.tokenizeExpression(bareExpression);
 		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, textDocument);
-		this.textDocument = textDocument;
+		this.resultType = this.validateExpression();
 	}
 
 	/**
@@ -140,8 +195,14 @@ export class Expression {
 					}
 				}
 				else {
-					if (operatorsLookup.has(tokenContents)) {
-						type = ExpressionTokenType.Operator;
+					if (mathOperatorsLookup.has(tokenContents)) {
+						type = ExpressionTokenType.MathOperator;
+					}
+					else if (comparisonOperatorsLookup.has(tokenContents)) {
+						type = ExpressionTokenType.ComparisonOperator;
+					}
+					else if (stringOperatorsLookup.has(tokenContents)) {
+						type = ExpressionTokenType.StringOperator;
 					}
 					else {
 						type = ExpressionTokenType.UnknownOperator;
@@ -305,6 +366,124 @@ export class Expression {
 			combinedTokens.push(token);
 		}
 		return combinedTokens;
+	}
+
+	private validateExpression(): ExpressionResultType {
+		let resultType = ExpressionResultType.Unprocessed;
+
+		if (this.combinedTokens.length == 0) {
+			return ExpressionResultType.Empty;
+		}
+
+		let lastToken = this.combinedTokens[this.combinedTokens.length - 1];
+
+		if (this.combinedTokens.length == 1) {
+			let token = this.combinedTokens[0];
+			if (token.type == ExpressionTokenType.FunctionAndContents) {
+				token = this.tokens[0];
+			}
+
+			if (token.type == ExpressionTokenType.Number || numberFunctionsLookup.has(token.text)) {
+				resultType = ExpressionResultType.Number;
+			}
+			else if (token.type == ExpressionTokenType.BooleanNamedValue || booleanFunctionsLookup.has(token.text)) {
+				resultType = ExpressionResultType.Boolean;
+			}
+			else if (token.type == ExpressionTokenType.String) {
+				resultType = ExpressionResultType.String;
+			}
+			else if (token.type == ExpressionTokenType.Variable ||
+				token.type == ExpressionTokenType.VariableReference ||
+				token.type == ExpressionTokenType.Parentheses) {
+				resultType = ExpressionResultType.Unknowable;
+			}
+			else {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + token.index,
+					this.globalIndex + token.index + token.text.length,
+					"Not a valid value");
+				this.validateErrors.push(diagnostic);
+				resultType = ExpressionResultType.Error;
+			}
+		}
+		else if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator) {
+			// Math operators are allowed for *set commands. Let them handle making
+			// sure it's correct.
+			resultType = ExpressionResultType.Unprocessed;
+		}
+		else if (this.combinedTokens.length == 2) {
+			let index = this.globalIndex + lastToken.index + lastToken.text.length;
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+				index, index,
+				"Incomplete expression");
+			this.validateErrors.push(diagnostic);
+			resultType = ExpressionResultType.Error;
+		}
+		else {
+			if (this.combinedTokens.length > 3) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + this.combinedTokens[3].index,
+					this.globalIndex + lastToken.index + lastToken.text.length,
+					"Too many elements - are you missing parentheses?");
+				this.validateErrors.push(diagnostic);
+			}
+
+			let effectiveType: ExpressionTokenType = this.combinedTokens[0].type;
+			// If we've got a function, find out what its effective type is
+			if (effectiveType == ExpressionTokenType.FunctionAndContents) {
+				let functionName = this.tokens[0].text;
+				if (numberFunctionsLookup.has(functionName)) {
+					effectiveType = ExpressionTokenType.Number;
+				}
+				else if (booleanFunctionsLookup.has(functionName)) {
+					effectiveType = ExpressionTokenType.BooleanNamedValue;
+				}
+			}
+
+			let comparisonToken = this.combinedTokens[1];
+			let otherToken = this.combinedTokens[2];
+			switch (effectiveType) {
+				case ExpressionTokenType.Number:
+					if (comparisonToken.type != ExpressionTokenType.MathOperator &&
+						comparisonToken.type != ExpressionTokenType.ComparisonOperator) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + comparisonToken.index,
+							this.globalIndex + comparisonToken.index + comparisonToken.text.length,
+							"Not a numeric operator");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else if (!isNumberCompatible(otherToken)) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + otherToken.index,
+							this.globalIndex + otherToken.index + otherToken.text.length,
+							"Must be a number, variable, or parentheses");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else if (comparisonToken.type == ExpressionTokenType.MathOperator) {
+						resultType = ExpressionResultType.Number;
+					}
+					else {
+						resultType = ExpressionResultType.Boolean;
+					}
+					break;
+				case ExpressionTokenType.BooleanNamedValue:
+					// TODO
+					break;
+				case ExpressionTokenType.String:
+					// TODO
+					break;
+				case ExpressionTokenType.Variable:
+				case ExpressionTokenType.VariableReference:
+				case ExpressionTokenType.FunctionAndContents:
+				case ExpressionTokenType.Parentheses:
+					// TODO
+					break;
+			}
+		}
+
+		return resultType;
 	}
 }
 

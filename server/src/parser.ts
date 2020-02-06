@@ -157,7 +157,9 @@ function isStringCompatible(token: ExpressionToken): boolean {
  * @param type Type of the expression token.
  */
 function isAnyOperator(token: ExpressionToken): boolean {
-	return (token.type == ExpressionTokenType.Operator ||
+	return (token.type == ExpressionTokenType.MathOperator ||
+		token.type == ExpressionTokenType.ComparisonOperator ||
+		token.type == ExpressionTokenType.StringOperator ||
 		token.type == ExpressionTokenType.BooleanNamedOperator ||
 		token.type == ExpressionTokenType.NumericNamedOperator);
 }
@@ -183,7 +185,7 @@ function validateValueSettingExpression(tokenizedExpression: Expression, globalI
 	//   - concatenate ("foo" & var)
 	//   - parentheses
 	switch (tokens[0].type) {
-		case ExpressionTokenType.Operator:
+		case ExpressionTokenType.MathOperator:
 			// ex: *set var +3
 			// The only thing we allow is a single element after the operator
 			if (tokens.length > 2) {
@@ -342,7 +344,9 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
 		}
 	}
 
-	validateExpression(tokenizedExpression, globalIndex, state);
+	for (let error of tokenizedExpression.parseErrors) {
+		state.callbacks.onParseError(error);
+	}
 }
 
 
@@ -989,12 +993,20 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 					"Only boolean functions like not() are allowed");
 				state.callbacks.onParseError(diagnostic);
 			}
+		case ExpressionTokenType.Number:
 		case ExpressionTokenType.BooleanNamedValue:
 		case ExpressionTokenType.VariableReference:
 		case ExpressionTokenType.Variable:
 		case ExpressionTokenType.Parentheses:
 			// We only allow the token by itself or math
 			if (tokens.length == 1) {
+				if (!isBooleanCompatible(tokens[0])) {
+					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+						globalIndex + tokens[0].index,
+						globalIndex + tokens[0].index + tokens[0].text.length,
+						"Must be a boolean value like 'true' or 'false'");
+					state.callbacks.onParseError(diagnostic);
+				}
 				break;
 			}
 			if (tokens.length > 3) {
@@ -1027,11 +1039,11 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 					state.callbacks.onParseError(diagnostic);
 				}
 			}
-			else if (!isBooleanCompatible(tokens[2])) {
+			else if (!isBooleanCompatible(tokens[2]) && !isNumberCompatible(tokens[2])) {
 				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 					globalIndex + tokens[2].index,
 					globalIndex + tokens[2].index + tokens[2].text.length,
-					"Must be true, false, variable, not(), reference, or parentheses");
+					"Not an allowed value with a boolean comparison");
 				state.callbacks.onParseError(diagnostic);
 			}
 			break;

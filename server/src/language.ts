@@ -139,14 +139,38 @@ export let operators: ReadonlyArray<string> = [
 ];
 
 /**
+ * Math operators
+ */
+export let mathOperators: ReadonlyArray<string> = [
+	"+", "-", "*", "/", "%", "^", "%+", "%-",
+];
+
+/**
+ * Comparison operators
+ */
+export let comparisonOperators: ReadonlyArray<string> = [
+	"=", "<", ">", "<=", ">=", "!="
+];
+
+/**
+ * String operators
+ */
+export let stringOperators: ReadonlyArray<string> = [
+	"&", "#"
+];
+
+/**
+ * Numeric named operators
+ */
+export let numericNamedOperators: ReadonlyArray<string> = [
+	"modulo"
+];
+
+/**
  * ChoiceScript named operators
  */
 export let booleanNamedOperators: ReadonlyArray<string> = [
 	"and", "or"
-];
-
-export let numericNamedOperators: ReadonlyArray<string> = [
-	"modulo"
 ];
 
 /**
