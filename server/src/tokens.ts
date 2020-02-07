@@ -88,6 +88,37 @@ function isNumberCompatible(token: ExpressionToken): boolean {
 		token.type == ExpressionTokenType.Parentheses);
 }
 
+/**
+ * Determine if an expression token is compatible with a boolean.
+ * @param type Type of the expression token.
+ */
+function isBooleanCompatible(token: ExpressionToken): boolean {
+	let isBooleanFunction = false;
+	if (token.type == ExpressionTokenType.Function && booleanFunctionsLookup.has(token.text)) {
+		isBooleanFunction = true;
+	}
+	else if (token.type == ExpressionTokenType.FunctionAndContents) {
+		let functionName = token.text.split('(')[0];
+		isBooleanFunction = booleanFunctionsLookup.has(functionName);
+	}
+	return (isBooleanFunction ||
+		token.type == ExpressionTokenType.BooleanNamedValue ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
+/**
+ * Determine if an expression token is compatible with a string.
+ * @param type Type of the expression token.
+ */
+function isStringCompatible(token: ExpressionToken): boolean {
+	return (token.type == ExpressionTokenType.String ||
+		token.type == ExpressionTokenType.VariableReference ||
+		token.type == ExpressionTokenType.Variable ||
+		token.type == ExpressionTokenType.Parentheses);
+}
+
 export class Expression {
 	readonly bareExpression: string;
 	readonly globalIndex: number;
@@ -468,12 +499,55 @@ export class Expression {
 						resultType = ExpressionResultType.Boolean;
 					}
 					break;
+
 				case ExpressionTokenType.BooleanNamedValue:
-					// TODO
+					if (comparisonToken.type != ExpressionTokenType.BooleanNamedOperator) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + comparisonToken.index,
+							this.globalIndex + comparisonToken.index + comparisonToken.text.length,
+							"Not a boolean operator");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else if (!isBooleanCompatible(otherToken)) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + otherToken.index,
+							this.globalIndex + otherToken.index + otherToken.text.length,
+							"Must be a boolean value, variable, or parentheses");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else {
+						resultType = ExpressionResultType.Boolean;
+					}
 					break;
+
 				case ExpressionTokenType.String:
-					// TODO
+					if (comparisonToken.type != ExpressionTokenType.StringOperator &&
+						comparisonToken.type != ExpressionTokenType.ComparisonOperator) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + comparisonToken.index,
+							this.globalIndex + comparisonToken.index + comparisonToken.text.length,
+							"Not a string or comparison operator");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else if (!isStringCompatible(otherToken)) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+							this.globalIndex + otherToken.index,
+							this.globalIndex + otherToken.index + otherToken.text.length,
+							"Must be a string, variable, or parentheses");
+						this.validateErrors.push(diagnostic);
+						resultType = ExpressionResultType.Error;
+					}
+					else if (comparisonToken.type == ExpressionTokenType.ComparisonOperator) {
+						resultType = ExpressionResultType.Boolean;
+					}
+					else {
+						resultType = ExpressionResultType.String;
+					}
 					break;
+
 				case ExpressionTokenType.Variable:
 				case ExpressionTokenType.VariableReference:
 				case ExpressionTokenType.FunctionAndContents:

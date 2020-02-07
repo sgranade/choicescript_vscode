@@ -1362,7 +1362,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be true, false, variable");
+				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(5);
 			});
@@ -1458,6 +1458,32 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Only boolean functions");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(14);
+			});
+
+			it("should be good with number comparisons", () => {
+				let fakeDocument = createDocument("*if 1 > 3");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+
+			it("should be good with truth comparisons", () => {
+				let fakeDocument = createDocument("*if variable and true");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
 			});
 		});
 
