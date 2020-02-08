@@ -388,8 +388,12 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
+			let startIndex = tokens.test.globalIndex + tokens.test.bareExpression.length;
+			if (tokens.text.startsWith("(")) {
+				startIndex++;
+			}
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				tokens.test.globalIndex + tokens.test.bareExpression.length,
+				startIndex,
 				tokens.endIndex + sectionToDocumentDelta,
 				"Multireplace has no options");
 			state.callbacks.onParseError(diagnostic);

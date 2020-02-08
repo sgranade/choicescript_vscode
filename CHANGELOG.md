@@ -5,6 +5,11 @@ Changes to the plugin.
 ### Added
 - Problems with *set commands are now flagged.
 - Problems with *if and *elseif commands are now flagged.
+- Multireplaces that may need parentheses are now flagged.
+- Error catching expanded.
+	- Errors with comparisons like `1 < 2` are now flagged.
+	- Errors with values passed to functions like `not()` are now flagged.
+	- Parentheses are now fully inspected for errors.
 
 ## [1.1.0] - 2020-02-01
 ### Added

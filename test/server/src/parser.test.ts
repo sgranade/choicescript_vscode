@@ -1348,6 +1348,22 @@ describe("Parser", () => {
 		
 				expect(received.length).to.equal(0);
 			});
+
+			it("should flag a multireplace with no options", () => {
+				let fakeDocument = createDocument("@{(var > 2) }");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Multireplace has no options");
+				expect(received[0].range.start.line).to.equal(11);
+				expect(received[0].range.end.line).to.equal(13);
+			});
 		});
 	
 		describe("Variable Creation Commands", () => {
