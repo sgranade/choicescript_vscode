@@ -1394,8 +1394,8 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing close parentheses");
-				expect(received[0].range.start.line).to.equal(7);
+				expect(received[0].message).to.include("Missing end )");
+				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(24);
 			});
 	
@@ -1691,6 +1691,9 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Unknown operator");
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(15);
+				expect(received[1].message).to.include("Incomplete expression");
+				expect(received[1].range.start.line).to.equal(19);
+				expect(received[1].range.end.line).to.equal(19);
 			});
 	
 			it("should flag unbalanced parentheses", () => {
@@ -1704,7 +1707,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing close parentheses");
+				expect(received[0].message).to.include("Missing end )");
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(20);
 			});
@@ -1739,7 +1742,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag a not that's missing parentheses", () => {
-				let fakeDocument = createDocument("*set variable not 1 > 2");
+				let fakeDocument = createDocument("*set variable not 1");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {

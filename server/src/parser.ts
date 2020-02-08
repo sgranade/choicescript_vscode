@@ -20,7 +20,7 @@ import {
 	Expression,
 	ExpressionTokenType,
 	tokenizeMultireplace,
-	ExpressionResultType
+	ExpressionEvalType
 } from './tokens';
 import {
 	findLineEnd,
@@ -102,15 +102,10 @@ enum ParseElement {
 function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
 	for (let token of tokenizedExpression.tokens) {
 		let tokenGlobalIndex = globalIndex + token.index;
+		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
-			case ExpressionTokenType.VariableReference:
-				parseReference(token.text, 0, tokenGlobalIndex, 1, state);
-				break;
 			case ExpressionTokenType.String:
 				parseString(token.text, tokenGlobalIndex, 1, state);
-				break;
-			case ExpressionTokenType.Parentheses:
-				parseParentheses(token.text, tokenGlobalIndex, 1, state);
 				break;
 			case ExpressionTokenType.Variable:
 				let location = Location.create(state.textDocument.uri, Range.create(
@@ -134,6 +129,14 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
 	}
 	for (let error of tokenizedExpression.validateErrors) {
 		state.callbacks.onParseError(error);
+	}
+
+	// Recursively parse any sub-expressions
+	let tokensWithContents = tokenizedExpression.combinedTokens.filter(token => {
+		return token.contents !== undefined
+	});
+	for (let token of tokensWithContents) {
+		parseTokenizedExpression(token.contents!, token.contents!.globalIndex, state);
 	}
 }
 
@@ -757,9 +760,9 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
  * @param state Parsing state.
  */
 function validateConditionExpression(tokenizedExpression: Expression, state: ParsingState) {
-	if (tokenizedExpression.resultType != ExpressionResultType.Boolean &&
-		tokenizedExpression.resultType != ExpressionResultType.Empty &&
-		tokenizedExpression.resultType != ExpressionResultType.Unknowable) {
+	if (tokenizedExpression.evalType != ExpressionEvalType.Boolean &&
+		tokenizedExpression.evalType != ExpressionEvalType.Empty &&
+		tokenizedExpression.evalType != ExpressionEvalType.Unknowable) {
 		let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
@@ -785,7 +788,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 	}
 	// The line that follows a command that can reference a variable is an expression
 	let tokenizedExpression = parseExpression(line, lineGlobalIndex, state);
-	if (tokenizedExpression.resultType != ExpressionResultType.Error) {
+	if (tokenizedExpression.evalType != ExpressionEvalType.Error) {
 		validateConditionExpression(tokenizedExpression, state);
 	}
 }

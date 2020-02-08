@@ -39,7 +39,7 @@ describe("Tokenizing", () => {
 			});
 	
 			it("should flag functions with no parentheses", () => {
-				let text = "not var1";
+				let text = "not true";
 				let fakeDocument = createDocument(text);
 	
 				let expression = new Expression(text, 2, fakeDocument);
@@ -329,6 +329,19 @@ describe("Tokenizing", () => {
 			});
 
 			describe("String", () => {
+				it("should flag an unterminated string", () => {
+					let text = '"content';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include('Missing end "');
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(10);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+	
 				it("should be good with strings and a string operator", () => {
 					let text = '"string1" & "string2"';
 					let fakeDocument = createDocument(text);
@@ -506,6 +519,21 @@ describe("Tokenizing", () => {
 				});
 			});
 
+			describe("Variable Reference", () => {
+				it("should flag an unterminated variable reference", () => {
+					let text = '{var';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Missing end }");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(6);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+			});
+
 			describe("Variable Setting", () => {
 				it("should be good with a math operator and a number", () => {
 					let text = "+ 2";
@@ -629,14 +657,54 @@ describe("Tokenizing", () => {
 			});
 
 			describe("Parentheses", () => {
+				it("should flag unbalanced parentheses", () => {
+					let text = "(2 + 3";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(8);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+	
+				it("should flag unbalanced parentheses in a function", () => {
+					let text = "round(2.2 + 3.3";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(17);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+	
+				it("should flag complex unbalanced parentheses in a function", () => {
+					let text = "not(var1 and (var2 or var3)";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(29);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+	
 				it("should be good with parenthesized number expressions", () => {
 					let text = "(2 + 3)";
 					let fakeDocument = createDocument(text);
 	
 					let expression = new Expression(text, 2, fakeDocument);
+					let subexpression = expression.combinedTokens[0].contents;
 	
-					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+					expect(subexpression.validateErrors.length).to.equal(0);
+					expect(subexpression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should be good with parenthesized boolean expressions", () => {
@@ -644,9 +712,10 @@ describe("Tokenizing", () => {
 					let fakeDocument = createDocument(text);
 	
 					let expression = new Expression(text, 2, fakeDocument);
+					let subexpression = expression.combinedTokens[0].contents;
 	
-					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
+					expect(subexpression.validateErrors.length).to.equal(0);
+					expect(subexpression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should be good with parenthesized string expressions", () => {
@@ -654,23 +723,24 @@ describe("Tokenizing", () => {
 					let fakeDocument = createDocument(text);
 	
 					let expression = new Expression(text, 2, fakeDocument);
+					let subexpression = expression.combinedTokens[0].contents;
 	
-					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.evalType).to.equal(ExpressionEvalType.String);
+					expect(subexpression.validateErrors.length).to.equal(0);
+					expect(subexpression.evalType).to.equal(ExpressionEvalType.String);
 				});
 
-				
 				it("should flag errors in parentheses", () => {
 					let text = '1 + (2 + false)';
 					let fakeDocument = createDocument(text);
 	
 					let expression = new Expression(text, 2, fakeDocument);
+					let subexpression = expression.combinedTokens[2].contents;
 	
-					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
-					expect(expression.validateErrors[0].range.start.line).to.equal(11);
-					expect(expression.validateErrors[0].range.end.line).to.equal(16);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+					expect(subexpression.validateErrors.length).to.equal(1);
+					expect(subexpression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(subexpression.validateErrors[0].range.start.line).to.equal(11);
+					expect(subexpression.validateErrors[0].range.end.line).to.equal(16);
+					expect(subexpression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
 				it("should flag parenthesized expressions that don't match a function", () => {

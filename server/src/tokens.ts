@@ -159,7 +159,8 @@ function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType {
 	let effectiveType = token.type;
 
 	// If we've got a function, find out what its effective type is
-	if (effectiveType == ExpressionTokenType.FunctionAndContents) {
+	if (effectiveType == ExpressionTokenType.FunctionAndContents ||
+		effectiveType == ExpressionTokenType.Function) {
 		let functionName = token.text.split('(')[0];
 		if (numberFunctionsLookup.has(functionName)) {
 			effectiveType = ExpressionTokenType.Number;
@@ -342,7 +343,6 @@ export class Expression {
 		this.tokens = this.tokenizeExpression(bareExpression);
 		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, textDocument);
 		this.evalType = this.validateExpression();
-		this.addRecursiveErrors();
 	}
 
 	/**
@@ -697,7 +697,29 @@ export class Expression {
 		// Flag bad operators
 		if (token.type == ExpressionTokenType.UnknownOperator) {
 			this.validateErrors.push(this.createTokenError(
-				this.combinedTokens[0], "Invalid operator"
+				token, "Invalid operator"
+			));
+			return false;
+		}
+
+		// Flag missing end delimeters, which are marked by the tokens having empty tokenized contents
+		if ((token.type == ExpressionTokenType.Parentheses || token.type == ExpressionTokenType.FunctionAndContents) 
+			&& token.contents === undefined) {
+			this.validateErrors.push(this.createTokenError(
+				token, "Missing end )"
+			));
+			return false;
+		}
+		else if (token.type == ExpressionTokenType.VariableReference && token.contents === undefined) {
+			this.validateErrors.push(this.createTokenError(
+				token, "Missing end }"
+			));
+			return false;
+		}
+		// ...except for strings
+		else if (token.type == ExpressionTokenType.String && token.text[token.text.length-1] != '"') {
+			this.validateErrors.push(this.createTokenError(
+				token, 'Missing end "'
 			));
 			return false;
 		}
@@ -832,18 +854,6 @@ export class Expression {
 			this.validateErrors.push(diagnostic);
 		}
 		return returnValue;
-	}
-
-	/**
-	 * Add errors from any sub-expressions like parentheses.
-	 */
-	private addRecursiveErrors() {
-		for (let token of this.combinedTokens) {
-			if (token.contents !== undefined) {
-				this.parseErrors.push(...token.contents.parseErrors);
-				this.validateErrors.push(...token.contents.validateErrors);
-			}
-		}
 	}
 }
 
