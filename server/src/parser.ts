@@ -96,12 +96,11 @@ enum ParseElement {
 /**
  * Parse a tokenized expression.
  * @param tokenizedExpression Tokenized expression.
- * @param globalIndex Expression's index in the document being indexed.
  * @param state Parsing state.
  */
-function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
+function parseTokenizedExpression(tokenizedExpression: Expression, state: ParsingState) {
 	for (let token of tokenizedExpression.tokens) {
-		let tokenGlobalIndex = globalIndex + token.index;
+		let tokenGlobalIndex = tokenizedExpression.globalIndex + token.index;
 		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
 			case ExpressionTokenType.String:
@@ -136,7 +135,7 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
 		return token.contents !== undefined
 	});
 	for (let token of tokensWithContents) {
-		parseTokenizedExpression(token.contents!, token.contents!.globalIndex, state);
+		parseTokenizedExpression(token.contents!, state);
 	}
 }
 
@@ -151,7 +150,7 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
  */
 function parseExpression(expression: string, globalIndex: number, state: ParsingState, isValueSetting = false): Expression {
 	let tokenizedExpression = new Expression(expression, globalIndex, state.textDocument, isValueSetting);
-	parseTokenizedExpression(tokenizedExpression, globalIndex, state);
+	parseTokenizedExpression(tokenizedExpression, state);
 	return tokenizedExpression;
 }
 
@@ -219,17 +218,15 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
  * 
  * @param section Section being parsed.
  * @param startGlobalIndex String content's starting index relative to the global document.
- * @param startLocalIndex String content's starting index relative to the section.
- * @param endLocalIndex String content's ending index relative to the section.
+ * @param endLocalIndex String content's ending index relative to the start of section.
  * @param state Parsing state.
  */
 function parseBareString(
-	section: string, startGlobalIndex: number, startLocalIndex: number, endLocalIndex: number, state: ParsingState) {
-	let subsection = section.slice(startLocalIndex, endLocalIndex);
+	section: string, startGlobalIndex: number, endLocalIndex: number, state: ParsingState) {
+	let subsection = section.slice(0, endLocalIndex);
 
 	// Deal with any replacements or multireplacements
 	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
-	delimiterPattern.lastIndex = startLocalIndex;
 	let m: RegExpExecArray | null;
 	while (m = delimiterPattern.exec(subsection)) {
 		if (m.groups === undefined)
@@ -287,7 +284,7 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 		}
 		else if (m.groups.multi !== undefined) {
 			newLocalIndex = parseMultireplacement(
-				section, m.groups.multi.length, globalIndex, contentsLocalIndex, state);
+				section, m.groups.multi.length, globalIndex + contentsLocalIndex, contentsLocalIndex, state);
 		}
 		else {
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
@@ -297,51 +294,6 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 		localIndex = newLocalIndex;
 	}
 
-	return localIndex;
-}
-
-/**
- * Parse a parenthesized expression (expr).
- * 
- * Parentheses can either be parsed from the large global document or from a subsection of it.
- * 
- * @param section Section being parsed.
- * @param globalIndex Parenthesized content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
- * @param state Parsing state.
- * @returns Local index to the end of the expression.
- */
-function parseParentheses(section: string, globalIndex: number,
-	localIndex: number | undefined, state: ParsingState): number {
-	state.parseStack.push(ParseElement.Parentheses);
-
-	let sectionToDocumentDelta: number;
-	if (localIndex === undefined) {
-		localIndex = globalIndex;
-		sectionToDocumentDelta = 0;
-	}
-	else {
-		sectionToDocumentDelta = globalIndex;
-	}
-
-	let reference = extractToMatchingDelimiter(section, '(', ')', localIndex);
-	if (reference === undefined) {
-		let lineEndIndex = findLineEnd(section, localIndex);
-		if (lineEndIndex === undefined)
-			lineEndIndex = section.length;
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localIndex - 1 + sectionToDocumentDelta,
-			lineEndIndex + sectionToDocumentDelta,
-			"Missing close parentheses");
-		state.callbacks.onParseError(diagnostic);
-	}
-	else {
-		// Parentheses contain expressions, so let the expression indexer handle that
-		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
-		localIndex += reference.length + 1;
-	}
-
-	state.parseStack.pop();
 	return localIndex;
 }
 
@@ -385,10 +337,10 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 		sectionToDocumentDelta = 0;
 	}
 	else {
-		sectionToDocumentDelta = globalIndex;
+		sectionToDocumentDelta = globalIndex - localIndex;
 	}
 
-	let tokens = tokenizeMultireplace(section, localIndex);
+	let tokens = tokenizeMultireplace(section, state.textDocument, globalIndex, localIndex);
 
 	if (tokens === undefined) {
 		let lineEndIndex = findLineEnd(section, localIndex);
@@ -421,7 +373,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			state.callbacks.onParseError(diagnostic);
 		}
 
-		if (tokens.test.text.trim() == "") {
+		if (tokens.test.bareExpression.trim() == "") {
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 				localIndex - openDelimiterLength + sectionToDocumentDelta,
 				tokens.endIndex + sectionToDocumentDelta,
@@ -430,28 +382,28 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 		}
 		else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				tokens.test.index + tokens.test.text.length + sectionToDocumentDelta,
+				tokens.test.globalIndex + tokens.test.bareExpression.length,
 				tokens.endIndex + sectionToDocumentDelta,
 				"Multireplace has no options");
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 1) {
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				tokens.body[0].index + tokens.body[0].text.length + sectionToDocumentDelta,
+				tokens.body[0].localIndex + tokens.body[0].text.length + sectionToDocumentDelta,
 				tokens.endIndex + sectionToDocumentDelta,
 				"Multireplace must have at least two options separated by |");
 			state.callbacks.onParseError(diagnostic);
 		}
 		else {
-			// The test portion is an expression
-			parseExpression(tokens.test.text, tokens.test.index + sectionToDocumentDelta, state);
+			// The test portion is an already-tokenized expression
+			parseTokenizedExpression(tokens.test, state);
 
 			// Treat the body portions as strings without surrounding quote marks
 			for (let token of tokens.body) {
 				// Since we can't nest multireplaces, and we've already flagged them above as errors,
 				// get rid of any opening multireplaces in the string
 				let text = token.text.replace('@{', '  ');
-				parseBareString(text, token.index + sectionToDocumentDelta, 0, token.text.length, state);
+				parseBareString(text, token.localIndex + sectionToDocumentDelta, token.text.length, state);
 			}
 			localIndex = tokens.endIndex;
 		}
@@ -509,7 +461,7 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
-		parseTokenizedExpression(tokenizedExpression.slice(0, 1), lineGlobalIndex, state);
+		parseTokenizedExpression(tokenizedExpression.slice(0, 1), state);
 	}
 
 	// Now parse the remaining elements as an expression and then validate them as part of a *set command
@@ -522,7 +474,7 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
-		parseTokenizedExpression(remainingExpression, remainingExpression.globalIndex, state);
+		parseTokenizedExpression(remainingExpression, state);
 	}
 }
 

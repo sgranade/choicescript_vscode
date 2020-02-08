@@ -894,7 +894,7 @@ export class Expression {
  */
 interface MultireplaceToken {
 	text: string,
-	index: number
+	localIndex: number
 }
 
 /**
@@ -902,7 +902,7 @@ interface MultireplaceToken {
  */
 interface Multireplace {
 	text: string,
-	test: MultireplaceToken,
+	test: Expression,
 	body: MultireplaceToken[],
 	endIndex: number
 }
@@ -911,14 +911,18 @@ interface Multireplace {
  * Break a multireplace into tokens.
  * 
  * @param section Document section beginning with the text right inside @{ and including the close }.
- * @param localIndex Index into the section where the multireplace contents begin.
+ * @param textDocument: Document the section is in.
+ * @param contentsGlobalIndex: Global index where the multireplace contents begin (right inside the @{)).
+ * @param contentsLocalIndex Index into the section where the multireplace contents begin.
  */
-export function tokenizeMultireplace(section: string, localIndex: number = 0): Multireplace | undefined {
+export function tokenizeMultireplace(
+	section: string, textDocument: TextDocument, contentsGlobalIndex: number, contentsLocalIndex: number = 0
+	): Multireplace | undefined {
 	let fullText: string;
-	let test: MultireplaceToken;
+	let test: Expression;
 	let body: MultireplaceToken[] = [];
 
-	let workingText = extractToMatchingDelimiter(section, "{", "}", localIndex);
+	let workingText = extractToMatchingDelimiter(section, "{", "}", contentsLocalIndex);
 	if (workingText === undefined)
 		return undefined;
 	fullText = workingText;
@@ -934,20 +938,14 @@ export function tokenizeMultireplace(section: string, localIndex: number = 0): M
 			}
 			testEndLocalIndex++;
 		}
-		test = {
-			text: workingText.slice(0, testEndLocalIndex),
-			index: localIndex
-		};
+		test = new Expression(workingText.slice(0, testEndLocalIndex), contentsGlobalIndex, textDocument);
 	}
 	else {
 		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");
 		if (testContents === undefined) {
 			testContents = "";
 		}
-		test = {
-			text: testContents,
-			index: localIndex + 1
-		}
+		test = new Expression(testContents, contentsGlobalIndex + 1, textDocument);
 		testEndLocalIndex = testContents.length + 2;
 	}
 
@@ -958,7 +956,7 @@ export function tokenizeMultireplace(section: string, localIndex: number = 0): M
 		let trimmed = bareToken.trim();
 		body.push({
 			text: trimmed,
-			index: localIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
+			localIndex: contentsLocalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
 		});
 		runningIndex += bareToken.length + 1;
 	}
@@ -967,6 +965,6 @@ export function tokenizeMultireplace(section: string, localIndex: number = 0): M
 		text: fullText,
 		test: test,
 		body: body,
-		endIndex: localIndex + multireplaceEndLocalIndex
+		endIndex: contentsLocalIndex + multireplaceEndLocalIndex
 	};
 }

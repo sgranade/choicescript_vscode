@@ -762,67 +762,85 @@ describe("Tokenizing", () => {
 	describe("Multireplace Tokenization", () => {
 		it("should extract a bare variable test", () => {
 			let text = "variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 	
-			expect(tokens.test.text).to.equal("variable");
-			expect(tokens.test.index).to.equal(0);
+			expect(tokens.test.bareExpression).to.equal("variable");
+			expect(tokens.test.globalIndex).to.equal(2);
 		});
 	
 		it("should extract a parenthesized test", () => {
 			let text = "(var1 + var2) yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 	
-			expect(tokens.test.text).to.equal("var1 + var2");
-			expect(tokens.test.index).to.equal(1);
+			expect(tokens.test.bareExpression).to.equal("var1 + var2");
+			expect(tokens.test.globalIndex).to.equal(3);
 		});
 	
 		it("should extract the bodies", () => {
 			let text = "variable yes | no | maybe } extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 	
 			expect(tokens.body[0].text).to.equal("yes");
-			expect(tokens.body[0].index).to.equal(9);
+			expect(tokens.body[0].localIndex).to.equal(9);
 			expect(tokens.body[1].text).to.equal("no");
-			expect(tokens.body[1].index).to.equal(15);
+			expect(tokens.body[1].localIndex).to.equal(15);
 			expect(tokens.body[2].text).to.equal("maybe");
-			expect(tokens.body[2].index).to.equal(20);
+			expect(tokens.body[2].localIndex).to.equal(20);
 		});
 	
 		it("should find the end index", () => {
 			let text = "variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 	
 			expect(tokens.endIndex).to.equal(18);
 		});
 	
 		it("should extract starting at a given index", () => {
 			let text = "other text @{variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text, 13);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2, 13);
 	
-			expect(tokens.test.text).to.equal("variable");
+			expect(tokens.test.bareExpression).to.equal("variable");
 			expect(tokens.body[0].text).to.equal("yes");
 			expect(tokens.body[1].text).to.equal("no");
 		});
 	
 		it("should return indices relative to the global index", () => {
 			let text = "other text @{variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text, 13);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 27, 13);
 	
-			expect(tokens.test.index).to.equal(13);
-			expect(tokens.body[0].index).to.equal(22);
-			expect(tokens.body[1].index).to.equal(28);
+			expect(tokens.test.globalIndex).to.equal(27);
+			expect(tokens.body[0].localIndex).to.equal(22);
+			expect(tokens.body[1].localIndex).to.equal(28);
+		});
+
+		it("should return indices relative to the global index for parenthesized tests", () => {
+			let text = "other text @{(variable) yes | no} extra content";
+			let fakeDocument = createDocument(text);
+	
+			let tokens = tokenizeMultireplace(text, fakeDocument, 27, 13);
+	
+			expect(tokens.test.globalIndex).to.equal(28);
+			expect(tokens.body[0].localIndex).to.equal(24);
+			expect(tokens.body[1].localIndex).to.equal(30);
 		});
 
 		it("should return the full text inside the multireplace", () => {
 			let text = "other text @{variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
 	
-			let tokens = tokenizeMultireplace(text, 13);
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2, 13);
 	
 			expect(tokens.text).to.equal("variable yes | no");
 		});
