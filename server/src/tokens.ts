@@ -149,6 +149,16 @@ function isAnyOperator(token: ExpressionToken): boolean {
 }
 
 /**
+ * Determine if an expression token is any kind of definite value.
+ * @param token Token to test.
+ */
+function isAnyDefiniteValue(token: ExpressionToken): boolean {
+	return (token.type == ExpressionTokenType.Number ||
+		token.type == ExpressionTokenType.BooleanNamedValue ||
+		token.type == ExpressionTokenType.String);
+}
+
+/**
  * Find the effective type of a token.
  * 
  * This converts functions and parenthesized expressions to their
@@ -378,7 +388,7 @@ export class Expression {
 	}
 
 	/**
-	 * Create an error from a token.
+	 * Create an error that covers a token.
 	 * @param token Token to create an error about.
 	 * @param message Error message.
 	 */
@@ -836,11 +846,34 @@ export class Expression {
 			}
 		}
 
-		// We don't have a specific error at this point, but if either of the non-operator
-		// tokens have contents with an error, return error
+		// If either of the non-operator tokens have contents with an error, return error
 		if ((first.contents !== undefined && first.contents.evalType == ExpressionEvalType.Error) ||
 			(second.contents !== undefined && second.contents.evalType == ExpressionEvalType.Error)) {
 			return ExpressionEvalType.Error;
+		}
+
+		// Make sure the two tokens being compared are compatible
+		// This is needed because we're checking each token separately against the operator, and
+		// comparison operators work with multiple token types
+		let neverTrue = false;
+		if (operator.type == ExpressionTokenType.ComparisonOperator && isAnyDefiniteValue(first)) {
+			if (isNumberCompatible(first) && !isNumberCompatible(second)) {
+				neverTrue = true;
+			}
+			else if (isBooleanCompatible(first) && !isBooleanCompatible(second)) {
+				neverTrue = true;
+			}
+			else if (isStringCompatible(first) && !isStringCompatible(second)) {
+				neverTrue = true;
+			}
+		}
+		if (neverTrue) {
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Warning,
+				this.textDocument,
+				this.globalIndex,
+				this.globalIndex + this.bareExpression.length,
+				"This will never be true");
+			this.validateErrors.push(diagnostic);
 		}
 
 		let returnValue = determineEvalType(operator);
@@ -850,7 +883,6 @@ export class Expression {
 				this.globalIndex + first.index,
 				this.globalIndex + second.index + second.text.length,
 				"Unknown error");
-
 			this.validateErrors.push(diagnostic);
 		}
 		return returnValue;

@@ -616,7 +616,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 
 				it("should be good with comparing strings", () => {
@@ -626,7 +626,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 
 				it("should flag comparing strings using less/greater than", () => {
@@ -636,7 +636,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Strings can only be compared with = or !=");
+					expect(expression.validateErrors[0].message).to.include("Not compatible with strings");
 					expect(expression.validateErrors[0].range.start.line).to.equal(9);
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -649,10 +649,10 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("This expression will never be true");
+					expect(expression.validateErrors[0].message).to.include("This will never be true");
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(12);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 			});
 
