@@ -63,9 +63,14 @@ export enum ExpressionResultType {
  * Token in an expression.
  */
 export interface ExpressionToken {
+	/** Actual text of the token */
 	text: string,
+	/** Token's type */
 	type: ExpressionTokenType,
-	index: number
+	/** Location of the start of the token relative to the entire expression */
+	index: number,
+	/** Tokenized contents, if any */
+	contents?: Expression
 }
 
 /**
@@ -427,6 +432,7 @@ export class Expression {
 
 			let closeDelimiter = '';
 			let tokenType: ExpressionTokenType;
+			let tokenizedContents: Expression | undefined = undefined;
 			if (openDelimiter == '{') {
 				closeDelimiter = '}';
 				tokenType = ExpressionTokenType.VariableReference;
@@ -444,11 +450,16 @@ export class Expression {
 				contents = m.groups.remainder;
 			}
 			else {
+				if (tokenType != ExpressionTokenType.String) {
+					tokenizedContents = new Expression(
+						contents,
+						this.globalIndex + openDelimiterIndex + 1,
+						this.textDocument);
+				}
 				contents += closeDelimiter;
-
 			}
 			contents = openDelimiter + contents;
-			partialTokens.push({ text: contents, index: tokenizingIndex + openDelimiterIndex, type: tokenType });
+			partialTokens.push({ text: contents, index: tokenizingIndex + openDelimiterIndex, type: tokenType, contents: tokenizedContents });
 			tokenizingExpression = tokenizingExpression.slice(openDelimiterIndex +  contents.length);
 			tokenizingIndex += openDelimiterIndex + contents.length;
 		}
