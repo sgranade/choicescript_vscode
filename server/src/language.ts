@@ -111,12 +111,15 @@ export let functions: ReadonlyArray<string> = [
 ];
 
 /**
- * ChoiceScript functions that return numbers
+ * ChoiceScript functions that take numbers
  */
 export let numberFunctions: ReadonlyArray<string> = [
 	"round", "length", "log", "timestamp"
 ];
 
+/**
+ * ChoiceScript functions that take booleans
+ */
 export let booleanFunctions: ReadonlyArray<string> = [
 	"not"
 ];

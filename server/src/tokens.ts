@@ -74,23 +74,42 @@ export interface ExpressionToken {
 }
 
 /**
+ * Find the type of argument a function takes.
+ * @param token Function token.
+ */
+function functionArgumentType(token: ExpressionToken): ExpressionResultType {
+	let type: ExpressionResultType;
+	
+	let functionName = token.text.split('(')[0];
+	if (numberFunctionsLookup.has(functionName)) {
+		// Special case length(), which takes a string
+		if (functionName.includes("length")) {
+			type = ExpressionResultType.String;
+		}
+		else {
+			type = ExpressionResultType.Number;
+		}
+	}
+	else if (booleanFunctionsLookup.has(functionName)) {
+		type = ExpressionResultType.Boolean;
+	}
+	else {
+		type = ExpressionResultType.Error;
+	}
+
+	return type;
+}
+
+/**
  * Determine if an expression token is compatible with a number.
  * @param token Token to test.
  */
 function isNumberCompatible(token: ExpressionToken): boolean {
-	let isNumberFunction = false;
-	if (token.type == ExpressionTokenType.Function && numberFunctionsLookup.has(token.text)) {
-		isNumberFunction = true;
-	}
-	else if (token.type == ExpressionTokenType.FunctionAndContents) {
-		let functionName = token.text.split('(')[0];
-		isNumberFunction = numberFunctionsLookup.has(functionName);
-	}
-	return (isNumberFunction ||
-		token.type == ExpressionTokenType.Number ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
+	let effectiveType = tokenEffectiveType(token);
+
+	return (effectiveType == ExpressionTokenType.Number ||
+		effectiveType == ExpressionTokenType.VariableReference ||
+		effectiveType == ExpressionTokenType.Variable);
 }
 
 /**
@@ -98,19 +117,11 @@ function isNumberCompatible(token: ExpressionToken): boolean {
  * @param token Token to test.
  */
 function isBooleanCompatible(token: ExpressionToken): boolean {
-	let isBooleanFunction = false;
-	if (token.type == ExpressionTokenType.Function && booleanFunctionsLookup.has(token.text)) {
-		isBooleanFunction = true;
-	}
-	else if (token.type == ExpressionTokenType.FunctionAndContents) {
-		let functionName = token.text.split('(')[0];
-		isBooleanFunction = booleanFunctionsLookup.has(functionName);
-	}
-	return (isBooleanFunction ||
-		token.type == ExpressionTokenType.BooleanNamedValue ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
+	let effectiveType = tokenEffectiveType(token);
+
+	return (effectiveType == ExpressionTokenType.BooleanNamedValue ||
+		effectiveType == ExpressionTokenType.VariableReference ||
+		effectiveType == ExpressionTokenType.Variable);
 }
 
 /**
@@ -118,10 +129,11 @@ function isBooleanCompatible(token: ExpressionToken): boolean {
  * @param token Token to test.
  */
 function isStringCompatible(token: ExpressionToken): boolean {
-	return (token.type == ExpressionTokenType.String ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
+	let effectiveType = tokenEffectiveType(token);
+
+	return (effectiveType == ExpressionTokenType.String ||
+		effectiveType == ExpressionTokenType.VariableReference ||
+		effectiveType == ExpressionTokenType.Variable);
 }
 
 /**
@@ -137,6 +149,50 @@ function isAnyOperator(token: ExpressionToken): boolean {
 }
 
 /**
+ * Find the effective type of a token.
+ * 
+ * This converts functions and parenthesized expressions to their
+ * effective type.
+ * @param token Token to find the type of.
+ */
+function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType {
+	let effectiveType = token.type;
+
+	// If we've got a function, find out what its effective type is
+	if (effectiveType == ExpressionTokenType.FunctionAndContents) {
+		let functionName = token.text.split('(')[0];
+		if (numberFunctionsLookup.has(functionName)) {
+			effectiveType = ExpressionTokenType.Number;
+		}
+		else if (booleanFunctionsLookup.has(functionName)) {
+			effectiveType = ExpressionTokenType.BooleanNamedValue;
+		}
+	}
+	
+	// Ditto for parentheses
+	if (effectiveType == ExpressionTokenType.Parentheses && token.contents !== undefined) {
+		switch (token.contents.resultType) {
+			case ExpressionResultType.Number:
+				effectiveType = ExpressionTokenType.Number;
+				break;
+			case ExpressionResultType.Boolean:
+				effectiveType = ExpressionTokenType.BooleanNamedValue;
+				break;
+			case ExpressionResultType.String:
+				effectiveType = ExpressionTokenType.String;
+				break;
+			case ExpressionResultType.Empty:
+			case ExpressionResultType.Unknowable:
+			case ExpressionResultType.Error:
+				effectiveType = ExpressionTokenType.Variable;
+				break;
+		}
+	}
+
+	return effectiveType;
+}
+
+/**
  * Check if an operator is compatible with a token.
  * @param token Token.
  * @param operator Operator to compare against the token.
@@ -148,17 +204,7 @@ function checkOperatorAgainstToken(
 	operator: ExpressionToken): string | undefined {
 	let errorMessage: string | undefined = undefined;
 
-	let effectiveType: ExpressionTokenType = token.type;
-	// If we've got a function, find out what its effective type is
-	if (effectiveType == ExpressionTokenType.FunctionAndContents) {
-		let functionName = token.text;
-		if (numberFunctionsLookup.has(functionName)) {
-			effectiveType = ExpressionTokenType.Number;
-		}
-		else if (booleanFunctionsLookup.has(functionName)) {
-			effectiveType = ExpressionTokenType.BooleanNamedValue;
-		}
-	}
+	let effectiveType = tokenEffectiveType(token);
 
 	switch(effectiveType) {
 		case ExpressionTokenType.Number:
@@ -230,25 +276,38 @@ function checkTokenAgainstOperator(
 }
 
 /**
- * Determine the return value of an expression with an operator.
+ * Determine the return value of an expression based on a token.
  * 
  * The expression is assumed to be error-free.
- * @param first First token.
- * @param operator Operator between the other two tokens.
- * @param second Second token.
+ * 
+ * For long expressions, pass the operator token.
+ * 
+ * @param token Token.
  */
-function determineReturnValue(first: ExpressionToken, operator: ExpressionToken, second: ExpressionToken): ExpressionResultType {
-	switch(operator.type) {
+function determineReturnValue(token: ExpressionToken): ExpressionResultType {
+	// Special case the situation where the token has a sub-expression that has an error
+	if (token.contents !== undefined && token.contents.resultType == ExpressionResultType.Error) {
+		return ExpressionResultType.Error;
+	}
+
+	switch(tokenEffectiveType(token)) {
+		case ExpressionTokenType.Number:
 		case ExpressionTokenType.MathOperator:
 		case ExpressionTokenType.NumericNamedOperator:
 			return ExpressionResultType.Number;
 
+		case ExpressionTokenType.BooleanNamedValue:
 		case ExpressionTokenType.ComparisonOperator:
 		case ExpressionTokenType.BooleanNamedOperator:
 			return ExpressionResultType.Boolean;
 
+		case ExpressionTokenType.String:
 		case ExpressionTokenType.StringOperator:
 			return ExpressionResultType.String;
+
+		case ExpressionTokenType.Variable:
+		case ExpressionTokenType.VariableReference:
+			return ExpressionResultType.Unknowable;
 	}
 
 	return ExpressionResultType.Error;
@@ -283,6 +342,7 @@ export class Expression {
 		this.tokens = this.tokenizeExpression(bareExpression);
 		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, textDocument);
 		this.resultType = this.validateExpression();
+		this.addRecursiveErrors();
 	}
 
 	/**
@@ -546,7 +606,8 @@ export class Expression {
 							text: token.text +
 								' '.repeat(secondToken.index - token.index - token.text.length) +
 								secondToken.text,
-							index: token.index
+							index: token.index,
+							contents: secondToken.contents
 						};
 					}
 				}
@@ -571,11 +632,7 @@ export class Expression {
 		let lastToken = this.combinedTokens[this.combinedTokens.length - 1];
 
 		if (this.combinedTokens.length == 1) {
-			let token = this.combinedTokens[0];
-			if (token.type == ExpressionTokenType.FunctionAndContents) {
-				token = this.tokens[0];
-			}
-			return this.validateSingleTokenExpression(token);
+			return this.validateSingleTokenExpression(this.combinedTokens[0]);
 		}
 
 		if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator && this.isValueSetting) {
@@ -632,34 +689,76 @@ export class Expression {
 	}
 
 	/**
+	 * Validate a single token in isolation for errors.
+	 * @param token Token being validated.
+	 * @returns True if valid, false if there was an error.
+	 */
+	private validateSingleToken(token: ExpressionToken): boolean {
+		// Flag bad operators
+		if (token.type == ExpressionTokenType.UnknownOperator) {
+			this.validateErrors.push(this.createTokenError(
+				this.combinedTokens[0], "Invalid operator"
+			));
+			return false;
+		}
+
+		// Validate functions match their contents
+		if (token.type == ExpressionTokenType.FunctionAndContents && token.contents !== undefined) {
+			let errorMessage: string | undefined = undefined;
+			// We can only determine this if we know definitively what the content's type is
+			if (token.contents.resultType != ExpressionResultType.Empty &&
+				token.contents.resultType != ExpressionResultType.Unknowable) {
+				let argumentType = functionArgumentType(token);
+				if (argumentType != token.contents.resultType) {
+					switch (argumentType) {
+						case ExpressionResultType.Number:
+							errorMessage = "Not a number or variable";
+							break;
+						case ExpressionResultType.Boolean:
+							errorMessage = "Not a boolean or variable";
+							break;
+						case ExpressionResultType.String:
+							errorMessage = "Not a string or variable";
+							break;
+						case ExpressionResultType.Error:
+							errorMessage = "Unknown function error";
+							break;
+					}
+				}
+			}
+			if (errorMessage !== undefined) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					token.contents.globalIndex,
+					token.contents.globalIndex + token.contents.bareExpression.length,
+					errorMessage);
+				this.validateErrors.push(diagnostic);
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Validate a single token expression.
 	 * @param token Token to validate
 	 */
 	private validateSingleTokenExpression(token: ExpressionToken): ExpressionResultType {
-		let resultType: ExpressionResultType;
+		if (!this.validateSingleToken(token)) {
+			return ExpressionResultType.Error;
+		}
 
-		if (token.type == ExpressionTokenType.Number || numberFunctionsLookup.has(token.text)) {
-			resultType = ExpressionResultType.Number;
-		}
-		else if (token.type == ExpressionTokenType.BooleanNamedValue || booleanFunctionsLookup.has(token.text)) {
-			resultType = ExpressionResultType.Boolean;
-		}
-		else if (token.type == ExpressionTokenType.String) {
-			resultType = ExpressionResultType.String;
-		}
-		else if (token.type == ExpressionTokenType.Variable ||
-			token.type == ExpressionTokenType.VariableReference ||
-			token.type == ExpressionTokenType.Parentheses) {
-			resultType = ExpressionResultType.Unknowable;
-		}
-		else {
+		let returnValue = determineReturnValue(token);
+
+		// Operators have a valid eval type, but aren't allowed as a single token
+		if (returnValue == ExpressionResultType.Error || isAnyOperator(token) || !this.validateSingleToken(token)) {
 			this.validateErrors.push(this.createTokenError(
 				token, "Not a valid value"
 			));
-			resultType = ExpressionResultType.Error;
+			return ExpressionResultType.Error;
 		}
 
-		return resultType;
+		return returnValue;
 	}
 
 	/**
@@ -677,9 +776,13 @@ export class Expression {
 			return ExpressionResultType.Error;
 		}
 
-		if (first.type == ExpressionTokenType.Variable ||
-			first.type == ExpressionTokenType.VariableReference ||
-			first.type == ExpressionTokenType.Parentheses) {
+		if (!this.validateSingleToken(first) || !this.validateSingleToken(second)) {
+			return ExpressionResultType.Error;
+		}
+
+		let firstType = tokenEffectiveType(first);
+		if (firstType == ExpressionTokenType.Variable ||
+			firstType == ExpressionTokenType.VariableReference) {
 			if (!isAnyOperator(operator)) {
 				this.validateErrors.push(this.createTokenError(
 					operator, "Must be an operator"
@@ -711,8 +814,36 @@ export class Expression {
 			}
 		}
 
-		// No errors!
-		return determineReturnValue(first, operator, second);
+		// We don't have a specific error at this point, but if either of the non-operator
+		// tokens have contents with an error, return error
+		if ((first.contents !== undefined && first.contents.resultType == ExpressionResultType.Error) ||
+			(second.contents !== undefined && second.contents.resultType == ExpressionResultType.Error)) {
+			return ExpressionResultType.Error;
+		}
+
+		let returnValue = determineReturnValue(operator);
+		if (returnValue == ExpressionResultType.Error) {
+			// This shouldn't happen, so just in case...
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+				this.globalIndex + first.index,
+				this.globalIndex + second.index + second.text.length,
+				"Unknown error");
+
+			this.validateErrors.push(diagnostic);
+		}
+		return returnValue;
+	}
+
+	/**
+	 * Add errors from any sub-expressions like parentheses.
+	 */
+	private addRecursiveErrors() {
+		for (let token of this.combinedTokens) {
+			if (token.contents !== undefined) {
+				this.parseErrors.push(...token.contents.parseErrors);
+				this.validateErrors.push(...token.contents.validateErrors);
+			}
+		}
 	}
 }
 
