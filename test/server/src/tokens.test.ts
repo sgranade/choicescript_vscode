@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { TextDocument, Position } from 'vscode-languageserver';
 
-import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionResultType } from '../../../server/src/tokens';
+import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionEvalType } from '../../../server/src/tokens';
 
 function createDocument(text: string, uri: string = "file:///scene.txt"): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
@@ -60,7 +60,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Empty);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Empty);
 				});
 	
 				it("should be okay with just a number", () => {
@@ -70,7 +70,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should be okay with a number function", () => {
@@ -80,7 +80,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should be okay with a boolean", () => {
@@ -90,7 +90,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should be okay with a boolean function", () => {
@@ -100,7 +100,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should be okay with a string", () => {
@@ -110,7 +110,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.String);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
 				});
 	
 				it("should be okay with a variable", () => {
@@ -120,7 +120,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Unknowable);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Unknowable);
 				});
 	
 				it("should be okay with a variable reference", () => {
@@ -130,7 +130,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Unknowable);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Unknowable);
 				});
 	
 				it("should be okay with parentheses", () => {
@@ -140,7 +140,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Unknowable);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should flag a bare operator", () => {
@@ -153,7 +153,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a valid value")
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(3);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag an expression that starts with an operator", () => {
@@ -166,7 +166,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a value")
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(3);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a too-short expression", () => {
@@ -179,7 +179,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Incomplete expression")
 					expect(expression.validateErrors[0].range.start.line).to.equal(5);
 					expect(expression.validateErrors[0].range.end.line).to.equal(5);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a too-long expression", () => {
@@ -192,7 +192,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Too many elements - are you missing parentheses?")
 					expect(expression.validateErrors[0].range.start.line).to.equal(8);
 					expect(expression.validateErrors[0].range.end.line).to.equal(11);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});	
 			});
 
@@ -204,7 +204,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should be good with number functions and a math operator", () => {
@@ -214,7 +214,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should flag a number with a boolean operator", () => {
@@ -227,7 +227,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a numeric operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(4);
 					expect(expression.validateErrors[0].range.end.line).to.equal(7);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a number followed by not-an-operator", () => {
@@ -240,7 +240,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a numeric operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(4);
 					expect(expression.validateErrors[0].range.end.line).to.equal(5);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a number with a not-number second value", () => {
@@ -253,7 +253,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(6);
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should be okay with two numbers and a comparison", () => {
@@ -263,7 +263,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 			});
 
@@ -275,7 +275,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should be good with boolean functions and a boolean operator", () => {
@@ -285,7 +285,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should flag a boolean with a math operator", () => {
@@ -298,7 +298,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a boolean operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a boolean followed by not-an-operator", () => {
@@ -311,7 +311,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a boolean operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
 					expect(expression.validateErrors[0].range.end.line).to.equal(12);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a boolean with a not-boolean second value", () => {
@@ -324,7 +324,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a boolean value or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(11);
 					expect(expression.validateErrors[0].range.end.line).to.equal(12);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 			});
 
@@ -336,7 +336,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.String);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
 				});
 	
 				it("should be good with strings and a comparison operator", () => {
@@ -346,7 +346,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should flag a string with a math operator", () => {
@@ -359,7 +359,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a string or comparison operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a string followed by not-an-operator", () => {
@@ -372,7 +372,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Not a string or comparison operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
 					expect(expression.validateErrors[0].range.end.line).to.equal(11);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a string with a not-string second value", () => {
@@ -385,7 +385,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a string or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(9);
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 			});
 
@@ -397,7 +397,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 	
 				it("should be good with a boolean and a boolean operator", () => {
@@ -407,7 +407,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should be good with a string and a string operator", () => {
@@ -417,7 +417,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.String);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
 				});
 	
 				it("should be good with a number and a comparison operator", () => {
@@ -427,7 +427,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should flag a string and a non-equal comparison operator", () => {
@@ -440,7 +440,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(8);
 					expect(expression.validateErrors[0].range.end.line).to.equal(13);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should be good with a string and a comparison operator", () => {
@@ -450,7 +450,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Boolean);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 	
 				it("should flag a string with a math operator", () => {
@@ -463,7 +463,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(9);
 					expect(expression.validateErrors[0].range.end.line).to.equal(13);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a number with a boolean operator", () => {
@@ -476,7 +476,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a boolean value or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(11);
 					expect(expression.validateErrors[0].range.end.line).to.equal(12);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a number with a string operator", () => {
@@ -489,7 +489,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a string or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(9);
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a variable followed by not-an-operator", () => {
@@ -502,7 +502,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be an operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 			});
 
@@ -514,7 +514,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument, true);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+					expect(expression.evalType).to.equal(ExpressionEvalType.NumberChange);
 				});
 	
 				it("should flag extra values", () => {
@@ -527,7 +527,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Too many elements - are you missing parentheses?")
 					expect(expression.validateErrors[0].range.start.line).to.equal(6);
 					expect(expression.validateErrors[0].range.end.line).to.equal(9);
-					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+					expect(expression.evalType).to.equal(ExpressionEvalType.NumberChange);
 				});
 	
 				it("should be good with a math operator and a number function", () => {
@@ -537,7 +537,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument, true);
 	
 					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+					expect(expression.evalType).to.equal(ExpressionEvalType.NumberChange);
 				});
 	
 				it("should flag a boolean operator", () => {
@@ -550,7 +550,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a numeric operator, value, or variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(5);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a number followed by not-an-operator", () => {
@@ -563,7 +563,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Incomplete expression")
 					expect(expression.validateErrors[0].range.start.line).to.equal(5);
 					expect(expression.validateErrors[0].range.end.line).to.equal(5);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 	
 				it("should flag a not-number second value", () => {
@@ -576,7 +576,114 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(4);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
-					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+			});
+
+			describe("Comparisons", () => {
+				it("should be good with comparing numbers", () => {
+					let text = "2 < 3";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+				});
+
+				it("should be good with comparing strings", () => {
+					let text = '"this" = "that"';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+				});
+
+				it("should flag comparing strings using less/greater than", () => {
+					let text = '"this" < "that"';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Strings can only be compared with = or !=");
+					expect(expression.validateErrors[0].range.start.line).to.equal(9);
+					expect(expression.validateErrors[0].range.end.line).to.equal(10);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+
+				it("should flag comparing incompatible values", () => {
+					let text = '1 = "that"';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("This expression will never be true");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(12);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+			});
+
+			describe("Parentheses", () => {
+				it("should be good with parenthesized number expressions", () => {
+					let text = "(2 + 3)";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+				});
+	
+				it("should be good with parenthesized boolean expressions", () => {
+					let text = "(false or true)";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
+				});
+	
+				it("should be good with parenthesized string expressions", () => {
+					let text = '("this" & "that")';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
+				});
+
+				
+				it("should flag errors in parentheses", () => {
+					let text = '1 + (2 + false)';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(11);
+					expect(expression.validateErrors[0].range.end.line).to.equal(16);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+
+				it("should flag parenthesized expressions that don't match a function", () => {
+					let text = 'not(2)';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Not a boolean or variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(6);
+					expect(expression.validateErrors[0].range.end.line).to.equal(7);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 			});
 		});

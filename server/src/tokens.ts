@@ -48,7 +48,7 @@ export enum ExpressionTokenType {
 /**
  * Result of evaluating the expression
  */
-export enum ExpressionResultType {
+export enum ExpressionEvalType {
 	Empty,
 	Number,
 	Boolean,
@@ -77,24 +77,24 @@ export interface ExpressionToken {
  * Find the type of argument a function takes.
  * @param token Function token.
  */
-function functionArgumentType(token: ExpressionToken): ExpressionResultType {
-	let type: ExpressionResultType;
+function functionArgumentType(token: ExpressionToken): ExpressionEvalType {
+	let type: ExpressionEvalType;
 	
 	let functionName = token.text.split('(')[0];
 	if (numberFunctionsLookup.has(functionName)) {
 		// Special case length(), which takes a string
 		if (functionName.includes("length")) {
-			type = ExpressionResultType.String;
+			type = ExpressionEvalType.String;
 		}
 		else {
-			type = ExpressionResultType.Number;
+			type = ExpressionEvalType.Number;
 		}
 	}
 	else if (booleanFunctionsLookup.has(functionName)) {
-		type = ExpressionResultType.Boolean;
+		type = ExpressionEvalType.Boolean;
 	}
 	else {
-		type = ExpressionResultType.Error;
+		type = ExpressionEvalType.Error;
 	}
 
 	return type;
@@ -171,19 +171,19 @@ function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType {
 	
 	// Ditto for parentheses
 	if (effectiveType == ExpressionTokenType.Parentheses && token.contents !== undefined) {
-		switch (token.contents.resultType) {
-			case ExpressionResultType.Number:
+		switch (token.contents.evalType) {
+			case ExpressionEvalType.Number:
 				effectiveType = ExpressionTokenType.Number;
 				break;
-			case ExpressionResultType.Boolean:
+			case ExpressionEvalType.Boolean:
 				effectiveType = ExpressionTokenType.BooleanNamedValue;
 				break;
-			case ExpressionResultType.String:
+			case ExpressionEvalType.String:
 				effectiveType = ExpressionTokenType.String;
 				break;
-			case ExpressionResultType.Empty:
-			case ExpressionResultType.Unknowable:
-			case ExpressionResultType.Error:
+			case ExpressionEvalType.Empty:
+			case ExpressionEvalType.Unknowable:
+			case ExpressionEvalType.Error:
 				effectiveType = ExpressionTokenType.Variable;
 				break;
 		}
@@ -276,7 +276,7 @@ function checkTokenAgainstOperator(
 }
 
 /**
- * Determine the return value of an expression based on a token.
+ * Determine the type of an expression's evaluated value based on a token.
  * 
  * The expression is assumed to be error-free.
  * 
@@ -284,33 +284,33 @@ function checkTokenAgainstOperator(
  * 
  * @param token Token.
  */
-function determineReturnValue(token: ExpressionToken): ExpressionResultType {
+function determineEvalType(token: ExpressionToken): ExpressionEvalType {
 	// Special case the situation where the token has a sub-expression that has an error
-	if (token.contents !== undefined && token.contents.resultType == ExpressionResultType.Error) {
-		return ExpressionResultType.Error;
+	if (token.contents !== undefined && token.contents.evalType == ExpressionEvalType.Error) {
+		return ExpressionEvalType.Error;
 	}
 
 	switch(tokenEffectiveType(token)) {
 		case ExpressionTokenType.Number:
 		case ExpressionTokenType.MathOperator:
 		case ExpressionTokenType.NumericNamedOperator:
-			return ExpressionResultType.Number;
+			return ExpressionEvalType.Number;
 
 		case ExpressionTokenType.BooleanNamedValue:
 		case ExpressionTokenType.ComparisonOperator:
 		case ExpressionTokenType.BooleanNamedOperator:
-			return ExpressionResultType.Boolean;
+			return ExpressionEvalType.Boolean;
 
 		case ExpressionTokenType.String:
 		case ExpressionTokenType.StringOperator:
-			return ExpressionResultType.String;
+			return ExpressionEvalType.String;
 
 		case ExpressionTokenType.Variable:
 		case ExpressionTokenType.VariableReference:
-			return ExpressionResultType.Unknowable;
+			return ExpressionEvalType.Unknowable;
 	}
 
-	return ExpressionResultType.Error;
+	return ExpressionEvalType.Error;
 }
 
 export class Expression {
@@ -318,7 +318,7 @@ export class Expression {
 	readonly globalIndex: number;
 	readonly tokens: ExpressionToken[];
 	readonly combinedTokens: ExpressionToken[];
-	readonly resultType: ExpressionResultType;
+	readonly evalType: ExpressionEvalType;
 	readonly parseErrors: Diagnostic[];
 	readonly validateErrors: Diagnostic[];
 	private textDocument: TextDocument;
@@ -341,7 +341,7 @@ export class Expression {
 		this.bareExpression = bareExpression;
 		this.tokens = this.tokenizeExpression(bareExpression);
 		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, textDocument);
-		this.resultType = this.validateExpression();
+		this.evalType = this.validateExpression();
 		this.addRecursiveErrors();
 	}
 
@@ -622,11 +622,11 @@ export class Expression {
 	 * 
 	 * Validation errors are stored in the validateErrors property.
 	 * 
-	 * @returns What the expression evaluates to.
+	 * @returns The type of the value the expression evaluates to.
 	 */
-	private validateExpression(): ExpressionResultType {
+	private validateExpression(): ExpressionEvalType {
 		if (this.combinedTokens.length == 0) {
-			return ExpressionResultType.Empty;
+			return ExpressionEvalType.Empty;
 		}
 
 		let lastToken = this.combinedTokens[this.combinedTokens.length - 1];
@@ -648,9 +648,9 @@ export class Expression {
 				this.validateErrors.push(this.createTokenError(
 					this.combinedTokens[1], "Must be a number or a variable"
 				));
-				return ExpressionResultType.Error;
+				return ExpressionEvalType.Error;
 			}
-			return ExpressionResultType.NumberChange;
+			return ExpressionEvalType.NumberChange;
 		}
 
 		if (this.combinedTokens.length == 2) {
@@ -670,7 +670,7 @@ export class Expression {
 					"Incomplete expression");
 				this.validateErrors.push(diagnostic);
 			}
-			return ExpressionResultType.Error;
+			return ExpressionEvalType.Error;
 		}
 
 		if (this.combinedTokens.length > 3) {
@@ -706,21 +706,21 @@ export class Expression {
 		if (token.type == ExpressionTokenType.FunctionAndContents && token.contents !== undefined) {
 			let errorMessage: string | undefined = undefined;
 			// We can only determine this if we know definitively what the content's type is
-			if (token.contents.resultType != ExpressionResultType.Empty &&
-				token.contents.resultType != ExpressionResultType.Unknowable) {
+			if (token.contents.evalType != ExpressionEvalType.Empty &&
+				token.contents.evalType != ExpressionEvalType.Unknowable) {
 				let argumentType = functionArgumentType(token);
-				if (argumentType != token.contents.resultType) {
+				if (argumentType != token.contents.evalType) {
 					switch (argumentType) {
-						case ExpressionResultType.Number:
+						case ExpressionEvalType.Number:
 							errorMessage = "Not a number or variable";
 							break;
-						case ExpressionResultType.Boolean:
+						case ExpressionEvalType.Boolean:
 							errorMessage = "Not a boolean or variable";
 							break;
-						case ExpressionResultType.String:
+						case ExpressionEvalType.String:
 							errorMessage = "Not a string or variable";
 							break;
-						case ExpressionResultType.Error:
+						case ExpressionEvalType.Error:
 							errorMessage = "Unknown function error";
 							break;
 					}
@@ -743,19 +743,19 @@ export class Expression {
 	 * Validate a single token expression.
 	 * @param token Token to validate
 	 */
-	private validateSingleTokenExpression(token: ExpressionToken): ExpressionResultType {
+	private validateSingleTokenExpression(token: ExpressionToken): ExpressionEvalType {
 		if (!this.validateSingleToken(token)) {
-			return ExpressionResultType.Error;
+			return ExpressionEvalType.Error;
 		}
 
-		let returnValue = determineReturnValue(token);
+		let returnValue = determineEvalType(token);
 
 		// Operators have a valid eval type, but aren't allowed as a single token
-		if (returnValue == ExpressionResultType.Error || isAnyOperator(token) || !this.validateSingleToken(token)) {
+		if (returnValue == ExpressionEvalType.Error || isAnyOperator(token) || !this.validateSingleToken(token)) {
 			this.validateErrors.push(this.createTokenError(
 				token, "Not a valid value"
 			));
-			return ExpressionResultType.Error;
+			return ExpressionEvalType.Error;
 		}
 
 		return returnValue;
@@ -767,17 +767,17 @@ export class Expression {
 	 * @param operator Operator between the other two.
 	 * @param second Second token.
 	 */
-	private validateThreeTokenExpression(first: ExpressionToken, operator: ExpressionToken, second: ExpressionToken): ExpressionResultType {
+	private validateThreeTokenExpression(first: ExpressionToken, operator: ExpressionToken, second: ExpressionToken): ExpressionEvalType {
 		if (isAnyOperator(first)) {
 			this.validateErrors.push(this.createTokenError(
 				first,
 				"Missing value before the operator"
 			));
-			return ExpressionResultType.Error;
+			return ExpressionEvalType.Error;
 		}
 
 		if (!this.validateSingleToken(first) || !this.validateSingleToken(second)) {
-			return ExpressionResultType.Error;
+			return ExpressionEvalType.Error;
 		}
 
 		let firstType = tokenEffectiveType(first);
@@ -787,14 +787,14 @@ export class Expression {
 				this.validateErrors.push(this.createTokenError(
 					operator, "Must be an operator"
 				));
-				return ExpressionResultType.Error;
+				return ExpressionEvalType.Error;
 			}
 			let message = checkTokenAgainstOperator(operator, second);
 			if (message !== undefined) {
 				this.validateErrors.push(this.createTokenError(
 					second, message
 				));
-				return ExpressionResultType.Error;
+				return ExpressionEvalType.Error;
 			}
 		}
 		else {
@@ -803,26 +803,26 @@ export class Expression {
 				this.validateErrors.push(this.createTokenError(
 					operator, message
 				));
-				return ExpressionResultType.Error;
+				return ExpressionEvalType.Error;
 			}
 			message = checkTokenAgainstOperator(operator, second);
 			if (message !== undefined) {
 				this.validateErrors.push(this.createTokenError(
 					second, message
 				));
-				return ExpressionResultType.Error;
+				return ExpressionEvalType.Error;
 			}
 		}
 
 		// We don't have a specific error at this point, but if either of the non-operator
 		// tokens have contents with an error, return error
-		if ((first.contents !== undefined && first.contents.resultType == ExpressionResultType.Error) ||
-			(second.contents !== undefined && second.contents.resultType == ExpressionResultType.Error)) {
-			return ExpressionResultType.Error;
+		if ((first.contents !== undefined && first.contents.evalType == ExpressionEvalType.Error) ||
+			(second.contents !== undefined && second.contents.evalType == ExpressionEvalType.Error)) {
+			return ExpressionEvalType.Error;
 		}
 
-		let returnValue = determineReturnValue(operator);
-		if (returnValue == ExpressionResultType.Error) {
+		let returnValue = determineEvalType(operator);
+		if (returnValue == ExpressionEvalType.Error) {
 			// This shouldn't happen, so just in case...
 			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 				this.globalIndex + first.index,
