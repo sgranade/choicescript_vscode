@@ -53,7 +53,8 @@ export enum ExpressionResultType {
 	Number,
 	Boolean,
 	String,
-	Mixed,		// The expression doesn't have a valid result
+	Mixed,		// The expression doesn't have a parseable result due to e.g. variables
+	NumberChange,	// The expression's changing a variable's value through an expression like "+2"
 	Unknowable,	// Variable or parentheses or other non-eval'able value
 	Error,
 	Unprocessed
@@ -258,12 +259,21 @@ export class Expression {
 	readonly parseErrors: Diagnostic[];
 	readonly validateErrors: Diagnostic[];
 	private textDocument: TextDocument;
+	private isValueSetting: boolean;
 
-	constructor(bareExpression: string, globalIndex: number, textDocument: TextDocument) {
+	/**
+	 * 
+	 * @param bareExpression Text containing the expression.
+	 * @param globalIndex Global index in the document to the start of the expression.
+	 * @param textDocument Document containing the expression.
+	 * @param isValueSetting If true, expression is being used to set a variable's value.
+	 */
+	constructor(bareExpression: string, globalIndex: number, textDocument: TextDocument, isValueSetting: boolean=false) {
 		this.parseErrors = [];
 		this.validateErrors = [];
 		this.textDocument = textDocument;
 		this.globalIndex = globalIndex;
+		this.isValueSetting = isValueSetting;
 
 		this.bareExpression = bareExpression;
 		this.tokens = this.tokenizeExpression(bareExpression);
@@ -300,7 +310,7 @@ export class Expression {
 			endIndex = this.tokens[end].index;
 		}
 		let subExpression = this.bareExpression.slice(startIndex, endIndex);
-		return new Expression(subExpression, this.globalIndex + startIndex, this.textDocument);
+		return new Expression(subExpression, this.globalIndex + startIndex, this.textDocument, this.isValueSetting);
 	}
 
 	/**
@@ -558,18 +568,41 @@ export class Expression {
 			return this.validateSingleTokenExpression(token);
 		}
 
-		if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator) {
-			// Math operators are allowed for *set commands. Let them handle making
-			// sure it's correct.
-			return ExpressionResultType.Unprocessed;
+		if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator && this.isValueSetting) {
+			if (this.combinedTokens.length > 2) {
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + this.combinedTokens[2].index,
+					this.globalIndex + lastToken.index + lastToken.text.length,
+					"Too many elements - are you missing parentheses?");
+				this.validateErrors.push(diagnostic);
+			}
+
+			if (!isNumberCompatible(this.combinedTokens[1])) {
+				this.validateErrors.push(this.createTokenError(
+					this.combinedTokens[1], "Must be a number or a variable"
+				));
+				return ExpressionResultType.Error;
+			}
+			return ExpressionResultType.NumberChange;
 		}
 
 		if (this.combinedTokens.length == 2) {
-			let index = this.globalIndex + lastToken.index + lastToken.text.length;
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
-				index, index,
-				"Incomplete expression");
+			if (isAnyOperator(this.combinedTokens[0])) {
+				let message = "Must be a value or variable";
+				if (this.isValueSetting) {
+					message = "Must be a numeric operator, value, or variable";
+				}
+				this.validateErrors.push(this.createTokenError(
+					this.combinedTokens[0], message
+				));
+			}
+			else {
+				let index = this.globalIndex + lastToken.index + lastToken.text.length;
+				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					index, index,
+					"Incomplete expression");
 				this.validateErrors.push(diagnostic);
+			}
 			return ExpressionResultType.Error;
 		}
 

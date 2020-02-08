@@ -156,14 +156,17 @@ describe("Tokenizing", () => {
 					expect(expression.resultType).to.equal(ExpressionResultType.Error);
 				});
 	
-				it("should ignore an expression that starts with an operator", () => {
+				it("should flag an expression that starts with an operator", () => {
 					let text = "+ 2";
 					let fakeDocument = createDocument(text);
 	
 					let expression = new Expression(text, 2, fakeDocument);
 	
-					expect(expression.validateErrors.length).to.equal(0);
-					expect(expression.resultType).to.equal(ExpressionResultType.Unprocessed);
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a value")
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(3);
+					expect(expression.resultType).to.equal(ExpressionResultType.Error);
 				});
 	
 				it("should flag a too-short expression", () => {
@@ -498,6 +501,80 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors.length).to.equal(1);
 					expect(expression.validateErrors[0].message).to.include("Must be an operator")
 					expect(expression.validateErrors[0].range.start.line).to.equal(7);
+					expect(expression.validateErrors[0].range.end.line).to.equal(8);
+					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+				});
+			});
+
+			describe("Variable Setting", () => {
+				it("should be good with a math operator and a number", () => {
+					let text = "+ 2";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+				});
+	
+				it("should flag extra values", () => {
+					let text = "+ 2 + 3";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Too many elements - are you missing parentheses?")
+					expect(expression.validateErrors[0].range.start.line).to.equal(6);
+					expect(expression.validateErrors[0].range.end.line).to.equal(9);
+					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+				});
+	
+				it("should be good with a math operator and a number function", () => {
+					let text = "- length(\"yup\")";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.resultType).to.equal(ExpressionResultType.NumberChange);
+				});
+	
+				it("should flag a boolean operator", () => {
+					let text = "and true";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a numeric operator, value, or variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(5);
+					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+				});
+	
+				it("should flag a number followed by not-an-operator", () => {
+					let text = "1 2";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Incomplete expression")
+					expect(expression.validateErrors[0].range.start.line).to.equal(5);
+					expect(expression.validateErrors[0].range.end.line).to.equal(5);
+					expect(expression.resultType).to.equal(ExpressionResultType.Error);
+				});
+	
+				it("should flag a not-number second value", () => {
+					let text = "+ true";
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument, true);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(4);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
 					expect(expression.resultType).to.equal(ExpressionResultType.Error);
 				});
