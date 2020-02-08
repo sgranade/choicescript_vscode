@@ -15,16 +15,12 @@ import {
 	extractTokenAtIndex,
 	statChartCommands,
 	statChartBlockCommands,
-	numberSetOperators,
-	stringSetOperators,
-	numberFunctions,
-	booleanFunctions
 } from './language';
 import {
 	Expression,
 	ExpressionTokenType,
 	tokenizeMultireplace,
-	ExpressionToken
+	ExpressionResultType
 } from './tokens';
 import {
 	findLineEnd,
@@ -33,16 +29,12 @@ import {
 } from './utilities';
 
 
-let numberFunctionsLookup: ReadonlyMap<string, number> = new Map(numberFunctions.map(x => [x, 1]));
-let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
-let numberSetOperatorsLookup: ReadonlyMap<string, number> = new Map(numberSetOperators.map(x => [x, 1]));
-let stringSetOperatorsLookup: ReadonlyMap<string, number> = new Map(stringSetOperators.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
@@ -102,213 +94,6 @@ enum ParseElement {
 }
 
 /**
- * Determine if an expression token is compatible with a number.
- * @param type Type of the expression token.
- */
-function isNumberCompatible(token: ExpressionToken): boolean {
-	let isNumberFunction = false;
-	if (token.type == ExpressionTokenType.Function && numberFunctionsLookup.has(token.text)) {
-		isNumberFunction = true;
-	}
-	else if (token.type == ExpressionTokenType.FunctionAndContents) {
-		let functionName = token.text.split('(')[0];
-		isNumberFunction = numberFunctionsLookup.has(functionName);
-	}
-	return (isNumberFunction ||
-		token.type == ExpressionTokenType.Number ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
-}
-
-/**
- * Determine if an expression token is compatible with a boolean.
- * @param type Type of the expression token.
- */
-function isBooleanCompatible(token: ExpressionToken): boolean {
-	let isBooleanFunction = false;
-	if (token.type == ExpressionTokenType.Function && booleanFunctionsLookup.has(token.text)) {
-		isBooleanFunction = true;
-	}
-	else if (token.type == ExpressionTokenType.FunctionAndContents) {
-		let functionName = token.text.split('(')[0];
-		isBooleanFunction = booleanFunctionsLookup.has(functionName);
-	}
-	return (isBooleanFunction ||
-		token.type == ExpressionTokenType.BooleanNamedValue ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
-}
-
-/**
- * Determine if an expression token is compatible with a string.
- * @param type Type of the expression token.
- */
-function isStringCompatible(token: ExpressionToken): boolean {
-	return (token.type == ExpressionTokenType.String ||
-		token.type == ExpressionTokenType.VariableReference ||
-		token.type == ExpressionTokenType.Variable ||
-		token.type == ExpressionTokenType.Parentheses);
-}
-
-/**
- * Determine if an expression token is any kind of operator.
- * @param type Type of the expression token.
- */
-function isAnyOperator(token: ExpressionToken): boolean {
-	return (token.type == ExpressionTokenType.MathOperator ||
-		token.type == ExpressionTokenType.ComparisonOperator ||
-		token.type == ExpressionTokenType.StringOperator ||
-		token.type == ExpressionTokenType.BooleanNamedOperator ||
-		token.type == ExpressionTokenType.NumericNamedOperator);
-}
-
-/**
- * Validate an expression that sets a variable value.
- * 
- * @param tokenizedExpression The expression that sets a variable's value.
- * @param globalIndex Global index to the start of the tokens.
- * @param state Parsing state.
- */
-function validateValueSettingExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
-	let tokens = tokenizedExpression.combinedTokens;
-	if (tokens.length == 0) {
-		return;  // No error -- that's handled elsewhere
-	}
-
-	let lastToken = tokens[tokens.length - 1];
-
-	// Variable setting expressions can be:
-	//   - a literal (number, bool, string, variable, variable reference)
-	//   - math (2 + 3, or with the leading operand missing: + 3, %+10)
-	//   - concatenate ("foo" & var)
-	//   - parentheses
-	switch (tokens[0].type) {
-		case ExpressionTokenType.MathOperator:
-			// ex: *set var +3
-			// The only thing we allow is a single element after the operator
-			if (tokens.length > 2) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[2].index,
-					globalIndex + lastToken.index + lastToken.text.length,
-					"Too many elements - are you missing parentheses?");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (tokens.length == 1) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[0].index + tokens[0].text.length,
-					globalIndex + tokens[0].index + tokens[0].text.length,
-					"Missing number after the operator");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (!isNumberCompatible(tokens[1])) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[1].index,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					"Not a number, variable, or variable reference");
-				state.callbacks.onParseError(diagnostic);
-			}
-			break;
-		case ExpressionTokenType.Number:
-		case ExpressionTokenType.BooleanNamedValue:
-		case ExpressionTokenType.Variable:
-		case ExpressionTokenType.VariableReference:
-		case ExpressionTokenType.Parentheses:
-		case ExpressionTokenType.String:
-		case ExpressionTokenType.FunctionAndContents:
-		case ExpressionTokenType.Function:  // For functions that miss their contents
-			// We only allow the token by itself or math
-			if (tokens.length == 1) {
-				break;
-			}
-			if (tokens.length > 3) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[3].index,
-					globalIndex + lastToken.index + lastToken.text.length,
-					"Too many elements - are you missing parentheses?");
-				state.callbacks.onParseError(diagnostic);
-			}
-			if (!isAnyOperator(tokens[1])) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[1].index,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					"Missing operator like + or -");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (tokens.length < 3) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					"Missing number after the operator");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (tokens[0].type == ExpressionTokenType.Number) {
-				if (!(numberSetOperatorsLookup.has(tokens[1].text))) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[1].index,
-						globalIndex + tokens[1].index + tokens[1].text.length,
-						"Operator isn't allowed for numbers");
-					state.callbacks.onParseError(diagnostic);
-				}
-				else if (!isNumberCompatible(tokens[2])) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[2].index,
-						globalIndex + tokens[2].index + tokens[2].text.length,
-						"Must be a number, variable, function, or parentheses");
-					state.callbacks.onParseError(diagnostic);
-				}
-			}
-			else if (tokens[0].type == ExpressionTokenType.String) {
-				if (!(stringSetOperatorsLookup.has(tokens[1].text))) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[1].index,
-						globalIndex + tokens[1].index + tokens[1].text.length,
-						"Operator isn't allowed for strings");
-					state.callbacks.onParseError(diagnostic);
-				}
-				else if (!isStringCompatible(tokens[2])) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[2].index,
-						globalIndex + tokens[2].index + tokens[2].text.length,
-						"Must be a string, variable, function, or parentheses");
-					state.callbacks.onParseError(diagnostic);
-				}
-			}
-			break;
-		case ExpressionTokenType.UnknownOperator:
-			// Already handled elsewhere
-			break;
-		default:
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				globalIndex + tokens[0].index,
-				globalIndex + tokens[0].index + tokens[0].text.length,
-				"Must be a string, variable, or parentheses");
-			state.callbacks.onParseError(diagnostic);
-			break;
-	}
-}
-
-/**
- * Validate the contents of an expression.
- * 
- * This includes any parsing errors found while tokenizing the expression.
- * @param tokenizedExpression Tokens making up the expression to be validated.
- * @param globalIndex Global index to the start of the tokens.
- * @param state Parsing state.
- * @returns Tokens after validation.
- */
-function validateExpression(tokenizedExpression: Expression, globalIndex: number, state: ParsingState) {
-	let currentElement = state.parseStack[state.parseStack.length-1];
-
-	// Expressions should be a singleton value or two values plus an operator
-	// TODO HERE I AM SEE WHAT KIND OF EXPRESSIONS DO AND DON'T WORK IN CS
-	for (let error of tokenizedExpression.parseErrors) {
-		state.callbacks.onParseError(error);
-	}
-}
-
-/**
  * Parse a tokenized expression.
  * @param tokenizedExpression Tokenized expression.
  * @param globalIndex Expression's index in the document being indexed.
@@ -347,6 +132,9 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
 	for (let error of tokenizedExpression.parseErrors) {
 		state.callbacks.onParseError(error);
 	}
+	for (let error of tokenizedExpression.validateErrors) {
+		state.callbacks.onParseError(error);
+	}
 }
 
 
@@ -355,10 +143,11 @@ function parseTokenizedExpression(tokenizedExpression: Expression, globalIndex: 
  * @param expression String containing the expression (and only the expression).
  * @param globalIndex Expression's index in the document being indexed.
  * @param state Parsing state.
+ * @param isValueSetting True if the expression is part of a value-setting command like *set.
  * @returns Tokenized expression.
  */
-function parseExpression(expression: string, globalIndex: number, state: ParsingState): Expression {
-	let tokenizedExpression = new Expression(expression, globalIndex, state.textDocument);
+function parseExpression(expression: string, globalIndex: number, state: ParsingState, isValueSetting = false): Expression {
+	let tokenizedExpression = new Expression(expression, globalIndex, state.textDocument, isValueSetting);
 	parseTokenizedExpression(tokenizedExpression, globalIndex, state);
 	return tokenizedExpression;
 }
@@ -698,7 +487,7 @@ function parseParams(line: string, lineGlobalIndex: number, state: ParsingState)
  * @param state Indexing state.
  */
 function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
-	let tokenizedExpression = new Expression(line, lineGlobalIndex, state.textDocument);
+	let tokenizedExpression = new Expression(line, lineGlobalIndex, state.textDocument, true);
 	let tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
@@ -731,7 +520,6 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 	}
 	else {
 		parseTokenizedExpression(remainingExpression, remainingExpression.globalIndex, state);
-		validateValueSettingExpression(remainingExpression, remainingExpression.globalIndex, state);
 	}
 }
 
@@ -780,16 +568,14 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 					state.callbacks.onParseError(diagnostic);
 				}
 				else {
-					let tokenizedExpression = parseExpression(expression, expressionGlobalIndex, state);
-					validateValueSettingExpression(tokenizedExpression, expressionGlobalIndex, state);
+					parseExpression(expression, expressionGlobalIndex, state);
 				}
 				break;
 			case "temp":
 				// *temp instantiates variables local to the scene file
 				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
 				if (expression !== undefined) {
-					let tokenizedExpression = parseExpression(expression, expressionGlobalIndex, state);
-					validateValueSettingExpression(tokenizedExpression, expressionGlobalIndex, state);
+					parseExpression(expression, expressionGlobalIndex, state);
 				}
 				break;
 			case "label":
@@ -971,91 +757,15 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
  * @param state Parsing state.
  */
 function validateConditionExpression(tokenizedExpression: Expression, state: ParsingState) {
-	let tokens = tokenizedExpression.combinedTokens;
-	let globalIndex = tokenizedExpression.globalIndex;
-	if (tokens.length == 0) {
-		return;  // No error -- handled elsewhere
-	}
-
-	let lastToken = tokens[tokens.length - 1];
-
-	// *if conditions can be:
-	//   - a literal (bool, variable, variable reference)
-	//   - the function not()
-	//   - boolean comparison (literal and literal)
-	//   - parentheses
-	switch (tokens[0].type) {
-		case ExpressionTokenType.FunctionAndContents:
-			if (!tokens[0].text.startsWith("not")) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[0].index,
-					globalIndex + tokens[0].index + tokens[0].text.length,
-					"Only boolean functions like not() are allowed");
-				state.callbacks.onParseError(diagnostic);
-			}
-		case ExpressionTokenType.Number:
-		case ExpressionTokenType.BooleanNamedValue:
-		case ExpressionTokenType.VariableReference:
-		case ExpressionTokenType.Variable:
-		case ExpressionTokenType.Parentheses:
-			// We only allow the token by itself or math
-			if (tokens.length == 1) {
-				if (!isBooleanCompatible(tokens[0])) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[0].index,
-						globalIndex + tokens[0].index + tokens[0].text.length,
-						"Must be a boolean value like 'true' or 'false'");
-					state.callbacks.onParseError(diagnostic);
-				}
-				break;
-			}
-			if (tokens.length > 3) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[3].index,
-					globalIndex + lastToken.index + lastToken.text.length,
-					"Too many elements - are you missing parentheses?");
-				state.callbacks.onParseError(diagnostic);
-			}
-			if (tokens[1].type != ExpressionTokenType.BooleanNamedOperator) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[1].index,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					"Missing boolean comparison like 'and' or 'or'");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (tokens.length < 3) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					globalIndex + tokens[1].index + tokens[1].text.length,
-					"Missing value after the boolean comparison");
-				state.callbacks.onParseError(diagnostic);
-			}
-			else if (tokens[2].type == ExpressionTokenType.FunctionAndContents) {
-				if (!tokens[2].text.startsWith("not")) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						globalIndex + tokens[2].index,
-						globalIndex + tokens[2].index + tokens[2].text.length,
-						"Only boolean functions like not() are allowed");
-					state.callbacks.onParseError(diagnostic);
-				}
-			}
-			else if (!isBooleanCompatible(tokens[2]) && !isNumberCompatible(tokens[2])) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					globalIndex + tokens[2].index,
-					globalIndex + tokens[2].index + tokens[2].text.length,
-					"Not an allowed value with a boolean comparison");
-				state.callbacks.onParseError(diagnostic);
-			}
-			break;
-		case ExpressionTokenType.Function:
-			break;  // No error -- that's caught elsewhere
-		default:
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				globalIndex + tokens[0].index,
-				globalIndex + tokens[0].index + tokens[0].text.length,
-				"Must be true, false, variable, not(), reference, or parentheses");
-			state.callbacks.onParseError(diagnostic);
-			break;
+	if (tokenizedExpression.resultType != ExpressionResultType.Boolean &&
+		tokenizedExpression.resultType != ExpressionResultType.Empty &&
+		tokenizedExpression.resultType != ExpressionResultType.Unknowable) {
+		let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
+			tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+			"Must be a boolean value");
+		state.callbacks.onParseError(diagnostic);
 	}
 }
 
@@ -1075,7 +785,9 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 	}
 	// The line that follows a command that can reference a variable is an expression
 	let tokenizedExpression = parseExpression(line, lineGlobalIndex, state);
-	validateConditionExpression(tokenizedExpression, state);
+	if (tokenizedExpression.resultType != ExpressionResultType.Error) {
+		validateConditionExpression(tokenizedExpression, state);
+	}
 }
 
 /**

@@ -1378,7 +1378,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Only boolean functions");
+				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -1455,7 +1455,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Only boolean functions");
+				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(14);
 			});
@@ -1515,8 +1515,8 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing number after the operator");
-				expect(received[0].range.start.line).to.equal(10);
+				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].range.start.line).to.equal(9);
 				expect(received[0].range.end.line).to.equal(10);
 			});
 	
@@ -1547,7 +1547,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a number");
+				expect(received[0].message).to.include("Must be a number or a variable");
 				expect(received[0].range.start.line).to.equal(10);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -1592,8 +1592,8 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing operator");
-				expect(received[0].range.start.line).to.equal(11);
+				expect(received[0].message).to.include("Incomplete expression");
+				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
 	
@@ -1608,7 +1608,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing number after the operator");
+				expect(received[0].message).to.include("Incomplete expression");
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -1640,7 +1640,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Operator isn't allowed for strings");
+				expect(received[0].message).to.include("Not a string or comparison operator");
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -1672,13 +1672,13 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a string, variable, or parentheses");
+				expect(received[0].message).to.include("Must be a numeric operator");
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(17);
 			});
 	
 			it("should flag unknown operators", () => {
-				let fakeDocument = createDocument("*set variable not(var1&(var3 & ! var4))");
+				let fakeDocument = createDocument("*set variable !var1");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -1687,10 +1687,10 @@ describe("Parser", () => {
 		
 				parse(fakeDocument, fakeCallbacks);
 		
-				expect(received.length).to.equal(1);
+				expect(received.length).to.equal(2);
 				expect(received[0].message).to.include("Unknown operator");
-				expect(received[0].range.start.line).to.equal(31);
-				expect(received[0].range.end.line).to.equal(32);
+				expect(received[0].range.start.line).to.equal(14);
+				expect(received[0].range.end.line).to.equal(15);
 			});
 	
 			it("should flag unbalanced parentheses", () => {

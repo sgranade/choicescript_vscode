@@ -53,7 +53,6 @@ export enum ExpressionResultType {
 	Number,
 	Boolean,
 	String,
-	Mixed,		// The expression doesn't have a parseable result due to e.g. variables
 	NumberChange,	// The expression's changing a variable's value through an expression like "+2"
 	Unknowable,	// Variable or parentheses or other non-eval'able value
 	Error,
