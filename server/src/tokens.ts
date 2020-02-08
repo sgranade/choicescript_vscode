@@ -351,7 +351,7 @@ export class Expression {
 
 		this.bareExpression = bareExpression;
 		this.tokens = this.tokenizeExpression(bareExpression);
-		this.combinedTokens = this.combineTokens(this.tokens, globalIndex, textDocument);
+		this.combinedTokens = this.combineTokens(this.tokens);
 		this.evalType = this.validateExpression();
 	}
 
@@ -588,10 +588,8 @@ export class Expression {
   	 * 
   	 * Tokens like functions are combined with their following parentheses.
   	 * @param tokens Tokens to process.
-  	 * @param globalIndex Starting global index of the list of tokens.
-  	 * @param textDocument Document being parsed.
   	 */
-	private combineTokens(tokens: ExpressionToken[], globalIndex: number, textDocument: TextDocument): ExpressionToken[] {
+	private combineTokens(tokens: ExpressionToken[]): ExpressionToken[] {
 		let combinedTokens: ExpressionToken[] = [];
 		let index = -1;
 

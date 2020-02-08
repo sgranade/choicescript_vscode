@@ -135,13 +135,6 @@ export let builtinVariables: ReadonlyArray<string> = [
 ];
 
 /**
- * Choicescript operators
- */
-export let operators: ReadonlyArray<string> = [
-	"+", "-", "*", "/", "%", "^", "&", "#", "%+", "%-", "=", "<", ">", "<=", ">=", "!="
-];
-
-/**
  * Math operators
  */
 export let mathOperators: ReadonlyArray<string> = [
@@ -183,19 +176,6 @@ export let booleanNamedValues: ReadonlyArray<string> = [
 	"true", "false"
 ];
 
-/**
- * ChoiceScript operators that act on numbers
- */
-export let numberSetOperators: ReadonlyArray<string> = [
-	"+", "-", "*", "/", "%", "^", "%+", "%-"
-]
-
-/**
- * ChoiceScript operators that act on strings
- */
-export let stringSetOperators: ReadonlyArray<string> = [
-	"&", "#"
-]
 
 /* PATTERNS */
 

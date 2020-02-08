@@ -1319,6 +1319,37 @@ describe("Parser", () => {
 			});
 		});
 
+		describe("Multireplaces", () => {
+			it("should flag an operator in a bare multireplace", () => {
+				let fakeDocument = createDocument("@{var > 2 yes | no}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Potentially missing parentheses");
+				expect(received[0].range.start.line).to.equal(2);
+				expect(received[0].range.end.line).to.equal(7);
+			});
+
+			it("should not flag a word operator in a bare multireplace", () => {
+				let fakeDocument = createDocument("@{var and true yes | no}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+		});
+	
 		describe("Variable Creation Commands", () => {
 			it("should flag *create commands with no value to set the variable to", () => {
 				let fakeDocument = createDocument("*create variable");

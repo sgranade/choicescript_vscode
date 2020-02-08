@@ -15,6 +15,9 @@ import {
 	extractTokenAtIndex,
 	statChartCommands,
 	statChartBlockCommands,
+	mathOperators,
+	comparisonOperators,
+	stringOperators,
 } from './language';
 import {
 	Expression,
@@ -29,12 +32,16 @@ import {
 } from './utilities';
 
 
+let nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOperators, stringOperators);
+
+
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
+let nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
@@ -405,6 +412,20 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 				let text = token.text.replace('@{', '  ');
 				parseBareString(text, token.localIndex + sectionToDocumentDelta, token.text.length, state);
 			}
+
+			// Check the first body for a leading operator and warn about it if we don't have parens around the test
+			// We only check for non-word operators so we don't catch regular English words like "and"
+			if (!tokens.text.startsWith("(")) {
+				let firstText = tokens.body[0].text.split(' ')[0];
+				if (nonWordOperatorsLookup.has(firstText)) {
+					let diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+						tokens.test.globalIndex,
+						tokens.body[0].localIndex + firstText.length + sectionToDocumentDelta,
+						"Potentially missing parentheses");
+					state.callbacks.onParseError(diagnostic);
+				}
+			}
+
 			localIndex = tokens.endIndex;
 		}
 	}
