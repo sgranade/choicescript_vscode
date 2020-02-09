@@ -193,8 +193,6 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
 	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
 	if (reference === undefined) {
 		let lineEndIndex = findLineEnd(section, localIndex);
-		if (lineEndIndex === undefined)
-			lineEndIndex = section.length;
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			localIndex - openDelimiterLength + sectionToDocumentDelta,
 			lineEndIndex + sectionToDocumentDelta,
@@ -352,8 +350,6 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 
 	if (tokens === undefined) {
 		let lineEndIndex = findLineEnd(section, localIndex);
-		if (lineEndIndex === undefined)
-			lineEndIndex = section.length;
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			localIndex - openDelimiterLength + sectionToDocumentDelta, lineEndIndex + sectionToDocumentDelta,
 			"Multireplace is missing its }");

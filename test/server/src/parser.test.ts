@@ -297,7 +297,7 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].start.line).to.equal(8);
-			expect(received[0].end.line).to.equal(46);
+			expect(received[0].end.line).to.equal(45);
 		});
 
 		it("should callback on a choice with tabs", () => {
@@ -312,7 +312,7 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].start.line).to.equal(8);
-			expect(received[0].end.line).to.equal(34);
+			expect(received[0].end.line).to.equal(33);
 		});
 
 		it("should callback on a choice at the end of the document", () => {
@@ -342,7 +342,7 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].start.line).to.equal(8);
-			expect(received[0].end.line).to.equal(21);
+			expect(received[0].end.line).to.equal(20);
 		});
 
 		it("should callback on a choice with blank lines", () => {
@@ -357,7 +357,7 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].start.line).to.equal(8);
-			expect(received[0].end.line).to.equal(28);
+			expect(received[0].end.line).to.equal(27);
 		});
 
 		it("should callback on nested choice blocks", () => {
@@ -372,9 +372,9 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(2);
 			expect(received[0].start.line).to.equal(8);
-			expect(received[0].end.line).to.equal(55);
+			expect(received[0].end.line).to.equal(54);
 			expect(received[1].start.line).to.equal(24);
-			expect(received[1].end.line).to.equal(49);
+			expect(received[1].end.line).to.equal(48);
 		});
 	});
 
