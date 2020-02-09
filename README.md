@@ -13,6 +13,7 @@ A plugin for VS Code for [ChoiceScript](https://github.com/dfabulich/choicescrip
 - Error highlighting
 - Go to definition
 - Highlight usage
+- Scene outline
 - Rename variables project-wide
 - Snippets to match Choice of Games style rules
 - Italicizing and bolding text

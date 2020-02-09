@@ -3,6 +3,7 @@ Changes to the plugin.
 
 ## Unreleased
 ### Added
+- The document outline is now provided, letting you see the flow of choices, labels, and variables in your game.
 - Problems with *set commands are now flagged.
 - Problems with *if and *elseif commands are now flagged.
 - Multireplaces that may need parentheses are now flagged.

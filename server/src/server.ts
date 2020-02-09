@@ -11,7 +11,9 @@ import {
 	Definition,
 	RenameParams,
 	WorkspaceEdit,
-	TextDocumentSyncKind
+	TextDocumentSyncKind,
+	DocumentSymbolParams,
+	SymbolInformation
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 const fsPromises = require('fs').promises;
@@ -24,6 +26,7 @@ import { generateDiagnostics } from './validator';
 import { uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
 import { findDefinition, findReferences, generateRenames } from './searches';
+import { generateSymbols } from './structure';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -55,7 +58,8 @@ connection.onInitialize((params: InitializeParams) => {
 			},
 			definitionProvider: true,
 			referencesProvider: true,
-			renameProvider: true
+			renameProvider: true,
+			documentSymbolProvider: true
 		}
 	};
 });
@@ -198,6 +202,16 @@ connection.onRenameRequest(
 		return generateRenames(document, renameParams.position, renameParams.newName, projectIndex);
 	}
 );
+
+connection.onDocumentSymbol(
+	(documentSymbolParams: DocumentSymbolParams): SymbolInformation[] | null => {
+		let document = documents.get(documentSymbolParams.textDocument.uri);
+		if (document === undefined) {
+			return null;
+		}
+		return generateSymbols(document, projectIndex);
+	}
+)
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

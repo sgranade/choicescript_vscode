@@ -598,7 +598,7 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 		}
 	}
 
-	let lineEnd: number | undefined;
+	let lineEnd: number;
 	// Loop as long as we've got lines that have more indent than the command does
 	while (true) {
 		lineEnd = findLineEnd(document, lineStart);
@@ -629,6 +629,10 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 
 	let startPosition = state.textDocument.positionAt(commandIndex);
 	let endPosition = state.textDocument.positionAt(lineStart);
+	if (lineStart != lineEnd) {
+		// Back up a line
+		endPosition.line--;
+	}
 	let range = Range.create(startPosition, endPosition);
 	state.callbacks.onChoiceScope(range, state);
 }
