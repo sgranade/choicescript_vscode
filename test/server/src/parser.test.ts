@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Location, Diagnostic } from 'vscode-languageserver';
+import { TextDocument, Position, Location, Range, Diagnostic } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
 import { FlowControlEvent } from '../../../server/src';
@@ -264,7 +264,7 @@ describe("Parser", () => {
 			expect(received[0].label).to.equal("labelname");
 			expect(received[0].labelLocation.range.start.line).to.equal(22);
 			expect(received[0].labelLocation.range.end.line).to.equal(31);
-		})
+		});
 
 		it("should create a reference if necessary from the label", () => {
 			let fakeDocument = createDocument("*goto_scene scenename {variable}");
@@ -281,9 +281,103 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(23);
 			expect(received[0].location.range.end.line).to.equal(31);
 
-		})
-	})
+		});
+	});
+
+	describe("Choice Command Parsing", () => {
+		it("should callback on a choice with spaces", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
 	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(46);
+		});
+
+		it("should callback on a choice with tabs", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText\n\t#Two\nEnd");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(34);
+		});
+
+		it("should callback on a choice at the end of the document", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText\n\t#Two");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(33);
+		});
+
+		it("should cut the choice short at mixed tabs and spaces", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n        Text\n\t#Two\nEnd");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(21);
+		});
+
+		it("should callback on a choice with blank lines", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\n\t#Two\nEnd");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(28);
+		});
+
+		it("should callback on nested choice blocks", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\t*choice\n\t\t\t#Nest\n\t\t\t\tText\n\t#Two\nEnd");
+			let received: Array<Range> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: Range, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[0].start.line).to.equal(8);
+			expect(received[0].end.line).to.equal(55);
+			expect(received[1].start.line).to.equal(24);
+			expect(received[1].end.line).to.equal(49);
+		});
+	});
+
 	describe("Symbol-Creation Command Parsing", () => {
 		it("should callback on global variable creation", () => {
 			let fakeDocument = createDocument("*create variable 3");
@@ -1342,7 +1436,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1355,7 +1449,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1804,7 +1898,7 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(17);
 			});
 		});
-		
+
 		describe("Stat Charts", () => {
 			it("should raise an error for an empty *stat_chart", () => {
 				let fakeDocument = createDocument("*stat_chart\nI didn't enter any data");

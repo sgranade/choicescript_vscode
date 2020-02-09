@@ -70,7 +70,8 @@ function createIndex({
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
-				paramScopes: []
+				paramScopes: [],
+				choiceScopes: []
 			}
 		}
 	
@@ -91,7 +92,7 @@ function createIndex({
 		}
 		fakeIndex.getAchievements(Arg.any()).returns(achievements);
 		fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
-		fakeIndex.getVariableScopes(Arg.all()).returns(scopes);
+		fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 		fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
 	
 		return fakeIndex;
@@ -283,7 +284,8 @@ describe("Validator", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
-				paramScopes: []
+				paramScopes: [],
+				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
@@ -299,7 +301,8 @@ describe("Validator", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
-				paramScopes: []
+				paramScopes: [],
+				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_othername", [referenceLocation]]])
@@ -316,7 +319,8 @@ describe("Validator", () => {
 		it("should not flag params variables after instantiation", () => {
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [],
-				paramScopes: [Range.create(1, 0, 4, 0)]
+				paramScopes: [Range.create(1, 0, 4, 0)],
+				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let variableReferences: VariableReferenceIndex = new Map([["param_1", [referenceLocation]]])

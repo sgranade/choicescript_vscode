@@ -54,6 +54,7 @@ export interface FlowControlEvent {
 export interface DocumentScopes {
 	achievementVarScopes: Range[];
 	paramScopes: Range[];
+	choiceScopes: Range[];
 }
 
 // TODO would be good to re-work this interface so it has more consistency
@@ -122,11 +123,11 @@ export interface ProjectIndex {
 	 */
 	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
     /**
-     * Update the index of variable scopes.
+     * Update the index of scopes.
      * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newScopes New variable scopes.
+     * @param newScopes New scopes.
      */
-	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes): void;
+	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void;
     /**
      * Update the list of errors that occured during parsing.
      * @param textDocumentUri URI to document whose index is to be updated.
@@ -210,7 +211,7 @@ export interface ProjectIndex {
      * Get document scopes for a scene file.
      * @param sceneUri Scene document URI.
      */
-	getVariableScopes(sceneUri: string): DocumentScopes;
+	getDocumentScopes(sceneUri: string): DocumentScopes;
     /**
      * Get the parse errors.
      * @param sceneUri Scene document URI.
@@ -281,7 +282,7 @@ export class Index implements ProjectIndex {
 	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
 		this._achievementReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
-	updateVariableScopes(textDocumentUri: string, newScopes: DocumentScopes) {
+	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes) {
 		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);
 	}
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]) {
@@ -376,12 +377,13 @@ export class Index implements ProjectIndex {
 		}
 		return locations;
 	}
-	getVariableScopes(textDocumentUri: string): DocumentScopes {
+	getDocumentScopes(textDocumentUri: string): DocumentScopes {
 		let scopes = this._documentScopes.get(normalizeUri(textDocumentUri));
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
-				paramScopes: []
+				paramScopes: [],
+				choiceScopes: []
 			};
 		}
 		return scopes;

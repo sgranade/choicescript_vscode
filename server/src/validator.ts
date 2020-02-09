@@ -144,7 +144,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			}
 		}
 		else if (!builtinVariablesLookup.has(variable)) {
-			let scopes = state.projectIndex.getVariableScopes(state.textDocument.uri);
+			let scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
 			let trimmedLocations = locations;
 			
 			// Get rid of any variables that are legal achievement variables

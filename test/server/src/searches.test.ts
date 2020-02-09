@@ -88,7 +88,8 @@ function createMockIndex({
 	if (scopes === undefined) {
 		scopes = {
 			achievementVarScopes: [],
-			paramScopes: []
+			paramScopes: [],
+			choiceScopes: []
 		}
 	}
 
@@ -140,7 +141,7 @@ function createMockIndex({
 		}
 		return references;
 	})
-	fakeIndex.getVariableScopes(Arg.all()).returns(scopes);
+	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getVariableReferences(Arg.all()).mimicks((variable: string) => {
 		let locations = [];
 		for (let index of variableReferences.values()) {

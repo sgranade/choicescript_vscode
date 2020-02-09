@@ -25,6 +25,7 @@ class IndexingState {
 
 	checkAchievementLocation: Location | undefined = undefined;
 	paramsLocations: Location[] = [];
+	choiceScopes: Range[] = [];
 
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
@@ -38,7 +39,8 @@ class IndexingState {
 function generateScopes(state: IndexingState): DocumentScopes {
 	let scopes: DocumentScopes = {
 		achievementVarScopes: [],
-		paramScopes: []
+		paramScopes: [],
+		choiceScopes: state.choiceScopes
 	};
 	let documentLength = state.textDocument.getText().length;
 	let documentEndLocation = state.textDocument.positionAt(documentLength);
@@ -202,6 +204,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.achievementReferences.set(codename, referenceArray);
 		},
 
+		onChoiceScope: (scope: Range, state: ParsingState) => {
+			indexingState.choiceScopes.push(scope);
+		},
+
 		onParseError: (error: Diagnostic) => {
 			indexingState.parseErrors.push(error);
 		}
@@ -221,7 +227,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
 	index.updateLabels(textDocument.uri, indexingState.labels);
 	index.updateAchievementReferences(textDocument.uri, indexingState.achievementReferences);
-	index.updateVariableScopes(textDocument.uri, scopes);
+	index.updateDocumentScopes(textDocument.uri, scopes);
 	index.updateFlowControlEvents(textDocument.uri, indexingState.flowControlEvents);
 	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);
 }

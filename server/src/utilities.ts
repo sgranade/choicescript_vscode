@@ -77,14 +77,17 @@ export function findLineBegin(document: string, startIndex: number): number {
  * @param startIndex Index at which to begin scan.
  * @returns Index corresponding to one past the line's end, including any \r\n
  */
-export function findLineEnd(document: string, startIndex: number): number | undefined {
+export function findLineEnd(document: string, startIndex: number): number {
 	let i = startIndex;
-	let lineEnd: number | undefined = undefined;
+	let lineEnd: number;
 	let lineEndPattern = /\r?\n|$/g;
 	lineEndPattern.lastIndex = startIndex;
 	let m = lineEndPattern.exec(document);
 	if (m) {
 		lineEnd = m.index + m[0].length;
+	}
+	else {
+		lineEnd = document.length - 1;
 	}
 
 	return lineEnd;

@@ -56,6 +56,7 @@ export interface ParserCallbacks {
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 	onAchievementReference(codename: string, location: Location, state: ParsingState): void;
+	onChoiceScope(scope: Range, state: ParsingState): void;
 	onParseError(error: Diagnostic): void;
 }
 
@@ -576,6 +577,63 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 }
 
 /**
+ * Parse the choices defined by a *choice command.
+ * @param document Document text to scan.
+ * @param commandPadding Spacing before the *choice command.
+ * @param commandIndex Index at the start of the *choice command.
+ * @param choicesIndex Index at the start of the choices.
+ * @param state Parsing state.
+ */
+function parseChoice(document: string, commandPadding: string, commandIndex: number, choicesIndex: number, state: ParsingState) {
+	let prefixPattern = /^[ \t]+/;
+	let lineStart = choicesIndex;
+	// commandPadding can include a leading \n, so don't count that
+	let commandIndent = commandPadding.replace("\n", "").length;
+	let setPaddingType = false;
+	let isTabs = /\t/.test(commandPadding);
+	if (commandIndent) {
+		setPaddingType = true;
+		if (isTabs && / /.test(commandPadding)) {
+			return;
+		}
+	}
+
+	let lineEnd: number | undefined;
+	// Loop as long as we've got lines that have more indent than the command does
+	while (true) {
+		lineEnd = findLineEnd(document, lineStart);
+		if (lineEnd == lineStart) {
+			break;
+		}
+		let line = document.slice(lineStart, lineEnd);
+		if (line.trim() != "") {
+			let m = prefixPattern.exec(line);
+			if (!m) {
+				break;
+			}
+			let padding = m[0];
+			if (!setPaddingType) {
+				isTabs = /\t/.test(padding);
+				setPaddingType = true;
+			}
+			// Bomb out on mixed tabs and spaces, winding back a line
+			if ((isTabs && / /.test(padding)) || (!isTabs && /\t/.test(padding))) {
+				break;
+			}
+			if (padding.length <= commandIndent) {
+				break;
+			}
+		}
+		lineStart = lineEnd;
+	}
+
+	let startPosition = state.textDocument.positionAt(commandIndex);
+	let endPosition = state.textDocument.positionAt(lineStart);
+	let range = Range.create(startPosition, endPosition);
+	state.callbacks.onChoiceScope(range, state);
+}
+
+/**
  * Parse the scenes defined by a *scene_list command.
  * @param document Document text to scan.
  * @param startIndex Index at the start of the scenes.
@@ -922,6 +980,12 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	}
 	else if (flowControlCommandsLookup.has(command)) {
 		parseFlowControlCommand(command, commandIndex, line, lineIndex, state);
+	}
+	else if (command == "choice") {
+		let nextLineIndex = findLineEnd(document, commandIndex);
+		if (nextLineIndex !== undefined) {
+			parseChoice(document, prefix, commandIndex, nextLineIndex, state);
+		}
 	}
 	else if (command == "scene_list") {
 		let nextLineIndex = findLineEnd(document, commandIndex);

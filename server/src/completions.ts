@@ -79,7 +79,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 	}))));
 
 	let includeAchievements = false;
-	for (let scope of projectIndex.getVariableScopes(document.uri).achievementVarScopes) {
+	for (let scope of projectIndex.getDocumentScopes(document.uri).achievementVarScopes) {
 		if (positionInRange(position, scope)) {
 			includeAchievements = true;
 			break;

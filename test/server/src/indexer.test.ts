@@ -293,7 +293,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope) }
 			);
 	
@@ -307,7 +307,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2\nLast line");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope) }
 			);
 	
@@ -322,7 +322,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*params\nLine 2");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope) }
 			);
 	
@@ -336,7 +336,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*params\nLine 2\nLast line");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableScopes(Arg.all()).mimicks(
+			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope) }
 			);
 	
@@ -345,8 +345,23 @@ describe("Indexer", () => {
 			// These positions are due to the fake document converting an index directly into a line number
 			expect(received[0].paramScopes[0].start).to.eql({line: 8, character: 0});
 			expect(received[0].paramScopes[0].end).to.eql({line: 31, character: 0});
-		})
-	})
+		});
+	});
+
+	describe("Choice Scoping", () => {
+		it("should capture a *choice block", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope) }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+		});
+	});
 
 	describe("Parse Errors", () => {
 		it("should flag attempts to re-create already-created global variables", () => {
