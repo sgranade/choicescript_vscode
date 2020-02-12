@@ -574,14 +574,15 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 }
 
 /**
- * Parse the choices defined by a *choice command.
+ * Parse the choices defined by a *choice or *fake_choice command.
  * @param document Document text to scan.
+ * @param command Command that is being parsed.
  * @param commandPadding Spacing before the *choice command.
  * @param commandIndex Index at the start of the *choice command.
  * @param choicesIndex Index at the start of the choices.
  * @param state Parsing state.
  */
-function parseChoice(document: string, commandPadding: string, commandIndex: number, choicesIndex: number, state: ParsingState) {
+function parseChoice(document: string, command: string, commandPadding: string, commandIndex: number, choicesIndex: number, state: ParsingState) {
 	let prefixPattern = /^[ \t]+/;
 	let lineStart = choicesIndex;
 	// commandPadding can include a leading \n, so don't count that
@@ -646,7 +647,7 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 		}
 	}
 	let range = Range.create(startPosition, endPosition);
-	let scope: SummaryScope = { summary: firstChoice, range: range };
+	let scope: SummaryScope = { summary: `${command} ${firstChoice}`, range: range };
 	state.callbacks.onChoiceScope(scope, state);
 }
 
@@ -998,10 +999,10 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	else if (flowControlCommandsLookup.has(command)) {
 		parseFlowControlCommand(command, commandIndex, line, lineIndex, state);
 	}
-	else if (command == "choice") {
+	else if (command == "choice" || command == "fake_choice") {
 		let nextLineIndex = findLineEnd(document, commandIndex);
 		if (nextLineIndex !== undefined) {
-			parseChoice(document, prefix, commandIndex, nextLineIndex, state);
+			parseChoice(document, command, prefix, commandIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "scene_list") {

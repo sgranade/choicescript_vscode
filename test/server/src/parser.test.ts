@@ -388,7 +388,21 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
-			expect(received[0].summary).to.equal("#One");
+			expect(received[0].summary).to.equal("choice #One");
+		});
+
+		it("should summarize a fake choice by its first option", () => {
+			let fakeDocument = createDocument("Line 0\n*fake_choice\n\t#One\n\t\tText\n\t#Two\nEnd");
+			let received: Array<SummaryScope> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].summary).to.equal("fake_choice #One");
 		});
 
 		it("should limit a choice summary's length", () => {
@@ -402,7 +416,7 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
-			expect(received[0].summary).to.equal("#A very long first choice, it…");
+			expect(received[0].summary).to.equal("choice #A very long first choice, it runs…");
 		});
 	});
 
