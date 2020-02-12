@@ -15,10 +15,10 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 
 	info.push(...projectIndex.getDocumentScopes(textDocument.uri).choiceScopes.map((scope): SymbolInformation => {
 		return {
-			name: "choice",
+			name: `${scope.summary}`,
 			kind: SymbolKind.Function,
 			location: {
-				range: scope,
+				range: scope.range,
 				uri: textDocument.uri
 			}
 		};

@@ -30,6 +30,7 @@ import {
 	extractToMatchingDelimiter,
 	createDiagnostic
 } from './utilities';
+import { SummaryScope } from '.';
 
 
 let nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOperators, stringOperators);
@@ -56,7 +57,7 @@ export interface ParserCallbacks {
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 	onAchievementReference(codename: string, location: Location, state: ParsingState): void;
-	onChoiceScope(scope: Range, state: ParsingState): void;
+	onChoiceScope(scope: SummaryScope, state: ParsingState): void;
 	onParseError(error: Diagnostic): void;
 }
 
@@ -593,6 +594,7 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 			return;
 		}
 	}
+	let firstChoice = "";
 
 	let lineEnd: number;
 	// Loop as long as we've got lines that have more indent than the command does
@@ -619,6 +621,11 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 			if (padding.length <= commandIndent) {
 				break;
 			}
+			// Since we have a valid line, see if it's the first choice
+			let trimmedLine = line.trim();
+			if (firstChoice == "" && trimmedLine.startsWith('#')) {
+				firstChoice = trimmedLine;
+			}
 		}
 		lineStart = lineEnd;
 	}
@@ -629,8 +636,18 @@ function parseChoice(document: string, commandPadding: string, commandIndex: num
 		// Back up a line
 		endPosition.line--;
 	}
+
+	// Trim our summary if necessary
+	if (firstChoice.length > 35) {
+		let trimmedFirstChoice = firstChoice.slice(0, 35);
+		let m = /^(.*)(?: )/.exec(trimmedFirstChoice);
+		if (m !== null) {
+			firstChoice = m[1]+"…";
+		}
+	}
 	let range = Range.create(startPosition, endPosition);
-	state.callbacks.onChoiceScope(range, state);
+	let scope: SummaryScope = { summary: firstChoice, range: range };
+	state.callbacks.onChoiceScope(scope, state);
 }
 
 /**

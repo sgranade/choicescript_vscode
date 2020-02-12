@@ -1,7 +1,7 @@
 import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex } from './index';
+import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope } from './index';
 import { createDiagnosticFromLocation, comparePositions } from './utilities';
 
 /**
@@ -25,7 +25,7 @@ class IndexingState {
 
 	checkAchievementLocation: Location | undefined = undefined;
 	paramsLocations: Location[] = [];
-	choiceScopes: Range[] = [];
+	choiceScopes: SummaryScope[] = [];
 
 	constructor(textDocument: TextDocument) {
 		this.textDocument = textDocument;
@@ -204,7 +204,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.achievementReferences.set(codename, referenceArray);
 		},
 
-		onChoiceScope: (scope: Range, state: ParsingState) => {
+		onChoiceScope: (scope: SummaryScope, state: ParsingState) => {
 			indexingState.choiceScopes.push(scope);
 		},
 

@@ -49,12 +49,20 @@ export interface FlowControlEvent {
 }
 
 /**
+ * A scope with a summary description
+ */
+export interface SummaryScope {
+	summary: string,
+	range: Range
+}
+
+/**
  * Interface for capturing scopes in a document.
  */
 export interface DocumentScopes {
 	achievementVarScopes: Range[];
 	paramScopes: Range[];
-	choiceScopes: Range[];
+	choiceScopes: SummaryScope[];
 }
 
 // TODO would be good to re-work this interface so it has more consistency
