@@ -1545,9 +1545,22 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Add parentheses around the not() function");
+				expect(received[0].message).to.include("Without parentheses, this expression will always be true");
 				expect(received[0].range.start.line).to.equal(4);
-				expect(received[0].range.end.line).to.equal(5);
+				expect(received[0].range.end.line).to.equal(14);
+			});
+	
+			it("should be okay with *if (not(condition)) before a #choice", () => {
+				let fakeDocument = createDocument("*if (not(false)) #Choice");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				})
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
 			});
 	
 			it("should flag non-boolean results", () => {

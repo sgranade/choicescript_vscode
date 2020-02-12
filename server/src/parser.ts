@@ -18,6 +18,7 @@ import {
 	mathOperators,
 	comparisonOperators,
 	stringOperators,
+	booleanFunctions,
 } from './language';
 import {
 	Expression,
@@ -43,6 +44,7 @@ let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symb
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
 let nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
+let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
@@ -833,16 +835,32 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
  * @param state Parsing state.
  */
 function parseVariableReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+	let optionOnLineWithIf = false;
 	// The *if and *selectable_if commands can be used with options, so take that into account
 	if (command == "if" || command == "selectable_if") {
 		let choiceSplit = line.split('#');
-		if (choiceSplit !== undefined)
+		if (choiceSplit.length > 1) {
 			line = choiceSplit[0];
+			optionOnLineWithIf = true;
+		}
 	}
 	// The line that follows a command that can reference a variable is an expression
 	let tokenizedExpression = parseExpression(line, lineGlobalIndex, state);
 	if (tokenizedExpression.evalType != ExpressionEvalType.Error) {
 		validateConditionExpression(tokenizedExpression, state);
+	}
+
+	// Give a warning for commands like "*if not(var) #choice" and similar which are always true
+	if (optionOnLineWithIf) {
+		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
+			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
+			let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
+			let diagnostic = createDiagnostic(DiagnosticSeverity.Warning, state.textDocument,
+				tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
+				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+				"Without parentheses, this expression will always be true");
+			state.callbacks.onParseError(diagnostic);
+		}
 	}
 }
 
