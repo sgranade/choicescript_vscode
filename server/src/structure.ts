@@ -1,6 +1,7 @@
 import { TextDocument, SymbolInformation, SymbolKind } from 'vscode-languageserver';
 
 import { ProjectIndex } from './index';
+import { uriIsStartupFile } from './language';
 
 
 export function generateSymbols(textDocument: TextDocument, projectIndex: ProjectIndex): SymbolInformation[] {
@@ -31,6 +32,16 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 			location: location
 		};
 	}));
+
+	if (uriIsStartupFile(textDocument.uri)) {
+		info.push(...Array.from(projectIndex.getGlobalVariables()).map(([variable, location]): SymbolInformation => {
+			return {
+				name: variable,
+				kind: SymbolKind.Variable,
+				location: location
+			};
+		}));
+	}
 
 	return info;
 }
