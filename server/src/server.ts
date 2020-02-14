@@ -72,7 +72,7 @@ connection.onInitialized(() => {
 	// for examples
 	connection.workspace.getWorkspaceFolders().then(workspaces => {
 		if (workspaces && workspaces.length > 0)
-			findStartupFiles(workspaces)
+			findStartupFiles(workspaces);
 	});
 });
 
@@ -81,7 +81,7 @@ function findStartupFiles(workspaces: WorkspaceFolder[]) {
 		let rootPath = url.fileURLToPath(workspace.uri);
 		globby('**/startup.txt', {
 			cwd: rootPath
-		}).then(paths => indexProject(paths))
+		}).then(paths => indexProject(paths));
 	});
 }
 
@@ -189,7 +189,7 @@ connection.onReferences(
 			return undefined;
 		}
 		let references = findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
-		return references?.map(reference => { return reference.location; })
+		return references?.map(reference => { return reference.location; });
 	}
 );
 
@@ -211,7 +211,7 @@ connection.onDocumentSymbol(
 		}
 		return generateSymbols(document, projectIndex);
 	}
-)
+);
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

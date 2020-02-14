@@ -198,7 +198,7 @@ export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
  * Pattern to find a choice.
  */
-export let choicePattern = "(?<choice>#.*)"
+export let choicePattern = "(?<choice>#.*)";
 /**
  * Pattern to find elements that go against Choice of Games style guide.
  */

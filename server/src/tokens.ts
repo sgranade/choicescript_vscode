@@ -64,13 +64,13 @@ export enum ExpressionEvalType {
  */
 export interface ExpressionToken {
 	/** Actual text of the token */
-	text: string,
+	text: string;
 	/** Token's type */
-	type: ExpressionTokenType,
+	type: ExpressionTokenType;
 	/** Location of the start of the token relative to the entire expression */
-	index: number,
+	index: number;
 	/** Tokenized contents, if any */
-	contents?: Expression
+	contents?: Expression;
 }
 
 /**
@@ -891,18 +891,18 @@ export class Expression {
  * A multireplace token.
  */
 interface MultireplaceToken {
-	text: string,
-	localIndex: number
+	text: string;
+	localIndex: number;
 }
 
 /**
  * A tokenized multireplace @{variable if-true | if-false}
  */
 interface Multireplace {
-	text: string,
-	test: Expression,
-	body: MultireplaceToken[],
-	endIndex: number
+	text: string;
+	test: Expression;
+	body: MultireplaceToken[];
+	endIndex: number;
 }
 
 /**

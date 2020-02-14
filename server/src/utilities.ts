@@ -136,8 +136,8 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 * @param uriString URI to normalize.
 */
 export function normalizeUri(uriString: string): string {
-   let uri = new URI(uriString);
-   return uri.normalize().toString();
+	let uri = new URI(uriString);
+	return uri.normalize().toString();
 }
 
 /**

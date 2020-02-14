@@ -211,7 +211,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		onParseError: (error: Diagnostic) => {
 			indexingState.parseErrors.push(error);
 		}
-	}
+	};
 
 	parse(textDocument, callbacks);
 	let scopes = generateScopes(indexingState);

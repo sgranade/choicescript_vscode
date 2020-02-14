@@ -19,18 +19,18 @@ export enum SymbolType {
  * Location of a symbol.
  */
 interface SymbolLocation {
-	symbol: string,
-	location: Location
+	symbol: string;
+	location: Location;
 }
 
 /**
  * Full information about an instance of a symbol.
  */
 export interface SymbolInformation {
-	symbol: string,
-	location: Location,
-	type: SymbolType,
-	isDefinition: boolean
+	symbol: string;
+	location: Location;
+	type: SymbolType;
+	isDefinition: boolean;
 }
 
 /**

@@ -22,7 +22,7 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string) {
 	}
 
 	let open = `[${delimitCharacters}]`;
-	let close = `[/${delimitCharacters}]`
+	let close = `[/${delimitCharacters}]`;
 	let document = editor.document;
 	let selection = editor.selection;
 	if (selection.isEmpty) {

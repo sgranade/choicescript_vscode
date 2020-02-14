@@ -143,7 +143,7 @@ function parseTokenizedExpression(tokenizedExpression: Expression, state: Parsin
 
 	// Recursively parse any sub-expressions
 	let tokensWithContents = tokenizedExpression.combinedTokens.filter(token => {
-		return token.contents !== undefined
+		return token.contents !== undefined;
 	});
 	for (let token of tokensWithContents) {
 		parseTokenizedExpression(token.contents!, state);

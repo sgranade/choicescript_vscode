@@ -146,7 +146,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 								let range = Range.create(document.positionAt(index - tokens[1].length), position);
 								completions.forEach(completion => {
 									completion.textEdit = TextEdit.replace(range, completion.label);
-								})
+								});
 							}
 						}
 						else if (tokens.length == 3) {

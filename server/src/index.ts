@@ -40,20 +40,20 @@ export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, ReadonlyArray<Loca
  * *goto, *gosub, *goto_scene, *gosub_scene, and *return events
  */
 export interface FlowControlEvent {
-	command: string,
-	commandLocation: Location,
-	label: string,
-	labelLocation?: Location,
-	scene: string,
-	sceneLocation?: Location
+	command: string;
+	commandLocation: Location;
+	label: string;
+	labelLocation?: Location;
+	scene: string;
+	sceneLocation?: Location;
 }
 
 /**
  * A scope with a summary description
  */
 export interface SummaryScope {
-	summary: string,
-	range: Range
+	summary: string;
+	range: Range;
 }
 
 /**
@@ -72,17 +72,17 @@ export interface DocumentScopes {
  * Interface for an index of a ChoiceScript project.
  */
 export interface ProjectIndex {
-    /**
-     * Update the index of global variable definitions from the startup scene.
-     * @param textDocumentUri URI to startup.txt document.
-     * @param newIndex New index of global variables.
-     */
+	/**
+	 * Update the index of global variable definitions from the startup scene.
+	 * @param textDocumentUri URI to startup.txt document.
+	 * @param newIndex New index of global variables.
+	 */
 	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
-    /**
-     * Update the index of variable definitions local to a scene.
-     * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newIndex New index of local variables.
-     */
+	/**
+	 * Update the index of variable definitions local to a scene.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of local variables.
+	 */
 	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
 	 * Update the index of variables defined in subroutines.
@@ -93,22 +93,22 @@ export interface ProjectIndex {
 	 * @param newIndex New index of subroutine-local variables.
 	 */
 	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
-    /**
-     * Update the index of references to variables.
-     * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newIndex New index of references to variables.
-     */
+	/**
+	 * Update the index of references to variables.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of references to variables.
+	 */
 	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
-    /**
-     * Update the list of scene names in the project.
-     * @param scenes New list of scene names.
-     */
+	/**
+	 * Update the list of scene names in the project.
+	 * @param scenes New list of scene names.
+	 */
 	updateSceneList(scenes: Array<string>): void;
-    /**
-     * Update the index of labels in a scene file.
-     * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newIndex New index of labels.
-     */
+	/**
+	 * Update the index of labels in a scene file.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of labels.
+	 */
 	updateLabels(textDocumentUri: string, newIndex: LabelIndex): void;
 	/**
 	 * Update the index of flow control events in a scene file.
@@ -116,10 +116,10 @@ export interface ProjectIndex {
 	 * @param newEvents New index of flow control events.
 	 */
 	updateFlowControlEvents(textDocumentUri: string, newEvents: FlowControlEvent[]): void;
-    /**
-     * Update the index of achievement codenames in the project.
-     * @param newIndex New index of achievement codenames.
-     */
+	/**
+	 * Update the index of achievement codenames in the project.
+	 * @param newIndex New index of achievement codenames.
+	 */
 	updateAchievements(newIndex: IdentifierIndex): void;
 	/**
 	 * Update the index of references to achivements.
@@ -130,79 +130,79 @@ export interface ProjectIndex {
 	 * @param newIndex New index of references to achievements.
 	 */
 	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
-    /**
-     * Update the index of scopes.
-     * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newScopes New scopes.
-     */
+	/**
+	 * Update the index of scopes.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newScopes New scopes.
+	 */
 	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void;
-    /**
-     * Update the list of errors that occured during parsing.
-     * @param textDocumentUri URI to document whose index is to be updated.
-     * @param newIndex New list of errors.
-     */
+	/**
+	 * Update the list of errors that occured during parsing.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New list of errors.
+	 */
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void;
-    /**
-     * Determine if a document URI is the project's startup.txt file.
-     */
+	/**
+	 * Determine if a document URI is the project's startup.txt file.
+	 */
 	isStartupFileUri(uri: string): boolean;
-    /**
-     * Get the URI to a scene file.
-     * @param scene Scene name.
-     */
+	/**
+	 * Get the URI to a scene file.
+	 * @param scene Scene name.
+	 */
 	getSceneUri(scene: string): string | undefined;
-    /**
-     * Get list of scenes in the project.
-     */
+	/**
+	 * Get list of scenes in the project.
+	 */
 	getSceneList(): ReadonlyArray<string>;
-    /**
-     * Get global variables in a project.
-     */
+	/**
+	 * Get global variables in a project.
+	 */
 	getGlobalVariables(): ReadonlyIdentifierIndex;
-    /**
-     * Get the local variables in a scene file.
-     * @param sceneUri Scene document URI.
-     */
+	/**
+	 * Get the local variables in a scene file.
+	 * @param sceneUri Scene document URI.
+	 */
 	getLocalVariables(sceneUri: string): ReadonlyIdentifierIndex;
 	/**
 	 * Get the local variables defined in a scene file's subroutines.
 	 * @param sceneUri Scene document URI.
 	 */
 	getSubroutineLocalVariables(sceneUri: string): ReadonlyIdentifierIndex;
-    /**
-     * Get the labels in a scene file.
-     * @param sceneUri Scene document URI.
-     */
+	/**
+	 * Get the labels in a scene file.
+	 * @param sceneUri Scene document URI.
+	 */
 	getLabels(sceneUri: string): ReadonlyLabelIndex;
-    /**
-     * Get the achievement codenames.
-     */
+	/**
+	 * Get the achievement codenames.
+	 */
 	getAchievements(): ReadonlyIdentifierIndex;
-    /**
-     * Get all references to achievements in one scene document.
+	/**
+	 * Get all references to achievements in one scene document.
 	 * 
 	 * This only finds direct references to an achievement, not to achievement variables
 	 * created by *check_achivement commands.
-     * @param sceneUri Scene document URI.
-     */
+	 * @param sceneUri Scene document URI.
+	 */
 	getDocumentAchievementReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
-    /**
-     * Get all references to an achievement across all documents.
+	/**
+	 * Get all references to an achievement across all documents.
 	 * 
 	 * This only finds direct references to an achievement, not to achievement variables
 	 * created by *check_achivement commands.
-     * @param achievement Achievement to find references to.
-     */
+	 * @param achievement Achievement to find references to.
+	 */
 	getAchievementReferences(achievement: string): ReadonlyArray<Location>;
-    /**
-     * Get all references to variables in one scene document.
-     * @param sceneUri Scene document URI.
-     */
+	/**
+	 * Get all references to variables in one scene document.
+	 * @param sceneUri Scene document URI.
+	 */
 	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
-    /**
-     * Get all references to a variable across all documents.
-     * @param variable Variable to find references to.
-     */
+	/**
+	 * Get all references to a variable across all documents.
+	 * @param variable Variable to find references to.
+	 */
 	getVariableReferences(variable: string): ReadonlyArray<Location>;
 	/**
 	 * Get all flow control events in a scene document.
@@ -215,20 +215,20 @@ export interface ProjectIndex {
 	 * @param labelDefinitionDocumentUri Document in which the label is defined.
 	 */
 	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location>;
-    /**
-     * Get document scopes for a scene file.
-     * @param sceneUri Scene document URI.
-     */
+	/**
+	 * Get document scopes for a scene file.
+	 * @param sceneUri Scene document URI.
+	 */
 	getDocumentScopes(sceneUri: string): DocumentScopes;
-    /**
-     * Get the parse errors.
-     * @param sceneUri Scene document URI.
-     */
+	/**
+	 * Get the parse errors.
+	 * @param sceneUri Scene document URI.
+	 */
 	getParseErrors(sceneUri: string): ReadonlyArray<Diagnostic>;
-    /**
-     * Remove a document from the project index.
-     * @param textDocumentUri URI to document to remove.
-     */
+	/**
+	 * Remove a document from the project index.
+	 * @param textDocumentUri URI to document to remove.
+	 */
 	removeDocument(textDocumentUri: string): void;
 }
 

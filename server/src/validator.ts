@@ -127,7 +127,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			// Make sure we don't reference variables before they're created
 			let badLocations = locations.filter((location: Location) => {
 				return ((location.uri == creationLocation!.uri) && 
-				(comparePositions(location.range.end, creationLocation!.range.start) < 0))
+				(comparePositions(location.range.end, creationLocation!.range.start) < 0));
 			});
 			if (badLocations.length > 0) {
 				// Handle the edge case where a local variable is referenced before it's created,
@@ -138,7 +138,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 					let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
 						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
 							`Variable "${variable}" used before it was created`);
-					})
+					});
 					diagnostics.push(...newDiagnostics);
 				}
 			}
@@ -152,7 +152,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				variableIsAchievement(variable, state.projectIndex.getAchievements()) !== undefined) {
 				for (let scopeRange of scopes.achievementVarScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
-						rangeInOtherRange(location.range, scopeRange)
+						rangeInOtherRange(location.range, scopeRange);
 					});
 				}
 			}
@@ -161,7 +161,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				variableIsPossibleParameter(variable)) {
 				for (let scopeRange of scopes.paramScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
-						rangeInOtherRange(location.range, scopeRange)
+						rangeInOtherRange(location.range, scopeRange);
 					});
 				}
 			}
