@@ -47,6 +47,31 @@ export function mapToUnionedCaseInsensitiveMap<K, V extends Array<any>>(map: Map
 export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
 
 /**
+ * Generator for mapping a function over an iterable.
+ * 
+ * @param iterable Iterable to map over.
+ * @param transform Function to map over iterable.
+ */
+export function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
+	for (var item of iterable) {
+		yield transform(item);
+	}
+}
+
+/**
+ * Generator for filtering an iterable.
+ * 
+ * @param iterable Iterable to filter over.
+ * @param transform Function to map over iterable.
+ */
+export function* iteratorFilter<T>(iterable: Iterable<T>, filter: Function) {
+	for (var item of iterable) {
+		if (filter(item))
+			yield item;
+	}
+}
+
+/**
  * Determine if a string contains a number.
  */
 export function stringIsNumber(s: string) {

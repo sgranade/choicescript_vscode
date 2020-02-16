@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, TextDocument, Position } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex, FlowControlEvent } from '../../../server/src/index';
+import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex, FlowControlEvent, LabelIndex, Label } from '../../../server/src/index';
 import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
@@ -19,18 +19,18 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 }
 
 interface IndexArgs {
-	globalVariables?: IdentifierIndex,
-	localVariables?: IdentifierIndex,
-	subroutineVariables?: IdentifierIndex,
-	startupUri?: string,
-	labels?: IdentifierIndex,
-	labelsUri?: string,
-	sceneList?: string[],
-	sceneFileUri?: string,
-	achievements?: IdentifierIndex,
-	variableReferences?: VariableReferenceIndex,
-	flowControlEvents?: FlowControlEvent[],
-	scopes?: DocumentScopes
+	globalVariables?: IdentifierIndex;
+	localVariables?: IdentifierIndex;
+	subroutineVariables?: IdentifierIndex;
+	startupUri?: string;
+	labels?: LabelIndex;
+	labelsUri?: string;
+	sceneList?: string[];
+	sceneFileUri?: string;
+	achievements?: IdentifierIndex;
+	variableReferences?: VariableReferenceIndex;
+	flowControlEvents?: FlowControlEvent[];
+	scopes?: DocumentScopes;
 }
 
 function createIndex({
@@ -70,9 +70,9 @@ function createIndex({
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
+				choiceScopes: [],
 				paramScopes: [],
-				choiceScopes: []
-			}
+			};
 		}
 	
 		let fakeIndex = Substitute.for<ProjectIndex>();
@@ -118,7 +118,7 @@ describe("Validator", () => {
 	
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("em-dash");
-		})
+		});
 
 		it("shouldn't flag dashes in a comment", () => {
 			let fakeDocument = createDocument("*comment Dashes--");
@@ -127,7 +127,7 @@ describe("Validator", () => {
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(0);
-		})
+		});
 
 		it("should flag too-long options", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has too many words seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen.");
@@ -154,7 +154,7 @@ describe("Validator", () => {
 	describe("Variable Reference Validation", () => {
 		it("should flag missing variables", () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["unknown", [location]]])
+			let variableReferences: VariableReferenceIndex = new Map([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 	
@@ -168,7 +168,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
@@ -181,7 +181,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
@@ -197,7 +197,7 @@ describe("Validator", () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let localVariables: Map<string, Location> = new Map([["var", localCreateLocation]]);
 			let globalVariables: Map<string, Location> = new Map([["var", globalCreateLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["var", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ 
 				startupUri: startupUri,
@@ -234,7 +234,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
@@ -247,7 +247,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(startupUri, Range.create(1, 0, 1, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder", startupUri);
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
@@ -258,7 +258,7 @@ describe("Validator", () => {
 		});
 
 		it("should not flag built-in variables", () => {
-			let variableReferences: VariableReferenceIndex = new Map([["choice_randomtest", [Substitute.for<Location>()]]])
+			let variableReferences: VariableReferenceIndex = new Map([["choice_randomtest", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 	
@@ -270,7 +270,7 @@ describe("Validator", () => {
 		it("should flag achievement variables if not instantiated", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements});
 	
@@ -284,11 +284,11 @@ describe("Validator", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
+				choiceScopes: [],
 				paramScopes: [],
-				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
 	
@@ -301,11 +301,11 @@ describe("Validator", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
+				choiceScopes: [],
 				paramScopes: [],
-				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_othername", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_othername", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
 
@@ -323,7 +323,7 @@ describe("Validator", () => {
 				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["param_1", [referenceLocation]]])
+			let variableReferences: VariableReferenceIndex = new Map([["param_1", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, scopes: scopes});
 	
@@ -366,8 +366,8 @@ describe("Validator", () => {
 	
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
-		})
-	})
+		});
+	});
 	
 	describe("Label Reference Commands Validation", () => {
 		it("should flag missing labels", () => {
@@ -432,7 +432,7 @@ describe("Validator", () => {
 				labelLocation: referenceLocation,
 				scene: ""
 			}];
-			let localLabels: Map<string, Location> = new Map([["local_label", Substitute.for<Location>()]]);
+			let localLabels: Map<string, Label> = new Map([["local_label", Substitute.for<Label>()]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({
 				labels: localLabels, labelsUri: fakeDocumentUri, flowControlEvents: events
@@ -517,7 +517,7 @@ describe("Validator", () => {
 		});
 	
 		it("should be good with labels in another scene", () => {
-			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "gosub_scene",
@@ -540,7 +540,7 @@ describe("Validator", () => {
 		});
 	
 		it("should flag missing labels in another scene", () => {
-			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "gosub_scene",
@@ -554,7 +554,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({
 				flowControlEvents: events,
 				labels: sceneLabels, labelsUri: fakeSceneUri, 
-				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
@@ -563,7 +563,7 @@ describe("Validator", () => {
 		});
 
 		it("should not flag references in labels, even in another scene", () => {
-			let sceneLabels: Map<string, Location> = new Map([["scene_label", Substitute.for<Location>()]]);
+			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "gosub_scene",
@@ -577,11 +577,11 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({
 				flowControlEvents: events,
 				labels: sceneLabels, labelsUri: fakeSceneUri, 
-				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri})
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri});
 	
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 	
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
-})
+});

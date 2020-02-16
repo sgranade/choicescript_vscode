@@ -6,11 +6,11 @@ import { uriIsStartupFile } from './language';
 
 export function generateSymbols(textDocument: TextDocument, projectIndex: ProjectIndex): SymbolInformation[] {
 	// Generate label locations
-	let info = Array.from(projectIndex.getLabels(textDocument.uri)).map(([label, location]): SymbolInformation => {
+	let info = Array.from(projectIndex.getLabels(textDocument.uri).values()).map((label): SymbolInformation => {
 		return {
-			name: label,
+			name: label.label,
 			kind: SymbolKind.Namespace,
-			location: location
+			location: label.location
 		};
 	});
 

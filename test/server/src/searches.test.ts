@@ -9,7 +9,8 @@ import {
 	IdentifierIndex, 
 	VariableReferenceIndex, 
 	FlowControlEvent, 
-	DocumentScopes
+	DocumentScopes,
+	LabelIndex
 } from '../../../server/src/index';
 import { 
 	SymbolType,
@@ -33,25 +34,25 @@ function createDocument(text: string, uri: string = documentUri): SubstituteOf<T
 }
 
 interface IndexArgs {
-	globalVariables?: IdentifierIndex,
-	localVariables?: Map<string, IdentifierIndex>,
-	subroutineVariables?: IdentifierIndex,
-	variableReferences?: Map<string, VariableReferenceIndex>,
-	startupUri?: string,
-	labels?: Map<string, IdentifierIndex>,
-	sceneList?: string[],
-	sceneFileUri?: string,
-	achievements?: IdentifierIndex,
-	achievementReferences?: Map<string, VariableReferenceIndex>,
-	flowControlEvents?: FlowControlEvent[],
-	flowControlEventsUri?: string,
-	scopes?: DocumentScopes
+	globalVariables?: IdentifierIndex;
+	localVariables?: Map<string, IdentifierIndex>;
+	subroutineVariables?: IdentifierIndex;
+	variableReferences?: Map<string, VariableReferenceIndex>;
+	startupUri?: string;
+	labels?: Map<string, LabelIndex>;
+	sceneList?: string[];
+	sceneFileUri?: string;
+	achievements?: IdentifierIndex;
+	achievementReferences?: Map<string, VariableReferenceIndex>;
+	flowControlEvents?: FlowControlEvent[];
+	flowControlEventsUri?: string;
+	scopes?: DocumentScopes;
 }
 
 function createMockIndex({
-    globalVariables, localVariables, subroutineVariables, startupUri, labels, 
-    sceneList, sceneFileUri, achievements, achievementReferences,
-    variableReferences, flowControlEvents, flowControlEventsUri, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
+	globalVariables, localVariables, subroutineVariables, startupUri, labels, 
+	sceneList, sceneFileUri, achievements, achievementReferences,
+	variableReferences, flowControlEvents, flowControlEventsUri, scopes}: IndexArgs): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new Map();
 	}
@@ -88,9 +89,9 @@ function createMockIndex({
 	if (scopes === undefined) {
 		scopes = {
 			achievementVarScopes: [],
+			choiceScopes: [],
 			paramScopes: [],
-			choiceScopes: []
-		}
+		};
 	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
@@ -124,7 +125,7 @@ function createMockIndex({
 			index = new Map();
 		}
 		return index;
-	})
+	});
 	fakeIndex.getAchievementReferences(Arg.any()).mimicks(achievement => {
 		let locations: Location[] = [];
 		for (let index of achievementReferences.values()) {
@@ -140,7 +141,7 @@ function createMockIndex({
 			references = new Map();
 		}
 		return references;
-	})
+	});
 	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getVariableReferences(Arg.all()).mimicks((variable: string) => {
 		let locations = [];
@@ -431,7 +432,7 @@ describe("Definitions", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let labels = new Map([[documentUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -454,7 +455,7 @@ describe("Definitions", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let labels = new Map([[documentUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(5, 2);
@@ -477,7 +478,7 @@ describe("Definitions", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let labels = new Map([[documentUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -498,7 +499,7 @@ describe("Definitions", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let labels = new Map([[documentUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -519,7 +520,7 @@ describe("Definitions", () => {
 				scene: "other-scene"
 			}];
 			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["other_label", {label: "other_label", location: labelLocation}]]);
 			let labels = new Map([[otherSceneUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -543,7 +544,7 @@ describe("Definitions", () => {
 				scene: "other-scene"
 			}];
 			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["other_label", {label: "other_label", location: labelLocation}]]);
 			let labels = new Map([[otherSceneUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -564,7 +565,7 @@ describe("Definitions", () => {
 				scene: "other-scene"
 			}];
 			let labelLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
-			let labelsIndex: IdentifierIndex = new Map([["other_label", labelLocation]]);
+			let labelsIndex: LabelIndex = new Map([["other_label", {label: "other_label", location: labelLocation}]]);
 			let labels = new Map([[otherSceneUri, labelsIndex]]);
 			let fakeDocument = createDocument("placeholder");
 			let position = Position.create(2, 2);
@@ -728,7 +729,7 @@ describe("Symbol References", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -755,7 +756,7 @@ describe("Symbol References", () => {
 				scene: ""
 			}];
 			let definitionLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", definitionLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: definitionLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -782,7 +783,7 @@ describe("Symbol References", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -810,9 +811,9 @@ describe("Symbol References", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
-			let otherSceneLabelsIndex: IdentifierIndex = new Map([["local_label", otherSceneLabelLocation]]);
+			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: otherSceneLabelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -840,9 +841,9 @@ describe("Symbol References", () => {
 				scene: "other-scene"
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
-			let otherSceneLabelsIndex: IdentifierIndex = new Map([["other_label", otherSceneLabelLocation]]);
+			let otherSceneLabelsIndex: LabelIndex = new Map([["other_label", {label: "other_label", location: otherSceneLabelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateGlobalVariables('file:///startup.txt', new Map());
@@ -872,9 +873,9 @@ describe("Symbol References", () => {
 				scene: "faker"
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
-			let otherSceneLabelsIndex: IdentifierIndex = new Map([["other_label", otherSceneLabelLocation]]);
+			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: otherSceneLabelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -1033,7 +1034,7 @@ describe("Symbol References", () => {
 			expect(references[1].location.range.start).to.eql({line: 5, character: 0});
 			expect(references[1].location.range.end).to.eql({line: 5, character: 5});
 		});
-	})
+	});
 });
 
 describe("Symbol Renames", () => {
@@ -1150,7 +1151,7 @@ describe("Symbol Renames", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -1182,7 +1183,7 @@ describe("Symbol Renames", () => {
 				scene: ""
 			}];
 			let definitionLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", definitionLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: definitionLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -1212,9 +1213,9 @@ describe("Symbol Renames", () => {
 				scene: ""
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
-			let otherSceneLabelsIndex: IdentifierIndex = new Map([["local_label", otherSceneLabelLocation]]);
+			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: otherSceneLabelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
@@ -1245,9 +1246,9 @@ describe("Symbol Renames", () => {
 				scene: "other-scene"
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			let otherSceneLabelLocation = Location.create(otherSceneUri, Range.create(7, 0, 7, 7));
-			let otherSceneLabelsIndex: IdentifierIndex = new Map([["other_label", otherSceneLabelLocation]]);
+			let otherSceneLabelsIndex: LabelIndex = new Map([["other_label", {label: "other_label", location: otherSceneLabelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateGlobalVariables('file:///startup.txt', new Map());
@@ -1278,7 +1279,7 @@ describe("Symbol Renames", () => {
 				scene: "faker"
 			}];
 			let labelLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let documentLabelsIndex: IdentifierIndex = new Map([["local_label", labelLocation]]);
+			let documentLabelsIndex: LabelIndex = new Map([["local_label", {label: "local_label", location: labelLocation}]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
 			index.updateFlowControlEvents(otherSceneUri, events);

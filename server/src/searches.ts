@@ -1,8 +1,8 @@
 import { Position, Location, TextDocument, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
-import { ProjectIndex, ReadonlyIdentifierIndex } from "./index";
+import { ProjectIndex, ReadonlyIdentifierIndex, Label, ReadonlyLabelIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';
-import { positionInRange, normalizeUri } from './utilities';
+import { positionInRange, normalizeUri, iteratorMap } from './utilities';
 
 /**
  * Type of a symbol.
@@ -83,7 +83,7 @@ export function findLabelLocation(
 	}
 
 	if (uri !== undefined) {
-		location = index.getLabels(uri).get(label);
+		location = index.getLabels(uri).get(label)?.location;
 	}
 
 	return location;
@@ -102,6 +102,7 @@ function findAchievementLocation(codename: string, index: ProjectIndex): Locatio
 
 /**
  * Find a symbol whose location encompasses the position.
+ * @param documentUri Document's uri.
  * @param position Position in the document.
  * @param index Index of symbols and their locations.
  */
@@ -110,6 +111,22 @@ function findMatchingSymbol(documentUri: string, position: Position, index: Read
 	for (let [symbol, location] of index.entries()) {
 		if (normalizeUri(location.uri) == documentUri && positionInRange(position, location.range)) {
 			return { symbol: symbol, location: location };
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Find a label whose location encompasses the position.
+ * @param documentUri Document's uri.
+ * @param position Position in the document.
+ * @param index Index of labels.
+ */
+function findMatchingLabel(documentUri: string, position: Position, index: ReadonlyLabelIndex): SymbolLocation | undefined {
+	documentUri = normalizeUri(documentUri);
+	for (let [symbol, label] of index.entries()) {
+		if (normalizeUri(label.location.uri) == documentUri && positionInRange(position, label.location.range)) {
+			return { symbol: symbol, location: label.location };
 		}
 	}
 	return undefined;
@@ -202,7 +219,7 @@ export function findDefinition(
 
 	// See if we have a created label at this location
 	let labels = projectIndex.getLabels(uri);
-	symbolLocation = findMatchingSymbol(uri, position, labels);
+	symbolLocation = findMatchingLabel(uri, position, labels);
 	if (symbolLocation !== undefined) {
 		definition = {
 			symbol: symbolLocation.symbol,

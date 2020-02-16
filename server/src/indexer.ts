@@ -1,7 +1,7 @@
 import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope } from './index';
+import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope, LabelIndex, Label } from './index';
 import { createDiagnosticFromLocation, comparePositions } from './utilities';
 
 /**
@@ -17,7 +17,7 @@ class IndexingState {
 	localVariables: IdentifierIndex = new Map();
 	variableReferences: VariableReferenceIndex = new Map();
 	scenes: Array<string> = [];
-	labels: IdentifierIndex = new Map();
+	labels: LabelIndex = new Map();
 	achievements: IdentifierIndex = new Map();
 	achievementReferences: VariableReferenceIndex = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
@@ -39,8 +39,8 @@ class IndexingState {
 function generateScopes(state: IndexingState): DocumentScopes {
 	let scopes: DocumentScopes = {
 		achievementVarScopes: [],
+		choiceScopes: state.choiceScopes,
 		paramScopes: [],
-		choiceScopes: state.choiceScopes
 	};
 	let documentLength = state.textDocument.getText().length;
 	let documentEndLocation = state.textDocument.positionAt(documentLength);
@@ -100,12 +100,12 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
 		// Find the return that's after that label
 		// This trick works b/c the array of events is built from the top of the document down
 		let firstReturn = returnEvents.find(
-			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation!.range.start.line; }
+			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation!.location.range.start.line; }
 		);
 		if (firstReturn === undefined) {
 			continue;
 		}
-		for (let variable of identifiersBetweenLocations(localVariables, labelLocation.range.end, firstReturn.commandLocation.range.start)) {
+		for (let variable of identifiersBetweenLocations(localVariables, labelLocation.location.range.end, firstReturn.commandLocation.range.start)) {
 			if (!subroutineVariables.has(variable)) {
 				subroutineVariables.set(variable, event.commandLocation);
 			}
@@ -163,7 +163,11 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				));
 			}
 			else {
-				indexingState.labels.set(symbol, location);
+				let label: Label = {
+					label: symbol,
+					location: location
+				};
+				indexingState.labels.set(symbol, label);
 			}
 		},
 

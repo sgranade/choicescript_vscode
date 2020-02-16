@@ -8,34 +8,9 @@ import {
 	CompletionItemKind
 } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex } from "./index";
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
-import { extractToMatchingDelimiter, comparePositions, positionInRange } from './utilities';
-
-/**
- * Generator for mapping a function over an iterable.
- * 
- * @param iterable Iterable to map over.
- * @param transform Function to map over iterable.
- */
-function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
-	for (var item of iterable) {
-		yield transform(item);
-	}
-}
-
-/**
- * Generator for filtering an iterable.
- * 
- * @param iterable Iterable to filter over.
- * @param transform Function to map over iterable.
- */
-function* iteratorFilter<T>(iterable: Iterable<T>, filter: Function) {
-	for (var item of iterable) {
-		if (filter(item))
-			yield item;
-	}
-}
+import { extractToMatchingDelimiter, comparePositions, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
 function generateCompletionsFromArray(array: ReadonlyArray<string>, 
 		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
@@ -46,7 +21,7 @@ function generateCompletionsFromArray(array: ReadonlyArray<string>,
 	}));
 }
 
-function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex, 
+function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex, 
 		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return Array.from(iteratorMap(index.keys(), (x: string) => ({
 		label: x, 

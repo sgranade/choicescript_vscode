@@ -22,11 +22,11 @@ export type ReadonlyVariableReferenceIndex = ReadonlyCaseInsensitiveMap<string, 
 /**
  * Type for a mutable index of labels.
  */
-export type LabelIndex = Map<string, Location>;
+export type LabelIndex = Map<string, Label>;
 /**
  * Type for an immutable index of labels.
  */
-export type ReadonlyLabelIndex = ReadonlyMap<string, Location>;
+export type ReadonlyLabelIndex = ReadonlyMap<string, Label>;
 /**
  * Type for a mutable index of references to labels.
  */
@@ -49,6 +49,15 @@ export interface FlowControlEvent {
 }
 
 /**
+ * A label, which can have an optional scope
+ */
+export interface Label {
+	label: string;
+	location: Location;
+	scope?: Range;
+}
+
+/**
  * A scope with a summary description
  */
 export interface SummaryScope {
@@ -61,8 +70,8 @@ export interface SummaryScope {
  */
 export interface DocumentScopes {
 	achievementVarScopes: Range[];
-	paramScopes: Range[];
 	choiceScopes: SummaryScope[];
+	paramScopes: Range[];
 }
 
 // TODO would be good to re-work this interface so it has more consistency
@@ -242,7 +251,7 @@ export class Index implements ProjectIndex {
 	_subroutineLocalVariables: Map<string, IdentifierIndex>;
 	_variableReferences: Map<string, VariableReferenceIndex>;
 	_scenes: Array<string>;
-	_localLabels: Map<string, IdentifierIndex>;
+	_localLabels: Map<string, LabelIndex>;
 	_flowControlEvents: Map<string, FlowControlEvent[]>;
 	_achievements: IdentifierIndex;
 	_achievementReferences: Map<string, VariableReferenceIndex>;
@@ -390,8 +399,8 @@ export class Index implements ProjectIndex {
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
+				choiceScopes: [],
 				paramScopes: [],
-				choiceScopes: []
 			};
 		}
 		return scopes;
