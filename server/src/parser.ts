@@ -885,29 +885,34 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 	if (command != "return") {
 		let firstToken = "";
 		let secondToken = "";
-		let spacing = "";
+		let secondTokenLocalIndex = 0;
+		let remainderLine = "";
+		let remainderLineLocalIndex = 0;
 		// Get the first token, which may be a {} reference
 		let token = extractTokenAtIndex(line, 0, "{}", "\\w-");
 		firstToken = (token !== undefined) ? token : "";
 		if (firstToken != "") {
-			line = line.substring(firstToken.length);
-			let m = line.match(/^(?<spacing>[ \t]+)/);
-			if (m !== null && m.groups !== undefined) {
-				spacing = m.groups.spacing;
-				token = extractTokenAtIndex(line, spacing.length);
-				secondToken = (token !== undefined) ? token : "";
-			}
+			remainderLineLocalIndex = firstToken.length;
+			remainderLine = line.substring(remainderLineLocalIndex);
 		}
 
-		// Evaluate expressions (if any)
+		// Evaluate first token expression (if any)
 		if (firstToken != "" && firstToken[0] == '{') {
 			parseExpression(firstToken.slice(1, -1), lineGlobalIndex+1, state);
 		}
-		if (secondToken != "" && secondToken[0] == '{') {
-			parseExpression(secondToken.slice(1, -1), lineGlobalIndex+firstToken.length+spacing.length+1, state);
-		}
-	
-		if (command.includes("_scene")) {
+
+		if (command.endsWith("_scene")) {
+			// There's a optional second token
+			let m = remainderLine.match(/^(?<spacing>[ \t]+)/);
+			if (m !== null && m.groups !== undefined) {
+				let spacing = m.groups.spacing;
+				token = extractTokenAtIndex(remainderLine, spacing.length);
+				secondToken = (token !== undefined) ? token : "";
+				secondTokenLocalIndex = remainderLineLocalIndex + spacing.length;
+				remainderLineLocalIndex = secondTokenLocalIndex + secondToken.length;
+				remainderLine = remainderLine.substring(spacing.length + secondToken.length);
+			}
+
 			scene = firstToken;
 			sceneLocation = Location.create(state.textDocument.uri, Range.create(
 				state.textDocument.positionAt(lineGlobalIndex),
@@ -915,8 +920,12 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 			));
 
 			if (secondToken != "") {
+				// Parse the second token if necessary
+				if (secondToken[0] == '{') {
+					parseExpression(secondToken.slice(1, -1), lineGlobalIndex+secondTokenLocalIndex+1, state);
+				}
 				label = secondToken;
-				let labelIndex = lineGlobalIndex + scene.length + spacing.length;
+				let labelIndex = lineGlobalIndex + secondTokenLocalIndex;
 				labelLocation = Location.create(state.textDocument.uri, Range.create(
 					state.textDocument.positionAt(labelIndex),
 					state.textDocument.positionAt(labelIndex + label.length)
@@ -929,6 +938,17 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 				state.textDocument.positionAt(lineGlobalIndex),
 				state.textDocument.positionAt(lineGlobalIndex + label.length)
 			));
+		}
+
+		if (command.startsWith("gosub") && remainderLine.trim() != "") {
+			// Handle potential parameters by tokenizing them as if they were an expression, but then consider them
+			// one at a time
+			let remainderLineGlobalIndex = lineGlobalIndex + remainderLineLocalIndex;
+			let expression = new Expression(remainderLine, remainderLineGlobalIndex, state.textDocument);
+			for (let token of expression.combinedTokens) {
+				// Let the expression parsing handle each token
+				parseExpression(token.text, token.index + remainderLineGlobalIndex, state);
+			}
 		}
 	}
 

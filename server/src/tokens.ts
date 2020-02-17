@@ -165,7 +165,7 @@ function isAnyDefiniteValue(token: ExpressionToken): boolean {
  * effective type.
  * @param token Token to find the type of.
  */
-function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType {
+export function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType {
 	let effectiveType = token.type;
 
 	// If we've got a function, find out what its effective type is

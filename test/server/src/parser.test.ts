@@ -150,7 +150,7 @@ describe("Parser", () => {
 			expect(received[0].labelLocation.range.end.line).to.equal(12);
 		});
 
-		it("should create a reference on goto with a reference scene", () => {
+		it("should create a reference on goto with a reference label", () => {
 			let fakeDocument = createDocument("*goto {variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -166,8 +166,56 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(15);
 		});
 
+		it("should create a reference on gosub with a reference label", () => {
+			let fakeDocument = createDocument("*gosub {variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(8);
+			expect(received[0].location.range.end.line).to.equal(16);
+		});
+
+		it("should create a variable reference for parameters passed to gosub", () => {
+			let fakeDocument = createDocument("*gosub label param");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("param");
+			expect(received[0].location.range.start.line).to.equal(13);
+			expect(received[0].location.range.end.line).to.equal(18);
+		});
+
 		it("should deal with no scene on a goto", () => {
 			let fakeDocument = createDocument("*goto label");
+			let received: Array<FlowControlEvent> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].scene).to.equal("");
+			expect(received[0].sceneLocation).is.undefined;
+		});
+
+		it("should deal with no scene on a gosub", () => {
+			let fakeDocument = createDocument("*gosub label");
 			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
@@ -232,6 +280,22 @@ describe("Parser", () => {
 			expect(received[0].labelLocation).is.undefined;
 		});
 
+		it("should deal with no label on gosub_scene", () => {
+			let fakeDocument = createDocument("*gosub_scene scenename");
+			let received: Array<FlowControlEvent> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("");
+			expect(received[0].labelLocation).is.undefined;
+		});
+
 		it("should deal with hyphenated scenes on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene 1-scenename");
 			let received: Array<FlowControlEvent> = [];
@@ -266,7 +330,7 @@ describe("Parser", () => {
 			expect(received[0].labelLocation.range.end.line).to.equal(31);
 		});
 
-		it("should create a reference if necessary from the label", () => {
+		it("should create a reference if necessary from a goto_scene label", () => {
 			let fakeDocument = createDocument("*goto_scene scenename {variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -281,6 +345,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(23);
 			expect(received[0].location.range.end.line).to.equal(31);
 
+		});
+
+		it("should create a reference from a parameter passed to gosub_scene", () => {
+			let fakeDocument = createDocument("*gosub_scene scenename label parameter");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("parameter");
+			expect(received[0].location.range.start.line).to.equal(29);
+			expect(received[0].location.range.end.line).to.equal(38);
 		});
 	});
 
@@ -1325,6 +1405,40 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("*create can only be used in");
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(7);
+			});
+		});
+
+		describe("Flow Control", () => {
+			it("should flag bad parameters passed to a gosub", () => {
+				let fakeDocument = createDocument("*gosub label -param");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].range.start.line).to.equal(13);
+				expect(received[0].range.end.line).to.equal(14);
+			});
+
+			it("should flag bad parameters passed to a gosub_scene", () => {
+				let fakeDocument = createDocument("*gosub_scene scene label *");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].range.start.line).to.equal(25);
+				expect(received[0].range.end.line).to.equal(26);
 			});
 		});
 
