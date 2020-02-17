@@ -163,7 +163,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			// In a multi-replace like @{}, only auto-complete if we're in the first section
 			if (isMultireplace) {
 				let section = text.slice(start + 1, index+1);
-				if (section == "}" || section == "\r") {
+				if (section == "}" || section == "\r" || section.trim() == "") {
 					returnVariableCompletions = true;
 				}
 				else if (section.length > 1 && section[0] == '(') {
