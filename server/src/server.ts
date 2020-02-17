@@ -25,7 +25,7 @@ import { ProjectIndex, Index } from "./index";
 import { generateDiagnostics } from './validator';
 import { uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
-import { findDefinition, findReferences, generateRenames } from './searches';
+import { findDefinitions, findReferences, generateRenames } from './searches';
 import { generateSymbols } from './structure';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -173,9 +173,9 @@ connection.onDefinition(
 	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
 		let document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document !== undefined) {
-			let definitionAndLocation = findDefinition(document, textDocumentPosition.position, projectIndex);
-			if (definitionAndLocation !== undefined) {
-				return definitionAndLocation.location;
+			let definitionAndLocations = findDefinitions(document, textDocumentPosition.position, projectIndex);
+			if (definitionAndLocations !== undefined) {
+				return definitionAndLocations[0].location;
 			}
 		}
 		return undefined;

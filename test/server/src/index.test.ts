@@ -6,7 +6,7 @@ import { Location, Range } from 'vscode-languageserver';
 import { 
 	Index,
 	FlowControlEvent,
-	VariableReferenceIndex, 
+	IdentifierMultiIndex, 
 } from '../../../server/src/index';
 
 const documentUri: string = "file:///faker.txt";
@@ -17,7 +17,7 @@ describe("Project Index", () => {
 		it("should combine variable references with differing capitalizations", () => {
 			let referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let originalReferences: VariableReferenceIndex = new Map([
+			let originalReferences: IdentifierMultiIndex = new Map([
 				["variable", [referenceLocation1]],
 				["vArIaBlE", [referenceLocation2]]
 			]);

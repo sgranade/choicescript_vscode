@@ -3,7 +3,7 @@ import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, TextDocument, Position } from 'vscode-languageserver';
 
-import { ProjectIndex, IdentifierIndex, VariableReferenceIndex, DocumentScopes, LabelReferenceIndex, FlowControlEvent, LabelIndex, Label } from '../../../server/src/index';
+import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label } from '../../../server/src/index';
 import { generateDiagnostics } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
@@ -20,7 +20,7 @@ function createDocument(text: string, uri: string = fakeDocumentUri): Substitute
 
 interface IndexArgs {
 	globalVariables?: IdentifierIndex;
-	localVariables?: IdentifierIndex;
+	localVariables?: IdentifierMultiIndex;
 	subroutineVariables?: IdentifierIndex;
 	startupUri?: string;
 	labels?: LabelIndex;
@@ -28,7 +28,7 @@ interface IndexArgs {
 	sceneList?: string[];
 	sceneFileUri?: string;
 	achievements?: IdentifierIndex;
-	variableReferences?: VariableReferenceIndex;
+	variableReferences?: IdentifierMultiIndex;
 	flowControlEvents?: FlowControlEvent[];
 	scopes?: DocumentScopes;
 }
@@ -154,7 +154,7 @@ describe("Validator", () => {
 	describe("Variable Reference Validation", () => {
 		it("should flag missing variables", () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["unknown", [location]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 	
@@ -167,8 +167,8 @@ describe("Validator", () => {
 		it("should not flag existing local variables", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
+			let localVariables = new Map([["local_var", [createLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
@@ -180,8 +180,8 @@ describe("Validator", () => {
 		it("should flag a local variable referenced before it's created", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
+			let localVariables = new Map([["local_var", [createLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 	
@@ -191,13 +191,27 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
 		});
 
+		it("should not flag a local variable with a second creation location after the reference", () => {
+			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let otherCreateLocation = Location.create(fakeDocumentUri, Range.create(5, 0, 5, 5));
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(3, 0, 3, 5));
+			let localVariables = new Map([["local_var", [createLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should not flag a local variable referenced before it's created if a global variable exists", () => {
 			let localCreateLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalCreateLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let localVariables: Map<string, Location> = new Map([["var", localCreateLocation]]);
+			let localVariables = new Map([["var", [localCreateLocation]]]);
 			let globalVariables: Map<string, Location> = new Map([["var", globalCreateLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["var", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ 
 				startupUri: startupUri,
@@ -217,9 +231,9 @@ describe("Validator", () => {
 			let gosubLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let createLocation = Location.create(fakeDocumentUri, Range.create(21, 0, 21, 5));
-			let localVariables: Map<string, Location> = new Map([["local_var", createLocation]]);
+			let localVariables = new Map([["local_var", [createLocation]]]);
 			let subroutineVariables: Map<string, Location> = new Map([["local_var", gosubLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["local_var", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({
 				localVariables: localVariables, variableReferences: variableReferences, subroutineVariables: subroutineVariables
@@ -234,7 +248,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
@@ -247,7 +261,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(startupUri, Range.create(1, 0, 1, 5));
 			let globalVariables: Map<string, Location> = new Map([["global_var", createLocation]]);
-			let variableReferences: VariableReferenceIndex = new Map([["global_var", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder", startupUri);
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 	
@@ -258,7 +272,7 @@ describe("Validator", () => {
 		});
 
 		it("should not flag built-in variables", () => {
-			let variableReferences: VariableReferenceIndex = new Map([["choice_randomtest", [Substitute.for<Location>()]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["choice_randomtest", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 	
@@ -270,7 +284,7 @@ describe("Validator", () => {
 		it("should flag achievement variables if not instantiated", () => {
 			let achievements: Map<string, Location> = new Map([["codename", Substitute.for<Location>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements});
 	
@@ -288,7 +302,7 @@ describe("Validator", () => {
 				paramScopes: [],
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
 	
@@ -305,7 +319,7 @@ describe("Validator", () => {
 				paramScopes: [],
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["choice_achieved_othername", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["choice_achieved_othername", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, achievements: achievements, scopes: scopes});
 
@@ -323,7 +337,7 @@ describe("Validator", () => {
 				choiceScopes: []
 			};
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
-			let variableReferences: VariableReferenceIndex = new Map([["param_1", [referenceLocation]]]);
+			let variableReferences: IdentifierMultiIndex = new Map([["param_1", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({variableReferences: variableReferences, scopes: scopes});
 	
@@ -357,8 +371,8 @@ describe("Validator", () => {
 	describe("Variable Creation Commands Validation", () => {
 		it("should flag local variables with the same name as global ones", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
-			let globalVariables: IdentifierIndex = new Map([["global_var", createLocation]]);
-			let localVariables: IdentifierIndex = new Map([["global_var", Substitute.for<Location>()]]);
+			let globalVariables = new Map([["global_var", createLocation]]);
+			let localVariables = new Map([["global_var", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, localVariables: localVariables });
 	

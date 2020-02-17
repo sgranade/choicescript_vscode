@@ -34,14 +34,20 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 	// Only offer local variables that have been created, taking into account subroutine-defined variables
 	let localVariables = new Map(projectIndex.getLocalVariables(document.uri));
 	for (let [variable, location] of projectIndex.getSubroutineLocalVariables(document.uri).entries()) {
-		localVariables.set(variable, location);
+		let existingLocations = Array.from(localVariables.get(variable) ?? []);
+		existingLocations.push(location);
+		localVariables.set(variable, existingLocations);
 	}
 
-	let availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, location]: [string, Location]) => {
-		return comparePositions(location.range.end, position) <= 0; 
+	let availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {
+		for (var location of locations) {
+			if (comparePositions(location.range.end, position) <= 0)
+				return true;
+		}
+		return false;
 	});
 
-	let completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, Location]) => ({
+	let completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({
 			label: variable, 
 			kind: CompletionItemKind.Variable, 
 			data: "variable-local"

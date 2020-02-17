@@ -1,7 +1,7 @@
 import { TextDocument, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ProjectIndex } from "./index";
-import { findVariableCreationLocation, findLabelLocation } from "./searches";
+import { findVariableCreationLocations, findLabelLocation } from "./searches";
 import { 
 	builtinVariables,
 	uriIsStartupFile, 
@@ -47,12 +47,14 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 
 	// Make sure no local variables have the same name as global ones
 	let globalVariables = state.projectIndex.getGlobalVariables();
-	for (let [variable, location] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
-		if (globalVariables.has(variable)) {
-			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Information, location,
-				`*temp variable "${variable}" has the same name as a global variable`
+	for (let [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
+		for (let location of locations) {
+			if (globalVariables.has(variable)) {
+				diagnostics.push(createDiagnosticFromLocation(
+					DiagnosticSeverity.Information, location,
+					`*temp variable "${variable}" has the same name as a global variable`
 				));
+			}
 		}
 	}
 
@@ -121,19 +123,22 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 	}
 	for (let [variable, locations] of references.entries()) {
 		// Effective creation locations take precedence
-		let creationLocation = findVariableCreationLocation(variable, true, state.textDocument, state.projectIndex);
+		let creationLocations = findVariableCreationLocations(variable, true, state.textDocument, state.projectIndex);
 
-		if (creationLocation) {
+		if (creationLocations !== undefined) {
 			// Make sure we don't reference variables before they're created
 			let badLocations = locations.filter((location: Location) => {
-				return ((location.uri == creationLocation!.uri) && 
-				(comparePositions(location.range.end, creationLocation!.range.start) < 0));
+				for (let creationLocation of creationLocations!) {
+					if ((location.uri == creationLocation.uri) &&
+						(comparePositions(location.range.end, creationLocation.range.start) >= 0)) {
+						return false;
+					}
+				}
+				return true;
 			});
 			if (badLocations.length > 0) {
 				// Handle the edge case where a local variable is referenced before it's created,
 				// but there's a global variable with the same name
-				let tempy1 = uriIsStartupFile(state.textDocument.uri);
-				let tempy2 = state.projectIndex.getGlobalVariables();
 				if (uriIsStartupFile(state.textDocument.uri) || !state.projectIndex.getGlobalVariables().has(variable)) {
 					let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
 						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,

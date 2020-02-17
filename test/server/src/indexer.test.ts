@@ -6,7 +6,7 @@ import { TextDocument, Position, Diagnostic } from 'vscode-languageserver';
 import { 
 	ProjectIndex, 
 	IdentifierIndex, 
-	VariableReferenceIndex, 
+	IdentifierMultiIndex, 
 	LabelIndex, 
 	FlowControlEvent, 
 	DocumentScopes 
@@ -41,28 +41,32 @@ describe("Indexer", () => {
 
 		it("should index locations of created local variables", () => {
 			let fakeDocument = createDocument("*temp variable 3");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').range.start.line).to.equal(6);
-			expect(received[0].get('variable').range.end.line).to.equal(14);
+			expect(received[0].get('variable').length).to.eql(1);
+			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
+			expect(received[0].get('variable')[0].range.end.line).to.equal(14);
 		});
 
-		it("should only index first locations of created local variables", () => {
+		it("should index all created locations local variables", () => {
 			let fakeDocument = createDocument("*temp variable 3\n*temp variable 1");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').range.start.line).to.equal(6);
-			expect(received[0].get('variable').range.end.line).to.equal(14);
+			expect(received[0].get('variable').length).to.eql(2);
+			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
+			expect(received[0].get('variable')[0].range.end.line).to.equal(14);
+			expect(received[0].get('variable')[1].range.start.line).to.equal(23);
+			expect(received[0].get('variable')[1].range.end.line).to.equal(31);
 		});
 
 		it("should index effective locations of local variables created in a subroutine", () => {
@@ -83,9 +87,9 @@ describe("Indexer", () => {
 	describe("Symbol Command Indexing", () => {
 		it("should index bare variables in the command", () => {
 			let fakeDocument = createDocument("*set variable 3");
-			let receivedReferences: Array<VariableReferenceIndex> = [];
+			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index); });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -97,9 +101,9 @@ describe("Indexer", () => {
 	describe("Multireplace Indexing", () => {
 		it("should index variables in the test", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
-			let receivedReferences: Array<VariableReferenceIndex> = [];
+			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index); });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -111,9 +115,9 @@ describe("Indexer", () => {
 	describe("Variable Reference Command Indexing", () => {
 		it("should index local variables directly after a reference command", () => {
 			let fakeDocument = createDocument("*if variable > 1");
-			let receivedReferences: Array<VariableReferenceIndex> = [];
+			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: VariableReferenceIndex) => { receivedReferences.push(index); });
+			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -261,7 +265,7 @@ describe("Indexer", () => {
 
 		it("should index a reference to an achievement", () => {
 			let fakeDocument = createDocument("*achieve code_name");
-			let receivedAchievementReferences: VariableReferenceIndex[] = [];
+			let receivedAchievementReferences: IdentifierMultiIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateAchievementReferences(Arg.any()).mimicks(
 				(uri, index) => { receivedAchievementReferences.push(index); }

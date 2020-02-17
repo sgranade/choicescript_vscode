@@ -1,8 +1,8 @@
 import { Position, Location, TextDocument, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
-import { ProjectIndex, ReadonlyIdentifierIndex, Label, ReadonlyLabelIndex } from "./index";
+import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';
-import { positionInRange, normalizeUri, iteratorMap } from './utilities';
+import { positionInRange, normalizeUri } from './utilities';
 
 /**
  * Type of a symbol.
@@ -34,32 +34,35 @@ export interface SymbolInformation {
 }
 
 /**
- * Find the location where a variable was created.
+ * Find the location or locations where a variable was created.
  * @param variable Variable to get.
  * @param returnEffectiveLocations Whether to return effective creation locations or not. 
  * @param document Document in which to look for local variables.
  * @param index Project index.
  */
-export function findVariableCreationLocation(
+export function findVariableCreationLocations(
 	variable: string, considerEffectiveLocation: boolean, 
-	document: TextDocument, index: ProjectIndex): Location | undefined {
+	document: TextDocument, index: ProjectIndex): Location[] | undefined {
 	// Precedence order: effective location variable location; local; global
 	let location: Location | undefined = undefined;
 	if (considerEffectiveLocation) {
 		location = index.getSubroutineLocalVariables(document.uri).get(variable);
 		if (location !== undefined) {
-			return location;
+			return [location];
 		}
 	}
 
-	location = index.getLocalVariables(document.uri).get(variable);
-	if (location !== undefined) {
-		return location;
+	let locations = index.getLocalVariables(document.uri).get(variable);
+	if (locations !== undefined && locations.length != 0) {
+		return Array.from(locations);
 	}
 
 	location = index.getGlobalVariables().get(variable);
+	if (location !== undefined) {
+		return [location];
+	}
 
-	return location;
+	return undefined;
 }
 
 /**
@@ -117,6 +120,26 @@ function findMatchingSymbol(documentUri: string, position: Position, index: Read
 }
 
 /**
+ * Find a symbol with one of multiple locations that encompasses the position.
+ * @param documentUri Document's uri.
+ * @param position Position in the document.
+ * @param index Index of symbols and their locations.
+ */
+function findMatchingMultiSymbol(documentUri: string, position: Position, index: ReadonlyIdentifierMultiIndex): SymbolLocation[] | undefined {
+	documentUri = normalizeUri(documentUri);
+	for (let [symbol, locations] of index.entries()) {
+		for (let location of locations) {
+			if (normalizeUri(location.uri) == documentUri && positionInRange(position, location.range)) {
+				return locations.map(location => {
+					return { symbol: symbol, location: location };
+				});
+			}
+		}
+	}
+	return undefined;
+}
+
+/**
  * Find a label whose location encompasses the position.
  * @param documentUri Document's uri.
  * @param position Position in the document.
@@ -134,46 +157,50 @@ function findMatchingLabel(documentUri: string, position: Position, index: Reado
 
 /**
  * Find where a symbol at a position is defined in the project.
+ * 
+ * Note that, for local variables, multiple definitions are possible.
  * @param document Current document.
  * @param position Position in the document.
  * @param projectIndex Project index.
- * @returns Symbol, location, type, and whether it's a definition (it is!), all undefined if not found.
+ * @returns Array of symbol, location, type, and whether it's a definition (it is!), or undefined if not found.
  */
-export function findDefinition(
+export function findDefinitions(
 	document: TextDocument, 
 	position: Position, 
-	projectIndex: ProjectIndex): SymbolInformation | undefined {
-	let definition: SymbolInformation | undefined = undefined;
+	projectIndex: ProjectIndex): SymbolInformation[] | undefined {
+	let definitions: SymbolInformation[] | undefined = undefined;
 	let uri = document.uri;
 
 	// See if we have a created local variable at this location
 	let localVariables = projectIndex.getLocalVariables(uri);
-	let symbolLocation = findMatchingSymbol(uri, position, localVariables);
-	if (symbolLocation !== undefined) {
+	let symbolLocations = findMatchingMultiSymbol(uri, position, localVariables);
+	if (symbolLocations !== undefined) {
 		let type = SymbolType.LocalVariable;
 		if (projectIndex.isStartupFileUri(uri)) {
 			type = SymbolType.GlobalVariable;
 		}
-		definition = {
-			symbol: symbolLocation.symbol,
-			location: symbolLocation.location,
-			type: type,
-			isDefinition: true
-		};
-		return definition;
+		definitions = symbolLocations.map(symbolLocation => {
+			return {
+				symbol: symbolLocation.symbol,
+				location: symbolLocation.location,
+				type: type,
+				isDefinition: true
+			};
+		});
+		return definitions;
 	}
 
 	// See if we have a created global variable at this location
 	if (projectIndex.isStartupFileUri(uri)) {
-		symbolLocation = findMatchingSymbol(uri, position, projectIndex.getGlobalVariables());
+		let symbolLocation = findMatchingSymbol(uri, position, projectIndex.getGlobalVariables());
 		if (symbolLocation !== undefined) {
-			definition = {
+			definitions = [{
 				symbol: symbolLocation.symbol,
 				location: symbolLocation.location,
 				type: SymbolType.GlobalVariable,
 				isDefinition: true
-			};
-			return definition;
+			}];
+			return definitions;
 		}
 	}
 
@@ -184,18 +211,20 @@ export function findDefinition(
 			return (positionInRange(position, location.range));
 		});
 		if (match !== undefined) {
-			let location = findVariableCreationLocation(variable, false, document, projectIndex);
-			if (location !== undefined) {
+			let locations = findVariableCreationLocations(variable, false, document, projectIndex);
+			if (locations !== undefined) {
 				let type = SymbolType.LocalVariable;
-				if (projectIndex.isStartupFileUri(location.uri)) {
+				if (projectIndex.isStartupFileUri(locations[0].uri)) {
 					type = SymbolType.GlobalVariable;
 				}
-				definition = {
-					symbol: variable,
-					location: location,
-					type: type,
-					isDefinition: true
-				};
+				definitions = locations.map(location => {
+					return {
+						symbol: variable,
+						location: location,
+						type: type,
+						isDefinition: true
+					};
+				});
 			}
 			else {
 				let achievements = projectIndex.getAchievements();
@@ -203,31 +232,31 @@ export function findDefinition(
 				if (codename !== undefined) {
 					let location = achievements.get(codename);
 					if (location !== undefined) {
-						definition = {
+						definitions = [{
 							symbol: codename,
 							location: location,
 							type: SymbolType.Achievement,
 							isDefinition: true
-						};
+						}];
 					}
 				}
 			}
 
-			return definition; // Found or not, we had a reference match, so return
+			return definitions; // Found or not, we had a reference match, so return
 		}
 	}
 
 	// See if we have a created label at this location
 	let labels = projectIndex.getLabels(uri);
-	symbolLocation = findMatchingLabel(uri, position, labels);
+	let symbolLocation = findMatchingLabel(uri, position, labels);
 	if (symbolLocation !== undefined) {
-		definition = {
+		definitions = [{
 			symbol: symbolLocation.symbol,
 			location: symbolLocation.location,
 			type: SymbolType.Label,
 			isDefinition: true
-		};
-		return definition;
+		}];
+		return definitions;
 	}
 
 	// See if we have a label reference at this location
@@ -239,28 +268,28 @@ export function findDefinition(
 	if (event !== undefined) {
 		let location = findLabelLocation(event.label, event.scene, document, projectIndex);
 		if (location !== undefined) {
-			definition = {
+			definitions = [{
 				symbol: event.label,
 				location: location,
 				type: SymbolType.Label,
 				isDefinition: true
-			};
+			}];
 		}
 
-		return definition; // Found or not, we had a reference match, so return
+		return definitions; // Found or not, we had a reference match, so return
 	}
 
 	// See if we have an achievement definition at this location
 	let achievements = projectIndex.getAchievements();
 	symbolLocation = findMatchingSymbol(uri, position, achievements);
 	if (symbolLocation !== undefined) {
-		definition = {
+		definitions = [{
 			symbol: symbolLocation.symbol,
 			location: symbolLocation.location,
 			type: SymbolType.Achievement,
 			isDefinition: true
-		};
-		return definition;
+		}];
+		return definitions;
 	}
 
 	// See if we have an achievement reference at this location
@@ -272,18 +301,18 @@ export function findDefinition(
 		if (match !== undefined) {
 			let location = findAchievementLocation(codename, projectIndex);
 			if (location !== undefined) {
-				definition = {
+				definitions = [{
 					symbol: codename,
 					location: location,
 					type: SymbolType.Achievement,
 					isDefinition: true
-				};
+				}];
 			}
-			return definition;
+			return definitions;
 		}
 	}
 
-	return definition;
+	return definitions;
 }
 
 /**
@@ -387,23 +416,24 @@ export function findReferences(
 	): SymbolInformation[] | undefined {
 	let information: SymbolInformation[] = [];
 
-	let definition = findDefinition(textDocument, position, projectIndex);
-	if (definition === undefined) {
+	let definitions = findDefinitions(textDocument, position, projectIndex);
+	if (definitions === undefined) {
 		return undefined;
 	}
 
-	if (definition.type == SymbolType.GlobalVariable || definition.type == SymbolType.LocalVariable) {
-		information = findVariableReferences(definition, projectIndex);
+	let firstDefinition = definitions[0];
+	if (firstDefinition.type == SymbolType.GlobalVariable || firstDefinition.type == SymbolType.LocalVariable) {
+		information = findVariableReferences(firstDefinition, projectIndex);
 	}
-	else if (definition.type == SymbolType.Label) {
-		information = findLabelReferences(definition, projectIndex);
+	else if (firstDefinition.type == SymbolType.Label) {
+		information = findLabelReferences(firstDefinition, projectIndex);
 	}
-	else if (definition.type == SymbolType.Achievement) {
-		information = findAchievementReferences(definition, projectIndex);
+	else if (firstDefinition.type == SymbolType.Achievement) {
+		information = findAchievementReferences(firstDefinition, projectIndex);
 	}
 
 	if (context.includeDeclaration) {
-		information.push(definition);
+		information.push(...definitions);
 	}
 
 	if (information.length == 0) {

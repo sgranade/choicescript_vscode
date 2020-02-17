@@ -1,7 +1,7 @@
 import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, VariableReferenceIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope, LabelIndex, Label } from './index';
+import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
 import { createDiagnosticFromLocation, comparePositions } from './utilities';
 
 /**
@@ -14,12 +14,12 @@ class IndexingState {
 	textDocument: TextDocument;
 
 	globalVariables: IdentifierIndex = new Map();
-	localVariables: IdentifierIndex = new Map();
-	variableReferences: VariableReferenceIndex = new Map();
+	localVariables: IdentifierMultiIndex = new Map();
+	variableReferences: IdentifierMultiIndex = new Map();
 	scenes: Array<string> = [];
 	labels: LabelIndex = new Map();
 	achievements: IdentifierIndex = new Map();
-	achievementReferences: VariableReferenceIndex = new Map();
+	achievementReferences: IdentifierMultiIndex = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
 	parseErrors: Array<Diagnostic> = [];
 
@@ -67,11 +67,13 @@ function generateScopes(state: IndexingState): DocumentScopes {
  * @param end End position.
  */
 function* identifiersBetweenLocations(
-	identifiers: ReadonlyIdentifierIndex, start: Position, end: Position) {
-	for (let [identifier, location] of identifiers.entries()) {
-		if (comparePositions(location.range.start, start) >= 0 &&
+	identifiers: ReadonlyIdentifierMultiIndex, start: Position, end: Position) {
+	for (let [identifier, locations] of identifiers.entries()) {
+		for (let location of locations) {
+			if (comparePositions(location.range.start, start) >= 0 &&
 			comparePositions(location.range.start, end) <= 0) {
-			yield identifier;
+				yield identifier;
+			}
 		}
 	}
 }
@@ -151,8 +153,9 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			if (!indexingState.localVariables.has(symbol))
-				indexingState.localVariables.set(symbol, location);
+			let locations = indexingState.localVariables.get(symbol) ?? [];
+			locations.push(location);
+			indexingState.localVariables.set(symbol, locations);
 		},
 
 		onLabelCreate: (symbol: string, location: Location, state: ParsingState) => {

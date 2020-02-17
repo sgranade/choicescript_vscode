@@ -12,13 +12,13 @@ export type IdentifierIndex = CaseInsensitiveMap<string, Location>;
  */
 export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Location>;
 /**
- * Type for a mutable index of references to variables.
+ * Type for a mutable index of identifiers that can exist in multiple locations, like references to variables.
  */
-export type VariableReferenceIndex = CaseInsensitiveMap<string, Array<Location>>;
+export type IdentifierMultiIndex = CaseInsensitiveMap<string, Array<Location>>;
 /**
- * Type for an immutable index of references to variables.
+ * Type for an immutable index of identifiers that can exist in multiple locations.
  */
-export type ReadonlyVariableReferenceIndex = ReadonlyCaseInsensitiveMap<string, ReadonlyArray<Location>>;
+export type ReadonlyIdentifierMultiIndex = ReadonlyCaseInsensitiveMap<string, ReadonlyArray<Location>>;
 /**
  * Type for a mutable index of labels.
  */
@@ -89,10 +89,12 @@ export interface ProjectIndex {
 	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
 	/**
 	 * Update the index of variable definitions local to a scene.
+	 *
+	 * Note that local variables can be defined multiple times in a scene.
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of local variables.
 	 */
-	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
+	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
 	/**
 	 * Update the index of variables defined in subroutines.
 	 * 
@@ -107,7 +109,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to variables.
 	 */
-	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
+	updateVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
 	/**
 	 * Update the list of scene names in the project.
 	 * @param scenes New list of scene names.
@@ -138,7 +140,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to achievements.
 	 */
-	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex): void;
+	updateAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
 	/**
 	 * Update the index of scopes.
 	 * @param textDocumentUri URI to document whose index is to be updated.
@@ -172,7 +174,7 @@ export interface ProjectIndex {
 	 * Get the local variables in a scene file.
 	 * @param sceneUri Scene document URI.
 	 */
-	getLocalVariables(sceneUri: string): ReadonlyIdentifierIndex;
+	getLocalVariables(sceneUri: string): ReadonlyIdentifierMultiIndex;
 	/**
 	 * Get the local variables defined in a scene file's subroutines.
 	 * @param sceneUri Scene document URI.
@@ -194,7 +196,7 @@ export interface ProjectIndex {
 	 * created by *check_achivement commands.
 	 * @param sceneUri Scene document URI.
 	 */
-	getDocumentAchievementReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
+	getDocumentAchievementReferences(sceneUri: string): ReadonlyIdentifierMultiIndex;
 	/**
 	 * Get all references to an achievement across all documents.
 	 * 
@@ -207,7 +209,7 @@ export interface ProjectIndex {
 	 * Get all references to variables in one scene document.
 	 * @param sceneUri Scene document URI.
 	 */
-	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex;
+	getDocumentVariableReferences(sceneUri: string): ReadonlyIdentifierMultiIndex;
 	/**
 	 * Get all references to a variable across all documents.
 	 * @param variable Variable to find references to.
@@ -247,14 +249,14 @@ export interface ProjectIndex {
 export class Index implements ProjectIndex {
 	_startupFileUri: string;
 	_globalVariables: IdentifierIndex;
-	_localVariables: Map<string, IdentifierIndex>;
+	_localVariables: Map<string, IdentifierMultiIndex>;
 	_subroutineLocalVariables: Map<string, IdentifierIndex>;
-	_variableReferences: Map<string, VariableReferenceIndex>;
+	_variableReferences: Map<string, IdentifierMultiIndex>;
 	_scenes: Array<string>;
 	_localLabels: Map<string, LabelIndex>;
 	_flowControlEvents: Map<string, FlowControlEvent[]>;
 	_achievements: IdentifierIndex;
-	_achievementReferences: Map<string, VariableReferenceIndex>;
+	_achievementReferences: Map<string, IdentifierMultiIndex>;
 	_documentScopes: Map<string, DocumentScopes>;
 	_parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
@@ -275,13 +277,13 @@ export class Index implements ProjectIndex {
 		this._startupFileUri = normalizeUri(textDocumentUri);
 		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
-	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
 		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
 	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
 		this._subroutineLocalVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateVariableReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
+	updateVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
 		this._variableReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	updateSceneList(scenes: Array<string>) {
@@ -296,7 +298,7 @@ export class Index implements ProjectIndex {
 	updateAchievements(newIndex: IdentifierIndex) {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
-	updateAchievementReferences(textDocumentUri: string, newIndex: VariableReferenceIndex) {
+	updateAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
 		this._achievementReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes) {
@@ -320,7 +322,7 @@ export class Index implements ProjectIndex {
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
 	}
-	getLocalVariables(sceneUri: string): ReadonlyIdentifierIndex {
+	getLocalVariables(sceneUri: string): ReadonlyIdentifierMultiIndex {
 		let index = this._localVariables.get(normalizeUri(sceneUri));
 		if (index === undefined)
 			index = new Map();
@@ -341,7 +343,7 @@ export class Index implements ProjectIndex {
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
 	}
-	getDocumentAchievementReferences(sceneUri: string): ReadonlyVariableReferenceIndex {
+	getDocumentAchievementReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
 		let index = this._achievementReferences.get(normalizeUri(sceneUri));
 		if (index === undefined) {
 			index = new Map();
@@ -357,7 +359,7 @@ export class Index implements ProjectIndex {
 		}
 		return locations;
 	}
-	getDocumentVariableReferences(sceneUri: string): ReadonlyVariableReferenceIndex {
+	getDocumentVariableReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
 		let index = this._variableReferences.get(normalizeUri(sceneUri));
 		if (index === undefined) {
 			index = new Map();

@@ -37,13 +37,15 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 		};
 	}));
 
-	info.push(...Array.from(projectIndex.getLocalVariables(textDocument.uri)).map(([variable, location]): SymbolInformation => {
-		return {
-			name: variable,
-			kind: SymbolKind.Variable,
-			location: location
-		};
-	}));
+	for (let [variable, locations] of projectIndex.getLocalVariables(textDocument.uri)) {
+		for (let location of locations) {
+			info.push({
+				name: variable,
+				kind: SymbolKind.Variable,
+				location: location
+			});
+		}
+	}
 
 	if (uriIsStartupFile(textDocument.uri)) {
 		info.push(...Array.from(projectIndex.getGlobalVariables()).map(([variable, location]): SymbolInformation => {
