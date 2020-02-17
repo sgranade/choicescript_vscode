@@ -18,16 +18,16 @@ function createDocument(text: string,
 }
 
 interface CommandLine {
-	prefix: string,
-	command: string,
-	spacing: string,
-	line: string,
-	location: Location
+	prefix: string;
+	command: string;
+	spacing: string;
+	line: string;
+	location: Location;
 }
 
 interface Symbol {
-	text: string,
-	location: Location
+	text: string;
+	location: Location;
 }
 
 describe("Parser", () => {
@@ -41,7 +41,7 @@ describe("Parser", () => {
 				received.push({
 					prefix: prefix, command: command, spacing: spacing, line: line, location: l
 				});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -58,7 +58,7 @@ describe("Parser", () => {
 				received.push({
 					prefix: prefix, command: command, spacing: spacing, line: line, location: l
 				});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -74,7 +74,7 @@ describe("Parser", () => {
 				received.push({
 					prefix: prefix, command: command, spacing: spacing, line: line, location: l
 				});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -91,7 +91,7 @@ describe("Parser", () => {
 				received.push({
 					prefix: prefix, command: command, spacing: spacing, line: line, location: l
 				});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -99,7 +99,7 @@ describe("Parser", () => {
 			expect(received[0].spacing).to.equal("  ");
 			expect(received[0].line).to.equal("with arguments ");
 		});
-	})
+	});
 
 	describe("Flow Control Command Parsing", () => {
 		it("should callback on return", () => {
@@ -109,12 +109,12 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 				received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
-		})
+		});
 
 		it("should callback on goto", () => {
 			let fakeDocument = createDocument("*goto label");
@@ -123,7 +123,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -131,7 +131,7 @@ describe("Parser", () => {
 			expect(received[0].label).to.equal("label");
 			expect(received[0].labelLocation.range.start.line).to.equal(6);
 			expect(received[0].labelLocation.range.end.line).to.equal(11);
-		})
+		});
 
 		it("should callback on gosub", () => {
 			let fakeDocument = createDocument("*gosub label");
@@ -140,7 +140,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});	
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -148,7 +148,7 @@ describe("Parser", () => {
 			expect(received[0].label).to.equal("label");
 			expect(received[0].labelLocation.range.start.line).to.equal(7);
 			expect(received[0].labelLocation.range.end.line).to.equal(12);
-		})
+		});
 
 		it("should create a reference on goto with a reference scene", () => {
 			let fakeDocument = createDocument("*goto {variable}");
@@ -156,7 +156,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -164,7 +164,7 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(7);
 			expect(received[0].location.range.end.line).to.equal(15);
-		})
+		});
 
 		it("should deal with no scene on a goto", () => {
 			let fakeDocument = createDocument("*goto label");
@@ -173,14 +173,14 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("");
 			expect(received[0].sceneLocation).is.undefined;
-		})
+		});
 
 		it("should callback on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename");
@@ -189,7 +189,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -197,7 +197,7 @@ describe("Parser", () => {
 			expect(received[0].scene).to.equal("scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(12);
 			expect(received[0].sceneLocation.range.end.line).to.equal(21);
-		})
+		});
 
 		it("should callback on gosub_scene", () => {
 			let fakeDocument = createDocument("*gosub_scene scenename");
@@ -206,7 +206,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -214,7 +214,7 @@ describe("Parser", () => {
 			expect(received[0].scene).to.equal("scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(13);
 			expect(received[0].sceneLocation.range.end.line).to.equal(22);
-		})
+		});
 
 		it("should deal with no label on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename");
@@ -223,14 +223,14 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("");
 			expect(received[0].labelLocation).is.undefined;
-		})
+		});
 
 		it("should deal with hyphenated scenes on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene 1-scenename");
@@ -239,7 +239,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -247,7 +247,7 @@ describe("Parser", () => {
 			expect(received[0].scene).to.equal("1-scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(12);
 			expect(received[0].sceneLocation.range.end.line).to.equal(23);
-		})
+		});
 
 		it("should send scene and label on goto_scene", () => {
 			let fakeDocument = createDocument("*goto_scene scenename labelname");
@@ -256,7 +256,7 @@ describe("Parser", () => {
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
 					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -272,7 +272,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -427,7 +427,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onGlobalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -443,7 +443,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -459,7 +459,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -475,7 +475,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -494,7 +494,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -510,7 +510,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLabelCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -519,7 +519,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(7);
 			expect(received[0].location.range.end.line).to.equal(15);
 		});
-	})
+	});
 	
 	describe("Symbol-Manipulating Command Parsing", () => {
 		it("should callback on delete commands", () => {
@@ -528,7 +528,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -544,7 +544,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -560,7 +560,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -576,7 +576,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -592,7 +592,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -608,7 +608,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -624,7 +624,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -640,7 +640,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -654,7 +654,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -670,7 +670,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -689,7 +689,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -706,7 +706,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -720,7 +720,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -735,7 +735,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -749,7 +749,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -763,7 +763,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -776,14 +776,14 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("final_var");
 		});
-	})
+	});
 	
 	describe("Replace Parsing", () => {
 		it("should callback on bare variables", () => {
@@ -792,7 +792,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -808,7 +808,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -824,7 +824,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -840,7 +840,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -859,7 +859,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -875,7 +875,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -884,7 +884,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(8);
 		});
-	})
+	});
 	
 	describe("Multireplace Parsing", () => {
 		it("should callback on bare variables in the test", () => {
@@ -893,7 +893,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -909,7 +909,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -928,7 +928,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -944,7 +944,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -960,7 +960,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -969,7 +969,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(2);
 			expect(received[0].location.range.end.line).to.equal(6);
 		});
-	})
+	});
 	
 	describe("Variable-Referencing Command Parsing", () => {
 		it("should callback on local variables directly after a reference comand", () => {
@@ -978,7 +978,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -994,7 +994,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1010,7 +1010,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1026,7 +1026,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1042,7 +1042,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1058,7 +1058,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1074,7 +1074,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1090,7 +1090,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1106,7 +1106,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1119,13 +1119,13 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(0);
 		});
-	})
+	});
 	
 	describe("Scene Parsing", () => {
 		it("should callback on scene definitions", () => {
@@ -1134,13 +1134,13 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onSceneDefinition(Arg.all()).mimicks((s: string[], l: Location, state: ParsingState) => {
 				received.push(s);
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received).to.eql([['scene-1', 'scene-2']]);
 		});
-	})
+	});
 	
 	describe("Stat Chart Command Parsing", () => {
 		it("should callback on references in text commands", () => {
@@ -1149,7 +1149,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1165,7 +1165,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1181,7 +1181,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1197,7 +1197,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1213,7 +1213,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1229,7 +1229,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1241,7 +1241,7 @@ describe("Parser", () => {
 			expect(received[2].location.range.start.line).to.equal(73);
 			expect(received[2].location.range.end.line).to.equal(84);
 		});
-	})
+	});
 	
 	describe("Achievement Parsing", () => {
 		it("should callback on an achievement", () => {
@@ -1250,7 +1250,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onAchievementCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1266,7 +1266,7 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onAchievementReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
 				received.push({text: s, location: l});
-			})
+			});
 	
 			parse(fakeDocument, fakeCallbacks);
 	
@@ -1275,7 +1275,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(9);
 			expect(received[0].location.range.end.line).to.equal(18);
 		});
-	})
+	});
 
 	describe("Errors", () => {
 		describe("Commands", () => {
@@ -1285,7 +1285,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1301,7 +1301,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1317,7 +1317,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1335,7 +1335,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1351,7 +1351,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1367,7 +1367,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1383,7 +1383,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1399,7 +1399,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1415,7 +1415,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1431,7 +1431,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1444,7 +1444,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1462,7 +1462,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1509,7 +1509,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1525,7 +1525,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1540,7 +1540,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1556,7 +1556,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1569,7 +1569,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1585,7 +1585,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1601,7 +1601,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1617,7 +1617,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1633,7 +1633,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1646,7 +1646,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1662,7 +1662,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1678,7 +1678,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1691,7 +1691,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1706,7 +1706,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1722,7 +1722,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1738,7 +1738,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1754,7 +1754,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1770,7 +1770,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1786,7 +1786,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1799,7 +1799,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1815,7 +1815,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1831,7 +1831,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1847,7 +1847,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1863,7 +1863,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1879,7 +1879,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1895,7 +1895,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1914,7 +1914,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1930,7 +1930,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1946,7 +1946,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1959,7 +1959,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1977,7 +1977,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -1993,7 +1993,7 @@ describe("Parser", () => {
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
-				})
+				});
 		
 				parse(fakeDocument, fakeCallbacks);
 		
@@ -2003,5 +2003,5 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(25);
 			});	
 		});
-	})
-})
+	});
+});

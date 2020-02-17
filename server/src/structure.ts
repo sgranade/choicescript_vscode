@@ -7,11 +7,23 @@ import { uriIsStartupFile } from './language';
 export function generateSymbols(textDocument: TextDocument, projectIndex: ProjectIndex): SymbolInformation[] {
 	// Generate label locations
 	let info = Array.from(projectIndex.getLabels(textDocument.uri).values()).map((label): SymbolInformation => {
-		return {
-			name: label.label,
-			kind: SymbolKind.Namespace,
-			location: label.location
-		};
+		if (label.scope !== undefined) {
+			return {
+				name: label.label,
+				kind: SymbolKind.Namespace,
+				location:  {
+					range: label.scope,
+					uri: label.location.uri
+				}
+			};	
+		}
+		else {
+			return {
+				name: label.label,
+				kind: SymbolKind.Namespace,
+				location: label.location
+			};
+		}
 	});
 
 	info.push(...projectIndex.getDocumentScopes(textDocument.uri).choiceScopes.map((scope): SymbolInformation => {

@@ -190,6 +190,23 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				scene: scene,
 				sceneLocation: sceneLocation
 			});
+
+			if (command == "return") {
+				let size = indexingState.labels.size;
+				if (size == 0) {
+					let location = Location.create(commandLocation.uri, commandLocation.range);
+					location.range.start.character--;
+					state.callbacks.onParseError(createDiagnosticFromLocation(
+						DiagnosticSeverity.Error, location,
+						`*return has no associated label`
+					));
+				}
+				else {
+					let label = Array.from(indexingState.labels)[size-1][1];
+					label.scope = Range.create(
+						label.location.range.start, commandLocation.range.end);
+				}
+			}
 		},
 
 		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {

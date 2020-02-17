@@ -1,5 +1,6 @@
 # TODO
 
+- *params aren't handled properly: having multiple *params in different labels with the same name overwrite each other
 - Add user-settable options for warnings
 - Warn about use of ${} in expressions where it isn't allowed
 - Flag chained and/or operators as an error

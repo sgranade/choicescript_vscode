@@ -255,7 +255,7 @@ describe("Indexer", () => {
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
-			expect(receivedAchievements.length).to.equal(1);
+			expect(receivedAchievements[0].size).to.equal(1);
 			expect(receivedAchievements[0]).has.keys(['code_name']);
 		});
 
@@ -269,7 +269,7 @@ describe("Indexer", () => {
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
-			expect(receivedAchievementReferences.length).to.equal(1);
+			expect(receivedAchievementReferences[0].size).to.equal(1);
 			expect(receivedAchievementReferences[0]).has.keys(['code_name']);
 		});
 	});
@@ -283,8 +283,47 @@ describe("Indexer", () => {
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
-			expect(receivedLabels.length).to.equal(1);
+			expect(receivedLabels[0].size).to.equal(1);
 			expect(receivedLabels[0]).has.keys(['label_name']);
+		});
+
+		it("should leave a label's scope blank on no return", () => {
+			let fakeDocument = createDocument("*label label_name");
+			let receivedLabels: LabelIndex[] = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedLabels[0].size).to.equal(1);
+			expect(receivedLabels[0].get('label_name').scope).to.be.undefined;
+		});
+
+		it("should add a scope to a label on a *return", () => {
+			let fakeDocument = createDocument("*label label_name\nLine 1\n*return\nLine 3");
+			let receivedLabels: LabelIndex[] = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedLabels[0].size).to.equal(1);
+			expect(receivedLabels[0].get('label_name').scope.start.line).to.equal(7);
+			expect(receivedLabels[0].get('label_name').scope.end.line).to.equal(32);
+		});
+
+		it("should add a scope to the most recent label on a *return", () => {
+			let fakeDocument = createDocument("*label label_one\nLine 1\n*label label_two\nLine 3\n*return\nLine 5");
+			let receivedLabels: LabelIndex[] = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(receivedLabels[0].size).to.equal(2);
+			expect(receivedLabels[0].get('label_one').scope).to.be.undefined;
+			expect(receivedLabels[0].get('label_two').scope.start.line).to.equal(31);
+			expect(receivedLabels[0].get('label_two').scope.end.line).to.equal(55);
 		});
 	});
 
@@ -428,6 +467,23 @@ describe("Indexer", () => {
 			expect(received[0][0].message).to.include('Label "previous_label" was already created');
 			expect(received[0][0].range.start.line).to.equal(29);
 			expect(received[0][0].range.end.line).to.equal(43);
+		});
+
+		it("should flag a *return with no label", () => {
+			let fakeDocument = createDocument("*return");
+			let received: Array<Diagnostic[]> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].length).to.equal(1);
+			expect(received[0][0].message).to.include('*return has no associated label');
+			expect(received[0][0].range.start.line).to.equal(1);
+			expect(received[0][0].range.end.line).to.equal(7);
 		});
 	});
 });
