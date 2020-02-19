@@ -12,9 +12,11 @@ import {
 	validCommands,
 	reuseCommands,
 	commandPattern,
-	choicePattern
+	choicePattern,
+	multiStartPattern
 } from './language';
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
+import { tokenizeMultireplace } from './tokens';
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 let reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
@@ -296,18 +298,83 @@ function validateCommandInLine(command: string, index: number, state: Validation
  */
 function validateChoice(choice: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
+	let overLimitLocalIndex: number | undefined = undefined;
+
+	// Count words while handling multireplaces
+	let runningWordCount = 0;
+	let multiPattern = RegExp(multiStartPattern);
+	let e: RegExpExecArray | null;
+	let remainingChoice = choice;
+	let remainingLocalIndex = 0;
+	while (e = multiPattern.exec(remainingChoice)) {
+		let contentsSublocalIndex = e.index + e[0].length;
+		let tokens = tokenizeMultireplace(
+			remainingChoice, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
+		);
+		if (tokens === undefined) {
+			// Unterminated multireplace, so give up
+			break;
+		}
+		else {
+			// See if the bit before the multireplace has too many words already
+			let pretext = remainingChoice.slice(0, e.index);
+			// This pattern won't find the last word in the string if it's not followed by a space, but
+			// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
+			let pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
+			if (pretextWordCount > 15 - runningWordCount) {
+				let m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+				if (m != null && m[0].length < pretext.length) {
+					overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+					break;
+				}
+			}
+
+			runningWordCount += pretextWordCount;
+			let longestBody = tokens.body[0];
+			let longestWordCount = longestBody.text.split(/\s+/).length;
+			for (let token of tokens.body.slice(1)) {
+				let newWordCount = token.text.split(/\s+/).length;
+				if (newWordCount > longestWordCount) {
+					longestBody = token;
+					longestWordCount = newWordCount;
+				}
+			}
+			if (longestWordCount > 15 - runningWordCount) {
+				let m = longestBody.text.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+				if (m != null && m[0].length < longestBody.text.length) {
+					overLimitLocalIndex = remainingLocalIndex + longestBody.localIndex + (m.index ?? 0) + m[0].length;
+					break;
+				}
+			}
+			runningWordCount += longestWordCount;
+
+			let endIndex = tokens.endIndex;
+			// Any characters after the multireplace are part of its word count; don't double-count them
+			while (endIndex < remainingChoice.length && remainingChoice[endIndex] != ' ' && remainingChoice[endIndex] != '\t') {
+				endIndex++;
+			}
+
+			remainingChoice = remainingChoice.slice(endIndex);
+			remainingLocalIndex += endIndex;
+		}
+	}
+
+	if (overLimitLocalIndex === undefined && remainingChoice.trim() != "") {
+		let m = remainingChoice.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+		if (m != null && m[0].length < remainingChoice.length) {
+			overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+		}
+	}
 
 	// See if we've got more than 15 words
-	let m = choice.match(/(\S+?\s+?){15}/);
-	if (m != null && m[0].length < choice.length) {
+	if (overLimitLocalIndex !== undefined) {
 		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-			index + m[0].length, index + choice.length,
+			index + overLimitLocalIndex, index + choice.length,
 			"Choice is more than 15 words long");
 	}
 
 	return diagnostic;
 }
-
 
 /**
  * Validate a text file and generate diagnostics against it.

@@ -888,9 +888,9 @@ export class Expression {
 }
 
 /**
- * A multireplace token.
+ * A simple token with text and its index.
  */
-interface MultireplaceToken {
+export interface TextWithIndex {
 	text: string;
 	localIndex: number;
 }
@@ -901,14 +901,14 @@ interface MultireplaceToken {
 interface Multireplace {
 	text: string;
 	test: Expression;
-	body: MultireplaceToken[];
+	body: TextWithIndex[];
 	endIndex: number;
 }
 
 /**
  * Break a multireplace into tokens.
  * 
- * @param section Document section beginning with the text right inside @{ and including the close }.
+ * @param section Document section.
  * @param textDocument: Document the section is in.
  * @param contentsGlobalIndex: Global index where the multireplace contents begin (right inside the @{)).
  * @param contentsLocalIndex Index into the section where the multireplace contents begin.
@@ -918,7 +918,7 @@ export function tokenizeMultireplace(
 	): Multireplace | undefined {
 	let fullText: string;
 	let test: Expression;
-	let body: MultireplaceToken[] = [];
+	let body: TextWithIndex[] = [];
 
 	let workingText = extractToMatchingDelimiter(section, "{", "}", contentsLocalIndex);
 	if (workingText === undefined)

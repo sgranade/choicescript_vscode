@@ -1,19 +1,31 @@
 # Change Log
+
 Changes to the plugin.
 
 ## Unreleased
+
 ### Added
-- The document outline is now provided, letting you see the flow of choices, labels, and variables in your game.
+
+- The document outline lets you see the flow of choices, labels, and variables in your game.
 - Problems with *set commands are now flagged.
-- Problems with *if and *elseif commands are now flagged.
-- Multireplaces that may need parentheses are now flagged.
+- Problems with *if and *elseif commands are flagged.
+- Multireplaces that may need parentheses are flagged.
 - Error catching expanded.
-	- Errors with comparisons like `1 < 2` are now flagged.
-	- Errors with values passed to functions like `not()` are now flagged.
-	- Parentheses are now fully inspected for errors.
+  - Errors with comparisons like `1 < 2`.
+  - Errors with values passed to functions like `not()`.
+  - Parentheses' contents are now inspected for errors.
+
+### Fixed
+
+- References to variables in `*gosub` and `*gosub_scene` are now indexed properly.
+- All local variable creation locations are now indexed.
+- Word count warning for options now considers multireplaces properly.
+- Variable completions in multireplaces now work properly.
 
 ## [1.1.0] - 2020-02-01
+
 ### Added
+
 - Italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i`.
 - Bold text using `Ctrl`+`Shift`+`b`.
 - Find where labels are referenced.
@@ -22,13 +34,14 @@ Changes to the plugin.
 - Rename achievements.
 - Choices with more than 15 words are now flagged for review.
 - Error catching greatly expanded.
-	- Local *temp variables with the same name as *global variables now generate a warning.
-	- Re-creating variables or labels are now flagged.
-	- *stat_chart commands are now parsed and errors flagged.
-	- Nested multireplaces are now flagged.
-	- Invalid operators are now flagged.
+  - Local *temp variables with the same name as *global variables now generate a warning.
+  - Re-creating variables or labels are now flagged.
+  - *stat_chart commands are now parsed and errors flagged.
+  - Nested multireplaces are now flagged.
+  - Invalid operators are now flagged.
 
 ### Fixed
+
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
 - Definitions now only allowed on actual variable, label, or achievement references, not any old text in the document.
@@ -37,7 +50,9 @@ Changes to the plugin.
 - Fixed potential endless recursion in parser.
 
 ## [1.0.0] - 2019-12-31
+
 ### Added
+
 - IntelliSense automatic code completion for ChoiceScript commands like `*choice`.
 - Diagnostics to highlight errors.
 - Go to variable definition.

@@ -149,6 +149,81 @@ describe("Validator", () => {
 	
 			expect(diagnostics.length).to.equal(0);
 		});
+
+		it("should take multireplaces into account when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten | eleven twelve thirteen fourteen fifteen} words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should take the max words in the multireplaces into account when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten eleven twelve thirteen fourteen | six} fifteen words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(117);
+			expect(diagnostics[0].range.end.line).to.equal(123);
+		});
+
+		it("should properly deal with no spaces before a multireplaces when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six} words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should properly deal with no spaces after a multireplaces when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six}, words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should properly deal with a multireplace at the start of the line", () => {
+			let fakeDocument = createDocument("*choice\n\t#@{romance_expressed_hartmann Even though I like Hartmann, I make ${hartmann_him}|I make Hartmann} look better to Auguste, saying how well ${hartmann_he} @{hartmann_singular upholds|uphold} Gallatin traditions.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(148);
+			expect(diagnostics[0].range.end.line).to.equal(219);
+		});
+
+		it("should handle two multireplaces when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight | six} and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(123);
+			expect(diagnostics[0].range.end.line).to.equal(144);
+		});
+
+		it("should include a multireplace in the error if it makes the option too long", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to have six seven eight nine ten eleven twelve thirteen fourteen @{true fifteen sixteen | fifteen} words.");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(110);
+			expect(diagnostics[0].range.end.line).to.equal(135);
+		});
 	});
 	
 	describe("Variable Reference Validation", () => {
@@ -195,7 +270,7 @@ describe("Validator", () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let otherCreateLocation = Location.create(fakeDocumentUri, Range.create(5, 0, 5, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(3, 0, 3, 5));
-			let localVariables = new Map([["local_var", [createLocation]]]);
+			let localVariables = new Map([["local_var", [createLocation, otherCreateLocation]]]);
 			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
