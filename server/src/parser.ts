@@ -21,6 +21,7 @@ import {
 	booleanFunctions,
 	argumentDisallowedCommands,
 	argumentIgnoredCommands,
+	choiceAllowedCommands,
 } from './language';
 import {
 	Expression,
@@ -44,6 +45,7 @@ let argumentRequiredCommandsLookup: ReadonlyMap<string, number> = new Map(argume
 let argumentDisallowedCommandsLookup: ReadonlyMap<string, number> = new Map(argumentDisallowedCommands.map(x => [x, 1]));
 let argumentIgnoredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentIgnoredCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
+let choiceAllowedCommandsLookup: ReadonlyMap<string, number> = new Map(choiceAllowedCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
 let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
@@ -602,9 +604,11 @@ function parseChoice(document: string, command: string, commandPadding: string, 
 		}
 	}
 	let firstChoice = "";
+	let choiceIndent = 0;
 
 	let lineEnd: number;
 	// Loop as long as we've got lines that have more indent than the command does
+	// Check for choice indents as we go
 	while (true) {
 		lineEnd = findLineEnd(document, lineStart);
 		if (lineEnd == lineStart) {
@@ -632,6 +636,37 @@ function parseChoice(document: string, command: string, commandPadding: string, 
 			let trimmedLine = line.trim();
 			if (firstChoice == "" && trimmedLine.startsWith('#')) {
 				firstChoice = trimmedLine;
+				choiceIndent = padding.length;
+			}
+
+			// Check choices for errors: a choice w/text in front of it, a badly-indented choice, &c.
+			if (trimmedLine.startsWith("#")) {
+				if (padding.length != choiceIndent) {
+					let errorMessage = "";
+					if (padding.length > choiceIndent) {
+						errorMessage = "Choice is indented too far.";
+					}
+					else {
+						errorMessage = "Choice is not indented enough.";
+					}
+					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+						lineStart + padding.length, lineEnd-1,
+						errorMessage);
+					state.callbacks.onParseError(diagnostic);
+				}
+			}
+			else {
+				let hashIndex = trimmedLine.indexOf("#");
+				if (hashIndex != -1) {
+					// See if the text is an allowed command
+					let preText = trimmedLine.slice(0, hashIndex).trim();
+					if (preText[0] != "*" || !choiceAllowedCommandsLookup.has(preText.slice(1))) {
+						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+							lineStart + padding.length, lineStart + padding.length + hashIndex - 1,
+							"No text is allowed in front of a choice");
+						state.callbacks.onParseError(diagnostic);
+					}
+				}
 			}
 		}
 		lineStart = lineEnd;

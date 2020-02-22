@@ -8,15 +8,17 @@ Changes to the plugin.
 
 - The document outline lets you see the flow of choices, labels, and variables in your game.
 - Error catching expanded.
-  - Problems with *set commands are now flagged.
-  - Problems with *if and *elseif commands are flagged.
-  - Multireplaces that may need parentheses are flagged.
+  - Parentheses' contents are now inspected for errors.
+  - Problems with *set commands.
+  - Problems with *if and *elseif commands.
   - Errors with comparisons like `1 < 2`.
   - Errors with values passed to functions like `not()`.
-  - Commands that don't take arguments are flagged.
-  - Parentheses' contents are now inspected for errors.
+  - Commands with arguments that don't allow them.
+  - Incorrectly-indented choices.
+  - Choices with text in front of them.
 - Warnings expanded.
   - Any text after commands that ignore that text.
+  - Multireplaces that may need parentheses.
 
 ### Fixed
 

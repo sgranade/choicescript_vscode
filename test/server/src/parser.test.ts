@@ -1475,6 +1475,69 @@ describe("Parser", () => {
 			});
 		});
 
+		describe("Choice Command", () => {
+			it("should flag text in front of a choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("No text is allowed in front of a choice");
+				expect(received[0].range.start.line).to.equal(19);
+				expect(received[0].range.end.line).to.equal(23);
+			});
+
+			it("should be okay with a reuse command in front of a choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag too-far-indented choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n      #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Choice is indented too far");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(47);
+			});
+
+			it("should flag not-enough-indented choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Choice is not indented enough");
+				expect(received[0].range.start.line).to.equal(40);
+				expect(received[0].range.end.line).to.equal(44);
+			});
+		});
+
 		describe("Replacements", () => {
 			it("should flag an unterminated replace", () => {
 				let fakeDocument = createDocument("replace ${ with errors");

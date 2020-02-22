@@ -54,6 +54,13 @@ export let argumentIgnoredCommands: ReadonlyArray<string> = [
 ]
 
 /**
+ * Commands that can be used in front of a choice.
+ */
+export let choiceAllowedCommands: ReadonlyArray<string> = [
+	"hide_reuse", "disable_reuse", "allow_reuse"
+]
+
+/**
  * Commands that modify display of a choice.
  */
 export let reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
