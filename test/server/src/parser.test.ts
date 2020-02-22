@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Location, Range, Diagnostic } from 'vscode-languageserver';
+import { TextDocument, Position, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
 import { FlowControlEvent, SummaryScope } from '../../../server/src';
@@ -1389,6 +1389,39 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("*set is missing its");
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(4);
+			});
+	
+			it("should flag commands with arguments that don't allow them", () => {
+				let fakeDocument = createDocument("*else true");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("must not have anything after it");
+				expect(received[0].range.start.line).to.equal(6);
+				expect(received[0].range.end.line).to.equal(10);
+			});
+	
+			it("should warn commands with arguments that silently ignore them", () => {
+				let fakeDocument = createDocument("*choice ignored");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
+				expect(received[0].message).to.include("This will be ignored");
+				expect(received[0].range.start.line).to.equal(8);
+				expect(received[0].range.end.line).to.equal(15);
 			});
 	
 			it("should flag commands that can only be used in startup.txt", () => {

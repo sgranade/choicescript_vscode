@@ -9,7 +9,7 @@ import {
 	flowControlCommands,
 	symbolCreationCommands,
 	commandPattern,
-	argumentRequiringCommands,
+	argumentRequiredCommands,
 	startupCommands,
 	uriIsStartupFile,
 	extractTokenAtIndex,
@@ -19,6 +19,8 @@ import {
 	comparisonOperators,
 	stringOperators,
 	booleanFunctions,
+	argumentDisallowedCommands,
+	argumentIgnoredCommands,
 } from './language';
 import {
 	Expression,
@@ -38,7 +40,9 @@ let nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOpe
 
 
 let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
-let argumentRequiringCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiringCommands.map(x => [x, 1]));
+let argumentRequiredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiredCommands.map(x => [x, 1]));
+let argumentDisallowedCommandsLookup: ReadonlyMap<string, number> = new Map(argumentDisallowedCommands.map(x => [x, 1]));
+let argumentIgnoredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentIgnoredCommands.map(x => [x, 1]));
 let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
@@ -1012,7 +1016,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		state.callbacks.onParseError(diagnostic);
 		return;  // Short-circuit: Nothing more to be done
 	}
-	else if (argumentRequiringCommandsLookup.has(command) && line.trim() == "") {
+	else if (argumentRequiredCommandsLookup.has(command) && line.trim() == "") {
 		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
 			commandIndex, commandIndex + command.length,
 			`Command *${command} is missing its arguments.`);
@@ -1027,6 +1031,19 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	}
 
 	let lineIndex = commandIndex + command.length + spacing.length;
+
+	if (argumentDisallowedCommandsLookup.has(command) && line.trim() != "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			lineIndex, lineIndex + line.length,
+			`Command *${command} must not have anything after it.`);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (argumentIgnoredCommandsLookup.has(command) && line.trim() != "") {
+		let diagnostic = createDiagnostic(DiagnosticSeverity.Warning, state.textDocument,
+			lineIndex, lineIndex + line.length,
+			`This will be ignored.`);
+		state.callbacks.onParseError(diagnostic);
+	}
 
 	if (symbolManipulationCommandsLookup.has(command)) {
 		parseSymbolManipulationCommand(command, line, lineIndex, state);

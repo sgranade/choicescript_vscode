@@ -31,12 +31,27 @@ export let validCommands: ReadonlyArray<string> = [
 /**
  * Commands that require arguments.
  */
-export let argumentRequiringCommands: ReadonlyArray<string> = [
+export let argumentRequiredCommands: ReadonlyArray<string> = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config"
+	"text_image", "config", "delay_ending"
 ];
+
+/**
+ * Commands that must not have any arguments.
+ */
+export let argumentDisallowedCommands: ReadonlyArray<string> = [
+	"else"
+]
+
+/**
+ * Commands that silently ignore any arguments.
+ */
+export let argumentIgnoredCommands: ReadonlyArray<string> = [
+	"choice", "fake_choice", "line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
+	"restart", "scene_list", "check_achievements"
+]
 
 /**
  * Commands that modify display of a choice.
@@ -93,7 +108,7 @@ export let validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
 	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
 	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
-	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene", "params",
+	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene", "params", "delay_break", "delay_ending"
 ].map(x => ({
 	label: x,
 	kind: CompletionItemKind.Keyword,
