@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, readLine } from '../../../server/src/utilities';
 
 describe("Utilities", () => {
 	describe("Case-Insensitive Map", () => {
@@ -122,5 +122,39 @@ describe("Utilities", () => {
 	
 			expect(endLocation).to.equal(14);
 		});
-	})
+	});
+
+	describe("Reading Lines", () => {
+		it("should read a line at the start", () => {
+			let text = "line1\nline2";
+	
+			let line = readLine(text, 0);
+	
+			expect(line).to.eql({ line: "line1\n", index: 0 });
+		});
+
+		it("should read a line in the middle", () => {
+			let text = "line1\nline2";
+	
+			let line = readLine(text, 6);
+	
+			expect(line).to.eql({ line: "line2", index: 6 });
+		});
+
+		it("should capture leading whitespace", () => {
+			let text = "line1\n  line2";
+	
+			let line = readLine(text, 6);
+	
+			expect(line).to.eql({ line: "  line2", index: 6, splitLine: { padding: "  ", contents: "line2" } });
+		});
+
+		it("should capture leading whitespace and a trailing carriage return", () => {
+			let text = "  line1\n  line2";
+	
+			let line = readLine(text, 0);
+	
+			expect(line).to.eql({ line: "  line1\n", index: 0, splitLine: { padding: "  ", contents: "line1" } });
+		});
+	});
 })

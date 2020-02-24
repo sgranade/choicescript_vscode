@@ -26,6 +26,7 @@ Changes to the plugin.
 - All local variable creation locations are now indexed.
 - Word count warning for options now considers multireplaces properly.
 - Variable completions in multireplaces now work properly.
+- Missing commands added to syntax highlighter.
 
 ## [1.1.0] - 2020-02-01
 

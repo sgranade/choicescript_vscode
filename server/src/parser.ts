@@ -32,7 +32,9 @@ import {
 import {
 	findLineEnd,
 	extractToMatchingDelimiter,
-	createDiagnostic
+	createDiagnostic,
+	readLine,
+	NewLine
 } from './utilities';
 import { SummaryScope } from '.';
 
@@ -78,6 +80,10 @@ export class ParsingState {
 	 */
 	textDocument: TextDocument;
 	/**
+	 * Global offset into textDocument of the section being parsed
+	 */
+	sectionGlobalIndex: number;
+	/**
 	 * Callbacks for parsing events
 	 */
 	callbacks: ParserCallbacks;
@@ -92,6 +98,7 @@ export class ParsingState {
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
+		this.sectionGlobalIndex = -1;
 		this.callbacks = callbacks;
 		this.currentCommand = undefined;
 		this.parseStack = [];
@@ -111,30 +118,65 @@ enum ParseElement {
 }
 
 /**
+ * Get the document-global position based on an offset into the section being parsed.
+ * @param offset Offset into the section being parsed.
+ * @param state Parsing state.
+ */
+function parsingPositionAt(offset: number, state: ParsingState): Position {
+	return state.textDocument.positionAt(state.sectionGlobalIndex + offset);	
+}
+
+/**
+ * Generate a diagnostic message during parsing.
+ * 
+ * Start and end locations are 0-based indices into the section.
+ * 
+ * @param severity Diagnostic severity
+ * @param start Diagnostic's start location in the section.
+ * @param end Diagnostic's end location in the section.
+ * @param message Diagnostic message.
+ * @param state Parsing state.
+ */
+function createParsingDiagnostic(severity: DiagnosticSeverity, start: number, end: number, message: string, state: ParsingState): Diagnostic {
+	return createDiagnostic(severity, state.textDocument, start+state.sectionGlobalIndex, end+state.sectionGlobalIndex, message);
+}
+
+/**
+ * Create a global location from indices into a section.
+ * 
+ * @param start Start location in the section.
+ * @param end End location in the section.
+ * @param state Parsing state.
+ */
+function createParsingLocation(start: number, end: number, state: ParsingState) {
+	return Location.create(state.textDocument.uri, Range.create(
+		parsingPositionAt(start, state), parsingPositionAt(end, state)
+	));
+}
+
+/**
  * Parse a tokenized expression.
  * @param tokenizedExpression Tokenized expression.
  * @param state Parsing state.
  */
 function parseTokenizedExpression(tokenizedExpression: Expression, state: ParsingState) {
 	for (let token of tokenizedExpression.tokens) {
-		let tokenGlobalIndex = tokenizedExpression.globalIndex + token.index;
+		let tokenSectionIndex = tokenizedExpression.globalIndex + token.index;
 		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
 			case ExpressionTokenType.String:
-				parseString(token.text, tokenGlobalIndex, 1, state);
+				parseString(token.text, tokenSectionIndex, 1, state);
 				break;
 			case ExpressionTokenType.Variable:
-				let location = Location.create(state.textDocument.uri, Range.create(
-					state.textDocument.positionAt(tokenGlobalIndex),
-					state.textDocument.positionAt(tokenGlobalIndex + token.text.length)
-				));
+				let location = createParsingLocation(tokenSectionIndex, tokenSectionIndex + token.text.length, state);
 				state.callbacks.onVariableReference(token.text, location, state);
 				break;
 			case ExpressionTokenType.UnknownOperator:
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-					tokenGlobalIndex,
-					tokenGlobalIndex + token.text.length,
-					"Unknown operator");
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					tokenSectionIndex,
+					tokenSectionIndex + token.text.length,
+					"Unknown operator",
+					state);
 				state.callbacks.onParseError(diagnostic);
 				break;
 		}
@@ -178,46 +220,46 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  * 
  * openDelimeterLength is needed in case this is called to parse a replacement.
  * 
- * @param section Section being parsed.
+ * @param text Text being parsed.
  * @param openDelimiterLength Length of the opening delimiter.
- * @param globalIndex Reference content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param sectionIndex Reference content's index in the section being parsed.
+ * @param localIndex The content's index in the text. If undefined, sectionIndex is used.
  * @param state Parsing state.
  * @returns The local index to the end of the variable reference.
  */
-function parseReference(section: string, openDelimiterLength: number, globalIndex: number,
+function parseReference(text: string, openDelimiterLength: number, sectionIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
 	state.parseStack.push(ParseElement.VariableReference);
 
-	let sectionToDocumentDelta: number;
+	let textToSectionDelta: number;
 	if (localIndex === undefined) {
-		localIndex = globalIndex;
-		sectionToDocumentDelta = 0;
+		localIndex = sectionIndex;
+		textToSectionDelta = 0;
 	}
 	else {
-		sectionToDocumentDelta = globalIndex;
+		textToSectionDelta = sectionIndex;
 	}
 	let newLocalIndex = localIndex;
 
-	let reference = extractToMatchingDelimiter(section, '{', '}', localIndex);
+	let reference = extractToMatchingDelimiter(text, '{', '}', localIndex);
 	if (reference === undefined) {
-		let lineEndIndex = findLineEnd(section, localIndex);
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localIndex - openDelimiterLength + sectionToDocumentDelta,
-			lineEndIndex + sectionToDocumentDelta,
-			"Replacement is missing its }");
+		let lineEndIndex = findLineEnd(text, localIndex);
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			localIndex - openDelimiterLength + textToSectionDelta,
+			lineEndIndex + textToSectionDelta,
+			"Replacement is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (reference.trim() == "") {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localIndex - openDelimiterLength + sectionToDocumentDelta,
-			localIndex + reference.length + 1 + sectionToDocumentDelta,
-			"Replacement is empty");
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			localIndex - openDelimiterLength + textToSectionDelta,
+			localIndex + reference.length + 1 + textToSectionDelta,
+			"Replacement is empty", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
 		// References contain expressions, so let the expression parser handle that
-		parseExpression(reference, localIndex + sectionToDocumentDelta, state);
+		parseExpression(reference, localIndex + textToSectionDelta, state);
 		newLocalIndex = localIndex + reference.length + 1;
 	}
 
@@ -231,14 +273,14 @@ function parseReference(section: string, openDelimiterLength: number, globalInde
  * A bare string is a part of the document that we treat as if it were a string, even though
  * it isn't surrounded by quotes. Parsing continues to the end of the string.
  * 
- * @param section Section being parsed.
- * @param startGlobalIndex String content's starting index relative to the global document.
- * @param endLocalIndex String content's ending index relative to the start of section.
+ * @param text Text being parsed.
+ * @param startSectionIndex String content's starting index relative to the section being parsed.
+ * @param endLocalIndex String content's ending index relative to the start of text.
  * @param state Parsing state.
  */
 function parseBareString(
-	section: string, startGlobalIndex: number, endLocalIndex: number, state: ParsingState) {
-	let subsection = section.slice(0, endLocalIndex);
+	text: string, startSectionIndex: number, endLocalIndex: number, state: ParsingState) {
+	let subsection = text.slice(0, endLocalIndex);
 
 	// Deal with any replacements or multireplacements
 	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
@@ -252,11 +294,11 @@ function parseBareString(
 
 		if (m.groups.replacement !== undefined) {
 			newLocalIndex = parseReplacement(
-				section, m.groups.replacement.length, startGlobalIndex, contentsLocalIndex, state);
+				text, m.groups.replacement.length, startSectionIndex, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
 			newLocalIndex = parseMultireplacement(
-				section, m.groups.multi.length, startGlobalIndex, contentsLocalIndex, state);
+				text, m.groups.multi.length, startSectionIndex, contentsLocalIndex, state);
 		}
 		else {
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
@@ -271,22 +313,22 @@ function parseBareString(
  * 
  * Strings can either be parsed from the large global document or from a subsection of it.
  * 
- * @param section Section being parsed.
- * @param globalIndex String content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param text Section being parsed.
+ * @param sectionIndex String content's index in the section being parsed.
+ * @param localIndex The content's index in the text. If undefined, sectionIndex is used.
  * @param state Parsing state.
  * @returns Local index to the end of the string.
  */
-function parseString(section: string, globalIndex: number, localIndex: number, state: ParsingState): number {
+function parseString(text: string, sectionIndex: number, localIndex: number, state: ParsingState): number {
 	if (localIndex === undefined) {
-		localIndex = globalIndex;
+		localIndex = sectionIndex;
 	}
 
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
 	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
 	delimiterPattern.lastIndex = localIndex;
 	let m: RegExpExecArray | null;
-	while (m = delimiterPattern.exec(section)) {
+	while (m = delimiterPattern.exec(text)) {
 		if (m.groups === undefined)
 			break;
 
@@ -295,11 +337,11 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 
 		if (m.groups.replacement !== undefined) {
 			newLocalIndex = parseReplacement(
-				section, m.groups.replacement.length, globalIndex, contentsLocalIndex, state);
+				text, m.groups.replacement.length, sectionIndex, contentsLocalIndex, state);
 		}
 		else if (m.groups.multi !== undefined) {
 			newLocalIndex = parseMultireplacement(
-				section, m.groups.multi.length, globalIndex + contentsLocalIndex, contentsLocalIndex, state);
+				text, m.groups.multi.length, sectionIndex + contentsLocalIndex, contentsLocalIndex, state);
 		}
 		else {
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
@@ -315,53 +357,49 @@ function parseString(section: string, globalIndex: number, localIndex: number, s
 /**
  * Parse a replacement ${var}.
  * 
- * Replacements can either be parsed from the large global document or from a subsection of it.
- * 
- * @param section Section being parsed.
+ * @param text Section being parsed.
  * @param openDelimiterLength Length of the opening delimiter (${ or $!{ or $!!{).
- * @param globalIndex Replacement content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param sectionIndex Replacement content's index in the section being parsed.
+ * @param localIndex The content's index in the text. If undefined, sectionIndex is used.
  * @param state Parsing state.
  * @returns The local index to the end of the replacement.
  */
-function parseReplacement(section: string, openDelimiterLength: number, globalIndex: number, 
+function parseReplacement(text: string, openDelimiterLength: number, sectionIndex: number, 
 	localIndex: number | undefined, state: ParsingState): number {
 	// Internally, a replacement acts like a reference, so we can forward to it
-	return parseReference(section, openDelimiterLength, globalIndex, localIndex, state);
+	return parseReference(text, openDelimiterLength, sectionIndex, localIndex, state);
 }
 
 /**
  * Parse a multireplacement @{var true | false}.
  * 
- * Multireplacements can either be parsed from the large global document or from a subsection of it.
- * 
- * @param section Section being parsed.
+ * @param text Text being parsed.
  * @param openDelimiterLength Length of the opening delimiter (@{ or @!{ or @!!{).
- * @param globalIndex Multireplacement content's index in the global document.
- * @param localIndex The content's index in the section. If undefined, globalIndex is used.
+ * @param sectionIndex Multireplacement content's index in the section being prased.
+ * @param localIndex The content's index in the section. If undefined, sectionIndex is used.
  * @param state Parsing state.
  * @returns The local index to the end of the multireplacement.
  */
-function parseMultireplacement(section: string, openDelimiterLength: number, globalIndex: number, 
+function parseMultireplacement(text: string, openDelimiterLength: number, sectionIndex: number, 
 	localIndex: number | undefined, state: ParsingState): number {
 	state.parseStack.push(ParseElement.Multireplacement);
 
-	let sectionToDocumentDelta: number;
+	let textToSectionDelta: number;
 	if (localIndex === undefined) {
-		localIndex = globalIndex;
-		sectionToDocumentDelta = 0;
+		localIndex = sectionIndex;
+		textToSectionDelta = 0;
 	}
 	else {
-		sectionToDocumentDelta = globalIndex - localIndex;
+		textToSectionDelta = sectionIndex - localIndex;
 	}
 
-	let tokens = tokenizeMultireplace(section, state.textDocument, globalIndex, localIndex);
+	let tokens = tokenizeMultireplace(text, state.textDocument, sectionIndex, localIndex);
 
 	if (tokens === undefined) {
-		let lineEndIndex = findLineEnd(section, localIndex);
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			localIndex - openDelimiterLength + sectionToDocumentDelta, lineEndIndex + sectionToDocumentDelta,
-			"Multireplace is missing its }");
+		let lineEndIndex = findLineEnd(text, localIndex);
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			localIndex - openDelimiterLength + textToSectionDelta, lineEndIndex + textToSectionDelta,
+			"Multireplace is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -371,7 +409,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 		if (m !== null && m.index !== undefined) {
 			let startLocalIndex = localIndex + m.index;
 			let endLocalIndex: number;
-			let contents = extractToMatchingDelimiter(section, '{', '}', startLocalIndex + m[0].length);
+			let contents = extractToMatchingDelimiter(text, '{', '}', startLocalIndex + m[0].length);
 			if (contents !== undefined) {
 				// Starting index + opening delimiter length + contents length + closing delimiter length
 				endLocalIndex = startLocalIndex + m[0].length + contents.length + 1;
@@ -379,18 +417,20 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			else {
 				endLocalIndex = startLocalIndex + tokens.text.length;
 			}
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				startLocalIndex + sectionToDocumentDelta,
-				endLocalIndex + sectionToDocumentDelta,
-				"Multireplaces cannot be nested");
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				startLocalIndex + textToSectionDelta,
+				endLocalIndex + textToSectionDelta,
+				"Multireplaces cannot be nested",
+				state);
 			state.callbacks.onParseError(diagnostic);
 		}
 
 		if (tokens.test.bareExpression.trim() == "") {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				localIndex - openDelimiterLength + sectionToDocumentDelta,
-				tokens.endIndex + sectionToDocumentDelta,
-				"Multireplace is empty");
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				localIndex - openDelimiterLength + textToSectionDelta,
+				tokens.endIndex + textToSectionDelta,
+				"Multireplace is empty",
+				state);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
@@ -398,17 +438,17 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			if (tokens.text.startsWith("(")) {
 				startIndex++;
 			}
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				startIndex,
-				tokens.endIndex + sectionToDocumentDelta,
-				"Multireplace has no options");
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				startIndex, tokens.endIndex + textToSectionDelta,
+				"Multireplace has no options", state);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 1) {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				tokens.body[0].localIndex + tokens.body[0].text.length + sectionToDocumentDelta,
-				tokens.endIndex + sectionToDocumentDelta,
-				"Multireplace must have at least two options separated by |");
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,
+				tokens.endIndex + textToSectionDelta,
+				"Multireplace must have at least two options separated by |",
+				state);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else {
@@ -420,7 +460,7 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 				// Since we can't nest multireplaces, and we've already flagged them above as errors,
 				// get rid of any opening multireplaces in the string
 				let text = token.text.replace('@{', '  ');
-				parseBareString(text, token.localIndex + sectionToDocumentDelta, token.text.length, state);
+				parseBareString(text, token.localIndex + textToSectionDelta, token.text.length, state);
 			}
 
 			// Check the first body for a leading operator and warn about it if we don't have parens around the test
@@ -428,10 +468,11 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 			if (!tokens.text.startsWith("(")) {
 				let firstText = tokens.body[0].text.split(' ')[0];
 				if (nonWordOperatorsLookup.has(firstText)) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
 						tokens.test.globalIndex,
-						tokens.body[0].localIndex + firstText.length + sectionToDocumentDelta,
-						"Potentially missing parentheses");
+						tokens.body[0].localIndex + firstText.length + textToSectionDelta,
+						"Potentially missing parentheses",
+						state);
 					state.callbacks.onParseError(diagnostic);
 				}
 			}
@@ -445,12 +486,12 @@ function parseMultireplacement(section: string, openDelimiterLength: number, glo
 }
 
 /**
- * Parse parameters created by *params
+ * Parse parameters created by *params.
  * @param line Line after *params that contains the parameters.
- * @param lineGlobalIndex Location of the line in the text.
+ * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseParams(line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseParams(line: string, lineSectionIndex: number, state: ParsingState) {
 	// Split into words
 	let wordsPattern = /\w+/g;
 	let m: RegExpExecArray | null;
@@ -458,37 +499,35 @@ function parseParams(line: string, lineGlobalIndex: number, state: ParsingState)
 		if (m === null)
 			continue;
 
-		let location = Location.create(state.textDocument.uri, Range.create(
-			state.textDocument.positionAt(lineGlobalIndex + m.index),
-			state.textDocument.positionAt(lineGlobalIndex + m.index + m[0].length)
-		));
+		let location = createParsingLocation(lineSectionIndex + m.index, lineSectionIndex + m.index + m[0].length, state);
 		state.callbacks.onLocalVariableCreate(m[0], location, state);
 	}
 }
 
 /**
- * 
+ * Parse a *set command.
  * @param line Line after *set that contains the variable and the value to set it to.
- * @param lineGlobalIndex Location of the line in the text.
+ * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
-	let tokenizedExpression = new Expression(line, lineGlobalIndex, state.textDocument, true);
+function parseSet(line: string, lineSectionIndex: number, state: ParsingState) {
+	let tokenizedExpression = new Expression(line, lineSectionIndex, state.textDocument, true);
 	let tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			lineGlobalIndex, lineGlobalIndex,
-			"Missing variable name");
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			lineSectionIndex, lineSectionIndex,
+			"Missing variable name", state);
 		state.callbacks.onParseError(diagnostic);
 		return;
 	}
 	// The first token must be a variable or a variable reference
 	if (tokens[0].type != ExpressionTokenType.Variable && tokens[0].type != ExpressionTokenType.VariableReference) {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			lineGlobalIndex + tokens[0].index,
-			lineGlobalIndex + tokens[0].index + tokens[0].text.length,
-			"Not a variable or variable reference");
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			lineSectionIndex + tokens[0].index,
+			lineSectionIndex + tokens[0].index + tokens[0].text.length,
+			"Not a variable or variable reference",
+			state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -498,10 +537,10 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 	// Now parse the remaining elements as an expression and then validate them as part of a *set command
 	let remainingExpression = tokenizedExpression.slice(1);
 	if (remainingExpression.tokens.length == 0) {
-		let index = lineGlobalIndex + tokens[0].index + tokens[0].text.length;
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+		let index = lineSectionIndex + tokens[0].index + tokens[0].text.length;
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			index, index,
-			"Missing value to set the variable to");
+			"Missing value to set the variable to", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -510,21 +549,20 @@ function parseSet(line: string, lineGlobalIndex: number, state: ParsingState) {
 }
 
 /**
- * Parse a symbol creating or manipulating command
+ * Parse a symbol creating or manipulating command.
  * @param command Command that defines or references a symbol.
  * @param line Remainder of the line after the command. Guaranteed to have content.
- * @param lineGlobalIndex Location of the line in the text.
+ * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseSymbolManipulationCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
-
+function parseSymbolManipulationCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState) {
 	// The *params command is odd in that it takes an entire expression, and *set has two
 	// different expressions to handle, so parse them separately
 	if (command == "params") {
-		parseParams(line, lineGlobalIndex, state);
+		parseParams(line, lineSectionIndex, state);
 	}
 	else if (command == "set") {
-		parseSet(line, lineGlobalIndex, state);
+		parseSet(line, lineSectionIndex, state);
 	}
 	else {
 		let linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;
@@ -534,34 +572,31 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 			return;
 		}
 		let symbol: string = lineMatch.groups.symbol;
-		let symbolLocation = Location.create(state.textDocument.uri, Range.create(
-			state.textDocument.positionAt(lineGlobalIndex),
-			state.textDocument.positionAt(lineGlobalIndex + symbol.length)
-		));
+		let symbolLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + symbol.length, state);
 		let expression: string | undefined = lineMatch.groups.expression;
-		let expressionGlobalIndex = lineGlobalIndex + symbol.length;
+		let expressionSectionIndex = lineSectionIndex + symbol.length;
 		if (lineMatch.groups.spacing) {
-			expressionGlobalIndex += lineMatch.groups.spacing.length;
+			expressionSectionIndex += lineMatch.groups.spacing.length;
 		}
 		switch (command) {
 			case "create":
 				// *create instantiates global variables
 				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
 				if (expression === undefined) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						lineGlobalIndex + symbol.length, lineGlobalIndex + symbol.length,
-						"Missing value to set the variable to");
+					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
+						"Missing value to set the variable to", state);
 					state.callbacks.onParseError(diagnostic);
 				}
 				else {
-					parseExpression(expression, expressionGlobalIndex, state);
+					parseExpression(expression, expressionSectionIndex, state);
 				}
 				break;
 			case "temp":
 				// *temp instantiates variables local to the scene file
 				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
 				if (expression !== undefined) {
-					parseExpression(expression, expressionGlobalIndex, state);
+					parseExpression(expression, expressionSectionIndex, state);
 				}
 				break;
 			case "label":
@@ -582,101 +617,292 @@ function parseSymbolManipulationCommand(command: string, line: string, lineGloba
 }
 
 /**
+ * Read the next non-blank line.
+ * @param text Text to read from.
+ * @param lineStart Start of the next line.
+ */
+function readNextNonblankLine(text: string, lineStart: number) : NewLine | undefined {
+	let nextLine: NewLine | undefined;
+	while (true) {
+		nextLine = readLine(text, lineStart);
+		if (nextLine === undefined) {
+			break;
+		}
+		if (nextLine.line.trim() == "") {
+			lineStart += nextLine.line.length;
+		}
+		else {
+			break;
+		}
+	}
+	return nextLine;
+}
+
+/**
+ * Parse a single line containing a #choice.
+ * @param text Document text.
+ * @param choiceLine Line containing the titular choice.
+ * @param commandIndent Spacing in front of the *choice command.
+ * @param choiceIndent Number of whitespace characters in front of the #choice.
+ * @param isTabs True if whitespace in front of lines should be tabs.
+ * @param state Parsing state.
+ * @returns Index of the line containing the choice's contents and the number of whitespace characters for the block.
+ */
+function parseSingleChoiceLine(text: string, choiceLine: NewLine, commandIndent: number, 
+	choiceIndent: number, isTabs: boolean, state: ParsingState): { choiceContentsIndex: number, blockIndent: number } | undefined {
+	if (choiceLine.splitLine === undefined) {  // We gotta have some indent
+		return undefined;
+	}
+	let padding = choiceLine.splitLine.padding;
+	// Bomb out on mixed tabs and spaces
+	if (isTabs && / /.test(padding)) {
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			choiceLine.index, choiceLine.index + padding.length,
+			"Spaces used instead of tabs", state);
+		state.callbacks.onParseError(diagnostic);
+		return undefined;
+	}
+	else if (!isTabs && /\t/.test(padding)) {
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			choiceLine.index, choiceLine.index + padding.length,
+			"Tabs used instead of spaces", state);
+		state.callbacks.onParseError(diagnostic);
+		return undefined;
+	}
+	// Bomb out if our indent level is at or smaller than the *choice command itself
+	if (padding.length <= commandIndent) {
+		return undefined;
+	}
+
+	// Flag problems with indents
+	if (padding.length < choiceIndent) {
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			choiceLine.index, choiceLine.index + padding.length,
+			"Line is not indented far enough", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (padding.length > choiceIndent) {
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			choiceLine.index, choiceLine.index + padding.length,
+			"Line is indented too far", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+
+	// The line should either contain a #choice or a bare *if statement
+	let hashIndex = choiceLine.splitLine.contents.indexOf("#");
+	if (hashIndex == -1) {
+		// This better be an *if statement
+		if (choiceLine.splitLine.contents.startsWith("*if ")) {
+			parseSection(choiceLine.line, state.sectionGlobalIndex + choiceLine.index, state);
+			let nextChoiceLine = readLine(text, choiceLine.index + choiceLine.line.length);
+			if (nextChoiceLine === undefined || nextChoiceLine.splitLine === undefined) {
+				return undefined;
+			}
+
+			if (nextChoiceLine.splitLine.padding.length <= choiceIndent) {
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					nextChoiceLine.index, nextChoiceLine.index + nextChoiceLine.splitLine.padding.length,
+					"Line is not indented far enough", state);
+				state.callbacks.onParseError(diagnostic);
+				return { choiceContentsIndex: choiceLine.index + choiceLine.line.length, blockIndent: choiceIndent };
+			}
+			else {
+				return parseSingleChoiceLine(
+					text, nextChoiceLine, commandIndent, 
+					nextChoiceLine.splitLine.padding.length,
+					isTabs, state
+				);
+			}
+		}
+		else {
+			let startIndex = choiceLine.index + (choiceLine.splitLine?.padding.length ?? 0);
+			let endIndex = choiceLine.index + choiceLine.line.length;
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				startIndex, endIndex,
+				"Must be either a #choice or an *if", state);
+			state.callbacks.onParseError(diagnostic);
+			return { choiceContentsIndex: choiceLine.index + choiceLine.line.length, blockIndent: choiceIndent };
+		}
+	}
+	else {
+		if (hashIndex > 0) {
+			// There's text in front of the choice. Check it.
+			let preText = choiceLine.splitLine.contents.slice(0, hashIndex).trim();
+			if (preText[0] != "*" || !choiceAllowedCommandsLookup.has(preText.slice(1).split(/[ \t]/)[0])) {
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					choiceLine.index + padding.length,
+					choiceLine.index + padding.length + hashIndex - 1,
+					"No text is allowed in front of a choice", state);
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				parseSection(preText, state.sectionGlobalIndex + choiceLine.index + padding.length, state);
+			}
+		}
+
+		return { choiceContentsIndex: choiceLine.index + choiceLine.line.length, blockIndent: choiceIndent };
+	} 
+}
+
+/**
+ * Parse the contents of a single choice.
+ * 
+ * Returns the last content line and the next line after the contents.
+ * Last content line is undefined if there were no contents.
+ * Next line is undefined if we had an unrecoverable error or reached the end of the document.
+ * @param text Text containing the choice.
+ * @param choiceContentsIndex Index of the choice's contents in text.
+ * @param choiceIndent Number of whitespace characters the choice (*not* the contents) is indented.
+ * @param isTabs Whether the indention is tabs (as opposed to spaces).
+ * @param state Parsing state.
+ * @returns Tuple containing the last content line and the next line after the contents.
+ */
+function parseSingleChoiceContents(text: string, choiceContentsIndex: number, choiceIndent: number, 
+	isTabs: boolean, state: ParsingState): [NewLine | undefined, NewLine | undefined] {
+	let choiceContents = "";
+	let choiceContentsIndent = -1;
+	let lastContentLine: NewLine | undefined;
+	let nextLine: NewLine | undefined = undefined;
+	let lineStart = choiceContentsIndex;
+
+	while (true) {
+		nextLine = readLine(text, lineStart);
+		if (nextLine === undefined) {
+			break;
+		}
+
+		if (nextLine.line.trim() != "") {
+			if (nextLine.splitLine === undefined) {
+				break;
+			}
+			let padding = nextLine.splitLine.padding;
+			// Bomb out on a switch from tabs to spaces or vice versa
+			if (isTabs && / /.test(padding)) {
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					nextLine.index, nextLine.index + padding.length,
+					"Spaces used instead of tabs", state);
+				state.callbacks.onParseError(diagnostic);
+				// Treat the line as content so we don't try to re-parse
+				lastContentLine = nextLine;
+				nextLine = undefined;
+				break;
+			}
+			else if (!isTabs && /\t/.test(padding)) {
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					nextLine.index, nextLine.index + padding.length,
+					"Tabs used instead of spaces", state);
+				state.callbacks.onParseError(diagnostic);
+				// Treat the line as content so we don't try to re-parse
+				lastContentLine = nextLine;
+				nextLine = undefined;
+				break;
+			}
+			if (padding.length <= choiceIndent) {
+				break;
+			}
+
+			if (choiceContentsIndent == -1) {
+				choiceContentsIndent = padding.length;
+			}
+
+			// Flag lines that are indented too little
+			if (padding.length < choiceContentsIndent) {
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					lineStart, lineStart + padding.length,
+					"Line is not indented far enough", state);
+				state.callbacks.onParseError(diagnostic);
+			}
+		}
+		lastContentLine = nextLine;
+		choiceContents += lastContentLine.line;
+		lineStart += lastContentLine.line.length;
+	}
+
+	if (choiceContents != "") {
+		parseSection(choiceContents, state.sectionGlobalIndex + choiceContentsIndex, state);
+	}
+
+	return [lastContentLine, nextLine];
+}
+
+/**
  * Parse the choices defined by a *choice or *fake_choice command.
- * @param document Document text to scan.
+ * @param text Document text to scan.
  * @param command Command that is being parsed.
  * @param commandPadding Spacing before the *choice command.
- * @param commandIndex Index at the start of the *choice command.
- * @param choicesIndex Index at the start of the choices.
+ * @param commandSectionIndex Index at the start of the *choice command.
+ * @param choicesSectionIndex Index at the start of the choices.
  * @param state Parsing state.
  */
-function parseChoice(document: string, command: string, commandPadding: string, commandIndex: number, choicesIndex: number, state: ParsingState) {
-	let prefixPattern = /^[ \t]+/;
-	let lineStart = choicesIndex;
+function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, choicesSectionIndex: number, state: ParsingState): number {
 	// commandPadding can include a leading \n, so don't count that
 	let commandIndent = commandPadding.replace("\n", "").length;
 	let setPaddingType = false;
 	let isTabs = /\t/.test(commandPadding);
+	let firstChoice = "";
+	let choiceIndent = -1;
+	let contentsEndIndex: number | undefined = undefined;
+
+	// Get the padding type if we can
 	if (commandIndent) {
 		setPaddingType = true;
 		if (isTabs && / /.test(commandPadding)) {
-			return;
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				commandSectionIndex, commandSectionIndex + commandPadding.length,
+				"Tabs and spaces can't be mixed", state);
+			state.callbacks.onParseError(diagnostic);
+			return choicesSectionIndex;
 		}
 	}
-	let firstChoice = "";
-	let choiceIndent = 0;
 
-	let lineEnd: number;
-	// Loop as long as we've got lines that have more indent than the command does
-	// Check for choice indents as we go
+	// Get the first choice and its indent
+	let nextLine = readNextNonblankLine(text, choicesSectionIndex);
+	if (nextLine === undefined || nextLine.splitLine === undefined || nextLine.splitLine.padding.length <= commandIndent) {
+		return choicesSectionIndex;
+	}
+	if (!setPaddingType) {
+		isTabs = /\t/.test(nextLine.splitLine.padding);
+		setPaddingType = true;
+		if ((isTabs && / /.test(nextLine.splitLine.padding)) || (!isTabs && /\t/.test(nextLine.splitLine.padding))) {
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				nextLine.index, nextLine.index + nextLine.splitLine.padding.length,
+				"Tabs and spaces can't be mixed", state);
+			state.callbacks.onParseError(diagnostic);
+			return choicesSectionIndex;
+		}
+	}
+	choiceIndent = nextLine.splitLine.padding.length;
+	firstChoice = nextLine.splitLine.contents;
+
+	// Loop over each choice until there are no more choices
 	while (true) {
-		lineEnd = findLineEnd(document, lineStart);
-		if (lineEnd == lineStart) {
+		if (nextLine === undefined) {
 			break;
 		}
-		let line = document.slice(lineStart, lineEnd);
-		if (line.trim() != "") {
-			let m = prefixPattern.exec(line);
-			if (!m) {
-				break;
-			}
-			let padding = m[0];
-			if (!setPaddingType) {
-				isTabs = /\t/.test(padding);
-				setPaddingType = true;
-			}
-			// Bomb out on mixed tabs and spaces, winding back a line
-			if ((isTabs && / /.test(padding)) || (!isTabs && /\t/.test(padding))) {
-				break;
-			}
-			if (padding.length <= commandIndent) {
-				break;
-			}
-			// Since we have a valid line, see if it's the first choice
-			let trimmedLine = line.trim();
-			if (firstChoice == "" && trimmedLine.startsWith('#')) {
-				firstChoice = trimmedLine;
-				choiceIndent = padding.length;
-			}
 
-			// Check choices for errors: a choice w/text in front of it, a badly-indented choice, &c.
-			if (trimmedLine.startsWith("#")) {
-				if (padding.length != choiceIndent) {
-					let errorMessage = "";
-					if (padding.length > choiceIndent) {
-						errorMessage = "Choice is indented too far.";
-					}
-					else {
-						errorMessage = "Choice is not indented enough.";
-					}
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-						lineStart + padding.length, lineEnd-1,
-						errorMessage);
-					state.callbacks.onParseError(diagnostic);
-				}
-			}
-			else {
-				let hashIndex = trimmedLine.indexOf("#");
-				if (hashIndex != -1) {
-					// See if the text is an allowed command
-					let preText = trimmedLine.slice(0, hashIndex).trim();
-					if (preText[0] != "*" || !choiceAllowedCommandsLookup.has(preText.slice(1))) {
-						let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-							lineStart + padding.length, lineStart + padding.length + hashIndex - 1,
-							"No text is allowed in front of a choice");
-						state.callbacks.onParseError(diagnostic);
-					}
-				}
-			}
+		let parseChoiceResults = parseSingleChoiceLine(
+			text, nextLine, commandIndent, choiceIndent, isTabs, state
+		);
+		if (parseChoiceResults === undefined) {  // Something went wrong
+			break;
 		}
-		lineStart = lineEnd;
+
+		contentsEndIndex = nextLine.index + nextLine.line.trimRight().length;
+		let lastContentLine: NewLine | undefined;
+		[lastContentLine, nextLine] = parseSingleChoiceContents(text, parseChoiceResults.choiceContentsIndex, parseChoiceResults.blockIndent, isTabs, state);
+		if (lastContentLine !== undefined) {
+			contentsEndIndex = lastContentLine.index + lastContentLine.line.trimRight().length;
+		}
 	}
 
-	let startPosition = state.textDocument.positionAt(commandIndex);
-	let endPosition = state.textDocument.positionAt(lineStart);
-	if (lineStart != lineEnd) {
-		// Back up a line
-		endPosition.line--;
+	let startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
+	let endGlobalPosition: Position;
+	if (contentsEndIndex === undefined) {
+		contentsEndIndex = choicesSectionIndex;
+		endGlobalPosition = parsingPositionAt(commandSectionIndex, state);
+	}
+	else {
+		endGlobalPosition = parsingPositionAt(contentsEndIndex, state);
 	}
 
 	// Trim our summary if necessary
@@ -687,28 +913,30 @@ function parseChoice(document: string, command: string, commandPadding: string, 
 			firstChoice = m[1]+"…";
 		}
 	}
-	let range = Range.create(startPosition, endPosition);
+	let range = Range.create(startGlobalPosition, endGlobalPosition);
 	let scope: SummaryScope = { summary: `${command} ${firstChoice}`, range: range };
 	state.callbacks.onChoiceScope(scope, state);
+
+	return contentsEndIndex;
 }
 
 /**
  * Parse the scenes defined by a *scene_list command.
- * @param document Document text to scan.
- * @param startIndex Index at the start of the scenes.
+ * @param text Document text to scan.
+ * @param startSectionIndex Index at the start of the scenes.
  * @param state Parsing state.
  */
-function parseScenes(document: string, startIndex: number, state: ParsingState) {
+function parseScenes(text: string, startSectionIndex: number, state: ParsingState) {
 	let sceneList: Array<string> = [];
 	let scenePattern = /(\s+)(\$\s+)?(\S+)\s*\r?\n/;
-	let lineStart = startIndex;
+	let lineStart = startSectionIndex;
 
 	// Process the first line to get the indent level and first scene
-	let lineEnd = findLineEnd(document, lineStart);
+	let lineEnd = findLineEnd(text, lineStart);
 	if (!lineEnd) {
 		return sceneList;  // No scene found
 	}
-	let line = document.slice(lineStart, lineEnd);
+	let line = text.slice(lineStart, lineEnd);
 	let m = scenePattern.exec(line);
 	if (!m) {
 		return sceneList;
@@ -719,11 +947,11 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
 
 	// Now loop as long as the scene pattern matches and the padding is consistent
 	while (true) {
-		lineEnd = findLineEnd(document, lineStart);
+		lineEnd = findLineEnd(text, lineStart);
 		if (!lineEnd) {
 			break;
 		}
-		line = document.slice(lineStart, lineEnd);
+		line = text.slice(lineStart, lineEnd);
 		m = scenePattern.exec(line);
 		if (!m || m[1] != padding) {
 			break;
@@ -732,7 +960,7 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
 		lineStart = lineEnd;
 	}
 	
-	let startPosition = state.textDocument.positionAt(startIndex);
+	let startPosition = parsingPositionAt(startSectionIndex, state);
 	let endPosition = Position.create(
 		startPosition.line + sceneList.length, 0
 	);
@@ -745,14 +973,14 @@ function parseScenes(document: string, startIndex: number, state: ParsingState) 
 
 /**
  * Parse a stat chart.
- * @param document Document text to scan.
- * @param commandIndex Index after the "*" in the *stat_chart command.
- * @param contentStartIndex Index at the start of the stat chart contents.
+ * @param text Text to scan.
+ * @param commandSectionIndex Index after the "*" in the *stat_chart command.
+ * @param contentStartSectionIndex Index at the start of the stat chart contents.
  * @param state Parsing state.
  */
-function parseStatChart(document: string, commandIndex: number, contentStartIndex: number, state: ParsingState) {
+function parseStatChart(text: string, commandSectionIndex: number, contentStartSectionIndex: number, state: ParsingState) {
 	let subcommandPattern = /(?<padding>[ \t]+)(?<command>\S+)((?<spacing>[ \t]*)(?<remainder>.*))?(\r?\n)?/g;
-	let lineStart = contentStartIndex;
+	let lineStart = contentStartSectionIndex;
 
 	// No need to worry about ${} references in the stat chart, as the top-level parser
 	// will go back over the lines after the *stat_chart command and process them
@@ -761,7 +989,7 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 	let padding = "NONE";
 	let m: RegExpExecArray | null;
 
-	while (m = subcommandPattern.exec(document)) {
+	while (m = subcommandPattern.exec(text)) {
 		if (m.index !== lineStart) {
 			break;
 		}
@@ -772,9 +1000,9 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 			break;
 		}
 		else if (m.groups!.padding != padding) {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				m.index, m.index + m[0].length,
-				"Line is indented too far.");
+				"Line is indented too far.", state);
 			state.callbacks.onParseError(diagnostic);
 			break;
 		}
@@ -785,28 +1013,25 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 		if (statChartCommands.includes(command)) {
 			let spacing = m.groups!.spacing;
 			if (spacing === undefined) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					commandStart, commandStart + command.length,
-					`Missing variable after ${command}`);
+					`Missing variable after ${command}`, state);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
 				let remainderStart = commandStart + command.length + spacing.length;
-				let variable = extractTokenAtIndex(document, remainderStart);
+				let variable = extractTokenAtIndex(text, remainderStart);
 				if (variable === undefined) {
-					let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 						remainderStart, remainderStart,
-						"Not a valid variable.");
+						"Not a valid variable.", state);
 					state.callbacks.onParseError(diagnostic);
 				}
 				else if (variable[0] == '{') {
 					parseExpression(variable?.slice(1, -1), remainderStart+1, state);
 				}
 				else {
-					let location = Location.create(state.textDocument.uri, Range.create(
-						state.textDocument.positionAt(remainderStart),
-						state.textDocument.positionAt(remainderStart + variable.length)
-					));
+					let location = createParsingLocation(remainderStart, remainderStart + variable.length, state);
 					state.callbacks.onVariableReference(variable, location, state);
 				}
 			}
@@ -814,12 +1039,12 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 			if (statChartBlockCommands.includes(command)) {
 				// Consume any sub-indented lines
 				lineStart = subcommandPattern.lastIndex;
-				while (lineStart < document.length) {
-					let nextLineStart = findLineEnd(document, lineStart);
+				while (lineStart < text.length) {
+					let nextLineStart = findLineEnd(text, lineStart);
 					if (nextLineStart === undefined) {
 						break;
 					}
-					let line = document.slice(lineStart, nextLineStart);
+					let line = text.slice(lineStart, nextLineStart);
 					let paddingMatch = line.match(/^(?<padding>\s+)/);
 					if (!paddingMatch || paddingMatch.groups!.padding.length <= padding.length) {
 						break;
@@ -830,19 +1055,19 @@ function parseStatChart(document: string, commandIndex: number, contentStartInde
 			}
 		}
 		else {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandStart, commandStart + command.length,
-				`Must be one of ${statChartCommands.join(", ")}`);
+				`Must be one of ${statChartCommands.join(", ")}`, state);
 			state.callbacks.onParseError(diagnostic);
 		}
 
 		lineStart = subcommandPattern.lastIndex;
 	}
 
-	if (lineStart == contentStartIndex) {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			commandIndex - 1, commandIndex + "stat_chart".length,
-			`*stat_chart must have at least one stat`);
+	if (lineStart == contentStartSectionIndex) {
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex - 1, commandSectionIndex + "stat_chart".length,
+			`*stat_chart must have at least one stat`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -858,10 +1083,11 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 		tokenizedExpression.evalType != ExpressionEvalType.Empty &&
 		tokenizedExpression.evalType != ExpressionEvalType.Unknowable) {
 		let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 			tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
-			"Must be a boolean value");
+			"Must be a boolean value",
+			state);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -870,10 +1096,10 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
  * Parse a command that can reference variables, such as *if.
  * @param command ChoiceScript command, such as "if", that may contain a reference.
  * @param line The rest of the line after the command.
- * @param lineGlobalIndex Index at the start of the line.
+ * @param lineSectionIndex Index at the start of the line.
  * @param state Parsing state.
  */
-function parseVariableReferenceCommand(command: string, line: string, lineGlobalIndex: number, state: ParsingState) {
+function parseVariableReferenceCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState) {
 	let optionOnLineWithIf = false;
 	// The *if and *selectable_if commands can be used with options, so take that into account
 	if (command == "if" || command == "selectable_if") {
@@ -884,7 +1110,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 		}
 	}
 	// The line that follows a command that can reference a variable is an expression
-	let tokenizedExpression = parseExpression(line, lineGlobalIndex, state);
+	let tokenizedExpression = parseExpression(line, lineSectionIndex, state);
 	if (tokenizedExpression.evalType != ExpressionEvalType.Error) {
 		validateConditionExpression(tokenizedExpression, state);
 	}
@@ -894,10 +1120,11 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Warning, state.textDocument,
+			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 				tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
-				"Without parentheses, this expression will always be true");
+				"Without parentheses, this expression will always be true",
+				state);
 			state.callbacks.onParseError(diagnostic);
 		}
 	}
@@ -906,16 +1133,13 @@ function parseVariableReferenceCommand(command: string, line: string, lineGlobal
 /**
  * Parse a command that references labels, such as *goto.
  * @param command Command.
- * @param commandGlobalIndex: Index of the command in the document.
+ * @param commandSectionIndex: Index of the command in the section being parsed.
  * @param line Line after the command.
- * @param lineGlobalIndex Index of the line in the document.
+ * @param lineSectionIndex Index of the line in the section being parsed.
  * @param state Parsing state.
  */
-function parseFlowControlCommand(command: string, commandGlobalIndex: number, line: string, lineGlobalIndex: number, state: ParsingState) {
-	let commandLocation = Location.create(state.textDocument.uri, Range.create(
-		state.textDocument.positionAt(commandGlobalIndex),
-		state.textDocument.positionAt(commandGlobalIndex + command.length)
-	));
+function parseFlowControlCommand(command: string, commandSectionIndex: number, line: string, lineSectionIndex: number, state: ParsingState) {
+	let commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
 	let label = "";
 	let scene = "";
 	let labelLocation: Location | undefined = undefined;
@@ -937,7 +1161,7 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 
 		// Evaluate first token expression (if any)
 		if (firstToken != "" && firstToken[0] == '{') {
-			parseExpression(firstToken.slice(1, -1), lineGlobalIndex+1, state);
+			parseExpression(firstToken.slice(1, -1), lineSectionIndex+1, state);
 		}
 
 		if (command.endsWith("_scene")) {
@@ -953,36 +1177,27 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 			}
 
 			scene = firstToken;
-			sceneLocation = Location.create(state.textDocument.uri, Range.create(
-				state.textDocument.positionAt(lineGlobalIndex),
-				state.textDocument.positionAt(lineGlobalIndex + scene.length)
-			));
+			sceneLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + scene.length, state);
 
 			if (secondToken != "") {
 				// Parse the second token if necessary
 				if (secondToken[0] == '{') {
-					parseExpression(secondToken.slice(1, -1), lineGlobalIndex+secondTokenLocalIndex+1, state);
+					parseExpression(secondToken.slice(1, -1), lineSectionIndex+secondTokenLocalIndex+1, state);
 				}
 				label = secondToken;
-				let labelIndex = lineGlobalIndex + secondTokenLocalIndex;
-				labelLocation = Location.create(state.textDocument.uri, Range.create(
-					state.textDocument.positionAt(labelIndex),
-					state.textDocument.positionAt(labelIndex + label.length)
-				));
+				let labelIndex = lineSectionIndex + secondTokenLocalIndex;
+				labelLocation = createParsingLocation(labelIndex, labelIndex + label.length, state);
 			}
 		}
 		else {
 			label = firstToken;
-			labelLocation = Location.create(state.textDocument.uri, Range.create(
-				state.textDocument.positionAt(lineGlobalIndex),
-				state.textDocument.positionAt(lineGlobalIndex + label.length)
-			));
+			labelLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + label.length, state);
 		}
 
 		if (command.startsWith("gosub") && remainderLine.trim() != "") {
 			// Handle potential parameters by tokenizing them as if they were an expression, but then consider them
 			// one at a time
-			let remainderLineGlobalIndex = lineGlobalIndex + remainderLineLocalIndex;
+			let remainderLineGlobalIndex = lineSectionIndex + remainderLineLocalIndex;
 			let expression = new Expression(remainderLine, remainderLineGlobalIndex, state.textDocument);
 			for (let token of expression.combinedTokens) {
 				// Let the expression parsing handle each token
@@ -997,28 +1212,22 @@ function parseFlowControlCommand(command: string, commandGlobalIndex: number, li
 /**
  * Parse an achievement.
  * @param codename Achievement's codename
- * @param startIndex Index at the start of the codename.
+ * @param startSectionIndex Index at the start of the codename.
  * @param state Parsing state.
  */
-function parseAchievement(codename: string, startIndex: number, state: ParsingState) {
-	let location = Location.create(state.textDocument.uri, Range.create(
-		state.textDocument.positionAt(startIndex),
-		state.textDocument.positionAt(startIndex + codename.length)
-	));
+function parseAchievement(codename: string, startSectionIndex: number, state: ParsingState) {
+	let location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
 	state.callbacks.onAchievementCreate(codename, location, state);
 }
 
 /**
  * Parse an achievement reference.
  * @param codename Achievement's codename
- * @param startIndex Index at the start of the codename.
+ * @param startSectionIndex Index at the start of the codename.
  * @param state Parsing state.
  */
-function parseAchievementReference(codename: string, startIndex: number, state: ParsingState) {
-	let location = Location.create(state.textDocument.uri, Range.create(
-		state.textDocument.positionAt(startIndex),
-		state.textDocument.positionAt(startIndex + codename.length)
-	));
+function parseAchievementReference(codename: string, startSectionIndex: number, state: ParsingState) {
+	let location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
 	state.callbacks.onAchievementReference(codename, location, state);
 }
 
@@ -1030,53 +1239,51 @@ function parseAchievementReference(codename: string, startIndex: number, state: 
  * @param command Command.
  * @param spacing Spaces after the command, if any.
  * @param line The rest of the line after the command, if any.
- * @param commandIndex Index of the command in the document.
+ * @param commandSectionIndex Index of the command in the section being parsed.
  * @param state Parsing state.
  */
-function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandIndex: number, state: ParsingState) {
+function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandSectionIndex: number, state: ParsingState): number {
 	state.currentCommand = command;
 	state.parseStack.push(ParseElement.Command);
+	let lineIndex = commandSectionIndex + command.length + spacing.length;
+	// By default a command's parsing ends at the end of the line
+	let endParseIndex = lineIndex + line.length;
 
-	let commandLocation = Location.create(state.textDocument.uri, Range.create(
-		state.textDocument.positionAt(commandIndex),
-		state.textDocument.positionAt(commandIndex + command.length)
-	));
+	let commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
 
 	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
 
 	if (!validCommandsLookup.has(command)) {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			commandIndex, commandIndex + command.length,
-			`Command *${command} isn't a valid ChoiceScript command.`);
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex, commandSectionIndex + command.length,
+			`Command *${command} isn't a valid ChoiceScript command.`, state);
 		state.callbacks.onParseError(diagnostic);
-		return;  // Short-circuit: Nothing more to be done
+		return endParseIndex;  // Short-circuit: Nothing more to be done
 	}
 	else if (argumentRequiredCommandsLookup.has(command) && line.trim() == "") {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			commandIndex, commandIndex + command.length,
-			`Command *${command} is missing its arguments.`);
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex, commandSectionIndex + command.length,
+			`Command *${command} is missing its arguments.`, state);
 		state.callbacks.onParseError(diagnostic);
-		return;  // Short circuit
+		return endParseIndex;  // Short circuit
 	}
 	else if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-			commandIndex, commandIndex + command.length,
-			`Command *${command} can only be used in startup.txt.`);
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex, commandSectionIndex + command.length,
+			`Command *${command} can only be used in startup.txt.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 
-	let lineIndex = commandIndex + command.length + spacing.length;
-
 	if (argumentDisallowedCommandsLookup.has(command) && line.trim() != "") {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			lineIndex, lineIndex + line.length,
-			`Command *${command} must not have anything after it.`);
+			`Command *${command} must not have anything after it.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (argumentIgnoredCommandsLookup.has(command) && line.trim() != "") {
-		let diagnostic = createDiagnostic(DiagnosticSeverity.Warning, state.textDocument,
+		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 			lineIndex, lineIndex + line.length,
-			`This will be ignored.`);
+			`This will be ignored.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -1087,24 +1294,24 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		parseVariableReferenceCommand(command, line, lineIndex, state);
 	}
 	else if (flowControlCommandsLookup.has(command)) {
-		parseFlowControlCommand(command, commandIndex, line, lineIndex, state);
+		parseFlowControlCommand(command, commandSectionIndex, line, lineIndex, state);
 	}
 	else if (command == "choice" || command == "fake_choice") {
-		let nextLineIndex = findLineEnd(document, commandIndex);
+		let nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
-			parseChoice(document, command, prefix, commandIndex, nextLineIndex, state);
+			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "scene_list") {
-		let nextLineIndex = findLineEnd(document, commandIndex);
+		let nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
 			parseScenes(document, nextLineIndex, state);
 		}
 	}
 	else if (command == "stat_chart") {
-		let nextLineIndex = findLineEnd(document, commandIndex);
+		let nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
-			parseStatChart(document, commandIndex, nextLineIndex, state);
+			parseStatChart(document, commandSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "achievement") {
@@ -1124,6 +1331,56 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	state.parseStack.pop();
 	state.currentCommand = undefined;
+	return endParseIndex;
+}
+
+/**
+ * Parse a section of a ChoiceScript document
+ * 
+ * @param section Section of the document.
+ * @param sectionGlobalIndex Index of the section in the document.
+ * @param state Parsing state.
+ */
+function parseSection(section: string, sectionGlobalIndex: number, state: ParsingState) {
+	// Since we recursively parse sections, save off the old section index
+	// and put the new one in the parsing state
+	let oldSectionIndex = state.sectionGlobalIndex;
+	state.sectionGlobalIndex = sectionGlobalIndex;
+	
+	let pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
+	let m: RegExpExecArray | null;
+
+	while (m = pattern.exec(section)) {
+		if (m.groups === undefined) {
+			continue;
+		}
+
+		// Pattern options: command, replacement (${}), multi (@{})
+		if (m.groups.command) {
+			let command = m.groups.command;
+			let prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
+			let spacing = m.groups.commandSpacing ? m.groups.commandSpacing : "";
+			let line = m.groups.commandLine ? m.groups.commandLine : "";
+			let commandIndex = m.index + prefix.length + 1;
+			// Command parsing occasionally consumes more than one line
+			let endIndex = parseCommand(section, prefix, command, spacing, line, commandIndex, state);
+			pattern.lastIndex = endIndex;
+		}
+		else if (m.groups.replacement) {
+			let subsectionIndex = m.index + m[0].length;
+			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
+			let endIndex = parseReplacement(section, m[0].length, subsectionIndex, undefined, state);
+			pattern.lastIndex = endIndex;
+		}
+		else if (m.groups.multi) {
+			let subsectionIndex = m.index + m[0].length;
+			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
+			let endIndex = parseMultireplacement(section, m[0].length, subsectionIndex, undefined, state);
+			pattern.lastIndex = endIndex;
+		}
+	}
+
+	state.sectionGlobalIndex = oldSectionIndex;
 }
 
 /**
@@ -1136,34 +1393,5 @@ export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): v
 	let state = new ParsingState(textDocument, callbacks);
 	let text = textDocument.getText();
 
-	let pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
-	let m: RegExpExecArray | null;
-
-	while (m = pattern.exec(text)) {
-		if (m.groups === undefined) {
-			continue;
-		}
-
-		// Pattern options: command, replacement (${}), multi (@{})
-		if (m.groups.command) {
-			let command = m.groups.command;
-			let prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
-			let spacing = m.groups.commandSpacing ? m.groups.commandSpacing : "";
-			let line = m.groups.commandLine ? m.groups.commandLine : "";
-			let commandIndex = m.index + prefix.length + 1;
-			parseCommand(text, prefix, command, spacing, line, commandIndex, state);
-		}
-		else if (m.groups.replacement) {
-			let sectionGlobalIndex = m.index + m[0].length;
-			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseReplacement(text, m[0].length, sectionGlobalIndex, undefined, state);
-			pattern.lastIndex = endIndex;
-		}
-		else if (m.groups.multi) {
-			let sectionGlobalIndex = m.index + m[0].length;
-			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseMultireplacement(text, m[0].length, sectionGlobalIndex, undefined, state);
-			pattern.lastIndex = endIndex;
-		}
-	}
+	parseSection(text, 0, state);
 }

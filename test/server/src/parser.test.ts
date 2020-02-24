@@ -422,7 +422,7 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].range.start.line).to.equal(8);
-			expect(received[0].range.end.line).to.equal(20);
+			expect(received[0].range.end.line).to.equal(33);
 		});
 
 		it("should callback on a choice with blank lines", () => {
@@ -451,10 +451,10 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 	
 			expect(received.length).to.equal(2);
-			expect(received[0].range.start.line).to.equal(8);
-			expect(received[0].range.end.line).to.equal(54);
-			expect(received[1].range.start.line).to.equal(24);
-			expect(received[1].range.end.line).to.equal(48);
+			expect(received[0].range.start.line).to.equal(24);
+			expect(received[0].range.end.line).to.equal(48);
+			expect(received[1].range.start.line).to.equal(8);
+			expect(received[1].range.end.line).to.equal(54);
 		});
 
 		it("should summarize a choice by its first option", () => {
@@ -598,6 +598,22 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(7);
 			expect(received[0].location.range.end.line).to.equal(15);
+		});
+
+		it("should callback on local variables created inside choices", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\t*temp variable\n\t#Two");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(29);
+			expect(received[0].location.range.end.line).to.equal(37);
 		});
 	});
 	
@@ -780,6 +796,22 @@ describe("Parser", () => {
 			expect(received[1].location.range.end.line).to.equal(31);
 		});
 	
+		it("should callback on set commands in choices", () => {
+			let fakeDocument = createDocument("*choice\n\t#First\n\t\t*set variable 3");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(23);
+			expect(received[0].location.range.end.line).to.equal(31);
+		});
+	
 		it("should not callback on variable references in strings", () => {
 			let fakeDocument = createDocument('*set variable "{other_variable}"');
 			let received: Array<Symbol> = [];
@@ -949,6 +981,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
 	
+		it("should callback on replacements in a choice", () => {
+			let fakeDocument = createDocument("*choice\n\t#One\n\t\t${variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(18);
+			expect(received[0].location.range.end.line).to.equal(26);
+		});
+	
 		it("should callback on multireplacements in the replacement", () => {
 			let fakeDocument = createDocument('${@{var1 true | false}}');
 			let received: Array<Symbol> = [];
@@ -1048,6 +1096,22 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(2);
 			expect(received[0].location.range.end.line).to.equal(6);
+		});
+
+		it("should callback on multireplace in a *choice", () => {
+			let fakeDocument = createDocument("*choice\n\t#One\n\t\t@{variable this|that}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(18);
+			expect(received[0].location.range.end.line).to.equal(26);
 		});
 	});
 	
@@ -1164,8 +1228,8 @@ describe("Parser", () => {
 			expect(received[1].location.range.end.line).to.equal(39);
 		});
 	
-		it("should not callback on choice text after a reference command", () => {
-			let fakeDocument = createDocument("*if variable # This is a choice");
+		it("should callback on a reference command inside a choice command", () => {
+			let fakeDocument = createDocument("*choice\n\t*if variable\n\t\t# This is a choice");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
@@ -1176,8 +1240,24 @@ describe("Parser", () => {
 	
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
-			expect(received[0].location.range.start.line).to.equal(4);
-			expect(received[0].location.range.end.line).to.equal(12);
+			expect(received[0].location.range.start.line).to.equal(13);
+			expect(received[0].location.range.end.line).to.equal(21);
+		});
+
+		it("should callback on a variable in an *if before a choice", () => {
+			let fakeDocument = createDocument("*choice\n\t*if variable # This is a choice");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(13);
+			expect(received[0].location.range.end.line).to.equal(21);
 		});
 
 		it("should not callback on array references", () => {
@@ -1505,8 +1585,21 @@ describe("Parser", () => {
 				expect(received.length).to.equal(0);
 			});
 
-			it("should flag too-far-indented choice", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n      #Two\nEnd");
+			it("should be okay with an if command in front of a choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag a non-choice non-*if line", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    Nope\n        Text\n    #Two\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -1516,9 +1609,22 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Choice is indented too far");
-				expect(received[0].range.start.line).to.equal(43);
-				expect(received[0].range.end.line).to.equal(47);
+				expect(received[0].message).to.include("Must be either a #choice or an *if");
+				expect(received[0].range.start.line).to.equal(19);
+				expect(received[0].range.end.line).to.equal(24);
+			});
+
+			it("should be okay with an if command on the line before a choice", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
 			});
 
 			it("should flag not-enough-indented choice", () => {
@@ -1532,9 +1638,57 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Choice is not indented enough");
-				expect(received[0].range.start.line).to.equal(40);
-				expect(received[0].range.end.line).to.equal(44);
+				expect(received[0].message).to.include("Line is not indented far enough");
+				expect(received[0].range.start.line).to.equal(37);
+				expect(received[0].range.end.line).to.equal(40);
+			});
+
+			it("should flag mixed tabs and spaces", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t #One\n\t    Text\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Tabs and spaces can't be mixed");
+				expect(received[0].range.start.line).to.equal(15);
+				expect(received[0].range.end.line).to.equal(17);
+			});
+
+			it("should flag a switch from tabs to spaces", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n  Text\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Spaces used instead of tabs");
+				expect(received[0].range.start.line).to.equal(21);
+				expect(received[0].range.end.line).to.equal(23);
+			});
+
+			it("should flag a switch from spaces to tabs", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n  #One\n\t\tText\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Tabs used instead of spaces");
+				expect(received[0].range.start.line).to.equal(22);
+				expect(received[0].range.end.line).to.equal(24);
 			});
 		});
 

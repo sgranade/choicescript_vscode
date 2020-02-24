@@ -119,15 +119,58 @@ export function findLineEnd(document: string, startIndex: number): number {
 }
 
 /**
+ * New line read by readLine.
+ */
+export interface NewLine {
+	line: string,
+	splitLine?: {
+		padding: string,
+		contents: string
+	},
+	index: number
+}
+
+/**
+ * Read a line, splitting it into leading padding and contents.
+ * @param text Text containing the line.
+ * @param lineStart Index to the start of the line.
+ */
+export function readLine(text: string, lineStart: number): NewLine | undefined {
+	let processedLine: NewLine;
+
+	let lineEnd = findLineEnd(text, lineStart);
+	if (lineStart == lineEnd) {
+		return undefined;
+	}
+	let line = text.slice(lineStart, lineEnd);
+	let m = /^([ \t]+)(.*)/.exec(line);
+	if (!m) {
+		processedLine = { line: line, index: lineStart };
+	}
+	else {
+		processedLine = {
+			line: line,
+			splitLine: {
+				padding: m[1],
+				contents: m[2]
+			},
+			index: lineStart
+		};
+	}
+
+	return processedLine;
+}
+
+/**
  * Scan text to find a matching delimiter, skipping escaped delimiters.
  * 
- * @param section Section of text to scan.
+ * @param text Text to scan.
  * @param openDelimiter Delimiter that opens the group.
  * @param closeDelimiter Delimiter that closes the group.
- * @param startIndex Index inside of section where the delimited contents begin (after the opening delimiter).
+ * @param startIndex Index inside of text where the delimited contents begin (after the opening delimiter).
  * @returns String contained within the delimiters, not including the closing delimiter.
  */
-export function extractToMatchingDelimiter(section: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {
+export function extractToMatchingDelimiter(text: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {
 	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
 	match.lastIndex = startIndex;
 	let matchEnd: number | undefined = undefined;
@@ -136,7 +179,7 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 
 	let m: RegExpExecArray | null;
 
-	while (m = match.exec(section)) {
+	while (m = match.exec(text)) {
 		if (m[0] == closeDelimiter) {
 			if (delimiterCount)
 				delimiterCount--;
@@ -151,7 +194,7 @@ export function extractToMatchingDelimiter(section: string, openDelimiter: strin
 	}
 
 	if (matchEnd !== undefined)
-		extract = section.slice(startIndex, matchEnd);
+		extract = text.slice(startIndex, matchEnd);
 	return extract;
 }
 
