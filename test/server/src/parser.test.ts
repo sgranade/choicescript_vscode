@@ -1567,7 +1567,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("No text is allowed in front of a choice");
+				expect(received[0].message).to.include("No text is allowed in front of an option");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(23);
 			});
@@ -1609,7 +1609,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be either a #choice or an *if");
+				expect(received[0].message).to.include("Must be either an #option or an *if");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(24);
 			});
