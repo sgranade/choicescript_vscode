@@ -56,6 +56,12 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.2.0]
+
+- The document outline lets you see the flow of choices, labels, and variables in your game.
+- Expanded error checking in expressions to commands like `*if`.
+- Expanded warnings on text that will be ignored.
+
 ### [1.1.0]
 
 - Added ability to italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i` and bold text using `Ctrl`+`Shift`+`b`.
