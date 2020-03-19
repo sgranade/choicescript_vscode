@@ -273,38 +273,38 @@ export class Index implements ProjectIndex {
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
 	}
-	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
 		this._startupFileUri = normalizeUri(textDocumentUri);
 		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
-	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
+	updateLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
 		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex) {
+	updateSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
 		this._subroutineLocalVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
 	}
-	updateVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
+	updateVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
 		this._variableReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
-	updateSceneList(scenes: Array<string>) {
+	updateSceneList(scenes: Array<string>): void {
 		this._scenes = scenes;
 	}
-	updateLabels(textDocumentUri: string, newIndex: LabelIndex) {
+	updateLabels(textDocumentUri: string, newIndex: LabelIndex): void {
 		this._localLabels.set(normalizeUri(textDocumentUri), new Map(newIndex));
 	}
-	updateFlowControlEvents(textDocumentUri: string, newIndex: FlowControlEvent[]) {
+	updateFlowControlEvents(textDocumentUri: string, newIndex: FlowControlEvent[]): void {
 		this._flowControlEvents.set(normalizeUri(textDocumentUri), [...newIndex]);
 	}
-	updateAchievements(newIndex: IdentifierIndex) {
+	updateAchievements(newIndex: IdentifierIndex): void {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
-	updateAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex) {
+	updateAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
 		this._achievementReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
 	}
-	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes) {
+	updateDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void {
 		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);
 	}
-	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]) {
+	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void {
 		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
 	}
 	isStartupFileUri(uri: string): boolean {
@@ -351,9 +351,9 @@ export class Index implements ProjectIndex {
 		return index;
 	}
 	getAchievementReferences(achievement: string): ReadonlyArray<Location> {
-		let locations: Location[] = [];
-		for (let index of this._achievementReferences.values()) {
-			let partialLocations = index.get(achievement);
+		const locations: Location[] = [];
+		for (const index of this._achievementReferences.values()) {
+			const partialLocations = index.get(achievement);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
 		}
@@ -367,9 +367,9 @@ export class Index implements ProjectIndex {
 		return index;
 	}
 	getVariableReferences(variable: string): ReadonlyArray<Location> {
-		let locations: Location[] = [];
-		for (let index of this._variableReferences.values()) {
-			let partialLocations = index.get(variable);
+		const locations: Location[] = [];
+		for (const index of this._variableReferences.values()) {
+			const partialLocations = index.get(variable);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
 		}
@@ -383,13 +383,13 @@ export class Index implements ProjectIndex {
 		return index;
 	}
 	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location> {
-		let locations: Location[] = [];
-		let scene = sceneFromUri(labelDefinitionDocumentUri);
-		for (let [documentUri, events] of this._flowControlEvents) {
-			let matchingEvents = events.filter(event => {
+		const locations: Location[] = [];
+		const scene = sceneFromUri(labelDefinitionDocumentUri);
+		for (const [documentUri, events] of this._flowControlEvents) {
+			const matchingEvents = events.filter(event => {
 				return (event.labelLocation !== undefined && event.label == label);
 			});
-			let matchingLocations = matchingEvents.map(event => {
+			const matchingLocations = matchingEvents.map(event => {
 				return event.labelLocation!;
 			});
 			locations.push(...matchingLocations);
@@ -413,8 +413,8 @@ export class Index implements ProjectIndex {
 			errors = [];
 		return errors;
 	}
-	removeDocument(textDocumentUri: string) {
-		let uri = normalizeUri(textDocumentUri);
+	removeDocument(textDocumentUri: string): void {
+		const uri = normalizeUri(textDocumentUri);
 
 		if (uriIsStartupFile(uri)) {
 			this._globalVariables = new Map();

@@ -30,15 +30,15 @@ import { generateSymbols } from './structure';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
-let connection = createConnection(ProposedFeatures.all);
+const connection = createConnection(ProposedFeatures.all);
 connection.console.info(`ChoiceScript language server running in node ${process.version}`);
 
 // Create a simple text document manager. The text document manager
 // supports full document sync only
-let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 // TODO handle multiple directories with startup.txt
-let projectIndex = new Index();
+const projectIndex = new Index();
 
 connection.onInitialize((params: InitializeParams) => {
 	const syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full;
@@ -76,21 +76,21 @@ connection.onInitialized(() => {
 	});
 });
 
-function findStartupFiles(workspaces: WorkspaceFolder[]) {
+function findStartupFiles(workspaces: WorkspaceFolder[]): void {
 	workspaces.forEach((workspace) => {
-		let rootPath = url.fileURLToPath(workspace.uri);
+		const rootPath = url.fileURLToPath(workspace.uri);
 		globby('**/startup.txt', {
 			cwd: rootPath
 		}).then(paths => indexProject(paths));
 	});
 }
 
-function indexProject(pathsToProjectFiles: string[]) {
+function indexProject(pathsToProjectFiles: string[]): void {
 	pathsToProjectFiles.map(async (path) => {
 		// TODO handle multiple startup.txt files in multiple directories
 
 		let projectPath = path;
-		let startupFilename = path.split('/').pop();
+		const startupFilename = path.split('/').pop();
 		if (startupFilename) {
 			projectPath = projectPath.replace(startupFilename, '');
 		}
@@ -104,7 +104,7 @@ function indexProject(pathsToProjectFiles: string[]) {
 		indexFile(projectPath+"choicescript_stats.txt");
 
 		// Try to index all of the scene files
-		let scenePaths = projectIndex.getSceneList().map(name => projectPath+name+".txt");
+		const scenePaths = projectIndex.getSceneList().map(name => projectPath+name+".txt");
 		const promises = scenePaths.map(x => indexFile(x));
 
 		await Promise.all(promises);
@@ -114,12 +114,12 @@ function indexProject(pathsToProjectFiles: string[]) {
 	});
 }
 
-async function indexFile(path: string) {
-	let fileUri = url.pathToFileURL(path).toString();
+async function indexFile(path: string): Promise<void> {
+	const fileUri = url.pathToFileURL(path).toString();
 
 	try {
-		let data = await fsPromises.readFile(path, 'utf8');
-		let textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
+		const data = await fsPromises.readFile(path, 'utf8');
+		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
 		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
 	}
 	catch (err) {
@@ -141,7 +141,7 @@ documents.onDidOpen(e => {
 
 // A document has been opened or its content has been changed.
 documents.onDidChangeContent(change => {
-	let isStartupFile = uriIsStartupFile(change.document.uri);
+	const isStartupFile = uriIsStartupFile(change.document.uri);
 
 	updateProjectIndex(change.document, isStartupFile, projectIndex);
 
@@ -154,14 +154,14 @@ documents.onDidChangeContent(change => {
 	}
 });
 
-function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex) {
-	let diagnostics = generateDiagnostics(textDocument, projectIndex);
+function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
+	const diagnostics = generateDiagnostics(textDocument, projectIndex);
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
 connection.onCompletion(
 	(textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		let document = documents.get(textDocumentPosition.textDocument.uri);
+		const document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document === undefined) {
 			return [];
 		}
@@ -171,9 +171,9 @@ connection.onCompletion(
 
 connection.onDefinition(
 	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
-		let document = documents.get(textDocumentPosition.textDocument.uri);
+		const document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document !== undefined) {
-			let definitionAndLocations = findDefinitions(document, textDocumentPosition.position, projectIndex);
+			const definitionAndLocations = findDefinitions(document, textDocumentPosition.position, projectIndex);
 			if (definitionAndLocations !== undefined) {
 				return definitionAndLocations[0].location;
 			}
@@ -184,18 +184,18 @@ connection.onDefinition(
 
 connection.onReferences(
 	(referencesParams: ReferenceParams): Location[] | undefined => {
-		let document = documents.get(referencesParams.textDocument.uri);
+		const document = documents.get(referencesParams.textDocument.uri);
 		if (document === undefined) {
 			return undefined;
 		}
-		let references = findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+		const references = findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
 		return references?.map(reference => { return reference.location; });
 	}
 );
 
 connection.onRenameRequest(
 	(renameParams: RenameParams): WorkspaceEdit | null => {
-		let document = documents.get(renameParams.textDocument.uri);
+		const document = documents.get(renameParams.textDocument.uri);
 		if (document === undefined) {
 			return null;
 		}
@@ -205,7 +205,7 @@ connection.onRenameRequest(
 
 connection.onDocumentSymbol(
 	(documentSymbolParams: DocumentSymbolParams): SymbolInformation[] | null => {
-		let document = documents.get(documentSymbolParams.textDocument.uri);
+		const document = documents.get(documentSymbolParams.textDocument.uri);
 		if (document === undefined) {
 			return null;
 		}

@@ -9,13 +9,13 @@ import { ReadonlyIdentifierIndex } from "./index";
 /**
  * Commands that can only be used in startup.txt
  */
-export let startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
+export const startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
 // TODO deal with commands that are only allowed in choicescript_stats.txt
 
 /**
  * Complete list of valid commands.
  */
-export let validCommands: ReadonlyArray<string> = [
+export const validCommands: ReadonlyArray<string> = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp",
 	"delete", "set", "setref", "print", "if", "selectable_if", "rand", "page_break", "line_break", "script", "else",
 	"elseif", "elsif", "reset", "goto_scene", "fake_choice", "input_text", "ending", "share_this_game",
@@ -31,7 +31,7 @@ export let validCommands: ReadonlyArray<string> = [
 /**
  * Commands that require arguments.
  */
-export let argumentRequiredCommands: ReadonlyArray<string> = [
+export const argumentRequiredCommands: ReadonlyArray<string> = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
@@ -41,68 +41,68 @@ export let argumentRequiredCommands: ReadonlyArray<string> = [
 /**
  * Commands that must not have any arguments.
  */
-export let argumentDisallowedCommands: ReadonlyArray<string> = [
+export const argumentDisallowedCommands: ReadonlyArray<string> = [
 	"else"
-]
+];
 
 /**
  * Commands that silently ignore any arguments.
  */
-export let argumentIgnoredCommands: ReadonlyArray<string> = [
+export const argumentIgnoredCommands: ReadonlyArray<string> = [
 	"choice", "fake_choice", "line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
 	"restart", "scene_list", "check_achievements"
-]
+];
 
 /**
  * Commands that can be used in front of a choice.
  */
-export let choiceAllowedCommands: ReadonlyArray<string> = [
+export const choiceAllowedCommands: ReadonlyArray<string> = [
 	"hide_reuse", "disable_reuse", "allow_reuse", "if", "selectable_if"
-]
+];
 
 /**
  * Commands that modify display of a choice.
  */
-export let reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
+export const reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
 
 /**
  * Commands that create labels or variables.
  */
-export let symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];
+export const symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];
 
 /**
  * Commands that manipulate the contents of variables.
  */
-export let variableManipulationCommands: ReadonlyArray<string> = [
+export const variableManipulationCommands: ReadonlyArray<string> = [
 	"set", "delete", "rand", "input_text", "input_number"
 ];
 
 /**
  * Commands that reference variables.
  */
-export let variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
+export const variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
 
 /**
  * Commands that control flow.
  */
-export let flowControlCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene", "return" ];
+export const flowControlCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene", "return" ];
 
 /**
  * Sub-commands under a *stat_chart command.
  */
-export let statChartCommands: ReadonlyArray<string> = [ "text", "percent", "opposed_pair" ];
+export const statChartCommands: ReadonlyArray<string> = [ "text", "percent", "opposed_pair" ];
 
 /**
  * Sub-commands under a *stat_chart command that have at least one indented line after.
  */
-export let statChartBlockCommands: ReadonlyArray<string> = [ "opposed_pair" ];
+export const statChartBlockCommands: ReadonlyArray<string> = [ "opposed_pair" ];
 
 /* COMPLETIONS */
 
 /**
  * Commands to auto-complete in startup.txt only
  */
-export let startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
+export const startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
 	label: x,
 	kind: CompletionItemKind.Keyword,
 	data: "command"
@@ -111,7 +111,7 @@ export let startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["create"
 /**
  * Commands to auto-complete
  */
-export let validCommandsCompletions: ReadonlyArray<CompletionItem> = [
+export const validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
 	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
 	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
@@ -128,28 +128,28 @@ export let validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 /**
  * ChoiceScript built-in functions
  */
-export let functions: ReadonlyArray<string> = [
+export const functions: ReadonlyArray<string> = [
 	"not", "round", "timestamp", "log", "length", "auto"
 ];
 
 /**
  * ChoiceScript functions that take numbers
  */
-export let numberFunctions: ReadonlyArray<string> = [
+export const numberFunctions: ReadonlyArray<string> = [
 	"round", "length", "log", "timestamp"
 ];
 
 /**
  * ChoiceScript functions that take booleans
  */
-export let booleanFunctions: ReadonlyArray<string> = [
+export const booleanFunctions: ReadonlyArray<string> = [
 	"not"
 ];
 
 /**
  * ChoiceScript built-in variables
  */
-export let builtinVariables: ReadonlyArray<string> = [
+export const builtinVariables: ReadonlyArray<string> = [
 	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered", "choice_is_web", "choice_is_steam",
 	"choice_is_ios_app", "choice_is_advertising_supported", "choice_is_trial", "choice_release_date", "choice_prerelease",
 	"choice_kindle", "choice_randomtest", "choice_quicktest", "choice_restore_purchases_allowed", "choice_save_allowed",
@@ -159,42 +159,42 @@ export let builtinVariables: ReadonlyArray<string> = [
 /**
  * Math operators
  */
-export let mathOperators: ReadonlyArray<string> = [
+export const mathOperators: ReadonlyArray<string> = [
 	"+", "-", "*", "/", "%", "^", "%+", "%-",
 ];
 
 /**
  * Comparison operators
  */
-export let comparisonOperators: ReadonlyArray<string> = [
+export const comparisonOperators: ReadonlyArray<string> = [
 	"=", "<", ">", "<=", ">=", "!="
 ];
 
 /**
  * String operators
  */
-export let stringOperators: ReadonlyArray<string> = [
+export const stringOperators: ReadonlyArray<string> = [
 	"&", "#"
 ];
 
 /**
  * Numeric named operators
  */
-export let numericNamedOperators: ReadonlyArray<string> = [
+export const numericNamedOperators: ReadonlyArray<string> = [
 	"modulo"
 ];
 
 /**
  * ChoiceScript named operators
  */
-export let booleanNamedOperators: ReadonlyArray<string> = [
+export const booleanNamedOperators: ReadonlyArray<string> = [
 	"and", "or"
 ];
 
 /**
  * ChoiceScript named values
  */
-export let booleanNamedValues: ReadonlyArray<string> = [
+export const booleanNamedValues: ReadonlyArray<string> = [
 	"true", "false"
 ];
 
@@ -204,27 +204,27 @@ export let booleanNamedValues: ReadonlyArray<string> = [
 /**
  * Pattern to find legal commands.
  */
-export let commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
+export const commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
  * Pattern to find commands that aren't on a line by themselves.
  */
-export let incorrectCommandPattern = "(?<=\\S)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
+export const incorrectCommandPattern = "(?<=\\S)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
 /**
  * Pattern to find the start of a multireplace.
  */
-export let multiStartPattern = "(?<multi>@!?!?{)";
+export const multiStartPattern = "(?<multi>@!?!?{)";
 /**
  * Pattern to find the start of a replacement.
  */
-export let replacementStartPattern = "(?<replacement>\\$!?!?{)";
+export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
  * Pattern to find a choice.
  */
-export let choicePattern = "(?<choice>#.*)";
+export const choicePattern = "(?<choice>#.*)";
 /**
  * Pattern to find elements that go against Choice of Games style guide.
  */
-export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
+export const stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
 
 
 /* FUNCTIONS */
@@ -237,7 +237,7 @@ export let stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
  * @returns The symbol.
  */
 export function extractSymbolAtIndex(text: string, index: number): string {
-	let symbolCharacter = /\w/;
+	const symbolCharacter = /\w/;
 	let start = index;
 	while (start >= 0 && symbolCharacter.test(text[start]))
 		start--;
@@ -245,7 +245,7 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 	while (end < text.length && symbolCharacter.test(text[end]))
 		end++;
 
-	let symbol = text.slice(start+1, end);
+	const symbol = text.slice(start+1, end);
 	return symbol;
 }
 
@@ -263,14 +263,14 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 export function extractTokenAtIndex(
 	text: string,
 	index: number,
-	delimiters: string = "{}",
-	symbolChars: string = "\\w"): string | undefined {
+	delimiters = "{}",
+	symbolChars = "\\w"): string | undefined {
 	if (delimiters.length % 2) {
 		throw Error(`Delimiters ${delimiters} are not paired`);
 	}
 	for (let i = 0; i < delimiters.length; i += 2) {
 		if (text[index] == delimiters[i]) {
-			let match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i+1], index+1);
+			const match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i+1], index+1);
 			if (match !== undefined) {
 				return delimiters[i] + match + delimiters[i+1];
 			}
@@ -278,9 +278,9 @@ export function extractTokenAtIndex(
 		}
 	}
 
-	let pattern = RegExp(`[${symbolChars}]+`, 'g');
+	const pattern = RegExp(`[${symbolChars}]+`, 'g');
 	pattern.lastIndex = index;
-	let m = pattern.exec(text);
+	const m = pattern.exec(text);
 	if (m !== null && m.index == index) {
 		return m[0];
 	}
@@ -297,8 +297,8 @@ export function extractTokenAtIndex(
 export function variableIsAchievement(variable: string, achievements: ReadonlyIdentifierIndex): string | undefined {
 	let codename: string | undefined = undefined;
 
-	let achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
-	let m = achievementVariablePattern.exec(variable);
+	const achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
+	const m = achievementVariablePattern.exec(variable);
 	if (m !== null && m.groups !== undefined && achievements.has(m.groups.codename)) {
 		codename = m.groups.codename;
 	}
@@ -328,7 +328,7 @@ export function variableIsPossibleParameter(variable: string): boolean {
  * @param uri URI to the scene file.
  */
 export function sceneFromUri(uri: string): string | undefined {
-	let m = /([\w-]+).txt$/.exec(uri);
+	const m = /([\w-]+).txt$/.exec(uri);
 	if (m == null) {
 		return undefined;
 	}

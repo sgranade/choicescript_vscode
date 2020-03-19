@@ -39,20 +39,20 @@ import {
 import { SummaryScope } from '.';
 
 
-let nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOperators, stringOperators);
+const nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOperators, stringOperators);
 
 
-let validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
-let argumentRequiredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiredCommands.map(x => [x, 1]));
-let argumentDisallowedCommandsLookup: ReadonlyMap<string, number> = new Map(argumentDisallowedCommands.map(x => [x, 1]));
-let argumentIgnoredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentIgnoredCommands.map(x => [x, 1]));
-let startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
-let optionAllowedCommandsLookup: ReadonlyMap<string, number> = new Map(optionAllowedCommands.map(x => [x, 1]));
-let symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
-let variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
-let flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
-let nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
-let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
+const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
+const argumentRequiredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiredCommands.map(x => [x, 1]));
+const argumentDisallowedCommandsLookup: ReadonlyMap<string, number> = new Map(argumentDisallowedCommands.map(x => [x, 1]));
+const argumentIgnoredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentIgnoredCommands.map(x => [x, 1]));
+const startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
+const optionAllowedCommandsLookup: ReadonlyMap<string, number> = new Map(optionAllowedCommands.map(x => [x, 1]));
+const symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
+const variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
+const flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
+const nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
+const booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
@@ -148,10 +148,56 @@ function createParsingDiagnostic(severity: DiagnosticSeverity, start: number, en
  * @param end End location in the section.
  * @param state Parsing state.
  */
-function createParsingLocation(start: number, end: number, state: ParsingState) {
+function createParsingLocation(start: number, end: number, state: ParsingState): Location {
 	return Location.create(state.textDocument.uri, Range.create(
 		parsingPositionAt(start, state), parsingPositionAt(end, state)
 	));
+}
+
+/**
+ * Parse a string in an expression as delimited by quote marks.
+ * 
+ * Strings can either be parsed from the large global document or from a subsection of it.
+ * 
+ * @param text Section being parsed.
+ * @param sectionIndex String content's index in the section being parsed.
+ * @param localIndex The content's index in the text. If undefined, sectionIndex is used.
+ * @param state Parsing state.
+ * @returns Local index to the end of the string.
+ */
+function parseString(text: string, sectionIndex: number, localIndex: number, state: ParsingState): number {
+	if (localIndex === undefined) {
+		localIndex = sectionIndex;
+	}
+
+	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
+	const delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
+	delimiterPattern.lastIndex = localIndex;
+	let m: RegExpExecArray | null;
+	while ((m = delimiterPattern.exec(text))) {
+		if (m.groups === undefined)
+			break;
+
+		const contentsLocalIndex = m.index + m[0].length;
+		let newLocalIndex: number;
+
+		if (m.groups.replacement !== undefined) {
+			newLocalIndex = parseReplacement(
+				text, m.groups.replacement.length, sectionIndex, contentsLocalIndex, state);
+		}
+		else if (m.groups.multi !== undefined) {
+			newLocalIndex = parseMultireplacement(
+				text, m.groups.multi.length, sectionIndex + contentsLocalIndex, contentsLocalIndex, state);
+		}
+		else {
+			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
+		}
+
+		delimiterPattern.lastIndex = newLocalIndex;
+		localIndex = newLocalIndex;
+	}
+
+	return localIndex;
 }
 
 /**
@@ -159,42 +205,46 @@ function createParsingLocation(start: number, end: number, state: ParsingState) 
  * @param tokenizedExpression Tokenized expression.
  * @param state Parsing state.
  */
-function parseTokenizedExpression(tokenizedExpression: Expression, state: ParsingState) {
-	for (let token of tokenizedExpression.tokens) {
-		let tokenSectionIndex = tokenizedExpression.globalIndex + token.index;
+function parseTokenizedExpression(tokenizedExpression: Expression, state: ParsingState): void {
+	for (const token of tokenizedExpression.tokens) {
+		const tokenSectionIndex = tokenizedExpression.globalIndex + token.index;
 		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
-			case ExpressionTokenType.String:
-				parseString(token.text, tokenSectionIndex, 1, state);
-				break;
-			case ExpressionTokenType.Variable:
-				let location = createParsingLocation(tokenSectionIndex, tokenSectionIndex + token.text.length, state);
-				state.callbacks.onVariableReference(token.text, location, state);
-				break;
-			case ExpressionTokenType.UnknownOperator:
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					tokenSectionIndex,
-					tokenSectionIndex + token.text.length,
-					"Unknown operator",
-					state);
-				state.callbacks.onParseError(diagnostic);
-				break;
+		case ExpressionTokenType.String:
+			parseString(token.text, tokenSectionIndex, 1, state);
+			break;
+		case ExpressionTokenType.Variable: {
+			const location = createParsingLocation(tokenSectionIndex, tokenSectionIndex + token.text.length, state);
+			state.callbacks.onVariableReference(token.text, location, state);
+			break;
+		}
+		case ExpressionTokenType.UnknownOperator: {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				tokenSectionIndex,
+				tokenSectionIndex + token.text.length,
+				"Unknown operator",
+				state);
+			state.callbacks.onParseError(diagnostic);
+			break;
+		}
 		}
 	}
 
-	for (let error of tokenizedExpression.parseErrors) {
+	for (const error of tokenizedExpression.parseErrors) {
 		state.callbacks.onParseError(error);
 	}
-	for (let error of tokenizedExpression.validateErrors) {
+	for (const error of tokenizedExpression.validateErrors) {
 		state.callbacks.onParseError(error);
 	}
 
 	// Recursively parse any sub-expressions
-	let tokensWithContents = tokenizedExpression.combinedTokens.filter(token => {
+	const tokensWithContents = tokenizedExpression.combinedTokens.filter(token => {
 		return token.contents !== undefined;
 	});
-	for (let token of tokensWithContents) {
-		parseTokenizedExpression(token.contents!, state);
+	for (const token of tokensWithContents) {
+		if (token.contents) {
+			parseTokenizedExpression(token.contents, state);
+		}
 	}
 }
 
@@ -208,7 +258,7 @@ function parseTokenizedExpression(tokenizedExpression: Expression, state: Parsin
  * @returns Tokenized expression.
  */
 function parseExpression(expression: string, globalIndex: number, state: ParsingState, isValueSetting = false): Expression {
-	let tokenizedExpression = new Expression(expression, globalIndex, state.textDocument, isValueSetting);
+	const tokenizedExpression = new Expression(expression, globalIndex, state.textDocument, isValueSetting);
 	parseTokenizedExpression(tokenizedExpression, state);
 	return tokenizedExpression;
 }
@@ -241,17 +291,17 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
 	}
 	let newLocalIndex = localIndex;
 
-	let reference = extractToMatchingDelimiter(text, '{', '}', localIndex);
+	const reference = extractToMatchingDelimiter(text, '{', '}', localIndex);
 	if (reference === undefined) {
-		let lineEndIndex = findLineEnd(text, localIndex);
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const lineEndIndex = findLineEnd(text, localIndex);
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			localIndex - openDelimiterLength + textToSectionDelta,
 			lineEndIndex + textToSectionDelta,
 			"Replacement is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (reference.trim() == "") {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			localIndex - openDelimiterLength + textToSectionDelta,
 			localIndex + reference.length + 1 + textToSectionDelta,
 			"Replacement is empty", state);
@@ -279,17 +329,17 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
  * @param state Parsing state.
  */
 function parseBareString(
-	text: string, startSectionIndex: number, endLocalIndex: number, state: ParsingState) {
-	let subsection = text.slice(0, endLocalIndex);
+	text: string, startSectionIndex: number, endLocalIndex: number, state: ParsingState): void {
+	const subsection = text.slice(0, endLocalIndex);
 
 	// Deal with any replacements or multireplacements
-	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+	const delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
-	while (m = delimiterPattern.exec(subsection)) {
+	while ((m = delimiterPattern.exec(subsection))) {
 		if (m.groups === undefined)
 			break;
 
-		let contentsLocalIndex = m.index + m[0].length;
+		const contentsLocalIndex = m.index + m[0].length;
 		let newLocalIndex: number;
 
 		if (m.groups.replacement !== undefined) {
@@ -308,51 +358,6 @@ function parseBareString(
 	}
 }
 
-/**
- * Parse a string in an expression as delimited by quote marks.
- * 
- * Strings can either be parsed from the large global document or from a subsection of it.
- * 
- * @param text Section being parsed.
- * @param sectionIndex String content's index in the section being parsed.
- * @param localIndex The content's index in the text. If undefined, sectionIndex is used.
- * @param state Parsing state.
- * @returns Local index to the end of the string.
- */
-function parseString(text: string, sectionIndex: number, localIndex: number, state: ParsingState): number {
-	if (localIndex === undefined) {
-		localIndex = sectionIndex;
-	}
-
-	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
-	let delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
-	delimiterPattern.lastIndex = localIndex;
-	let m: RegExpExecArray | null;
-	while (m = delimiterPattern.exec(text)) {
-		if (m.groups === undefined)
-			break;
-
-		let contentsLocalIndex = m.index + m[0].length;
-		let newLocalIndex: number;
-
-		if (m.groups.replacement !== undefined) {
-			newLocalIndex = parseReplacement(
-				text, m.groups.replacement.length, sectionIndex, contentsLocalIndex, state);
-		}
-		else if (m.groups.multi !== undefined) {
-			newLocalIndex = parseMultireplacement(
-				text, m.groups.multi.length, sectionIndex + contentsLocalIndex, contentsLocalIndex, state);
-		}
-		else {
-			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
-		}
-
-		delimiterPattern.lastIndex = newLocalIndex;
-		localIndex = newLocalIndex;
-	}
-
-	return localIndex;
-}
 
 /**
  * Parse a replacement ${var}.
@@ -393,23 +398,23 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 		textToSectionDelta = sectionIndex - localIndex;
 	}
 
-	let tokens = tokenizeMultireplace(text, state.textDocument, sectionIndex, localIndex);
+	const tokens = tokenizeMultireplace(text, state.textDocument, sectionIndex, localIndex);
 
 	if (tokens === undefined) {
-		let lineEndIndex = findLineEnd(text, localIndex);
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const lineEndIndex = findLineEnd(text, localIndex);
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			localIndex - openDelimiterLength + textToSectionDelta, lineEndIndex + textToSectionDelta,
 			"Multireplace is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
 		// Flag any nested multireplacements
-		let multiPattern = RegExp(multiStartPattern);
-		let m = tokens.text.match(multiPattern);
+		const multiPattern = RegExp(multiStartPattern);
+		const m = tokens.text.match(multiPattern);
 		if (m !== null && m.index !== undefined) {
-			let startLocalIndex = localIndex + m.index;
+			const startLocalIndex = localIndex + m.index;
 			let endLocalIndex: number;
-			let contents = extractToMatchingDelimiter(text, '{', '}', startLocalIndex + m[0].length);
+			const contents = extractToMatchingDelimiter(text, '{', '}', startLocalIndex + m[0].length);
 			if (contents !== undefined) {
 				// Starting index + opening delimiter length + contents length + closing delimiter length
 				endLocalIndex = startLocalIndex + m[0].length + contents.length + 1;
@@ -417,7 +422,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			else {
 				endLocalIndex = startLocalIndex + tokens.text.length;
 			}
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				startLocalIndex + textToSectionDelta,
 				endLocalIndex + textToSectionDelta,
 				"Multireplaces cannot be nested",
@@ -426,7 +431,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 		}
 
 		if (tokens.test.bareExpression.trim() == "") {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				localIndex - openDelimiterLength + textToSectionDelta,
 				tokens.endIndex + textToSectionDelta,
 				"Multireplace is empty",
@@ -438,13 +443,13 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			if (tokens.text.startsWith("(")) {
 				startIndex++;
 			}
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				startIndex, tokens.endIndex + textToSectionDelta,
 				"Multireplace has no options", state);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 1) {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,
 				tokens.endIndex + textToSectionDelta,
 				"Multireplace must have at least two options separated by |",
@@ -456,19 +461,19 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			parseTokenizedExpression(tokens.test, state);
 
 			// Treat the body portions as strings without surrounding quote marks
-			for (let token of tokens.body) {
+			for (const token of tokens.body) {
 				// Since we can't nest multireplaces, and we've already flagged them above as errors,
 				// get rid of any opening multireplaces in the string
-				let text = token.text.replace('@{', '  ');
+				const text = token.text.replace('@{', '  ');
 				parseBareString(text, token.localIndex + textToSectionDelta, token.text.length, state);
 			}
 
 			// Check the first body for a leading operator and warn about it if we don't have parens around the test
 			// We only check for non-word operators so we don't catch regular English words like "and"
 			if (!tokens.text.startsWith("(")) {
-				let firstText = tokens.body[0].text.split(' ')[0];
+				const firstText = tokens.body[0].text.split(' ')[0];
 				if (nonWordOperatorsLookup.has(firstText)) {
-					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
 						tokens.test.globalIndex,
 						tokens.body[0].localIndex + firstText.length + textToSectionDelta,
 						"Potentially missing parentheses",
@@ -491,15 +496,15 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
  * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseParams(line: string, lineSectionIndex: number, state: ParsingState) {
+function parseParams(line: string, lineSectionIndex: number, state: ParsingState): void {
 	// Split into words
-	let wordsPattern = /\w+/g;
+	const wordsPattern = /\w+/g;
 	let m: RegExpExecArray | null;
-	while (m = wordsPattern.exec(line)) {
+	while ((m = wordsPattern.exec(line))) {
 		if (m === null)
 			continue;
 
-		let location = createParsingLocation(lineSectionIndex + m.index, lineSectionIndex + m.index + m[0].length, state);
+		const location = createParsingLocation(lineSectionIndex + m.index, lineSectionIndex + m.index + m[0].length, state);
 		state.callbacks.onLocalVariableCreate(m[0], location, state);
 	}
 }
@@ -510,12 +515,12 @@ function parseParams(line: string, lineSectionIndex: number, state: ParsingState
  * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseSet(line: string, lineSectionIndex: number, state: ParsingState) {
-	let tokenizedExpression = new Expression(line, lineSectionIndex, state.textDocument, true);
-	let tokens = tokenizedExpression.tokens;
+function parseSet(line: string, lineSectionIndex: number, state: ParsingState): void {
+	const tokenizedExpression = new Expression(line, lineSectionIndex, state.textDocument, true);
+	const tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			lineSectionIndex, lineSectionIndex,
 			"Missing variable name", state);
 		state.callbacks.onParseError(diagnostic);
@@ -523,7 +528,7 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState) {
 	}
 	// The first token must be a variable or a variable reference
 	if (tokens[0].type != ExpressionTokenType.Variable && tokens[0].type != ExpressionTokenType.VariableReference) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			lineSectionIndex + tokens[0].index,
 			lineSectionIndex + tokens[0].index + tokens[0].text.length,
 			"Not a variable or variable reference",
@@ -535,10 +540,10 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState) {
 	}
 
 	// Now parse the remaining elements as an expression and then validate them as part of a *set command
-	let remainingExpression = tokenizedExpression.slice(1);
+	const remainingExpression = tokenizedExpression.slice(1);
 	if (remainingExpression.tokens.length == 0) {
-		let index = lineSectionIndex + tokens[0].index + tokens[0].text.length;
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const index = lineSectionIndex + tokens[0].index + tokens[0].text.length;
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			index, index,
 			"Missing value to set the variable to", state);
 		state.callbacks.onParseError(diagnostic);
@@ -555,7 +560,7 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState) {
  * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseSymbolManipulationCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState) {
+function parseSymbolManipulationCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState): void {
 	// The *params command is odd in that it takes an entire expression, and *set has two
 	// different expressions to handle, so parse them separately
 	if (command == "params") {
@@ -565,53 +570,53 @@ function parseSymbolManipulationCommand(command: string, line: string, lineSecti
 		parseSet(line, lineSectionIndex, state);
 	}
 	else {
-		let linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;
+		const linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;
 		linePattern.lastIndex = 0;
-		let lineMatch = linePattern.exec(line);
+		const lineMatch = linePattern.exec(line);
 		if (lineMatch === null || lineMatch.groups === undefined) {
 			return;
 		}
-		let symbol: string = lineMatch.groups.symbol;
-		let symbolLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + symbol.length, state);
-		let expression: string | undefined = lineMatch.groups.expression;
+		const symbol: string = lineMatch.groups.symbol;
+		const symbolLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + symbol.length, state);
+		const expression: string | undefined = lineMatch.groups.expression;
 		let expressionSectionIndex = lineSectionIndex + symbol.length;
 		if (lineMatch.groups.spacing) {
 			expressionSectionIndex += lineMatch.groups.spacing.length;
 		}
 		switch (command) {
-			case "create":
-				// *create instantiates global variables
-				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
-				if (expression === undefined) {
-					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
-						"Missing value to set the variable to", state);
-					state.callbacks.onParseError(diagnostic);
-				}
-				else {
-					parseExpression(expression, expressionSectionIndex, state);
-				}
-				break;
-			case "temp":
-				// *temp instantiates variables local to the scene file
-				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
-				if (expression !== undefined) {
-					parseExpression(expression, expressionSectionIndex, state);
-				}
-				break;
-			case "label":
-				// *label creates a goto/gosub label local to the scene file
-				state.callbacks.onLabelCreate(symbol, symbolLocation, state);
-				break;
-			case "delete":
-			case "rand":
-			case "input_text":
-			case "input_number":
-				// these reference a variable
-				state.callbacks.onVariableReference(symbol, symbolLocation, state);
-				break;
-			default:
-				throw Error(`Unexpected command ${command} in parseSymbolManipulatingCommand`);
+		case "create":
+			// *create instantiates global variables
+			state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
+			if (expression === undefined) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
+					"Missing value to set the variable to", state);
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				parseExpression(expression, expressionSectionIndex, state);
+			}
+			break;
+		case "temp":
+			// *temp instantiates variables local to the scene file
+			state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
+			if (expression !== undefined) {
+				parseExpression(expression, expressionSectionIndex, state);
+			}
+			break;
+		case "label":
+			// *label creates a goto/gosub label local to the scene file
+			state.callbacks.onLabelCreate(symbol, symbolLocation, state);
+			break;
+		case "delete":
+		case "rand":
+		case "input_text":
+		case "input_number":
+			// these reference a variable
+			state.callbacks.onVariableReference(symbol, symbolLocation, state);
+			break;
+		default:
+			throw Error(`Unexpected command ${command} in parseSymbolManipulatingCommand`);
 		}
 	}
 }
@@ -621,7 +626,7 @@ function parseSymbolManipulationCommand(command: string, line: string, lineSecti
  * @param text Text to read from.
  * @param lineStart Start of the next line.
  */
-function readNextNonblankLine(text: string, lineStart: number) : NewLine | undefined {
+function readNextNonblankLine(text: string, lineStart: number): NewLine | undefined {
 	let nextLine: NewLine | undefined;
 	while (true) {
 		nextLine = readLine(text, lineStart);
@@ -649,21 +654,21 @@ function readNextNonblankLine(text: string, lineStart: number) : NewLine | undef
  * @returns Index of the line containing the option's contents and the number of whitespace characters for the block.
  */
 function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number, 
-	optionIndent: number, isTabs: boolean, state: ParsingState): { optionContentsIndex: number, blockIndent: number } | undefined {
+	optionIndent: number, isTabs: boolean, state: ParsingState): { optionContentsIndex: number; blockIndent: number } | undefined {
 	if (optionLine.splitLine === undefined) {  // We gotta have some indent
 		return undefined;
 	}
-	let padding = optionLine.splitLine.padding;
+	const padding = optionLine.splitLine.padding;
 	// Bomb out on mixed tabs and spaces
 	if (isTabs && / /.test(padding)) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			optionLine.index, optionLine.index + padding.length,
 			"Spaces used instead of tabs", state);
 		state.callbacks.onParseError(diagnostic);
 		return undefined;
 	}
 	else if (!isTabs && /\t/.test(padding)) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			optionLine.index, optionLine.index + padding.length,
 			"Tabs used instead of spaces", state);
 		state.callbacks.onParseError(diagnostic);
@@ -676,31 +681,31 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 
 	// Flag problems with indents
 	if (padding.length < optionIndent) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			optionLine.index, optionLine.index + padding.length,
 			"Line is not indented far enough", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (padding.length > optionIndent) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			optionLine.index, optionLine.index + padding.length,
 			"Line is indented too far", state);
 		state.callbacks.onParseError(diagnostic);
 	}
 
 	// The line should either contain an #option or a bare *if statement
-	let hashIndex = optionLine.splitLine.contents.indexOf("#");
+	const hashIndex = optionLine.splitLine.contents.indexOf("#");
 	if (hashIndex == -1) {
 		// This better be an *if statement
 		if (optionLine.splitLine.contents.startsWith("*if ")) {
 			parseSection(optionLine.line, state.sectionGlobalIndex + optionLine.index, state);
-			let nextOptionLine = readLine(text, optionLine.index + optionLine.line.length);
+			const nextOptionLine = readLine(text, optionLine.index + optionLine.line.length);
 			if (nextOptionLine === undefined || nextOptionLine.splitLine === undefined) {
 				return undefined;
 			}
 
 			if (nextOptionLine.splitLine.padding.length <= optionIndent) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					nextOptionLine.index, nextOptionLine.index + nextOptionLine.splitLine.padding.length,
 					"Line is not indented far enough", state);
 				state.callbacks.onParseError(diagnostic);
@@ -715,9 +720,9 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 			}
 		}
 		else {
-			let startIndex = optionLine.index + (optionLine.splitLine?.padding.length ?? 0);
-			let endIndex = optionLine.index + optionLine.line.length;
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const startIndex = optionLine.index + (optionLine.splitLine?.padding.length ?? 0);
+			const endIndex = optionLine.index + optionLine.line.length;
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				startIndex, endIndex,
 				"Must be either an #option or an *if", state);
 			state.callbacks.onParseError(diagnostic);
@@ -727,9 +732,9 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 	else {
 		if (hashIndex > 0) {
 			// There's text in front of the option. Check it.
-			let preText = optionLine.splitLine.contents.slice(0, hashIndex).trim();
+			const preText = optionLine.splitLine.contents.slice(0, hashIndex).trim();
 			if (preText[0] != "*" || !optionAllowedCommandsLookup.has(preText.slice(1).split(/[ \t]/)[0])) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					optionLine.index + padding.length,
 					optionLine.index + padding.length + hashIndex - 1,
 					"No text is allowed in front of an option", state);
@@ -775,10 +780,10 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 			if (nextLine.splitLine === undefined) {
 				break;
 			}
-			let padding = nextLine.splitLine.padding;
+			const padding = nextLine.splitLine.padding;
 			// Bomb out on a switch from tabs to spaces or vice versa
 			if (isTabs && / /.test(padding)) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					nextLine.index, nextLine.index + padding.length,
 					"Spaces used instead of tabs", state);
 				state.callbacks.onParseError(diagnostic);
@@ -788,7 +793,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 				break;
 			}
 			else if (!isTabs && /\t/.test(padding)) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					nextLine.index, nextLine.index + padding.length,
 					"Tabs used instead of spaces", state);
 				state.callbacks.onParseError(diagnostic);
@@ -807,7 +812,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 
 			// Flag lines that are indented too little
 			if (padding.length < optionContentsIndent) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					lineStart, lineStart + padding.length,
 					"Line is not indented far enough", state);
 				state.callbacks.onParseError(diagnostic);
@@ -836,7 +841,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
  */
 function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, optionsSectionIndex: number, state: ParsingState): number {
 	// commandPadding can include a leading \n, so don't count that
-	let commandIndent = commandPadding.replace("\n", "").length;
+	const commandIndent = commandPadding.replace("\n", "").length;
 	let setPaddingType = false;
 	let isTabs = /\t/.test(commandPadding);
 	let firstOption = "";
@@ -847,7 +852,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	if (commandIndent) {
 		setPaddingType = true;
 		if (isTabs && / /.test(commandPadding)) {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandSectionIndex, commandSectionIndex + commandPadding.length,
 				"Tabs and spaces can't be mixed", state);
 			state.callbacks.onParseError(diagnostic);
@@ -864,7 +869,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 		isTabs = /\t/.test(nextLine.splitLine.padding);
 		setPaddingType = true;
 		if ((isTabs && / /.test(nextLine.splitLine.padding)) || (!isTabs && /\t/.test(nextLine.splitLine.padding))) {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				nextLine.index, nextLine.index + nextLine.splitLine.padding.length,
 				"Tabs and spaces can't be mixed", state);
 			state.callbacks.onParseError(diagnostic);
@@ -880,7 +885,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 			break;
 		}
 
-		let parseOptionResults = parseSingleOptionLine(
+		const parseOptionResults = parseSingleOptionLine(
 			text, nextLine, commandIndent, optionIndent, isTabs, state
 		);
 		if (parseOptionResults === undefined) {  // Something went wrong
@@ -895,7 +900,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 		}
 	}
 
-	let startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
+	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
 	let endGlobalPosition: Position;
 	if (contentsEndIndex === undefined) {
 		contentsEndIndex = optionsSectionIndex;
@@ -907,14 +912,14 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 
 	// Trim our summary if necessary
 	if (firstOption.length > 35) {
-		let trimmedFirstOption = firstOption.slice(0, 35);
-		let m = /^(.*)(?: )/.exec(trimmedFirstOption);
+		const trimmedFirstOption = firstOption.slice(0, 35);
+		const m = /^(.*)(?: )/.exec(trimmedFirstOption);
 		if (m !== null) {
 			firstOption = m[1]+"…";
 		}
 	}
-	let range = Range.create(startGlobalPosition, endGlobalPosition);
-	let scope: SummaryScope = { summary: `${command} ${firstOption}`, range: range };
+	const range = Range.create(startGlobalPosition, endGlobalPosition);
+	const scope: SummaryScope = { summary: `${command} ${firstOption}`, range: range };
 	state.callbacks.onChoiceScope(scope, state);
 
 	return contentsEndIndex;
@@ -926,22 +931,22 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
  * @param startSectionIndex Index at the start of the scenes.
  * @param state Parsing state.
  */
-function parseScenes(text: string, startSectionIndex: number, state: ParsingState) {
-	let sceneList: Array<string> = [];
-	let scenePattern = /(\s+)(\$\s+)?(\S+)\s*\r?\n/;
+function parseScenes(text: string, startSectionIndex: number, state: ParsingState): void {
+	const sceneList: Array<string> = [];
+	const scenePattern = /(\s+)(\$\s+)?(\S+)\s*\r?\n/;
 	let lineStart = startSectionIndex;
 
 	// Process the first line to get the indent level and first scene
 	let lineEnd = findLineEnd(text, lineStart);
 	if (!lineEnd) {
-		return sceneList;  // No scene found
+		return;  // No scene found
 	}
 	let line = text.slice(lineStart, lineEnd);
 	let m = scenePattern.exec(line);
 	if (!m) {
-		return sceneList;
+		return;
 	}
-	let padding = m[1];
+	const padding = m[1];
 	sceneList.push(m[3]);
 	lineStart = lineEnd;
 
@@ -960,14 +965,14 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
 		lineStart = lineEnd;
 	}
 	
-	let startPosition = parsingPositionAt(startSectionIndex, state);
-	let endPosition = Position.create(
+	const startPosition = parsingPositionAt(startSectionIndex, state);
+	const endPosition = Position.create(
 		startPosition.line + sceneList.length, 0
 	);
-	let range = Range.create(
+	const range = Range.create(
 		startPosition, endPosition
 	);
-	let location = Location.create(state.textDocument.uri, range);
+	const location = Location.create(state.textDocument.uri, range);
 	state.callbacks.onSceneDefinition(sceneList, location, state);
 }
 
@@ -978,8 +983,8 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
  * @param contentStartSectionIndex Index at the start of the stat chart contents.
  * @param state Parsing state.
  */
-function parseStatChart(text: string, commandSectionIndex: number, contentStartSectionIndex: number, state: ParsingState) {
-	let subcommandPattern = /(?<padding>[ \t]+)(?<command>\S+)((?<spacing>[ \t]*)(?<remainder>.*))?(\r?\n)?/g;
+function parseStatChart(text: string, commandSectionIndex: number, contentStartSectionIndex: number, state: ParsingState): void {
+	const subcommandPattern = /(?<padding>[ \t]+)(?<command>\S+)((?<spacing>[ \t]*)(?<remainder>.*))?(\r?\n)?/g;
 	let lineStart = contentStartSectionIndex;
 
 	// No need to worry about ${} references in the stat chart, as the top-level parser
@@ -989,40 +994,44 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 	let padding = "NONE";
 	let m: RegExpExecArray | null;
 
-	while (m = subcommandPattern.exec(text)) {
+	while ((m = subcommandPattern.exec(text))) {
+		// m.groups should always exist, but to keep us from having to check types...
+		if (!m.groups) {
+			continue;
+		}
 		if (m.index !== lineStart) {
 			break;
 		}
 		if (padding == "NONE") {
-			padding = m.groups!.padding;
+			padding = m.groups.padding;
 		}
-		else if (m.groups!.padding.length < padding.length) {
+		else if (m.groups.padding.length < padding.length) {
 			break;
 		}
-		else if (m.groups!.padding != padding) {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		else if (m.groups.padding != padding) {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				m.index, m.index + m[0].length,
 				"Line is indented too far.", state);
 			state.callbacks.onParseError(diagnostic);
 			break;
 		}
 
-		let command = m.groups!.command;
-		let commandStart = m.index + padding.length;
+		const command = m.groups.command;
+		const commandStart = m.index + padding.length;
 
 		if (statChartCommands.includes(command)) {
-			let spacing = m.groups!.spacing;
+			const spacing = m.groups.spacing;
 			if (spacing === undefined) {
-				let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					commandStart, commandStart + command.length,
 					`Missing variable after ${command}`, state);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
-				let remainderStart = commandStart + command.length + spacing.length;
-				let variable = extractTokenAtIndex(text, remainderStart);
+				const remainderStart = commandStart + command.length + spacing.length;
+				const variable = extractTokenAtIndex(text, remainderStart);
 				if (variable === undefined) {
-					let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 						remainderStart, remainderStart,
 						"Not a valid variable.", state);
 					state.callbacks.onParseError(diagnostic);
@@ -1031,7 +1040,7 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 					parseExpression(variable?.slice(1, -1), remainderStart+1, state);
 				}
 				else {
-					let location = createParsingLocation(remainderStart, remainderStart + variable.length, state);
+					const location = createParsingLocation(remainderStart, remainderStart + variable.length, state);
 					state.callbacks.onVariableReference(variable, location, state);
 				}
 			}
@@ -1040,13 +1049,13 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 				// Consume any sub-indented lines
 				lineStart = subcommandPattern.lastIndex;
 				while (lineStart < text.length) {
-					let nextLineStart = findLineEnd(text, lineStart);
+					const nextLineStart = findLineEnd(text, lineStart);
 					if (nextLineStart === undefined) {
 						break;
 					}
-					let line = text.slice(lineStart, nextLineStart);
-					let paddingMatch = line.match(/^(?<padding>\s+)/);
-					if (!paddingMatch || paddingMatch.groups!.padding.length <= padding.length) {
+					const line = text.slice(lineStart, nextLineStart);
+					const paddingMatch = line.match(/^(?<padding>\s+)/);
+					if (!paddingMatch || !paddingMatch.groups || paddingMatch.groups.padding.length <= padding.length) {
 						break;
 					}
 					lineStart = nextLineStart;
@@ -1055,7 +1064,7 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 			}
 		}
 		else {
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandStart, commandStart + command.length,
 				`Must be one of ${statChartCommands.join(", ")}`, state);
 			state.callbacks.onParseError(diagnostic);
@@ -1065,7 +1074,7 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 	}
 
 	if (lineStart == contentStartSectionIndex) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex - 1, commandSectionIndex + "stat_chart".length,
 			`*stat_chart must have at least one stat`, state);
 		state.callbacks.onParseError(diagnostic);
@@ -1078,12 +1087,12 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
  * @param tokenizedExpression The expression that's being tested.
  * @param state Parsing state.
  */
-function validateConditionExpression(tokenizedExpression: Expression, state: ParsingState) {
+function validateConditionExpression(tokenizedExpression: Expression, state: ParsingState): void {
 	if (tokenizedExpression.evalType != ExpressionEvalType.Boolean &&
 		tokenizedExpression.evalType != ExpressionEvalType.Empty &&
 		tokenizedExpression.evalType != ExpressionEvalType.Unknowable) {
-		let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 			tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
 			"Must be a boolean value",
@@ -1099,18 +1108,18 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
  * @param lineSectionIndex Index at the start of the line.
  * @param state Parsing state.
  */
-function parseVariableReferenceCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState) {
+function parseVariableReferenceCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState): void {
 	let optionOnLineWithIf = false;
 	// The *if and *selectable_if commands can be used with options, so take that into account
 	if (command == "if" || command == "selectable_if") {
-		let choiceSplit = line.split('#');
+		const choiceSplit = line.split('#');
 		if (choiceSplit.length > 1) {
 			line = choiceSplit[0];
 			optionOnLineWithIf = true;
 		}
 	}
 	// The line that follows a command that can reference a variable is an expression
-	let tokenizedExpression = parseExpression(line, lineSectionIndex, state);
+	const tokenizedExpression = parseExpression(line, lineSectionIndex, state);
 	if (tokenizedExpression.evalType != ExpressionEvalType.Error) {
 		validateConditionExpression(tokenizedExpression, state);
 	}
@@ -1119,8 +1128,8 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 	if (optionOnLineWithIf) {
 		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
-			let lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-			let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 				tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
 				"Without parentheses, this expression will always be true",
@@ -1138,8 +1147,8 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
  * @param lineSectionIndex Index of the line in the section being parsed.
  * @param state Parsing state.
  */
-function parseFlowControlCommand(command: string, commandSectionIndex: number, line: string, lineSectionIndex: number, state: ParsingState) {
-	let commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
+function parseFlowControlCommand(command: string, commandSectionIndex: number, line: string, lineSectionIndex: number, state: ParsingState): void {
+	const commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
 	let label = "";
 	let scene = "";
 	let labelLocation: Location | undefined = undefined;
@@ -1166,9 +1175,9 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 
 		if (command.endsWith("_scene")) {
 			// There's a optional second token
-			let m = remainderLine.match(/^(?<spacing>[ \t]+)/);
+			const m = remainderLine.match(/^(?<spacing>[ \t]+)/);
 			if (m !== null && m.groups !== undefined) {
-				let spacing = m.groups.spacing;
+				const spacing = m.groups.spacing;
 				token = extractTokenAtIndex(remainderLine, spacing.length);
 				secondToken = (token !== undefined) ? token : "";
 				secondTokenLocalIndex = remainderLineLocalIndex + spacing.length;
@@ -1185,7 +1194,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 					parseExpression(secondToken.slice(1, -1), lineSectionIndex+secondTokenLocalIndex+1, state);
 				}
 				label = secondToken;
-				let labelIndex = lineSectionIndex + secondTokenLocalIndex;
+				const labelIndex = lineSectionIndex + secondTokenLocalIndex;
 				labelLocation = createParsingLocation(labelIndex, labelIndex + label.length, state);
 			}
 		}
@@ -1197,9 +1206,9 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 		if (command.startsWith("gosub") && remainderLine.trim() != "") {
 			// Handle potential parameters by tokenizing them as if they were an expression, but then consider them
 			// one at a time
-			let remainderLineGlobalIndex = lineSectionIndex + remainderLineLocalIndex;
-			let expression = new Expression(remainderLine, remainderLineGlobalIndex, state.textDocument);
-			for (let token of expression.combinedTokens) {
+			const remainderLineGlobalIndex = lineSectionIndex + remainderLineLocalIndex;
+			const expression = new Expression(remainderLine, remainderLineGlobalIndex, state.textDocument);
+			for (const token of expression.combinedTokens) {
 				// Let the expression parsing handle each token
 				parseExpression(token.text, token.index + remainderLineGlobalIndex, state);
 			}
@@ -1215,8 +1224,8 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
  * @param startSectionIndex Index at the start of the codename.
  * @param state Parsing state.
  */
-function parseAchievement(codename: string, startSectionIndex: number, state: ParsingState) {
-	let location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
+function parseAchievement(codename: string, startSectionIndex: number, state: ParsingState): void {
+	const location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
 	state.callbacks.onAchievementCreate(codename, location, state);
 }
 
@@ -1226,8 +1235,8 @@ function parseAchievement(codename: string, startSectionIndex: number, state: Pa
  * @param startSectionIndex Index at the start of the codename.
  * @param state Parsing state.
  */
-function parseAchievementReference(codename: string, startSectionIndex: number, state: ParsingState) {
-	let location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
+function parseAchievementReference(codename: string, startSectionIndex: number, state: ParsingState): void {
+	const location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
 	state.callbacks.onAchievementReference(codename, location, state);
 }
 
@@ -1245,43 +1254,43 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
 function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandSectionIndex: number, state: ParsingState): number {
 	state.currentCommand = command;
 	state.parseStack.push(ParseElement.Command);
-	let lineIndex = commandSectionIndex + command.length + spacing.length;
+	const lineIndex = commandSectionIndex + command.length + spacing.length;
 	// By default a command's parsing ends at the end of the line
 	let endParseIndex = lineIndex + line.length;
 
-	let commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
+	const commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
 
 	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
 
 	if (!validCommandsLookup.has(command)) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex, commandSectionIndex + command.length,
 			`Command *${command} isn't a valid ChoiceScript command.`, state);
 		state.callbacks.onParseError(diagnostic);
 		return endParseIndex;  // Short-circuit: Nothing more to be done
 	}
 	else if (argumentRequiredCommandsLookup.has(command) && line.trim() == "") {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex, commandSectionIndex + command.length,
 			`Command *${command} is missing its arguments.`, state);
 		state.callbacks.onParseError(diagnostic);
 		return endParseIndex;  // Short circuit
 	}
 	else if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex, commandSectionIndex + command.length,
 			`Command *${command} can only be used in startup.txt.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 
 	if (argumentDisallowedCommandsLookup.has(command) && line.trim() != "") {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			lineIndex, lineIndex + line.length,
 			`Command *${command} must not have anything after it.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (argumentIgnoredCommandsLookup.has(command) && line.trim() != "") {
-		let diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 			lineIndex, lineIndex + line.length,
 			`This will be ignored.`, state);
 		state.callbacks.onParseError(diagnostic);
@@ -1297,34 +1306,34 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		parseFlowControlCommand(command, commandSectionIndex, line, lineIndex, state);
 	}
 	else if (command == "choice" || command == "fake_choice") {
-		let nextLineIndex = findLineEnd(document, commandSectionIndex);
+		const nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
 			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "scene_list") {
-		let nextLineIndex = findLineEnd(document, commandSectionIndex);
+		const nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
 			parseScenes(document, nextLineIndex, state);
 		}
 	}
 	else if (command == "stat_chart") {
-		let nextLineIndex = findLineEnd(document, commandSectionIndex);
+		const nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
 			parseStatChart(document, commandSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "achievement") {
-		let codenameMatch = line.match(/^\S+/);
+		const codenameMatch = line.match(/^\S+/);
 		if (codenameMatch) {
-			let codename = codenameMatch[0];
+			const codename = codenameMatch[0];
 			parseAchievement(codename, lineIndex, state);
 		}
 	}
 	else if (command == "achieve") {
-		let codenameMatch = line.match(/^\S+/);
+		const codenameMatch = line.match(/^\S+/);
 		if (codenameMatch) {
-			let codename = codenameMatch[0];
+			const codename = codenameMatch[0];
 			parseAchievementReference(codename, lineIndex, state);
 		}
 	}
@@ -1341,41 +1350,41 @@ function parseCommand(document: string, prefix: string, command: string, spacing
  * @param sectionGlobalIndex Index of the section in the document.
  * @param state Parsing state.
  */
-function parseSection(section: string, sectionGlobalIndex: number, state: ParsingState) {
+function parseSection(section: string, sectionGlobalIndex: number, state: ParsingState): void {
 	// Since we recursively parse sections, save off the old section index
 	// and put the new one in the parsing state
-	let oldSectionIndex = state.sectionGlobalIndex;
+	const oldSectionIndex = state.sectionGlobalIndex;
 	state.sectionGlobalIndex = sectionGlobalIndex;
 	
-	let pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
+	const pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
-	while (m = pattern.exec(section)) {
+	while ((m = pattern.exec(section))) {
 		if (m.groups === undefined) {
 			continue;
 		}
 
 		// Pattern options: command, replacement (${}), multi (@{})
 		if (m.groups.command) {
-			let command = m.groups.command;
-			let prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
-			let spacing = m.groups.commandSpacing ? m.groups.commandSpacing : "";
-			let line = m.groups.commandLine ? m.groups.commandLine : "";
-			let commandIndex = m.index + prefix.length + 1;
+			const command = m.groups.command;
+			const prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
+			const spacing = m.groups.commandSpacing ? m.groups.commandSpacing : "";
+			const line = m.groups.commandLine ? m.groups.commandLine : "";
+			const commandIndex = m.index + prefix.length + 1;
 			// Command parsing occasionally consumes more than one line
-			let endIndex = parseCommand(section, prefix, command, spacing, line, commandIndex, state);
+			const endIndex = parseCommand(section, prefix, command, spacing, line, commandIndex, state);
 			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.replacement) {
-			let subsectionIndex = m.index + m[0].length;
+			const subsectionIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseReplacement(section, m[0].length, subsectionIndex, undefined, state);
+			const endIndex = parseReplacement(section, m[0].length, subsectionIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 		else if (m.groups.multi) {
-			let subsectionIndex = m.index + m[0].length;
+			const subsectionIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
-			let endIndex = parseMultireplacement(section, m[0].length, subsectionIndex, undefined, state);
+			const endIndex = parseMultireplacement(section, m[0].length, subsectionIndex, undefined, state);
 			pattern.lastIndex = endIndex;
 		}
 	}
@@ -1390,8 +1399,8 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
  * @param callbacks Parser event callbacks.
  */
 export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): void {
-	let state = new ParsingState(textDocument, callbacks);
-	let text = textDocument.getText();
+	const state = new ParsingState(textDocument, callbacks);
+	const text = textDocument.getText();
 
 	parseSection(text, 0, state);
 }

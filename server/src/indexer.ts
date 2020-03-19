@@ -1,7 +1,7 @@
 import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, ReadonlyIdentifierIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
+import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
 import { createDiagnosticFromLocation, comparePositions } from './utilities';
 
 /**
@@ -37,21 +37,21 @@ class IndexingState {
  * @param state Indexing state.
  */
 function generateScopes(state: IndexingState): DocumentScopes {
-	let scopes: DocumentScopes = {
+	const scopes: DocumentScopes = {
 		achievementVarScopes: [],
 		choiceScopes: state.choiceScopes,
 		paramScopes: [],
 	};
-	let documentLength = state.textDocument.getText().length;
-	let documentEndLocation = state.textDocument.positionAt(documentLength);
+	const documentLength = state.textDocument.getText().length;
+	const documentEndLocation = state.textDocument.positionAt(documentLength);
 	if (state.checkAchievementLocation !== undefined) {
-		let start = state.checkAchievementLocation.range.start;
+		const start = state.checkAchievementLocation.range.start;
 		scopes.achievementVarScopes.push(Range.create(
 			start, documentEndLocation
 		));
 	}
-	for (let location of state.paramsLocations) {
-		let start = location.range.start;
+	for (const location of state.paramsLocations) {
+		const start = location.range.start;
 		scopes.paramScopes.push(Range.create(
 			start, documentEndLocation
 		));
@@ -67,9 +67,9 @@ function generateScopes(state: IndexingState): DocumentScopes {
  * @param end End position.
  */
 function* identifiersBetweenLocations(
-	identifiers: ReadonlyIdentifierMultiIndex, start: Position, end: Position) {
-	for (let [identifier, locations] of identifiers.entries()) {
-		for (let location of locations) {
+	identifiers: ReadonlyIdentifierMultiIndex, start: Position, end: Position): IterableIterator<string> {
+	for (const [identifier, locations] of identifiers.entries()) {
+		for (const location of locations) {
 			if (comparePositions(location.range.start, start) >= 0 &&
 			comparePositions(location.range.start, end) <= 0) {
 				yield identifier;
@@ -83,31 +83,31 @@ function* identifiersBetweenLocations(
  * @param state Indexing state.
  */
 function findSubroutineVariables(state: IndexingState): IdentifierIndex {
-	let events = state.flowControlEvents;
-	let returnEvents = events.filter((event: FlowControlEvent) => { return event.command == "return"; });
-	let labels = state.labels;
-	let localVariables = state.localVariables;
-	let subroutineVariables: IdentifierIndex = new Map();
+	const events = state.flowControlEvents;
+	const returnEvents = events.filter((event: FlowControlEvent) => { return event.command == "return"; });
+	const labels = state.labels;
+	const localVariables = state.localVariables;
+	const subroutineVariables: IdentifierIndex = new Map();
 
-	for (let event of events) {
+	for (const event of events) {
 		if (event.command != "gosub") {
 			continue;
 		}
 		// If a temp variable is defined in a gosubbed label, it's as if it's created
 		// at the location of the *gosub
-		let labelLocation = labels.get(event.label);
-		if (labelLocation === undefined) {
+		const labelLocation = labels.get(event.label);
+		if (labelLocation === undefined || labelLocation === null) {
 			continue;
 		}
 		// Find the return that's after that label
 		// This trick works b/c the array of events is built from the top of the document down
-		let firstReturn = returnEvents.find(
-			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation!.location.range.start.line; }
+		const firstReturn = returnEvents.find(
+			(event: FlowControlEvent) => { return event.commandLocation.range.start.line > labelLocation.location.range.start.line; }
 		);
 		if (firstReturn === undefined) {
 			continue;
 		}
-		for (let variable of identifiersBetweenLocations(localVariables, labelLocation.location.range.end, firstReturn.commandLocation.range.start)) {
+		for (const variable of identifiersBetweenLocations(localVariables, labelLocation.location.range.end, firstReturn.commandLocation.range.start)) {
 			if (!subroutineVariables.has(variable)) {
 				subroutineVariables.set(variable, event.commandLocation);
 			}
@@ -125,9 +125,9 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
  * @param index Project index to update.
  */
 export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, index: ProjectIndex): void {
-	let indexingState = new IndexingState(textDocument);
+	const indexingState = new IndexingState(textDocument);
 
-	let callbacks: ParserCallbacks = {
+	const callbacks: ParserCallbacks = {
 		onCommand: (prefix: string, command: string, spacing: string, line: string, 
 			commandLocation: Location, state: ParsingState) => {
 			// Record where achievement temporary variables are brought into existence
@@ -153,7 +153,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			let locations = indexingState.localVariables.get(symbol) ?? [];
+			const locations = indexingState.localVariables.get(symbol) ?? [];
 			locations.push(location);
 			indexingState.localVariables.set(symbol, locations);
 		},
@@ -166,7 +166,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				));
 			}
 			else {
-				let label: Label = {
+				const label: Label = {
 					label: symbol,
 					location: location
 				};
@@ -195,9 +195,9 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			});
 
 			if (command == "return") {
-				let size = indexingState.labels.size;
+				const size = indexingState.labels.size;
 				if (size == 0) {
-					let location = Location.create(commandLocation.uri, commandLocation.range);
+					const location = Location.create(commandLocation.uri, commandLocation.range);
 					location.range.start.character--;
 					state.callbacks.onParseError(createDiagnosticFromLocation(
 						DiagnosticSeverity.Error, location,
@@ -205,7 +205,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 					));
 				}
 				else {
-					let label = Array.from(indexingState.labels)[size-1][1];
+					const label = Array.from(indexingState.labels)[size-1][1];
 					label.scope = Range.create(
 						label.location.range.start, commandLocation.range.end);
 				}
@@ -238,8 +238,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	};
 
 	parse(textDocument, callbacks);
-	let scopes = generateScopes(indexingState);
-	let subroutineVariables = findSubroutineVariables(indexingState);
+	const scopes = generateScopes(indexingState);
+	const subroutineVariables = findSubroutineVariables(indexingState);
 
 	if (isStartupFile) {
 		index.updateGlobalVariables(textDocument.uri, indexingState.globalVariables);

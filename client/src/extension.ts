@@ -16,18 +16,18 @@ let client: LanguageClient;
  * @param editor Current editor.
  * @param delimitCharacters Characters inside the bbcode [], such as "i" or "b"
  */
-function bbcodeDelimit(editor: TextEditor, delimitCharacters: string) {
+function bbcodeDelimit(editor: TextEditor, delimitCharacters: string): void {
 	if (!editor) {
 		return;
 	}
 
-	let open = `[${delimitCharacters}]`;
-	let close = `[/${delimitCharacters}]`;
-	let document = editor.document;
-	let selection = editor.selection;
+	const open = `[${delimitCharacters}]`;
+	const close = `[/${delimitCharacters}]`;
+	const document = editor.document;
+	const selection = editor.selection;
 	if (selection.isEmpty) {
 		editor.edit(edit => edit.insert(selection.start, `${open}${close}`)).then(x => {
-			let newStartIndex = document.offsetAt(editor.selection.start) - close.length;
+			const newStartIndex = document.offsetAt(editor.selection.start) - close.length;
 			editor.selection = new Selection(
 				document.positionAt(newStartIndex),
 				document.positionAt(newStartIndex)
@@ -35,10 +35,10 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string) {
 		});
 	}
 	else {
-		let word = document.getText(selection);
+		const word = document.getText(selection);
 		editor.edit(edit => edit.replace(selection, `${open}${word}${close}`)).then(x => {
-			let newStartIndex = document.offsetAt(editor.selection.start) + open.length;
-			let newEndIndex = document.offsetAt(editor.selection.end) - close.length;
+			const newStartIndex = document.offsetAt(editor.selection.start) + open.length;
+			const newEndIndex = document.offsetAt(editor.selection.end) - close.length;
 			editor.selection = new Selection(
 				document.positionAt(newStartIndex),
 				document.positionAt(newEndIndex)
@@ -47,30 +47,30 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string) {
 	}
 }
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext): void {
 	// Register our commands
 	const italicsCommandRegistration = commands.registerTextEditorCommand(
 		'choicescript.italicize', (editor) => {
 			bbcodeDelimit(editor, "i");
-	});
+		});
 	const boldCommandRegistration = commands.registerTextEditorCommand(
 		'choicescript.bold', (editor) => {
 			bbcodeDelimit(editor, "b");
-	});
+		});
 
 	context.subscriptions.push(italicsCommandRegistration, boldCommandRegistration);
 
 	// The server is implemented in node
-	let serverModule = context.asAbsolutePath(
+	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
 	// The debug options for the server
 	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+	const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
-	let serverOptions: ServerOptions = {
+	const serverOptions: ServerOptions = {
 		run: { module: serverModule, transport: TransportKind.ipc },
 		debug: {
 			module: serverModule,
@@ -80,7 +80,7 @@ export function activate(context: ExtensionContext) {
 	};
 
 	// Options to control the language client
-	let clientOptions: LanguageClientOptions = {
+	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: 'file', language: 'choicescript' }]
 	};
 

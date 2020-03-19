@@ -52,7 +52,7 @@ export function findVariableCreationLocations(
 		}
 	}
 
-	let locations = index.getLocalVariables(document.uri).get(variable);
+	const locations = index.getLocalVariables(document.uri).get(variable);
 	if (locations !== undefined && locations.length != 0) {
 		return Array.from(locations);
 	}
@@ -98,7 +98,7 @@ export function findLabelLocation(
  * @param index Project index.
  */
 function findAchievementLocation(codename: string, index: ProjectIndex): Location | undefined {
-	let location = index.getAchievements().get(codename);
+	const location = index.getAchievements().get(codename);
 	
 	return location;
 }
@@ -111,7 +111,7 @@ function findAchievementLocation(codename: string, index: ProjectIndex): Locatio
  */
 function findMatchingSymbol(documentUri: string, position: Position, index: ReadonlyIdentifierIndex): SymbolLocation | undefined {
 	documentUri = normalizeUri(documentUri);
-	for (let [symbol, location] of index.entries()) {
+	for (const [symbol, location] of index.entries()) {
 		if (normalizeUri(location.uri) == documentUri && positionInRange(position, location.range)) {
 			return { symbol: symbol, location: location };
 		}
@@ -127,8 +127,8 @@ function findMatchingSymbol(documentUri: string, position: Position, index: Read
  */
 function findMatchingMultiSymbol(documentUri: string, position: Position, index: ReadonlyIdentifierMultiIndex): SymbolLocation[] | undefined {
 	documentUri = normalizeUri(documentUri);
-	for (let [symbol, locations] of index.entries()) {
-		for (let location of locations) {
+	for (const [symbol, locations] of index.entries()) {
+		for (const location of locations) {
 			if (normalizeUri(location.uri) == documentUri && positionInRange(position, location.range)) {
 				return locations.map(location => {
 					return { symbol: symbol, location: location };
@@ -147,7 +147,7 @@ function findMatchingMultiSymbol(documentUri: string, position: Position, index:
  */
 function findMatchingLabel(documentUri: string, position: Position, index: ReadonlyLabelIndex): SymbolLocation | undefined {
 	documentUri = normalizeUri(documentUri);
-	for (let [symbol, label] of index.entries()) {
+	for (const [symbol, label] of index.entries()) {
 		if (normalizeUri(label.location.uri) == documentUri && positionInRange(position, label.location.range)) {
 			return { symbol: symbol, location: label.location };
 		}
@@ -169,11 +169,11 @@ export function findDefinitions(
 	position: Position, 
 	projectIndex: ProjectIndex): SymbolInformation[] | undefined {
 	let definitions: SymbolInformation[] | undefined = undefined;
-	let uri = document.uri;
+	const uri = document.uri;
 
 	// See if we have a created local variable at this location
-	let localVariables = projectIndex.getLocalVariables(uri);
-	let symbolLocations = findMatchingMultiSymbol(uri, position, localVariables);
+	const localVariables = projectIndex.getLocalVariables(uri);
+	const symbolLocations = findMatchingMultiSymbol(uri, position, localVariables);
 	if (symbolLocations !== undefined) {
 		let type = SymbolType.LocalVariable;
 		if (projectIndex.isStartupFileUri(uri)) {
@@ -192,7 +192,7 @@ export function findDefinitions(
 
 	// See if we have a created global variable at this location
 	if (projectIndex.isStartupFileUri(uri)) {
-		let symbolLocation = findMatchingSymbol(uri, position, projectIndex.getGlobalVariables());
+		const symbolLocation = findMatchingSymbol(uri, position, projectIndex.getGlobalVariables());
 		if (symbolLocation !== undefined) {
 			definitions = [{
 				symbol: symbolLocation.symbol,
@@ -205,13 +205,13 @@ export function findDefinitions(
 	}
 
 	// See if we have a variable reference at this location
-	let references = projectIndex.getDocumentVariableReferences(uri);
-	for (let [variable, locations] of references.entries()) {
-		let match = locations.find((location) => {
+	const references = projectIndex.getDocumentVariableReferences(uri);
+	for (const [variable, locations] of references.entries()) {
+		const match = locations.find((location) => {
 			return (positionInRange(position, location.range));
 		});
 		if (match !== undefined) {
-			let locations = findVariableCreationLocations(variable, false, document, projectIndex);
+			const locations = findVariableCreationLocations(variable, false, document, projectIndex);
 			if (locations !== undefined) {
 				let type = SymbolType.LocalVariable;
 				if (projectIndex.isStartupFileUri(locations[0].uri)) {
@@ -227,10 +227,10 @@ export function findDefinitions(
 				});
 			}
 			else {
-				let achievements = projectIndex.getAchievements();
-				let codename = variableIsAchievement(variable, achievements);
+				const achievements = projectIndex.getAchievements();
+				const codename = variableIsAchievement(variable, achievements);
 				if (codename !== undefined) {
-					let location = achievements.get(codename);
+					const location = achievements.get(codename);
 					if (location !== undefined) {
 						definitions = [{
 							symbol: codename,
@@ -247,7 +247,7 @@ export function findDefinitions(
 	}
 
 	// See if we have a created label at this location
-	let labels = projectIndex.getLabels(uri);
+	const labels = projectIndex.getLabels(uri);
 	let symbolLocation = findMatchingLabel(uri, position, labels);
 	if (symbolLocation !== undefined) {
 		definitions = [{
@@ -260,13 +260,13 @@ export function findDefinitions(
 	}
 
 	// See if we have a label reference at this location
-	let events = projectIndex.getFlowControlEvents(uri);
-	let event = events.find((event) => {
+	const events = projectIndex.getFlowControlEvents(uri);
+	const event = events.find((event) => {
 		return (event.labelLocation !== undefined && 
 			positionInRange(position, event.labelLocation.range));
 	});
 	if (event !== undefined) {
-		let location = findLabelLocation(event.label, event.scene, document, projectIndex);
+		const location = findLabelLocation(event.label, event.scene, document, projectIndex);
 		if (location !== undefined) {
 			definitions = [{
 				symbol: event.label,
@@ -280,7 +280,7 @@ export function findDefinitions(
 	}
 
 	// See if we have an achievement definition at this location
-	let achievements = projectIndex.getAchievements();
+	const achievements = projectIndex.getAchievements();
 	symbolLocation = findMatchingSymbol(uri, position, achievements);
 	if (symbolLocation !== undefined) {
 		definitions = [{
@@ -293,13 +293,13 @@ export function findDefinitions(
 	}
 
 	// See if we have an achievement reference at this location
-	let achievementReferences = projectIndex.getDocumentAchievementReferences(uri);
-	for (let [codename, locations] of achievementReferences.entries()) {
-		let match = locations.find(location => {
+	const achievementReferences = projectIndex.getDocumentAchievementReferences(uri);
+	for (const [codename, locations] of achievementReferences.entries()) {
+		const match = locations.find(location => {
 			return (positionInRange(position, location.range));
 		});
 		if (match !== undefined) {
-			let location = findAchievementLocation(codename, projectIndex);
+			const location = findAchievementLocation(codename, projectIndex);
 			if (location !== undefined) {
 				definitions = [{
 					symbol: codename,
@@ -334,8 +334,8 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
 		});
 	}
 	else {
-		let localReferences = projectIndex.getDocumentVariableReferences(definition.location.uri);
-		let possibleLocations = localReferences.get(definition.symbol);
+		const localReferences = projectIndex.getDocumentVariableReferences(definition.location.uri);
+		const possibleLocations = localReferences.get(definition.symbol);
 		if (possibleLocations !== undefined) {
 			information = possibleLocations.map((reference: Location): SymbolInformation => {
 				return { 
@@ -356,7 +356,7 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
  * @param projectIndex Project index.
  */
 function findLabelReferences(definition: SymbolInformation, projectIndex: ProjectIndex): SymbolInformation[] {
-	let information = projectIndex.getLabelReferences(definition.symbol, definition.location.uri).map(reference => {
+	const information = projectIndex.getLabelReferences(definition.symbol, definition.location.uri).map(reference => {
 		return { 
 			symbol: definition.symbol, 
 			location: reference, 
@@ -374,7 +374,7 @@ function findLabelReferences(definition: SymbolInformation, projectIndex: Projec
  * @param projectIndex Project index.
  */
 function findAchievementReferences(definition: SymbolInformation, projectIndex: ProjectIndex): SymbolInformation[] {
-	let information = projectIndex.getAchievementReferences(definition.symbol).map(reference => {
+	const information = projectIndex.getAchievementReferences(definition.symbol).map(reference => {
 		return { 
 			symbol: definition.symbol, 
 			location: reference, 
@@ -385,13 +385,13 @@ function findAchievementReferences(definition: SymbolInformation, projectIndex: 
 	// Add variable-based references, if any
 	information.push(...projectIndex.getVariableReferences(
 		convertAchievementToVariable(definition.symbol)).map(reference => {
-			return { 
-				symbol: definition.symbol, 
-				location: reference, 
-				type: SymbolType.LocalVariable, 
-				isDefinition: false 
-			};
-		})
+		return { 
+			symbol: definition.symbol, 
+			location: reference, 
+			type: SymbolType.LocalVariable, 
+			isDefinition: false 
+		};
+	})
 	);
 
 	return information;
@@ -409,19 +409,19 @@ function findAchievementReferences(definition: SymbolInformation, projectIndex: 
  * @param projectIndex Project index.
  */
 export function findReferences(
-		textDocument: TextDocument,
-		position: Position,
-		context: ReferenceContext,
-		projectIndex: ProjectIndex
-	): SymbolInformation[] | undefined {
+	textDocument: TextDocument,
+	position: Position,
+	context: ReferenceContext,
+	projectIndex: ProjectIndex
+): SymbolInformation[] | undefined {
 	let information: SymbolInformation[] = [];
 
-	let definitions = findDefinitions(textDocument, position, projectIndex);
+	const definitions = findDefinitions(textDocument, position, projectIndex);
 	if (definitions === undefined) {
 		return undefined;
 	}
 
-	let firstDefinition = definitions[0];
+	const firstDefinition = definitions[0];
 	if (firstDefinition.type == SymbolType.GlobalVariable || firstDefinition.type == SymbolType.LocalVariable) {
 		information = findVariableReferences(firstDefinition, projectIndex);
 	}
@@ -451,20 +451,20 @@ export function findReferences(
  */
 export function generateRenames(
 	textDocument: TextDocument, position: Position, newName: string, projectIndex: ProjectIndex
-	): WorkspaceEdit | null {
+): WorkspaceEdit | null {
 
-	let referencesToChange = findReferences(textDocument, position, {includeDeclaration: true}, projectIndex);
+	const referencesToChange = findReferences(textDocument, position, {includeDeclaration: true}, projectIndex);
 
 	if (referencesToChange === undefined) {
 		return null;
 	}
 
 	// The definition should be included and is guaranteed to be at the end of the array
-	let definition = referencesToChange[referencesToChange.length - 1];
-	let changes: Map<string, TextEdit[]> = new Map();
+	const definition = referencesToChange[referencesToChange.length - 1];
+	const changes: Map<string, TextEdit[]> = new Map();
 
-	for (let reference of referencesToChange) {
-		let change = TextEdit.replace(reference.location.range, newName);
+	for (const reference of referencesToChange) {
+		const change = TextEdit.replace(reference.location.range, newName);
 		// Local variables that refer to achievements have to be handled differently
 		if (definition.type == SymbolType.Achievement && reference.type == SymbolType.LocalVariable) {
 			change.newText = convertAchievementToVariable(newName);
@@ -477,12 +477,14 @@ export function generateRenames(
 		edits.push(change);
 	}
 
-	let workspaceEdit: WorkspaceEdit = {
+	const workspaceEdit: WorkspaceEdit = {
 		changes: {
 		}
 	};
-	for (let [uri, edits] of changes) {
-		workspaceEdit.changes![uri] = edits;
+	for (const [uri, edits] of changes) {
+		if (workspaceEdit.changes) {
+			workspaceEdit.changes[uri] = edits;
+		}
 	}
 
 	return workspaceEdit;

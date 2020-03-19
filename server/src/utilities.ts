@@ -7,19 +7,19 @@ import { Diagnostic, DiagnosticSeverity, TextDocument, Location, Range, Position
 export class CaseInsensitiveMap<T, U> extends Map<T, U> {
 	set (key: T, value: U): this {
 		if (typeof key === 'string') {
-			key = <T><any>key.toLowerCase();
+			key = key.toLowerCase() as unknown as T;
 		}
 		return super.set(key, value);
 	}
 	get(key: T): U | undefined {
 		if (typeof key === 'string') {
-			key = <T><any>key.toLowerCase();
+			key = key.toLowerCase() as unknown as T;
 		}
 		return super.get(key);
 	}
 	has(key: T): boolean {
 		if (typeof key === 'string') {
-			key = <T><any>key.toLowerCase();
+			key = key.toLowerCase() as unknown as T;
 		}
 		return super.has(key);
 	}
@@ -29,10 +29,10 @@ export class CaseInsensitiveMap<T, U> extends Map<T, U> {
  * Convert a map to a case-insensitive map, combining array values instead of overwriting them.
  * @param map Original map.
  */
-export function mapToUnionedCaseInsensitiveMap<K, V extends Array<any>>(map: Map<K, V>): CaseInsensitiveMap<K, V> {
-	let newMap = new CaseInsensitiveMap<K, V>();
-	for (let [key, value] of map) {
-		let oldArray = newMap.get(key);
+export function mapToUnionedCaseInsensitiveMap<K, V extends Array<unknown>>(map: Map<K, V>): CaseInsensitiveMap<K, V> {
+	const newMap = new CaseInsensitiveMap<K, V>();
+	for (const [key, value] of map) {
+		const oldArray = newMap.get(key);
 		if (oldArray !== undefined) {
 			oldArray.push(...value);
 		}
@@ -52,8 +52,8 @@ export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
  * @param iterable Iterable to map over.
  * @param transform Function to map over iterable.
  */
-export function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
-	for (var item of iterable) {
+export function* iteratorMap<T, U>(iterable: Iterable<T>, transform: (arg: T) => U): IterableIterator<U> {
+	for (const item of iterable) {
 		yield transform(item);
 	}
 }
@@ -64,8 +64,8 @@ export function* iteratorMap<T>(iterable: Iterable<T>, transform: Function) {
  * @param iterable Iterable to filter over.
  * @param transform Function to map over iterable.
  */
-export function* iteratorFilter<T>(iterable: Iterable<T>, filter: Function) {
-	for (var item of iterable) {
+export function* iteratorFilter<T>(iterable: Iterable<T>, filter: (arg: T) => boolean): IterableIterator<T> {
+	for (const item of iterable) {
 		if (filter(item))
 			yield item;
 	}
@@ -74,7 +74,7 @@ export function* iteratorFilter<T>(iterable: Iterable<T>, filter: Function) {
 /**
  * Determine if a string contains a number.
  */
-export function stringIsNumber(s: string) {
+export function stringIsNumber(s: string): boolean {
 	return !Number.isNaN(Number(s));
 }
 
@@ -86,8 +86,7 @@ export function stringIsNumber(s: string) {
  * @returns Index corresponding to the line's beginning.
  */
 export function findLineBegin(document: string, startIndex: number): number {
-	let i = startIndex;
-	let lineBegin: number = startIndex;
+	let lineBegin = startIndex;
 	while (document[lineBegin] != '\n' && lineBegin >= 0) {
 		lineBegin--;
 	}
@@ -103,11 +102,10 @@ export function findLineBegin(document: string, startIndex: number): number {
  * @returns Index corresponding to one past the line's end, including any \r\n
  */
 export function findLineEnd(document: string, startIndex: number): number {
-	let i = startIndex;
 	let lineEnd: number;
-	let lineEndPattern = /\r?\n|$/g;
+	const lineEndPattern = /\r?\n|$/g;
 	lineEndPattern.lastIndex = startIndex;
-	let m = lineEndPattern.exec(document);
+	const m = lineEndPattern.exec(document);
 	if (m) {
 		lineEnd = m.index + m[0].length;
 	}
@@ -122,12 +120,12 @@ export function findLineEnd(document: string, startIndex: number): number {
  * New line read by readLine.
  */
 export interface NewLine {
-	line: string,
+	line: string;
 	splitLine?: {
-		padding: string,
-		contents: string
-	},
-	index: number
+		padding: string;
+		contents: string;
+	};
+	index: number;
 }
 
 /**
@@ -138,12 +136,12 @@ export interface NewLine {
 export function readLine(text: string, lineStart: number): NewLine | undefined {
 	let processedLine: NewLine;
 
-	let lineEnd = findLineEnd(text, lineStart);
+	const lineEnd = findLineEnd(text, lineStart);
 	if (lineStart == lineEnd) {
 		return undefined;
 	}
-	let line = text.slice(lineStart, lineEnd);
-	let m = /^([ \t]+)(.*)/.exec(line);
+	const line = text.slice(lineStart, lineEnd);
+	const m = /^([ \t]+)(.*)/.exec(line);
 	if (!m) {
 		processedLine = { line: line, index: lineStart };
 	}
@@ -170,8 +168,8 @@ export function readLine(text: string, lineStart: number): NewLine | undefined {
  * @param startIndex Index inside of text where the delimited contents begin (after the opening delimiter).
  * @returns String contained within the delimiters, not including the closing delimiter.
  */
-export function extractToMatchingDelimiter(text: string, openDelimiter: string, closeDelimiter: string, startIndex: number = 0): string | undefined {
-	let match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
+export function extractToMatchingDelimiter(text: string, openDelimiter: string, closeDelimiter: string, startIndex = 0): string | undefined {
+	const match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
 	match.lastIndex = startIndex;
 	let matchEnd: number | undefined = undefined;
 	let delimiterCount = 0;
@@ -179,7 +177,7 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 
 	let m: RegExpExecArray | null;
 
-	while (m = match.exec(text)) {
+	while ((m = match.exec(text))) {
 		if (m[0] == closeDelimiter) {
 			if (delimiterCount)
 				delimiterCount--;
@@ -204,7 +202,7 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 * @param uriString URI to normalize.
 */
 export function normalizeUri(uriString: string): string {
-	let uri = new URI(uriString);
+	const uri = new URI(uriString);
 	return uri.normalize().toString();
 }
 
@@ -218,7 +216,7 @@ export function normalizeUri(uriString: string): string {
  * @returns The filename, or null if none is found.
  */
 export function getFilenameFromUri(uriString: string): string | undefined {
-	let uri = URI(uriString);
+	const uri = URI(uriString);
 	return uri.filename();
 }
 
@@ -268,7 +266,7 @@ export function rangeInOtherRange(range1: Range, range2: Range): boolean {
  */
 export function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
 	start: number, end: number, message: string): Diagnostic {
-	let diagnostic: Diagnostic = {
+	const diagnostic: Diagnostic = {
 		severity: severity,
 		range: {
 			start: textDocument.positionAt(start),
@@ -291,7 +289,7 @@ export function createDiagnostic(severity: DiagnosticSeverity, textDocument: Tex
 export function createDiagnosticFromLocation(
 	severity: DiagnosticSeverity, location: Location,
 	message: string): Diagnostic {
-	let diagnostic: Diagnostic = {
+	const diagnostic: Diagnostic = {
 		severity: severity,
 		range: location.range,
 		message: message,

@@ -6,7 +6,7 @@ import { uriIsStartupFile } from './language';
 
 export function generateSymbols(textDocument: TextDocument, projectIndex: ProjectIndex): SymbolInformation[] {
 	// Generate label locations
-	let info = Array.from(projectIndex.getLabels(textDocument.uri).values()).map((label): SymbolInformation => {
+	const info = Array.from(projectIndex.getLabels(textDocument.uri).values()).map((label): SymbolInformation => {
 		if (label.scope !== undefined) {
 			return {
 				name: label.label,
@@ -37,8 +37,8 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 		};
 	}));
 
-	for (let [variable, locations] of projectIndex.getLocalVariables(textDocument.uri)) {
-		for (let location of locations) {
+	for (const [variable, locations] of projectIndex.getLocalVariables(textDocument.uri)) {
+		for (const location of locations) {
 			info.push({
 				name: variable,
 				kind: SymbolKind.Variable,

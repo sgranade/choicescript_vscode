@@ -13,7 +13,7 @@ import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile 
 import { extractToMatchingDelimiter, comparePositions, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
 function generateCompletionsFromArray(array: ReadonlyArray<string>, 
-		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return array.map((x: string) => ({
 		label: x,
 		kind: kind,
@@ -22,7 +22,7 @@ function generateCompletionsFromArray(array: ReadonlyArray<string>,
 }
 
 function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex, 
-		kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
+	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return Array.from(iteratorMap(index.keys(), (x: string) => ({
 		label: x, 
 		kind: kind, 
@@ -32,25 +32,25 @@ function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | Identifie
 
 function generateVariableCompletions(document: TextDocument, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	// Only offer local variables that have been created, taking into account subroutine-defined variables
-	let localVariables = new Map(projectIndex.getLocalVariables(document.uri));
-	for (let [variable, location] of projectIndex.getSubroutineLocalVariables(document.uri).entries()) {
-		let existingLocations = Array.from(localVariables.get(variable) ?? []);
+	const localVariables = new Map(projectIndex.getLocalVariables(document.uri));
+	for (const [variable, location] of projectIndex.getSubroutineLocalVariables(document.uri).entries()) {
+		const existingLocations = Array.from(localVariables.get(variable) ?? []);
 		existingLocations.push(location);
 		localVariables.set(variable, existingLocations);
 	}
 
-	let availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {
-		for (var location of locations) {
+	const availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {
+		for (const location of locations) {
 			if (comparePositions(location.range.end, position) <= 0)
 				return true;
 		}
 		return false;
 	});
 
-	let completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({
-			label: variable, 
-			kind: CompletionItemKind.Variable, 
-			data: "variable-local"
+	const completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({
+		label: variable, 
+		kind: CompletionItemKind.Variable, 
+		data: "variable-local"
 	})));
 
 	completions.push(...Array.from(iteratorMap(projectIndex.getGlobalVariables().keys(), (x: string) => ({
@@ -60,7 +60,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 	}))));
 
 	let includeAchievements = false;
-	for (let scope of projectIndex.getDocumentScopes(document.uri).achievementVarScopes) {
+	for (const scope of projectIndex.getDocumentScopes(document.uri).achievementVarScopes) {
 		if (positionInRange(position, scope)) {
 			includeAchievements = true;
 			break;
@@ -82,12 +82,13 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 	let completions: CompletionItem[] = [];
 
 	// Find out what trigger character started this by loading the document and scanning backwards
-	let text = document.getText();
-	let index = document.offsetAt(position);
+	const text = document.getText();
+	const index = document.offsetAt(position);
 
 	let start: number | undefined = undefined;
+	let i = index;
 
-	for (var i = index; i >= 0; i--) {
+	for (; i >= 0; i--) {
 		if (text[i] == '*' || text[i] == '{') {
 			start = i;
 			break;
@@ -100,7 +101,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 	if (start !== undefined) {
 		// Auto-complete commands
 		if (text[start] == '*') {
-			let tokens = text.slice(i+1, index).split(/\s+/);
+			const tokens = text.slice(i+1, index).split(/\s+/);
 			if (tokens.length == 1) {
 				completions = [...validCommandsCompletions];  // makin' copies
 				// Add in startup-only commands if valid
@@ -110,56 +111,56 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 			else {
 				switch (tokens[0]) {
-					case "goto":
-					case "gosub":
-						if (tokens.length == 2) {
-							completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
-						}
-						break;
+				case "goto":
+				case "gosub":
+					if (tokens.length == 2) {
+						completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
+					}
+					break;
 
-					case "goto_scene":
-					case "gosub_scene":
-						if(tokens.length == 2) {
-							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
-							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
-							// Get around that by specifying the replacement range if needed
-							if (tokens[1].includes("-")) {
-								let range = Range.create(document.positionAt(index - tokens[1].length), position);
-								completions.forEach(completion => {
-									completion.textEdit = TextEdit.replace(range, completion.label);
-								});
-							}
+				case "goto_scene":
+				case "gosub_scene":
+					if(tokens.length == 2) {
+						completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+						// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
+						// Get around that by specifying the replacement range if needed
+						if (tokens[1].includes("-")) {
+							const range = Range.create(document.positionAt(index - tokens[1].length), position);
+							completions.forEach(completion => {
+								completion.textEdit = TextEdit.replace(range, completion.label);
+							});
 						}
-						else if (tokens.length == 3) {
-							let sceneUri = projectIndex.getSceneUri(tokens[1]);
-							if (sceneUri !== undefined) {
-								completions = generateCompletionsFromIndex(projectIndex.getLabels(sceneUri), CompletionItemKind.Reference, "labels-scene");
-							}
+					}
+					else if (tokens.length == 3) {
+						const sceneUri = projectIndex.getSceneUri(tokens[1]);
+						if (sceneUri !== undefined) {
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(sceneUri), CompletionItemKind.Reference, "labels-scene");
 						}
-						break;
+					}
+					break;
 
-					case "set":
-					case "delete":
-					case "if":
-					case "elseif":
-					case "elsif":
-						completions = generateVariableCompletions(document, position, projectIndex);
-						break;
+				case "set":
+				case "delete":
+				case "if":
+				case "elseif":
+				case "elsif":
+					completions = generateVariableCompletions(document, position, projectIndex);
+					break;
 
-					case "achieve":
-						completions = generateCompletionsFromIndex(
-							projectIndex.getAchievements(),
-							CompletionItemKind.Variable,
-							"achievement"
-						);
+				case "achieve":
+					completions = generateCompletionsFromIndex(
+						projectIndex.getAchievements(),
+						CompletionItemKind.Variable,
+						"achievement"
+					);
 				}
 			}
 		}
 		// Auto-complete variable references
 		else if (text[start] == '{') {
 			let isMultireplace = false;
-			for (var i = start-1; i >= 0 && i >= start-3; i--) {
-				if (text[i] == '@') {
+			for (let j = start-1; j >= 0 && j >= start-3; j--) {
+				if (text[j] == '@') {
 					isMultireplace = true;
 					break;
 				}
@@ -168,13 +169,13 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 
 			// In a multi-replace like @{}, only auto-complete if we're in the first section
 			if (isMultireplace) {
-				let section = text.slice(start + 1, index+1);
+				const section = text.slice(start + 1, index+1);
 				if (section == "}" || section == "\r" || section.trim() == "") {
 					returnVariableCompletions = true;
 				}
 				else if (section.length > 1 && section[0] == '(') {
-					let innards = section.slice(1);
-					let balancedParens = extractToMatchingDelimiter(innards, "(", ")");
+					const innards = section.slice(1);
+					const balancedParens = extractToMatchingDelimiter(innards, "(", ")");
 					if (balancedParens === undefined || (balancedParens == innards || balancedParens + ")" == innards)) {
 						returnVariableCompletions = true;
 					}

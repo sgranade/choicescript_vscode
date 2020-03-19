@@ -13,15 +13,15 @@ import {
 	booleanFunctions 
 } from './language';
 
-let functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
-let numberFunctionsLookup: ReadonlyMap<string, number> = new Map(numberFunctions.map(x => [x, 1]));
-let booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
-let booleanNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(booleanNamedOperators.map(x => [x, 1]));
-let numericNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(numericNamedOperators.map(x => [x, 1]));
-let booleanNamedValuesLookup: ReadonlyMap<string, number> = new Map(booleanNamedValues.map(x => [x, 1]));
-let mathOperatorsLookup: ReadonlyMap<string, number> = new Map(mathOperators.map(x => [x, 1]));
-let comparisonOperatorsLookup: ReadonlyMap<string, number> = new Map(comparisonOperators.map(x => [x, 1]));
-let stringOperatorsLookup: ReadonlyMap<string, number> = new Map(stringOperators.map(x => [x, 1]));
+const functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
+const numberFunctionsLookup: ReadonlyMap<string, number> = new Map(numberFunctions.map(x => [x, 1]));
+const booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
+const booleanNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(booleanNamedOperators.map(x => [x, 1]));
+const numericNamedOperatorsLookup: ReadonlyMap<string, number> = new Map(numericNamedOperators.map(x => [x, 1]));
+const booleanNamedValuesLookup: ReadonlyMap<string, number> = new Map(booleanNamedValues.map(x => [x, 1]));
+const mathOperatorsLookup: ReadonlyMap<string, number> = new Map(mathOperators.map(x => [x, 1]));
+const comparisonOperatorsLookup: ReadonlyMap<string, number> = new Map(comparisonOperators.map(x => [x, 1]));
+const stringOperatorsLookup: ReadonlyMap<string, number> = new Map(stringOperators.map(x => [x, 1]));
 
 
 /**
@@ -80,7 +80,7 @@ export interface ExpressionToken {
 function functionArgumentType(token: ExpressionToken): ExpressionEvalType {
 	let type: ExpressionEvalType;
 	
-	let functionName = token.text.split('(')[0];
+	const functionName = token.text.split('(')[0];
 	if (numberFunctionsLookup.has(functionName)) {
 		// Special case length(), which takes a string
 		if (functionName.includes("length")) {
@@ -105,7 +105,7 @@ function functionArgumentType(token: ExpressionToken): ExpressionEvalType {
  * @param token Token to test.
  */
 function isNumberCompatible(token: ExpressionToken): boolean {
-	let effectiveType = tokenEffectiveType(token);
+	const effectiveType = tokenEffectiveType(token);
 
 	return (effectiveType == ExpressionTokenType.Number ||
 		effectiveType == ExpressionTokenType.VariableReference ||
@@ -117,7 +117,7 @@ function isNumberCompatible(token: ExpressionToken): boolean {
  * @param token Token to test.
  */
 function isBooleanCompatible(token: ExpressionToken): boolean {
-	let effectiveType = tokenEffectiveType(token);
+	const effectiveType = tokenEffectiveType(token);
 
 	return (effectiveType == ExpressionTokenType.BooleanNamedValue ||
 		effectiveType == ExpressionTokenType.VariableReference ||
@@ -129,7 +129,7 @@ function isBooleanCompatible(token: ExpressionToken): boolean {
  * @param token Token to test.
  */
 function isStringCompatible(token: ExpressionToken): boolean {
-	let effectiveType = tokenEffectiveType(token);
+	const effectiveType = tokenEffectiveType(token);
 
 	return (effectiveType == ExpressionTokenType.String ||
 		effectiveType == ExpressionTokenType.VariableReference ||
@@ -171,7 +171,7 @@ export function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType 
 	// If we've got a function, find out what its effective type is
 	if (effectiveType == ExpressionTokenType.FunctionAndContents ||
 		effectiveType == ExpressionTokenType.Function) {
-		let functionName = token.text.split('(')[0];
+		const functionName = token.text.split('(')[0];
 		if (numberFunctionsLookup.has(functionName)) {
 			effectiveType = ExpressionTokenType.Number;
 		}
@@ -183,20 +183,20 @@ export function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType 
 	// Ditto for parentheses
 	if (effectiveType == ExpressionTokenType.Parentheses && token.contents !== undefined) {
 		switch (token.contents.evalType) {
-			case ExpressionEvalType.Number:
-				effectiveType = ExpressionTokenType.Number;
-				break;
-			case ExpressionEvalType.Boolean:
-				effectiveType = ExpressionTokenType.BooleanNamedValue;
-				break;
-			case ExpressionEvalType.String:
-				effectiveType = ExpressionTokenType.String;
-				break;
-			case ExpressionEvalType.Empty:
-			case ExpressionEvalType.Unknowable:
-			case ExpressionEvalType.Error:
-				effectiveType = ExpressionTokenType.Variable;
-				break;
+		case ExpressionEvalType.Number:
+			effectiveType = ExpressionTokenType.Number;
+			break;
+		case ExpressionEvalType.Boolean:
+			effectiveType = ExpressionTokenType.BooleanNamedValue;
+			break;
+		case ExpressionEvalType.String:
+			effectiveType = ExpressionTokenType.String;
+			break;
+		case ExpressionEvalType.Empty:
+		case ExpressionEvalType.Unknowable:
+		case ExpressionEvalType.Error:
+			effectiveType = ExpressionTokenType.Variable;
+			break;
 		}
 	}
 
@@ -215,30 +215,30 @@ function checkOperatorAgainstToken(
 	operator: ExpressionToken): string | undefined {
 	let errorMessage: string | undefined = undefined;
 
-	let effectiveType = tokenEffectiveType(token);
+	const effectiveType = tokenEffectiveType(token);
 
 	switch(effectiveType) {
-		case ExpressionTokenType.Number:
-			if (operator.type !== ExpressionTokenType.MathOperator &&
+	case ExpressionTokenType.Number:
+		if (operator.type !== ExpressionTokenType.MathOperator &&
 				operator.type !== ExpressionTokenType.ComparisonOperator) {
-				errorMessage = "Not a numeric operator";
+			errorMessage = "Not a numeric operator";
+		}
+		break;
+	case ExpressionTokenType.BooleanNamedValue:
+		if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
+			errorMessage = "Not a boolean operator";
+		}
+		break;
+	case ExpressionTokenType.String:
+		if (operator.type == ExpressionTokenType.ComparisonOperator) {
+			if (operator.text != "!=" && operator.text != "=") {
+				errorMessage = "Not compatible with strings";
 			}
-			break;
-		case ExpressionTokenType.BooleanNamedValue:
-			if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
-				errorMessage = "Not a boolean operator";
-			}
-			break;
-		case ExpressionTokenType.String:
-			if (operator.type == ExpressionTokenType.ComparisonOperator) {
-				if (operator.text != "!=" && operator.text != "=") {
-					errorMessage = "Not compatible with strings";
-				}
-			}
-			else if (operator.type != ExpressionTokenType.StringOperator) {
-				errorMessage = "Not a string or comparison operator";
-			}
-			break;
+		}
+		else if (operator.type != ExpressionTokenType.StringOperator) {
+			errorMessage = "Not a string or comparison operator";
+		}
+		break;
 	}
 
 	return errorMessage;
@@ -257,30 +257,30 @@ function checkTokenAgainstOperator(
 	let errorMessage: string | undefined = undefined;
 
 	switch(operator.type) {
-		case ExpressionTokenType.MathOperator:
-		case ExpressionTokenType.NumericNamedOperator:
+	case ExpressionTokenType.MathOperator:
+	case ExpressionTokenType.NumericNamedOperator:
+		if (!isNumberCompatible(token)) {
+			errorMessage = "Must be a number or a variable";
+		}
+		break;
+	case ExpressionTokenType.ComparisonOperator:
+		if (operator.text != "!=" && operator.text != "=") {
+			// Inequality check
 			if (!isNumberCompatible(token)) {
 				errorMessage = "Must be a number or a variable";
 			}
-			break;
-		case ExpressionTokenType.ComparisonOperator:
-			if (operator.text != "!=" && operator.text != "=") {
-				// Inequality check
-				if (!isNumberCompatible(token)) {
-					errorMessage = "Must be a number or a variable";
-				}
-			}
-			break;
-		case ExpressionTokenType.StringOperator:
-			if (!isStringCompatible(token)) {
-				errorMessage = "Must be a string or a variable";
-			}
-			break;
-		case ExpressionTokenType.BooleanNamedOperator:
-			if (!isBooleanCompatible(token)) {
-				errorMessage = "Must be a boolean value or a variable";
-			}
-			break;
+		}
+		break;
+	case ExpressionTokenType.StringOperator:
+		if (!isStringCompatible(token)) {
+			errorMessage = "Must be a string or a variable";
+		}
+		break;
+	case ExpressionTokenType.BooleanNamedOperator:
+		if (!isBooleanCompatible(token)) {
+			errorMessage = "Must be a boolean value or a variable";
+		}
+		break;
 	}
 
 	return errorMessage;
@@ -302,23 +302,23 @@ function determineEvalType(token: ExpressionToken): ExpressionEvalType {
 	}
 
 	switch(tokenEffectiveType(token)) {
-		case ExpressionTokenType.Number:
-		case ExpressionTokenType.MathOperator:
-		case ExpressionTokenType.NumericNamedOperator:
-			return ExpressionEvalType.Number;
+	case ExpressionTokenType.Number:
+	case ExpressionTokenType.MathOperator:
+	case ExpressionTokenType.NumericNamedOperator:
+		return ExpressionEvalType.Number;
 
-		case ExpressionTokenType.BooleanNamedValue:
-		case ExpressionTokenType.ComparisonOperator:
-		case ExpressionTokenType.BooleanNamedOperator:
-			return ExpressionEvalType.Boolean;
+	case ExpressionTokenType.BooleanNamedValue:
+	case ExpressionTokenType.ComparisonOperator:
+	case ExpressionTokenType.BooleanNamedOperator:
+		return ExpressionEvalType.Boolean;
 
-		case ExpressionTokenType.String:
-		case ExpressionTokenType.StringOperator:
-			return ExpressionEvalType.String;
+	case ExpressionTokenType.String:
+	case ExpressionTokenType.StringOperator:
+		return ExpressionEvalType.String;
 
-		case ExpressionTokenType.Variable:
-		case ExpressionTokenType.VariableReference:
-			return ExpressionEvalType.Unknowable;
+	case ExpressionTokenType.Variable:
+	case ExpressionTokenType.VariableReference:
+		return ExpressionEvalType.Unknowable;
 	}
 
 	return ExpressionEvalType.Error;
@@ -342,7 +342,7 @@ export class Expression {
 	 * @param textDocument Document containing the expression.
 	 * @param isValueSetting If true, expression is being used to set a variable's value.
 	 */
-	constructor(bareExpression: string, globalIndex: number, textDocument: TextDocument, isValueSetting: boolean=false) {
+	constructor(bareExpression: string, globalIndex: number, textDocument: TextDocument, isValueSetting = false) {
 		this.parseErrors = [];
 		this.validateErrors = [];
 		this.textDocument = textDocument;
@@ -383,7 +383,7 @@ export class Expression {
 		else {
 			endIndex = this.tokens[end].index;
 		}
-		let subExpression = this.bareExpression.slice(startIndex, endIndex);
+		const subExpression = this.bareExpression.slice(startIndex, endIndex);
 		return new Expression(subExpression, this.globalIndex + startIndex, this.textDocument, this.isValueSetting);
 	}
 
@@ -405,11 +405,11 @@ export class Expression {
 	 * @param unprocessed Unprocessed token.
 	 */
 	private tokenizeUnprocessedToken(unprocessed: ExpressionToken): ExpressionToken[] {
-		let tokens: ExpressionToken[] = [];
+		const tokens: ExpressionToken[] = [];
 
 		// Split the unprocessed token at word boundaries and process each cluster
-		let wordPattern = /^\w+$/;
-		let chunks = unprocessed.text.split(/\b/);
+		const wordPattern = /^\w+$/;
+		const chunks = unprocessed.text.split(/\b/);
 		let splitIndex = unprocessed.index;
 		for (let i = 0; i < chunks.length; i++) {
 			let chunk = chunks[i];
@@ -425,10 +425,10 @@ export class Expression {
 				}
 			}
 			// Process the cluster
-			let tokenPattern = /\S+/g;
+			const tokenPattern = /\S+/g;
 			let m: RegExpExecArray | null;
-			while (m = tokenPattern.exec(chunk)) {
-				let tokenContents = m[0];
+			while ((m = tokenPattern.exec(chunk))) {
+				const tokenContents = m[0];
 				let type: ExpressionTokenType;
 				// Need to test numbers separately since floating point numbers don't match the token word pattern
 				if (stringIsNumber(tokenContents)) {
@@ -480,19 +480,19 @@ export class Expression {
 	 * @returns Unprocessed and recursive expression tokens.
 	 */
 	private tokenizeRecursiveExpressions(expression: string): ExpressionToken[] {
-		let partialTokens: ExpressionToken[] = [];
+		const partialTokens: ExpressionToken[] = [];
 
 		// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
 		// As variable references, strings, and parentheses can contain other things, tokenize them first
-		let recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
+		const recursivePatterns = /^(?<prefix>.*?)(?<delimiter>["{(])(?<remainder>.*)$/;
 		let tokenizingIndex = 0;
 		let tokenizingExpression = expression;
 		let m: RegExpExecArray | null;
-		while (m = recursivePatterns.exec(tokenizingExpression)) {
+		while ((m = recursivePatterns.exec(tokenizingExpression))) {
 			if (m.groups === undefined || m.groups.remainder === undefined)
 				continue;
 
-			let openDelimiter = m.groups.delimiter;
+			const openDelimiter = m.groups.delimiter;
 			let openDelimiterIndex = 0;
 			// Save the prefix string, if it exists
 			if (m.groups.prefix !== undefined && m.groups.prefix != "") {
@@ -548,12 +548,12 @@ export class Expression {
 		let m: RegExpExecArray | null;
 
 		// Deal with arrays first by not dealing with them at all
-		let arrayPattern = /(\w+)\[/;
-		while (m = arrayPattern.exec(expression)) {
+		const arrayPattern = /(\w+)\[/;
+		while ((m = arrayPattern.exec(expression))) {
 			let localIndex = m.index + m[0].length - 1;
 			while (expression[localIndex] == '[') {  // To deal with multi-dimensional arrays
 				localIndex++;
-				let reference = extractToMatchingDelimiter(expression, '[', ']', localIndex);
+				const reference = extractToMatchingDelimiter(expression, '[', ']', localIndex);
 				if (reference !== undefined) {
 					localIndex += reference.length + 1;
 				}
@@ -567,11 +567,11 @@ export class Expression {
 
 		// Expressions can contain numbers, strings, operators, built-in variables, variables, and variable references
 		// As variable references, strings, and parentheses can contain other things, tokenize them first
-		let partialTokens: ExpressionToken[] = this.tokenizeRecursiveExpressions(expression);
+		const partialTokens: ExpressionToken[] = this.tokenizeRecursiveExpressions(expression);
 
 		// Now go back and tokenize the non-processed bits
-		let tokens: ExpressionToken[] = [];
-		for (let token of partialTokens) {
+		const tokens: ExpressionToken[] = [];
+		for (const token of partialTokens) {
 			if (token.type == ExpressionTokenType.Unprocessed) {
 				tokens.push(...this.tokenizeUnprocessedToken(token));
 			}
@@ -590,7 +590,7 @@ export class Expression {
   	 * @param tokens Tokens to process.
   	 */
 	private combineTokens(tokens: ExpressionToken[]): ExpressionToken[] {
-		let combinedTokens: ExpressionToken[] = [];
+		const combinedTokens: ExpressionToken[] = [];
 		let index = -1;
 
 		while (++index < tokens.length) {
@@ -603,7 +603,7 @@ export class Expression {
 					this.parseErrors.push(this.createTokenError(token, "Function is missing its arguments"));
 				}
 				else {
-					let secondToken = tokens[index];
+					const secondToken = tokens[index];
 					if (secondToken.type != ExpressionTokenType.Parentheses) {
 						this.parseErrors.push(this.createTokenError(token, "Function must be followed by parentheses"));
 					}
@@ -637,7 +637,7 @@ export class Expression {
 			return ExpressionEvalType.Empty;
 		}
 
-		let lastToken = this.combinedTokens[this.combinedTokens.length - 1];
+		const lastToken = this.combinedTokens[this.combinedTokens.length - 1];
 
 		if (this.combinedTokens.length == 1) {
 			return this.validateSingleTokenExpression(this.combinedTokens[0]);
@@ -645,7 +645,7 @@ export class Expression {
 
 		if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator && this.isValueSetting) {
 			if (this.combinedTokens.length > 2) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+				const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 					this.globalIndex + this.combinedTokens[2].index,
 					this.globalIndex + lastToken.index + lastToken.text.length,
 					"Too many elements - are you missing parentheses?");
@@ -672,8 +672,8 @@ export class Expression {
 				));
 			}
 			else {
-				let index = this.globalIndex + lastToken.index + lastToken.text.length;
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+				const index = this.globalIndex + lastToken.index + lastToken.text.length;
+				const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 					index, index,
 					"Incomplete expression");
 				this.validateErrors.push(diagnostic);
@@ -682,7 +682,7 @@ export class Expression {
 		}
 
 		if (this.combinedTokens.length > 3) {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+			const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 				this.globalIndex + this.combinedTokens[3].index,
 				this.globalIndex + lastToken.index + lastToken.text.length,
 				"Too many elements - are you missing parentheses?");
@@ -738,26 +738,26 @@ export class Expression {
 			// We can only determine this if we know definitively what the content's type is
 			if (token.contents.evalType != ExpressionEvalType.Empty &&
 				token.contents.evalType != ExpressionEvalType.Unknowable) {
-				let argumentType = functionArgumentType(token);
+				const argumentType = functionArgumentType(token);
 				if (argumentType != token.contents.evalType) {
 					switch (argumentType) {
-						case ExpressionEvalType.Number:
-							errorMessage = "Not a number or variable";
-							break;
-						case ExpressionEvalType.Boolean:
-							errorMessage = "Not a boolean or variable";
-							break;
-						case ExpressionEvalType.String:
-							errorMessage = "Not a string or variable";
-							break;
-						case ExpressionEvalType.Error:
-							errorMessage = "Unknown function error";
-							break;
+					case ExpressionEvalType.Number:
+						errorMessage = "Not a number or variable";
+						break;
+					case ExpressionEvalType.Boolean:
+						errorMessage = "Not a boolean or variable";
+						break;
+					case ExpressionEvalType.String:
+						errorMessage = "Not a string or variable";
+						break;
+					case ExpressionEvalType.Error:
+						errorMessage = "Unknown function error";
+						break;
 					}
 				}
 			}
 			if (errorMessage !== undefined) {
-				let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+				const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 					token.contents.globalIndex,
 					token.contents.globalIndex + token.contents.bareExpression.length,
 					errorMessage);
@@ -778,7 +778,7 @@ export class Expression {
 			return ExpressionEvalType.Error;
 		}
 
-		let returnValue = determineEvalType(token);
+		const returnValue = determineEvalType(token);
 
 		// Operators have a valid eval type, but aren't allowed as a single token
 		if (returnValue == ExpressionEvalType.Error || isAnyOperator(token) || !this.validateSingleToken(token)) {
@@ -810,7 +810,7 @@ export class Expression {
 			return ExpressionEvalType.Error;
 		}
 
-		let firstType = tokenEffectiveType(first);
+		const firstType = tokenEffectiveType(first);
 		if (firstType == ExpressionTokenType.Variable ||
 			firstType == ExpressionTokenType.VariableReference) {
 			if (!isAnyOperator(operator)) {
@@ -819,7 +819,7 @@ export class Expression {
 				));
 				return ExpressionEvalType.Error;
 			}
-			let message = checkTokenAgainstOperator(operator, second);
+			const message = checkTokenAgainstOperator(operator, second);
 			if (message !== undefined) {
 				this.validateErrors.push(this.createTokenError(
 					second, message
@@ -866,7 +866,7 @@ export class Expression {
 			}
 		}
 		if (neverTrue) {
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Warning,
+			const diagnostic = createDiagnostic(DiagnosticSeverity.Warning,
 				this.textDocument,
 				this.globalIndex,
 				this.globalIndex + this.bareExpression.length,
@@ -874,10 +874,10 @@ export class Expression {
 			this.validateErrors.push(diagnostic);
 		}
 
-		let returnValue = determineEvalType(operator);
+		const returnValue = determineEvalType(operator);
 		if (returnValue == ExpressionEvalType.Error) {
 			// This shouldn't happen, so just in case...
-			let diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+			const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 				this.globalIndex + first.index,
 				this.globalIndex + second.index + second.text.length,
 				"Unknown error");
@@ -914,18 +914,17 @@ interface Multireplace {
  * @param contentsLocalIndex Index into the section where the multireplace contents begin.
  */
 export function tokenizeMultireplace(
-	section: string, textDocument: TextDocument, contentsGlobalIndex: number, contentsLocalIndex: number = 0
-	): Multireplace | undefined {
-	let fullText: string;
+	section: string, textDocument: TextDocument, contentsGlobalIndex: number, contentsLocalIndex = 0
+): Multireplace | undefined {
 	let test: Expression;
-	let body: TextWithIndex[] = [];
+	const body: TextWithIndex[] = [];
 
 	let workingText = extractToMatchingDelimiter(section, "{", "}", contentsLocalIndex);
 	if (workingText === undefined)
 		return undefined;
-	fullText = workingText;
+	const fullText = workingText;
 
-	let multireplaceEndLocalIndex = workingText.length + 1;
+	const multireplaceEndLocalIndex = workingText.length + 1;
 	let testEndLocalIndex = 0;
 
 	if (workingText[0] != '(') {
@@ -948,10 +947,10 @@ export function tokenizeMultireplace(
 	}
 
 	workingText = workingText.slice(testEndLocalIndex);
-	let bareTokens = workingText.split('|');
+	const bareTokens = workingText.split('|');
 	let runningIndex = 0;
-	for (let bareToken of bareTokens) {
-		let trimmed = bareToken.trim();
+	for (const bareToken of bareTokens) {
+		const trimmed = bareToken.trim();
 		body.push({
 			text: trimmed,
 			localIndex: contentsLocalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
