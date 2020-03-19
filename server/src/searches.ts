@@ -356,7 +356,7 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
  * @param projectIndex Project index.
  */
 function findLabelReferences(definition: SymbolInformation, projectIndex: ProjectIndex): SymbolInformation[] {
-	const information = projectIndex.getLabelReferences(definition.symbol, definition.location.uri).map(reference => {
+	const information = projectIndex.getLabelReferences(definition.symbol).map(reference => {
 		return { 
 			symbol: definition.symbol, 
 			location: reference, 

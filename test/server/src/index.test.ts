@@ -9,8 +9,8 @@ import {
 	IdentifierMultiIndex, 
 } from '../../../server/src/index';
 
-const documentUri: string = "file:///faker.txt";
-const otherSceneUri: string = "file:///other-scene.txt";
+const documentUri = "file:///faker.txt";
+const otherSceneUri = "file:///other-scene.txt";
 
 describe("Project Index", () => {
 	describe("Index", () => {
@@ -54,7 +54,7 @@ describe("Project Index", () => {
 			let index = new Index();
 			index.updateFlowControlEvents(documentUri, events);
 
-			let references = index.getLabelReferences("local_label", documentUri);
+			let references = index.getLabelReferences("local_label");
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 2, character: 0});
@@ -87,7 +87,7 @@ describe("Project Index", () => {
 			index.updateFlowControlEvents(documentUri, localEvents);
 			index.updateFlowControlEvents(otherSceneUri, otherSceneEvents);
 
-			let references = index.getLabelReferences('local_label', documentUri);
+			let references = index.getLabelReferences('local_label');
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 2, character: 0});

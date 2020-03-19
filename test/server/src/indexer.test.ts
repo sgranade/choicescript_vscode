@@ -13,7 +13,7 @@ import {
 } from '../../../server/src/index';
 import { updateProjectIndex } from '../../../server/src/indexer';
 
-const fakeDocumentUri: string = "file:///startup.txt";
+const fakeDocumentUri = "file:///startup.txt";
 
 function createDocument(text: string, 
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {

@@ -1,7 +1,7 @@
 import { Location, Range, Diagnostic } from 'vscode-languageserver';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
-import { uriIsStartupFile, sceneFromUri } from './language';
+import { uriIsStartupFile } from './language';
 
 /**
  * Type for a mutable index of identifiers.
@@ -223,9 +223,8 @@ export interface ProjectIndex {
 	/**
 	 * Get all references to a label.
 	 * @param label Label.
-	 * @param labelDefinitionDocumentUri Document in which the label is defined.
 	 */
-	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location>;
+	getLabelReferences(label: string): ReadonlyArray<Location>;
 	/**
 	 * Get document scopes for a scene file.
 	 * @param sceneUri Scene document URI.
@@ -382,15 +381,14 @@ export class Index implements ProjectIndex {
 		}
 		return index;
 	}
-	getLabelReferences(label: string, labelDefinitionDocumentUri: string): ReadonlyArray<Location> {
+	getLabelReferences(label: string): ReadonlyArray<Location> {
 		const locations: Location[] = [];
-		const scene = sceneFromUri(labelDefinitionDocumentUri);
 		for (const [documentUri, events] of this._flowControlEvents) {
 			const matchingEvents = events.filter(event => {
 				return (event.labelLocation !== undefined && event.label == label);
 			});
 			const matchingLocations = matchingEvents.map(event => {
-				return event.labelLocation!;
+				return event.labelLocation!;  // This is OK because the filter above gets rid of labelLocations that don't exist
 			});
 			locations.push(...matchingLocations);
 		}
