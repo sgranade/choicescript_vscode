@@ -34,7 +34,8 @@ import {
 	extractToMatchingDelimiter,
 	createDiagnostic,
 	readLine,
-	NewLine
+	NewLine,
+	summarize
 } from './utilities';
 import { SummaryScope } from '.';
 
@@ -651,10 +652,10 @@ function readNextNonblankLine(text: string, lineStart: number): NewLine | undefi
  * @param optionIndent Number of whitespace characters in front of the #option.
  * @param isTabs True if whitespace in front of lines should be tabs.
  * @param state Parsing state.
- * @returns Index of the line containing the option's contents and the number of whitespace characters for the block.
+ * @returns Text of the option, index of the line containing the option's contents, and the number of whitespace characters for the block.
  */
 function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number, 
-	optionIndent: number, isTabs: boolean, state: ParsingState): { optionContentsIndex: number; blockIndent: number } | undefined {
+	optionIndent: number, isTabs: boolean, state: ParsingState): { optionText: string; optionContentsIndex: number; blockIndent: number } | undefined {
 	if (optionLine.splitLine === undefined) {  // We gotta have some indent
 		return undefined;
 	}
@@ -709,7 +710,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 					nextOptionLine.index, nextOptionLine.index + nextOptionLine.splitLine.padding.length,
 					"Line is not indented far enough", state);
 				state.callbacks.onParseError(diagnostic);
-				return { optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+				return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
 			}
 			else {
 				return parseSingleOptionLine(
@@ -726,10 +727,11 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 				startIndex, endIndex,
 				"Must be either an #option or an *if", state);
 			state.callbacks.onParseError(diagnostic);
-			return { optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+			return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
 		}
 	}
 	else {
+		const optionText = optionLine.splitLine.contents.slice(hashIndex).trim();
 		if (hashIndex > 0) {
 			// There's text in front of the option. Check it.
 			const preText = optionLine.splitLine.contents.slice(0, hashIndex).trim();
@@ -745,7 +747,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 			}
 		}
 
-		return { optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
 	} 
 }
 
@@ -844,9 +846,11 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	const commandIndent = commandPadding.replace("\n", "").length;
 	let setPaddingType = false;
 	let isTabs = /\t/.test(commandPadding);
-	let firstOption = "";
 	let optionIndent = -1;
 	let contentsEndIndex: number | undefined = undefined;
+	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
+	let endGlobalPosition: Position;
+	const choiceScopes: SummaryScope[] = [];
 
 	// Get the padding type if we can
 	if (commandIndent) {
@@ -877,7 +881,6 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 		}
 	}
 	optionIndent = nextLine.splitLine.padding.length;
-	firstOption = nextLine.splitLine.contents;
 
 	// Loop over each option until there are no more options
 	while (true) {
@@ -885,6 +888,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 			break;
 		}
 
+		const endOptionIndex = nextLine.index + nextLine.line.trimRight().length;
 		const parseOptionResults = parseSingleOptionLine(
 			text, nextLine, commandIndent, optionIndent, isTabs, state
 		);
@@ -892,16 +896,29 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 			break;
 		}
 
+		const optionStartGlobalPosition = parsingPositionAt(nextLine.index, state);
 		contentsEndIndex = nextLine.index + nextLine.line.trimRight().length;
 		let lastContentLine: NewLine | undefined;
 		[lastContentLine, nextLine] = parseSingleOptionContents(text, parseOptionResults.optionContentsIndex, parseOptionResults.blockIndent, isTabs, state);
-		if (lastContentLine !== undefined) {
+		if (lastContentLine == undefined) {
+			const contentsEndGlobalPosition = parsingPositionAt(endOptionIndex, state);
+			// Add this option to the list of scopes, trimming the description if necessary
+			choiceScopes.push({
+				summary: summarize(parseOptionResults.optionText, 35),
+				range: Range.create(optionStartGlobalPosition, contentsEndGlobalPosition)
+			});
+		}
+		else {
 			contentsEndIndex = lastContentLine.index + lastContentLine.line.trimRight().length;
+			const contentsEndGlobalPosition = parsingPositionAt(contentsEndIndex, state);
+			// Add this option to the list of scopes, trimming the description if necessary
+			choiceScopes.push({
+				summary: summarize(parseOptionResults.optionText, 35),
+				range: Range.create(optionStartGlobalPosition, contentsEndGlobalPosition)
+			});
 		}
 	}
 
-	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
-	let endGlobalPosition: Position;
 	if (contentsEndIndex === undefined) {
 		contentsEndIndex = optionsSectionIndex;
 		endGlobalPosition = parsingPositionAt(commandSectionIndex, state);
@@ -910,17 +927,12 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 		endGlobalPosition = parsingPositionAt(contentsEndIndex, state);
 	}
 
-	// Trim our summary if necessary
-	if (firstOption.length > 35) {
-		const trimmedFirstOption = firstOption.slice(0, 35);
-		const m = /^(.*)(?: )/.exec(trimmedFirstOption);
-		if (m !== null) {
-			firstOption = m[1]+"…";
-		}
-	}
 	const range = Range.create(startGlobalPosition, endGlobalPosition);
-	const scope: SummaryScope = { summary: `${command} ${firstOption}`, range: range };
+	const scope: SummaryScope = { summary: command, range: range };
 	state.callbacks.onChoiceScope(scope, state);
+
+	// Add the option scopes
+	choiceScopes.forEach(scope => { state.callbacks.onChoiceScope(scope, state); });
 
 	return contentsEndIndex;
 }

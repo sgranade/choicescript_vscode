@@ -79,6 +79,26 @@ export function stringIsNumber(s: string): boolean {
 }
 
 /**
+ * If necessary, summarize text by cutting it off at a space between words.
+ * @param text Text to summarize.
+ * @param maxLength Max length of the summary.
+ */
+export function summarize(text: string, maxLength: number): string {
+	if (text.length > maxLength) {
+		const trimmedText = text.slice(0, maxLength);
+		const m = /^(.*)(?: )/.exec(trimmedText);
+		if (m !== null) {
+			text = m[1]+"…";
+		}
+		else {
+			text = trimmedText.slice(0, maxLength-1)+"…";
+		}
+	}
+
+	return text;
+}
+
+/**
  * Scan a document's text to find the beginning of the current line.
  * 
  * @param document Document text to scan.

@@ -129,7 +129,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	const callbacks: ParserCallbacks = {
 		onCommand: (prefix: string, command: string, spacing: string, line: string, 
-			commandLocation: Location, state: ParsingState) => {
+			commandLocation: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			// Record where achievement temporary variables are brought into existence
 			if (command == "check_achievements" && indexingState.checkAchievementLocation === undefined) {
 				indexingState.checkAchievementLocation = commandLocation;
@@ -152,7 +152,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			}
 		},
 
-		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
+		onLocalVariableCreate: (symbol: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			const locations = indexingState.localVariables.get(symbol) ?? [];
 			locations.push(location);
 			indexingState.localVariables.set(symbol, locations);
@@ -174,7 +174,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			}
 		},
 
-		onVariableReference: (symbol: string, location: Location, state: ParsingState) => {
+		onVariableReference: (symbol: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			// My kingdom for the nullish coalescing operator
 			let referenceArray: Array<Location> | undefined = indexingState.variableReferences.get(symbol);
 			if (referenceArray === undefined)
@@ -212,15 +212,15 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			}
 		},
 
-		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => {
+		onSceneDefinition: (scenes: string[], location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			indexingState.scenes = scenes;
 		},
 
-		onAchievementCreate: (codename: string, location: Location, state: ParsingState) => {
+		onAchievementCreate: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			indexingState.achievements.set(codename, location);
 		},
 
-		onAchievementReference: (codename: string, location: Location, state: ParsingState) => {
+		onAchievementReference: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			let referenceArray: Array<Location> | undefined = indexingState.achievementReferences.get(codename);
 			if (referenceArray === undefined)
 				referenceArray = [];
@@ -228,7 +228,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.achievementReferences.set(codename, referenceArray);
 		},
 
-		onChoiceScope: (scope: SummaryScope, state: ParsingState) => {
+		onChoiceScope: (scope: SummaryScope, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			indexingState.choiceScopes.push(scope);
 		},
 

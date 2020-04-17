@@ -6,7 +6,9 @@ import { TextDocument, Position, Location, Diagnostic, DiagnosticSeverity } from
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
 import { FlowControlEvent, SummaryScope } from '../../../server/src';
 
-const fakeDocumentUri: string = "file:///startup.txt";
+/* eslint-disable */
+
+const fakeDocumentUri = "file:///startup.txt";
 
 function createDocument(text: string, 
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
@@ -365,7 +367,7 @@ describe("Parser", () => {
 	});
 
 	describe("Choice Command Parsing", () => {
-		it("should callback on a choice with spaces", () => {
+		it("should callback on an choice with spaces", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
 			let received: Array<SummaryScope> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -375,9 +377,13 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
+			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(45);
+			expect(received[1].range.start.line).to.equal(15);
+			expect(received[1].range.end.line).to.equal(36);
+			expect(received[2].range.start.line).to.equal(37);
+			expect(received[2].range.end.line).to.equal(45);
 		});
 
 		it("should callback on a choice with tabs", () => {
@@ -390,9 +396,13 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
+			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
+			expect(received[1].range.start.line).to.equal(15);
+			expect(received[1].range.end.line).to.equal(27);
+			expect(received[2].range.start.line).to.equal(28);
+			expect(received[2].range.end.line).to.equal(33);
 		});
 
 		it("should callback on a choice at the end of the document", () => {
@@ -405,9 +415,13 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
+			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
+			expect(received[1].range.start.line).to.equal(15);
+			expect(received[1].range.end.line).to.equal(27);
+			expect(received[2].range.start.line).to.equal(28);
+			expect(received[2].range.end.line).to.equal(33);
 		});
 
 		it("should cut the choice short at mixed tabs and spaces", () => {
@@ -420,9 +434,11 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
+			expect(received.length).to.equal(2);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
+			expect(received[1].range.start.line).to.equal(15);
+			expect(received[1].range.end.line).to.equal(33);
 		});
 
 		it("should callback on a choice with blank lines", () => {
@@ -435,9 +451,13 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
+			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(27);
+			expect(received[1].range.start.line).to.equal(15);
+			expect(received[1].range.end.line).to.equal(21);
+			expect(received[2].range.start.line).to.equal(22);
+			expect(received[2].range.end.line).to.equal(27);
 		});
 
 		it("should callback on nested choice blocks", () => {
@@ -450,14 +470,20 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(2);
+			expect(received.length).to.equal(5);
 			expect(received[0].range.start.line).to.equal(24);
 			expect(received[0].range.end.line).to.equal(48);
-			expect(received[1].range.start.line).to.equal(8);
-			expect(received[1].range.end.line).to.equal(54);
+			expect(received[1].range.start.line).to.equal(31);
+			expect(received[1].range.end.line).to.equal(48);
+			expect(received[2].range.start.line).to.equal(8);
+			expect(received[2].range.end.line).to.equal(54);
+			expect(received[3].range.start.line).to.equal(15);
+			expect(received[3].range.end.line).to.equal(48);
+			expect(received[4].range.start.line).to.equal(49);
+			expect(received[4].range.end.line).to.equal(54);
 		});
 
-		it("should summarize a choice by its first option", () => {
+		it("should summarize a choice with the command's name", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText\n\t#Two\nEnd");
 			let received: Array<SummaryScope> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -467,11 +493,10 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
-			expect(received[0].summary).to.equal("choice #One");
+			expect(received[0].summary).to.equal("choice");
 		});
 
-		it("should summarize a fake choice by its first option", () => {
+		it("should summarize a fake choice with the command's name", () => {
 			let fakeDocument = createDocument("Line 0\n*fake_choice\n\t#One\n\t\tText\n\t#Two\nEnd");
 			let received: Array<SummaryScope> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -481,11 +506,23 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
-			expect(received[0].summary).to.equal("fake_choice #One");
+			expect(received[0].summary).to.equal("fake_choice");
 		});
 
-		it("should limit a choice summary's length", () => {
+		it("should summarize an option with its comments", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText\n\t#Two\nEnd");
+			let received: Array<SummaryScope> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
+				received.push(scope);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received[1].summary).to.equal("#One");
+		});
+
+		it("should limit an option summary's length", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n\t#A very long first choice, it runs on and on and on\n\t\tText\n\t#Two\nEnd");
 			let received: Array<SummaryScope> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -495,8 +532,7 @@ describe("Parser", () => {
 	
 			parse(fakeDocument, fakeCallbacks);
 	
-			expect(received.length).to.equal(1);
-			expect(received[0].summary).to.equal("choice #A very long first choice, it runs…");
+			expect(received[1].summary).to.equal("#A very long first choice, it runs…");
 		});
 	});
 
