@@ -39,7 +39,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 		localVariables.set(variable, existingLocations);
 	}
 
-	const availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {
+	const availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 		for (const location of locations) {
 			if (comparePositions(location.range.end, position) <= 0)
 				return true;
@@ -47,7 +47,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 		return false;
 	});
 
-	const completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({
+	const completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({  // eslint-disable-line @typescript-eslint/no-unused-vars
 		label: variable, 
 		kind: CompletionItemKind.Variable, 
 		data: "variable-local"
@@ -144,6 +144,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 				case "if":
 				case "elseif":
 				case "elsif":
+				case "rand":
 					completions = generateVariableCompletions(document, position, projectIndex);
 					break;
 

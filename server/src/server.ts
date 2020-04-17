@@ -40,7 +40,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 // TODO handle multiple directories with startup.txt
 const projectIndex = new Index();
 
-connection.onInitialize((params: InitializeParams) => {
+connection.onInitialize((params: InitializeParams) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 	const syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full;
 	return {
 		capabilities: {
@@ -128,7 +128,7 @@ async function indexFile(path: string): Promise<void> {
 	}
 }
 
-connection.onDidChangeConfiguration(change => {
+connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 	// Revalidate all open text documents
 	documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 });

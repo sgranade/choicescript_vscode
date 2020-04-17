@@ -58,10 +58,10 @@
 		},
 		"regular-command": {
 			"name": "keyword.control.cs",
-			"match": "(?<!\\*)\\*((fake_)?choice|else|(disable|hide|allow)_reuse|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line|delay)_break|params|title|author|input_(text|number)|rand|reset|restart|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
+			"match": "(?<!\\*)\\*((fake_)?choice|else|(disable|hide|allow)_reuse|goto((_random)?_scene)?|gosub(_scene)?|redirect_scene|return|finish|ending|(page|line|delay)_break|params|title|author|input_(text|number)|reset|restart|image|link|bug|stat_chart|scene_list|achieve(ment)?|check_achievements|script|print|more_games|share_this_game|show_password)\\b"
 		},
 		"command-with-expression": {
-			"begin": "(?<!\\*)(\\*(create|temp|set|delete|elseif)\\b)",
+			"begin": "(?<!\\*)(\\*(create|temp|set|delete|elseif|rand)\\b)",
 			"end": "(?=$)",
 			"beginCaptures": {
 				"1": {

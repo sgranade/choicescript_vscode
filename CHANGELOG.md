@@ -4,9 +4,17 @@ Changes to the plugin.
 
 ## Unpublished
 
+### Added
+
+- Can now auto-complete variables after a *rand command.
+
 ### Changed
 
 - Outline now lists all #options in a *choice.
+
+### Fixed
+
+- *rand command now syntax highlights its contents correctly.
 
 ## [1.2.0] - 2020-03-05
 

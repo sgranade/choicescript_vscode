@@ -1,7 +1,5 @@
 # TODO
 
-- Syntax highlighting doesn't work properly on *rand variable 1 3
-- Variable suggestions (ctrl+space) doesn't work after a *rand command
 - Investigate outlining if blocks in the outline
 - Make sure it handles the following:
     *if (this_thing)
