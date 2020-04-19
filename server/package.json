@@ -12,10 +12,10 @@
 		"url": "https://github.com/sgranade/choicescript_vscode"
 	},
 	"dependencies": {
-		"globby": "^10.0.1",
+		"globby": "^11.0.0",
 		"urijs": "^1.19.2",
-		"vscode-languageserver": "^6.0.0-next.8",
-		"vscode-languageserver-textdocument": "^1.0.0-next.5"
+		"vscode-languageserver": "^6.1.1",
+		"vscode-languageserver-textdocument": "^1.0.1"
 	},
 	"scripts": {}
 }
