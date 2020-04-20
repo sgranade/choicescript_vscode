@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
@@ -118,7 +120,7 @@ function createMockIndex({
 		}
 		return new Map();
 	});
-	fakeIndex.getAchievements(Arg.any()).returns(achievements);
+	fakeIndex.getAchievements().returns(achievements);
 	fakeIndex.getDocumentAchievementReferences(Arg.any()).mimicks(scene => {
 		let index = achievementReferences.get(scene);
 		if (index === undefined) {

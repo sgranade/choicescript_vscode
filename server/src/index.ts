@@ -383,11 +383,13 @@ export class Index implements ProjectIndex {
 	}
 	getLabelReferences(label: string): ReadonlyArray<Location> {
 		const locations: Location[] = [];
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		for (const [documentUri, events] of this._flowControlEvents) {
 			const matchingEvents = events.filter(event => {
 				return (event.labelLocation !== undefined && event.label == label);
 			});
 			const matchingLocations = matchingEvents.map(event => {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				return event.labelLocation!;  // This is OK because the filter above gets rid of labelLocations that don't exist
 			});
 			locations.push(...matchingLocations);

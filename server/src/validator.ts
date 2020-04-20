@@ -35,7 +35,7 @@ class ValidationState {
 	 */
 	textDocument: TextDocument;
 
-	text: string = "";
+	text = "";
 
 	constructor(projectIndex: ProjectIndex, textDocument: TextDocument) {
 		this.projectIndex = projectIndex;
@@ -45,12 +45,12 @@ class ValidationState {
 }
 
 function validateVariables(state: ValidationState): Diagnostic[] {
-	let diagnostics: Diagnostic[] = [];
+	const diagnostics: Diagnostic[] = [];
 
 	// Make sure no local variables have the same name as global ones
-	let globalVariables = state.projectIndex.getGlobalVariables();
-	for (let [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
-		for (let location of locations) {
+	const globalVariables = state.projectIndex.getGlobalVariables();
+	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
+		for (const location of locations) {
 			if (globalVariables.has(variable)) {
 				diagnostics.push(createDiagnosticFromLocation(
 					DiagnosticSeverity.Information, location,
@@ -72,11 +72,11 @@ function validateVariables(state: ValidationState): Diagnostic[] {
  */
 function validateLabelReference(
 	label: string, scene: string | undefined, location: Location, state: ValidationState
-	): Diagnostic | undefined {
+): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (!(label !== undefined && label[0] == '{')) {
-		let labelLocation = findLabelLocation(label, scene, state.textDocument, state.projectIndex);
+		const labelLocation = findLabelLocation(label, scene, state.textDocument, state.projectIndex);
 
 		if (labelLocation === undefined) {
 			diagnostic = createDiagnosticFromLocation(
@@ -95,7 +95,7 @@ function validateLabelReference(
  */
 function validateSceneReference(
 	scene: string, location: Location, state: ValidationState
-	): Diagnostic | undefined {
+): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (!(scene !== undefined && scene[0] == '{')) {
@@ -103,7 +103,7 @@ function validateSceneReference(
 			diagnostic = createDiagnosticFromLocation(
 				DiagnosticSeverity.Warning, location,
 				`Scene "${scene}" wasn't found in startup.txt`
-				);
+			);
 		}
 	}
 
@@ -115,22 +115,22 @@ function validateSceneReference(
  * @param state Validation state.
  */
 function validateReferences(state: ValidationState): Diagnostic[] {
-	let diagnostics: Diagnostic[] = [];
+	const diagnostics: Diagnostic[] = [];
 
 	// Validate references
-	let references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);
+	const references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);
 	let whereDefined = "in this file";
 	if (!uriIsStartupFile(state.textDocument.uri)) {
 		whereDefined += " or startup.txt";
 	}
-	for (let [variable, locations] of references.entries()) {
+	for (const [variable, locations] of references.entries()) {
 		// Effective creation locations take precedence
-		let creationLocations = findVariableCreationLocations(variable, true, state.textDocument, state.projectIndex);
+		const creationLocations = findVariableCreationLocations(variable, true, state.textDocument, state.projectIndex);
 
-		if (creationLocations !== undefined) {
+		if (creationLocations !== undefined && creationLocations !== null) {
 			// Make sure we don't reference variables before they're created
-			let badLocations = locations.filter((location: Location) => {
-				for (let creationLocation of creationLocations!) {
+			const badLocations = locations.filter((location: Location) => {
+				for (const creationLocation of creationLocations) {
 					if ((location.uri == creationLocation.uri) &&
 						(comparePositions(location.range.end, creationLocation.range.start) >= 0)) {
 						return false;
@@ -142,7 +142,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				// Handle the edge case where a local variable is referenced before it's created,
 				// but there's a global variable with the same name
 				if (uriIsStartupFile(state.textDocument.uri) || !state.projectIndex.getGlobalVariables().has(variable)) {
-					let newDiagnostics = badLocations.map((location: Location): Diagnostic => {
+					const newDiagnostics = badLocations.map((location: Location): Diagnostic => {
 						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
 							`Variable "${variable}" used before it was created`);
 					});
@@ -151,13 +151,13 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			}
 		}
 		else if (!builtinVariablesLookup.has(variable)) {
-			let scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
+			const scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
 			let trimmedLocations = locations;
 			
 			// Get rid of any variables that are legal achievement variables
 			if (scopes.achievementVarScopes.length > 0 && 
 				variableIsAchievement(variable, state.projectIndex.getAchievements()) !== undefined) {
-				for (let scopeRange of scopes.achievementVarScopes) {
+				for (const scopeRange of scopes.achievementVarScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
 						rangeInOtherRange(location.range, scopeRange);
 					});
@@ -166,13 +166,13 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			// Get rid of any variables that are legal param_1 and similar
 			if (scopes.paramScopes.length > 0 &&
 				variableIsPossibleParameter(variable)) {
-				for (let scopeRange of scopes.paramScopes) {
+				for (const scopeRange of scopes.paramScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
 						rangeInOtherRange(location.range, scopeRange);
 					});
 				}
 			}
-			let newDiagnostics = trimmedLocations.map((location: Location): Diagnostic => {
+			const newDiagnostics = trimmedLocations.map((location: Location): Diagnostic => {
 				return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
 					`Variable "${variable}" not defined ${whereDefined}`);
 			});
@@ -188,9 +188,9 @@ function validateReferences(state: ValidationState): Diagnostic[] {
  * @param state Validation state.
  */
 function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
-	let diagnostics: Diagnostic[] = [];
+	const diagnostics: Diagnostic[] = [];
 
-	for (let event of state.projectIndex.getFlowControlEvents(state.textDocument.uri)) {
+	for (const event of state.projectIndex.getFlowControlEvents(state.textDocument.uri)) {
 		if (event.scene != "" && event.sceneLocation !== undefined) {
 			let diagnostic = validateSceneReference(event.scene, event.sceneLocation, state);
 			if (diagnostic) {
@@ -205,7 +205,7 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 			}
 		}
 		else if (event.label != "" && event.labelLocation !== undefined) {
-			let diagnostic = validateLabelReference(
+			const diagnostic = validateLabelReference(
 				event.label, undefined, event.labelLocation, state
 			);
 			if (diagnostic !== undefined)
@@ -225,10 +225,10 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
  * @returns Diagnostic message, if any.
  */
 function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
-	let lineBegin = findLineBegin(state.text, index-1);
-	let line = state.text.substring(lineBegin, index-1);
-	let commandSearch = RegExp(commandPattern);
-	let m = commandSearch.exec(line);
+	const lineBegin = findLineBegin(state.text, index-1);
+	const line = state.text.substring(lineBegin, index-1);
+	const commandSearch = RegExp(commandPattern);
+	const m = commandSearch.exec(line);
 	let actualCommand = m?.groups?.command;
 	if (actualCommand === undefined) {
 		actualCommand = "";
@@ -261,10 +261,10 @@ function validateCommandInLine(command: string, index: number, state: Validation
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (validCommandsLookup.has(command)) {
-		let lineBegin = findLineBegin(state.text, index-1);
-		let line = state.text.substring(lineBegin, index-1);
-		let commandSearch = RegExp(commandPattern);
-		let m = commandSearch.exec(line);
+		const lineBegin = findLineBegin(state.text, index-1);
+		const line = state.text.substring(lineBegin, index-1);
+		const commandSearch = RegExp(commandPattern);
+		const m = commandSearch.exec(line);
 		let actualCommand = m?.groups?.command;
 		if (actualCommand === undefined) {
 			actualCommand = "";
@@ -302,13 +302,13 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 
 	// Count words while handling multireplaces
 	let runningWordCount = 0;
-	let multiPattern = RegExp(multiStartPattern);
+	const multiPattern = RegExp(multiStartPattern);
 	let e: RegExpExecArray | null;
 	let remainingChoice = choice;
 	let remainingLocalIndex = 0;
-	while (e = multiPattern.exec(remainingChoice)) {
-		let contentsSublocalIndex = e.index + e[0].length;
-		let tokens = tokenizeMultireplace(
+	while ((e = multiPattern.exec(remainingChoice))) {
+		const contentsSublocalIndex = e.index + e[0].length;
+		const tokens = tokenizeMultireplace(
 			remainingChoice, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
 		);
 		if (tokens === undefined) {
@@ -317,12 +317,12 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 		}
 		else {
 			// See if the bit before the multireplace has too many words already
-			let pretext = remainingChoice.slice(0, e.index);
+			const pretext = remainingChoice.slice(0, e.index);
 			// This pattern won't find the last word in the string if it's not followed by a space, but
 			// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
-			let pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
+			const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
 			if (pretextWordCount > 15 - runningWordCount) {
-				let m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+				const m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
 				if (m != null && m[0].length < pretext.length) {
 					overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
 					break;
@@ -332,15 +332,15 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 			runningWordCount += pretextWordCount;
 			let longestBody = tokens.body[0];
 			let longestWordCount = longestBody.text.split(/\s+/).length;
-			for (let token of tokens.body.slice(1)) {
-				let newWordCount = token.text.split(/\s+/).length;
+			for (const token of tokens.body.slice(1)) {
+				const newWordCount = token.text.split(/\s+/).length;
 				if (newWordCount > longestWordCount) {
 					longestBody = token;
 					longestWordCount = newWordCount;
 				}
 			}
 			if (longestWordCount > 15 - runningWordCount) {
-				let m = longestBody.text.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+				const m = longestBody.text.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
 				if (m != null && m[0].length < longestBody.text.length) {
 					overLimitLocalIndex = remainingLocalIndex + longestBody.localIndex + (m.index ?? 0) + m[0].length;
 					break;
@@ -360,7 +360,7 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 	}
 
 	if (overLimitLocalIndex === undefined && remainingChoice.trim() != "") {
-		let m = remainingChoice.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+		const m = remainingChoice.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
 		if (m != null && m[0].length < remainingChoice.length) {
 			overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
 		}
@@ -384,10 +384,10 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
  * @returns List of diagnostic messages.
  */
 export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex): Diagnostic[] {
-	let state = new ValidationState(projectIndex, textDocument);
+	const state = new ValidationState(projectIndex, textDocument);
 
 	// Start with parse errors
-	let diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
+	const diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
 
 	// Validate variable creations
 	diagnostics.push(...validateVariables(state));
@@ -399,27 +399,27 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateFlowControlEvents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
-	let matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${choicePattern}`, 'g');
+	const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${choicePattern}`, 'g');
 	let m: RegExpExecArray | null;
 
-	while (m = matchPattern.exec(state.text)) {
+	while ((m = matchPattern.exec(state.text))) {
 		if (m.groups === undefined)
 			continue;
 
 		if (m.groups.styleGuide !== undefined) {  // Items against CoG styleguide
-			let diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
+			const diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
 		else if (m.groups.command !== undefined) {
-			let diagnostic = validateCommandInLine(
+			const diagnostic = validateCommandInLine(
 				m.groups.command, m.index + m.groups.commandPrefix.length, state
 			);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
 		else if (m.groups.choice !== undefined) {
-			let diagnostic = validateChoice(m.groups.choice, m.index, state);
+			const diagnostic = validateChoice(m.groups.choice, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

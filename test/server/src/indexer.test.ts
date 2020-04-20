@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
@@ -267,8 +269,10 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*achieve code_name");
 			let receivedAchievementReferences: IdentifierMultiIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateAchievementReferences(Arg.any()).mimicks(
-				(uri, index) => { receivedAchievementReferences.push(index); }
+			fakeIndex.updateAchievementReferences(Arg.any(), Arg.any()).mimicks(
+				(uri, index) => { 
+					receivedAchievementReferences.push(index); 
+				}
 			);
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
@@ -283,7 +287,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -295,7 +299,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -307,7 +311,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name\nLine 1\n*return\nLine 3");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	
@@ -320,7 +324,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_one\nLine 1\n*label label_two\nLine 3\n*return\nLine 5");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 	
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 	

@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
@@ -90,10 +92,11 @@ function createIndex({
 		else {
 			fakeIndex.getLabels(labelsUri).returns(labels);
 		}
-		fakeIndex.getAchievements(Arg.any()).returns(achievements);
+		fakeIndex.getAchievements().returns(achievements);
 		fakeIndex.getDocumentVariableReferences(Arg.all()).returns(variableReferences);
 		fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 		fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
+		fakeIndex.getParseErrors(Arg.any()).returns([]);
 	
 		return fakeIndex;
 }
