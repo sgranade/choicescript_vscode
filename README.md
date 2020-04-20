@@ -56,6 +56,10 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.3.0]
+
+- The document outline now lists all individual options in a choice.
+
 ### [1.2.0]
 
 - The document outline lets you see the flow of choices, labels, and variables in your game.
