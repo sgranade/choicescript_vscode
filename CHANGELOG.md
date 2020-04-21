@@ -2,6 +2,11 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+- todo now highlighted in multireplaces
+
 ## [1.3.0] - 2020-04-19
 
 ### Added
