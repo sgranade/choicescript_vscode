@@ -2432,6 +2432,32 @@ describe("Parser", () => {
 			expect(wordCount).to.equal(4);
 		});
 
+		it("should count words in options but not the # option character", () => {
+			let fakeDocument = createDocument("*choice\n\t#One two three.\n\t\tFour five.\n\t# Six.\n\t\tSeven eight\n");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(8);
+		});
+
+		it("should count words in options that have a leading *if", () => {
+			let fakeDocument = createDocument("*choice\n\t#One two three.\n\t\tFour five.\n\t# Six.\n\t\tSeven eight\n");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(8);
+		});
+
 		it("should count variables as one word", () => {
 			let fakeDocument = createDocument("Contained herein: a ${variable}.");
 			let received: Array<Diagnostic> = [];

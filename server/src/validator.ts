@@ -12,7 +12,7 @@ import {
 	validCommands,
 	reuseCommands,
 	commandPattern,
-	choicePattern,
+	optionPattern,
 	multiStartPattern
 } from './language';
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
@@ -289,14 +289,14 @@ function validateCommandInLine(command: string, index: number, state: Validation
 }
 
 /**
- * Validate a choice.
+ * Validate a choice option.
  * 
- * @param choice Text of the choice.
- * @param index Location of the choice, starting with its leading "#".
+ * @param option Text of the option.
+ * @param index Location of the option, starting with its leading "#".
  * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
-function validateChoice(choice: string, index: number, state: ValidationState): Diagnostic | undefined {
+function validateOption(option: string, index: number, state: ValidationState): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 	let overLimitLocalIndex: number | undefined = undefined;
 
@@ -304,12 +304,12 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 	let runningWordCount = 0;
 	const multiPattern = RegExp(multiStartPattern);
 	let e: RegExpExecArray | null;
-	let remainingChoice = choice;
+	let remainingOption = option;
 	let remainingLocalIndex = 0;
-	while ((e = multiPattern.exec(remainingChoice))) {
+	while ((e = multiPattern.exec(remainingOption))) {
 		const contentsSublocalIndex = e.index + e[0].length;
 		const tokens = tokenizeMultireplace(
-			remainingChoice, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
+			remainingOption, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
 		);
 		if (tokens === undefined) {
 			// Unterminated multireplace, so give up
@@ -317,7 +317,7 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 		}
 		else {
 			// See if the bit before the multireplace has too many words already
-			const pretext = remainingChoice.slice(0, e.index);
+			const pretext = remainingOption.slice(0, e.index);
 			// This pattern won't find the last word in the string if it's not followed by a space, but
 			// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
 			const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
@@ -350,18 +350,18 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 
 			let endIndex = tokens.endIndex;
 			// Any characters after the multireplace are part of its word count; don't double-count them
-			while (endIndex < remainingChoice.length && remainingChoice[endIndex] != ' ' && remainingChoice[endIndex] != '\t') {
+			while (endIndex < remainingOption.length && remainingOption[endIndex] != ' ' && remainingOption[endIndex] != '\t') {
 				endIndex++;
 			}
 
-			remainingChoice = remainingChoice.slice(endIndex);
+			remainingOption = remainingOption.slice(endIndex);
 			remainingLocalIndex += endIndex;
 		}
 	}
 
-	if (overLimitLocalIndex === undefined && remainingChoice.trim() != "") {
-		const m = remainingChoice.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-		if (m != null && m[0].length < remainingChoice.length) {
+	if (overLimitLocalIndex === undefined && remainingOption.trim() != "") {
+		const m = remainingOption.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+		if (m != null && m[0].length < remainingOption.length) {
 			overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
 		}
 	}
@@ -369,8 +369,8 @@ function validateChoice(choice: string, index: number, state: ValidationState): 
 	// See if we've got more than 15 words
 	if (overLimitLocalIndex !== undefined) {
 		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-			index + overLimitLocalIndex, index + choice.length,
-			"Choice is more than 15 words long");
+			index + overLimitLocalIndex, index + option.length,
+			"Option is more than 15 words long");
 	}
 
 	return diagnostic;
@@ -399,7 +399,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateFlowControlEvents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
-	const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${choicePattern}`, 'g');
+	const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
 	while ((m = matchPattern.exec(state.text))) {
@@ -418,8 +418,8 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}
-		else if (m.groups.choice !== undefined) {
-			const diagnostic = validateChoice(m.groups.choice, m.index, state);
+		else if (m.groups.option !== undefined) {
+			const diagnostic = validateOption(m.groups.option, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

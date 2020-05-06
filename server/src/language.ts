@@ -54,14 +54,14 @@ export const argumentIgnoredCommands: ReadonlyArray<string> = [
 ];
 
 /**
- * Commands that can be used in front of a choice.
+ * Commands that can be used in front of a choice option.
  */
-export const choiceAllowedCommands: ReadonlyArray<string> = [
+export const optionAllowedCommands: ReadonlyArray<string> = [
 	"hide_reuse", "disable_reuse", "allow_reuse", "if", "selectable_if"
 ];
 
 /**
- * Commands that modify display of a choice.
+ * Commands that modify display of an option.
  */
 export const reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
 
@@ -218,13 +218,13 @@ export const multiStartPattern = "(?<multi>@!?!?{)";
  */
 export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
- * Pattern to find a choice.
+ * Pattern to find an option.
  */
-export const choicePattern = "(?<choice>#.*)";
+export const optionPattern = "(?<option>#.*)";
 /**
- * Pattern to find an entire choice line.
+ * Pattern to find an entire choice option line.
  */
-export const choiceLinePattern = "(\\n|^)[ \t]*?#.+?";
+export const optionStartingLinePattern = "(\\n|^)[ \t]*?#";
 /**
  * Pattern to find a markup element like bold or italic.
  */

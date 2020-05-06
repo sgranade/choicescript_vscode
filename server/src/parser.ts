@@ -4,7 +4,7 @@ import {
 	validCommands, 
 	multiStartPattern,
 	replacementStartPattern,
-	choiceLinePattern,
+	optionStartingLinePattern,
 	markupPattern,
 	variableManipulationCommands,
 	variableReferenceCommands,
@@ -23,7 +23,7 @@ import {
 	booleanFunctions,
 	argumentDisallowedCommands,
 	argumentIgnoredCommands,
-	choiceAllowedCommands as optionAllowedCommands,
+	optionAllowedCommands,
 } from './language';
 import {
 	Expression,
@@ -697,6 +697,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 	}
 
 	// The line should either contain an #option or a bare *if statement
+	// TODO that's not quite right: see https://forum.choiceofgames.com/t/join-commands-if-and-selectable-if-and-allow-reuse/675/29
 	const hashIndex = optionLine.splitLine.contents.indexOf("#");
 	if (hashIndex == -1) {
 		// This better be an *if statement
@@ -1406,18 +1407,25 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 	state.sectionGlobalIndex = oldSectionIndex;
 }
 
-function countWords(text: string, textDocument: TextDocument): number {
+/**
+ * Count the number of words in a section of the document.
+ * 
+ * Skips commands and properly deals with multireplaces.
+ * @param section Section of the document to count words on.
+ * @param textDocument TextDocument the section comes from.
+ */
+export function countWords(section: string, textDocument: TextDocument): number {
 	// Get rid of every bit of markup
 	const markup = RegExp(markupPattern, 'g');
-	text = text.replace(markup, "");
+	section = section.replace(markup, "");
 
 	// Get rid of every line that's a command
 	const commandLine = RegExp(commandPattern, 'g');
-	text = text.replace(commandLine, "");
+	section = section.replace(commandLine, "");
 
-	// Get rid of every line that's an option (to match CSIDE's approach)
-	const choiceLine = RegExp(choiceLinePattern, 'g');
-	text = text.replace(choiceLine, 'g');
+	// Get rid of every leading option character (so that we don't mis-count "# I'm an option!" as having 4 words)
+	const choiceLine = RegExp(optionStartingLinePattern, 'g');
+	section = section.replace(choiceLine, "");
 
 	// Go through and reduce each multi pattern or replacement to its equivalent words
 	const pattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
@@ -1425,22 +1433,22 @@ function countWords(text: string, textDocument: TextDocument): number {
 	const portions = [];
 	let lastIndex = 0;
 
-	while ((m = pattern.exec(text))) {
+	while ((m = pattern.exec(section))) {
 		if (m.groups === undefined) {
 			continue;
 		}
 
-		portions.push(text.slice(lastIndex, m.index).trim());
+		portions.push(section.slice(lastIndex, m.index).trim());
 
 		if (m.groups.replacement) {
-			const replacement = extractToMatchingDelimiter(text, '{', '}', m.index + m[0].length);
+			const replacement = extractToMatchingDelimiter(section, '{', '}', m.index + m[0].length);
 			if (replacement !== undefined) {
 				pattern.lastIndex += replacement.length;
 			}
 		}
 		else if (m.groups.multi) {
 			const contentsIndex = m.index + m[0].length;
-			const multiTokens = tokenizeMultireplace(text, textDocument, contentsIndex, contentsIndex);
+			const multiTokens = tokenizeMultireplace(section, textDocument, contentsIndex, contentsIndex);
 			if (multiTokens !== undefined) {
 				for (let i = 0, len = multiTokens.body.length; i < len; i++) {
 					portions.push(multiTokens.body[i].text);
@@ -1451,7 +1459,7 @@ function countWords(text: string, textDocument: TextDocument): number {
 
 		lastIndex = pattern.lastIndex;
 	}
-	portions.push(text.slice(lastIndex).trim());
+	portions.push(section.slice(lastIndex).trim());
 
 	let count = 0;
 
