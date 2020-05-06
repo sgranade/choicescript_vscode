@@ -237,7 +237,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		}
 	};
 
-	parse(textDocument, callbacks);
+	const wordCount = parse(textDocument, callbacks);
 	const scopes = generateScopes(indexingState);
 	const subroutineVariables = findSubroutineVariables(indexingState);
 
@@ -246,6 +246,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		index.updateSceneList(indexingState.scenes);
 		index.updateAchievements(indexingState.achievements);
 	}
+	index.updateWordCount(textDocument.uri, wordCount);
 	index.updateLocalVariables(textDocument.uri, indexingState.localVariables);
 	index.updateSubroutineLocalVariables(textDocument.uri, subroutineVariables);
 	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);

@@ -2404,4 +2404,71 @@ describe("Parser", () => {
 			});	
 		});
 	});
+
+	describe("Word Count", () => {
+		it("should count words", () => {
+			let fakeDocument = createDocument("This sentence contains\neight words over two lines.");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(8);
+		});
+
+		it("should skip commands", () => {
+			let fakeDocument = createDocument("Sentence one.\n*comment a command!\nSentence two.");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(4);
+		});
+
+		it("should count variables as one word", () => {
+			let fakeDocument = createDocument("Contained herein: a ${variable}.");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(4);
+		});
+
+		it("should count only the contents of a multireplace", () => {
+			let fakeDocument = createDocument("Multireplace: @{(2 > 3) first bit|longer second bit|super longer third bit}");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(10);
+		});
+
+		it("should not count bold or italic markup symbols", () => {
+			let fakeDocument = createDocument("So [b] this is bold [/b] while [i] this is italics [/i] okay?");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(9);
+		});
+	});
 });

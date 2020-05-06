@@ -222,6 +222,14 @@ export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
  */
 export const choicePattern = "(?<choice>#.*)";
 /**
+ * Pattern to find an entire choice line.
+ */
+export const choiceLinePattern = "(\\n|^)[ \t]*?#.+?";
+/**
+ * Pattern to find a markup element like bold or italic.
+ */
+export const markupPattern = "\\[\\/?(i|b)\\]";
+/**
  * Pattern to find elements that go against Choice of Games style guide.
  */
 export const stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";

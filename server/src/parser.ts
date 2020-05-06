@@ -4,6 +4,8 @@ import {
 	validCommands, 
 	multiStartPattern,
 	replacementStartPattern,
+	choiceLinePattern,
+	markupPattern,
 	variableManipulationCommands,
 	variableReferenceCommands,
 	flowControlCommands,
@@ -381,7 +383,7 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
  * 
  * @param text Text being parsed.
  * @param openDelimiterLength Length of the opening delimiter (@{ or @!{ or @!!{).
- * @param sectionIndex Multireplacement content's index in the section being prased.
+ * @param sectionIndex Multireplacement content's index in the section being parsed.
  * @param localIndex The content's index in the section. If undefined, sectionIndex is used.
  * @param state Parsing state.
  * @returns The local index to the end of the multireplacement.
@@ -1404,15 +1406,76 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 	state.sectionGlobalIndex = oldSectionIndex;
 }
 
+function countWords(text: string, textDocument: TextDocument): number {
+	// Get rid of every bit of markup
+	const markup = RegExp(markupPattern, 'g');
+	text = text.replace(markup, "");
+
+	// Get rid of every line that's a command
+	const commandLine = RegExp(commandPattern, 'g');
+	text = text.replace(commandLine, "");
+
+	// Get rid of every line that's an option (to match CSIDE's approach)
+	const choiceLine = RegExp(choiceLinePattern, 'g');
+	text = text.replace(choiceLine, 'g');
+
+	// Go through and reduce each multi pattern or replacement to its equivalent words
+	const pattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+	let m: RegExpExecArray | null;
+	const portions = [];
+	let lastIndex = 0;
+
+	while ((m = pattern.exec(text))) {
+		if (m.groups === undefined) {
+			continue;
+		}
+
+		portions.push(text.slice(lastIndex, m.index).trim());
+
+		if (m.groups.replacement) {
+			const replacement = extractToMatchingDelimiter(text, '{', '}', m.index + m[0].length);
+			if (replacement !== undefined) {
+				pattern.lastIndex += replacement.length;
+			}
+		}
+		else if (m.groups.multi) {
+			const contentsIndex = m.index + m[0].length;
+			const multiTokens = tokenizeMultireplace(text, textDocument, contentsIndex, contentsIndex);
+			if (multiTokens !== undefined) {
+				for (let i = 0, len = multiTokens.body.length; i < len; i++) {
+					portions.push(multiTokens.body[i].text);
+				}
+				pattern.lastIndex = multiTokens.endIndex;
+			}
+		}
+
+		lastIndex = pattern.lastIndex;
+	}
+	portions.push(text.slice(lastIndex).trim());
+
+	let count = 0;
+
+	for (let i = 0, len = portions.length; i < len; i++) {
+		if (portions[i] != "") {
+			count += portions[i].split(/\s+/).length;
+		}
+	}
+
+	return count;
+}
+
 /**
  * Parse a ChoiceScript document.
  * 
  * @param textDocument Document to parse.
  * @param callbacks Parser event callbacks.
+ * @returns Number of words in the document.
  */
-export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): void {
+export function parse(textDocument: TextDocument, callbacks: ParserCallbacks): number {
 	const state = new ParsingState(textDocument, callbacks);
 	const text = textDocument.getText();
 
 	parseSection(text, 0, state);
+
+	return countWords(text, textDocument);
 }

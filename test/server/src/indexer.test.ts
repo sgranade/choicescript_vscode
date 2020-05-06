@@ -494,4 +494,20 @@ describe("Indexer", () => {
 			expect(received[0][0].range.end.line).to.equal(7);
 		});
 	});
+
+	describe("Word Counts", () => {
+		it("should count words in a document", () => {
+			let fakeDocument = createDocument("*create variable 3\nIt's three words\n*comment don't count me");
+			let received: Array<number> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.updateWordCount(Arg.all()).mimicks(
+				(uri: string, count: number) => { received.push(count); }
+			);
+	
+			updateProjectIndex(fakeDocument, true, fakeIndex);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0]).to.equal(3);
+		});
+	});
 });

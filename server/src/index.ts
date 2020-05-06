@@ -82,6 +82,12 @@ export interface DocumentScopes {
  */
 export interface ProjectIndex {
 	/**
+	 * Update the number of words in a scene.
+	 * @param textDocumentUri URI to document whose word count is to be updated.
+	 * @param count New wordcount.
+	 */
+	updateWordCount(textDocumentUri: string, count: number): void;
+	/**
 	 * Update the index of global variable definitions from the startup scene.
 	 * @param textDocumentUri URI to startup.txt document.
 	 * @param newIndex New index of global variables.
@@ -167,6 +173,10 @@ export interface ProjectIndex {
 	 */
 	getSceneList(): ReadonlyArray<string>;
 	/**
+	 * Get the number of words in a scene, or undefined if the scene doesn't exist.
+	 */
+	getWordCount(sceneUri: string): number | undefined;
+	/**
 	 * Get global variables in a project.
 	 */
 	getGlobalVariables(): ReadonlyIdentifierIndex;
@@ -247,6 +257,7 @@ export interface ProjectIndex {
  */
 export class Index implements ProjectIndex {
 	_startupFileUri: string;
+	_wordCounts: Map<string, number>;
 	_globalVariables: IdentifierIndex;
 	_localVariables: Map<string, IdentifierMultiIndex>;
 	_subroutineLocalVariables: Map<string, IdentifierIndex>;
@@ -260,6 +271,7 @@ export class Index implements ProjectIndex {
 	_parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._startupFileUri = "";
+		this._wordCounts = new Map();
 		this._globalVariables = new Map();
 		this._localVariables = new Map();
 		this._subroutineLocalVariables = new Map();
@@ -271,6 +283,9 @@ export class Index implements ProjectIndex {
 		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
+	}
+	updateWordCount(textDocumentUri: string, count: number): void {
+		this._wordCounts.set(normalizeUri(textDocumentUri), count);
 	}
 	updateGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
 		this._startupFileUri = normalizeUri(textDocumentUri);
@@ -317,6 +332,9 @@ export class Index implements ProjectIndex {
 	}
 	getSceneList(): ReadonlyArray<string> {
 		return this._scenes;
+	}
+	getWordCount(sceneUri: string): number | undefined {
+		return this._wordCounts.get(normalizeUri(sceneUri));
 	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
