@@ -1017,7 +1017,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
 	
-		it("should callback on replacements in a choice", () => {
+		it("should callback on replacements in an option", () => {
 			let fakeDocument = createDocument("*choice\n\t#One\n\t\t${variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -1280,7 +1280,7 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(21);
 		});
 
-		it("should callback on a variable in an *if before a choice", () => {
+		it("should callback on a variable in an *if before an option", () => {
 			let fakeDocument = createDocument("*choice\n\t*if variable # This is a choice");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -1592,7 +1592,7 @@ describe("Parser", () => {
 		});
 
 		describe("Choice Command", () => {
-			it("should flag text in front of a choice", () => {
+			it("should flag text in front of an option", () => {
 				let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -1603,12 +1603,12 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("No text is allowed in front of an option");
+				expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(23);
 			});
 
-			it("should be okay with a reuse command in front of a choice", () => {
+			it("should be okay with a reuse command in front of an option", () => {
 				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -1621,7 +1621,23 @@ describe("Parser", () => {
 				expect(received.length).to.equal(0);
 			});
 
-			it("should be okay with an if command in front of a choice", () => {
+			it("should flag text after a reuse command and in front of an option", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse bad #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Nothing except an *if or *selectable_if is allowed between *hide_reuse and the #option");
+				expect(received[0].range.start.line).to.equal(31);
+				expect(received[0].range.end.line).to.equal(34);
+			});
+
+			it("should be okay with an if command in front of an option", () => {
 				let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -1632,6 +1648,64 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(0);
+			});
+
+			it("should be okay with a selectable_if command in front of an option", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag a selectable_if command in front of an option that needs parentheses", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if 1 < 2 #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Arguments to a *selectable_if before an #option must be in parentheses");
+				expect(received[0].range.start.line).to.equal(34);
+				expect(received[0].range.end.line).to.equal(39);
+			});
+
+			it("should be okay with a *_reuse followed by a *selectable_if in front of an option", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse *if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag a *selectable_if followed by a *_reuse in front of an option", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (false) *disable_reuse #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*disable_reuse must be before *selectable_if");
+				expect(received[0].range.start.line).to.equal(42);
+				expect(received[0].range.end.line).to.equal(56);
 			});
 
 			it("should flag a non-choice non-*if line", () => {
@@ -1650,7 +1724,7 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(24);
 			});
 
-			it("should be okay with an if command on the line before a choice", () => {
+			it("should be okay with an if command on the line before an option", () => {
 				let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();

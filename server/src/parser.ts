@@ -647,6 +647,63 @@ function readNextNonblankLine(text: string, lineStart: number): NewLine | undefi
 }
 
 /**
+ * Parse text before an #option.
+ * @param preText Text before the #option.
+ * @param preTextIndex Index of that text in the global document.
+ * @param state Parsing state.
+ */
+function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): void
+{
+	// Text before an #option must be either a single allowed command or a *_reuse *if set of commands (in that order)
+	const m = RegExp(commandPattern).exec(preText);
+	if (!m || m.groups === undefined || !optionAllowedCommandsLookup.has(m.groups.command)) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			preTextIndex, preTextIndex + preText.trimRight().length,
+			"Only *if, *selectable_if, or one of the reuse commands allowed in front of an option", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else if (m.groups.command == "if" || m.groups.command == "selectable_if") {
+		// If there's a *(disable|enable|hide)_reuse command in the string, flag that separately & don't parse that bit 
+		const mReuse = /(?<=\s|^)\*(disable|enable|hide)_reuse(?=\s|$)/.exec(m.groups.commandLine ?? "");
+		if (mReuse !== null) {
+			const commandIndex = m.groups.commandPrefix.length;
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0; 
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				preTextIndex + commandLineIndex + mReuse.index,
+				preTextIndex + commandLineIndex + mReuse.index + mReuse[0].length,
+				`${mReuse[0]} must be before *${m.groups.command}`, state);
+			state.callbacks.onParseError(diagnostic);
+			// Take the command out of the string
+			preText = preText.slice(0, commandLineIndex + mReuse.index) 
+				+ " ".repeat(m[0].length) 
+				+ preText.slice(commandLineIndex + mReuse.index + mReuse[0].length);
+		}
+		// No other commands can come after an "if", so parse it as a single line. Add in a "#"
+		// so that the parsing knows it's an *if before an #option
+		parseSection(preText+"#fake", state.sectionGlobalIndex + preTextIndex, state);
+
+	}
+	else {  // *hide_reuse and similar
+		// There should be no other text after the *_reuse command other than an *if/*selectable_if
+		if (m.groups.commandLine?.trim() ?? "" !== "") {
+			const commandIndex = m.groups.commandPrefix.length;
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0; 
+
+			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
+				parseSection(m.groups.commandLine+"#fake", state.sectionGlobalIndex + commandLineIndex, state);
+			}
+			else {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					preTextIndex + commandLineIndex,
+					preTextIndex + commandLineIndex + m.groups.commandLine.trimRight().length,
+					`Nothing except an *if or *selectable_if is allowed between *${m.groups.command} and the #option`, state);
+				state.callbacks.onParseError(diagnostic);
+			}
+		}
+	}
+}
+
+/**
  * Parse a single line containing an #option.
  * @param text Document text.
  * @param optionLine Line containing the titular option.
@@ -697,7 +754,6 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 	}
 
 	// The line should either contain an #option or a bare *if statement
-	// TODO that's not quite right: see https://forum.choiceofgames.com/t/join-commands-if-and-selectable-if-and-allow-reuse/675/29
 	const hashIndex = optionLine.splitLine.contents.indexOf("#");
 	if (hashIndex == -1) {
 		// This better be an *if statement
@@ -737,17 +793,9 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 		const optionText = optionLine.splitLine.contents.slice(hashIndex).trim();
 		if (hashIndex > 0) {
 			// There's text in front of the option. Check it.
-			const preText = optionLine.splitLine.contents.slice(0, hashIndex).trim();
-			if (preText[0] != "*" || !optionAllowedCommandsLookup.has(preText.slice(1).split(/[ \t]/)[0])) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					optionLine.index + padding.length,
-					optionLine.index + padding.length + hashIndex - 1,
-					"No text is allowed in front of an option", state);
-				state.callbacks.onParseError(diagnostic);
-			}
-			else {
-				parseSection(preText, state.sectionGlobalIndex + optionLine.index + padding.length, state);
-			}
+			const preText = optionLine.splitLine.contents.slice(0, hashIndex);
+			const preTextIndex = optionLine.index + padding.length;
+			parseTextBeforeAnOption(preText, preTextIndex, state);
 		}
 
 		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
@@ -1139,9 +1187,20 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		validateConditionExpression(tokenizedExpression, state);
 	}
 
-	// Give a warning for commands like "*if not(var) #choice" and similar which are always true
+	// For an *if on the line with an #option, we need to perform extra checks.
 	if (optionOnLineWithIf) {
-		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
+		// If we've got > 1 combined token, then we need parentheses
+		if (tokenizedExpression.combinedTokens.length > 1) {
+			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+				tokenizedExpression.globalIndex,
+				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+				`Arguments to ${command == "selectable_if" ? "a" : "an"} *${command} before an #option must be in parentheses`,
+				state);
+			state.callbacks.onParseError(diagnostic);
+		}
+		// *if not(var) #option will always be true and needs parentheses
+		else if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,

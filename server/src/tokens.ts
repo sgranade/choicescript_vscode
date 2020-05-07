@@ -325,12 +325,19 @@ function determineEvalType(token: ExpressionToken): ExpressionEvalType {
 }
 
 export class Expression {
+	// The raw text of the expression
 	readonly bareExpression: string;
+	// The global index to the start of the expression in the document
 	readonly globalIndex: number;
+	// The tokenized expression
 	readonly tokens: ExpressionToken[];
+	// The tokenized expression with e.g. functions combined with their parentheses
 	readonly combinedTokens: ExpressionToken[];
+	// What the expression evaluates to
 	readonly evalType: ExpressionEvalType;
+	// Any errors found while parsing the expression
 	readonly parseErrors: Diagnostic[];
+	// Any errors found while validating the expression
 	readonly validateErrors: Diagnostic[];
 	private textDocument: TextDocument;
 	private isValueSetting: boolean;

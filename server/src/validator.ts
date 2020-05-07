@@ -265,10 +265,7 @@ function validateCommandInLine(command: string, index: number, state: Validation
 		const line = state.text.substring(lineBegin, index-1);
 		const commandSearch = RegExp(commandPattern);
 		const m = commandSearch.exec(line);
-		let actualCommand = m?.groups?.command;
-		if (actualCommand === undefined) {
-			actualCommand = "";
-		}
+		const actualCommand = m?.groups?.command ?? "";
 
 		// Anything goes in a comment
 		if (actualCommand == "comment") {
@@ -277,6 +274,11 @@ function validateCommandInLine(command: string, index: number, state: Validation
 
 		// Make sure we're not in a situation where we can have another command before this one
 		if ((command == "if" || command == "selectable_if") && (reuseCommandsLookup.has(actualCommand))) {
+			return;
+		}
+		
+		// Throw out this corner case since it's an error that's caught in parsing
+		if (reuseCommandsLookup.has(command) && (actualCommand == "if" || actualCommand == "selectable_if")) {
 			return;
 		}
 

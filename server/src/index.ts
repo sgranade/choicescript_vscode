@@ -256,19 +256,19 @@ export interface ProjectIndex {
  * Instantiable index class
  */
 export class Index implements ProjectIndex {
-	_startupFileUri: string;
-	_wordCounts: Map<string, number>;
-	_globalVariables: IdentifierIndex;
-	_localVariables: Map<string, IdentifierMultiIndex>;
-	_subroutineLocalVariables: Map<string, IdentifierIndex>;
-	_variableReferences: Map<string, IdentifierMultiIndex>;
-	_scenes: Array<string>;
-	_localLabels: Map<string, LabelIndex>;
-	_flowControlEvents: Map<string, FlowControlEvent[]>;
-	_achievements: IdentifierIndex;
-	_achievementReferences: Map<string, IdentifierMultiIndex>;
-	_documentScopes: Map<string, DocumentScopes>;
-	_parseErrors: Map<string, Diagnostic[]>;
+	private _startupFileUri: string;
+	private _wordCounts: Map<string, number>;
+	private _globalVariables: IdentifierIndex;
+	private _localVariables: Map<string, IdentifierMultiIndex>;
+	private _subroutineLocalVariables: Map<string, IdentifierIndex>;
+	private _variableReferences: Map<string, IdentifierMultiIndex>;
+	private _scenes: Array<string>;
+	private _localLabels: Map<string, LabelIndex>;
+	private _flowControlEvents: Map<string, FlowControlEvent[]>;
+	private _achievements: IdentifierIndex;
+	private _achievementReferences: Map<string, IdentifierMultiIndex>;
+	private _documentScopes: Map<string, DocumentScopes>;
+	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._startupFileUri = "";
 		this._wordCounts = new Map();
