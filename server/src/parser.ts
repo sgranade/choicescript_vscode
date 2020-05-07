@@ -90,34 +90,12 @@ export class ParsingState {
 	 * Callbacks for parsing events
 	 */
 	callbacks: ParserCallbacks;
-	/**
-	 * Command being parsed, or undefined if not parsing a command
-	 */
-	currentCommand: string | undefined;
-	/**
-	 * Stack of nested elements being parsed
-	 */
-	parseStack: ParseElement[];
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
 		this.sectionGlobalIndex = -1;
 		this.callbacks = callbacks;
-		this.currentCommand = undefined;
-		this.parseStack = [];
 	}
-}
-
-/**
- * What element is being parsed.
- * 
- * Note that a variable replacement is treated as a VariableReference since they act the same.
- */
-enum ParseElement {
-	Command,
-	VariableReference,
-	Parentheses,
-	Multireplacement
 }
 
 /**
@@ -282,7 +260,6 @@ function parseExpression(expression: string, globalIndex: number, state: Parsing
  */
 function parseReference(text: string, openDelimiterLength: number, sectionIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
-	state.parseStack.push(ParseElement.VariableReference);
 
 	let textToSectionDelta: number;
 	if (localIndex === undefined) {
@@ -316,7 +293,6 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
 		newLocalIndex = localIndex + reference.length + 1;
 	}
 
-	state.parseStack.pop();
 	return newLocalIndex;
 }
 
@@ -390,7 +366,6 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
  */
 function parseMultireplacement(text: string, openDelimiterLength: number, sectionIndex: number, 
 	localIndex: number | undefined, state: ParsingState): number {
-	state.parseStack.push(ParseElement.Multireplacement);
 
 	let textToSectionDelta: number;
 	if (localIndex === undefined) {
@@ -489,7 +464,6 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 		}
 	}
 
-	state.parseStack.pop();
 	return localIndex;
 }
 
@@ -1326,8 +1300,6 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
  * @param state Parsing state.
  */
 function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandSectionIndex: number, state: ParsingState): number {
-	state.currentCommand = command;
-	state.parseStack.push(ParseElement.Command);
 	const lineIndex = commandSectionIndex + command.length + spacing.length;
 	// By default a command's parsing ends at the end of the line
 	let endParseIndex = lineIndex + line.length;
@@ -1412,8 +1384,6 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		}
 	}
 
-	state.parseStack.pop();
-	state.currentCommand = undefined;
 	return endParseIndex;
 }
 
