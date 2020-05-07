@@ -2419,6 +2419,19 @@ describe("Parser", () => {
 			expect(wordCount).to.equal(8);
 		});
 
+		it("should return no words for a blank document", () => {
+			let fakeDocument = createDocument("  \n  \n\t\t");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(0);
+		});
+
 		it("should skip commands", () => {
 			let fakeDocument = createDocument("Sentence one.\n*comment a command!\nSentence two.");
 			let received: Array<Diagnostic> = [];
@@ -2446,7 +2459,7 @@ describe("Parser", () => {
 		});
 
 		it("should count words in options that have a leading *if", () => {
-			let fakeDocument = createDocument("*choice\n\t#One two three.\n\t\tFour five.\n\t# Six.\n\t\tSeven eight\n");
+			let fakeDocument = createDocument("*choice\n\t#One two three.\n\t\tFour five.\n\t*if (true) # Six.\n\t\tSeven eight\n");
 			let received: Array<Diagnostic> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2456,6 +2469,45 @@ describe("Parser", () => {
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
+		});
+
+		it("should count words in options that have a leading *disable_reuse", () => {
+			let fakeDocument = createDocument("*choice\n\t*disable_reuse #One two three.\n\t\tFour five.\n\t# Six.\n\t\tSeven eight\n");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(8);
+		});
+
+		it("should count words in options that have both a *hide_reuse and a *selectable_if", () => {
+			let fakeDocument = createDocument("*choice\n\t*disable_reuse *selectable_if (condition) #One two three.\n\t\tFour five.\n\t# Six.\n\t\tSeven eight\n");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(8);
+		});
+
+		it("should miss options that have a *hide_reuse and a *selectable_if in the wrong order", () => {
+			let fakeDocument = createDocument("*choice\n\t*selectable_if (condition) *disable_reuse #Won't see me.\n\t\tOne two.\n\t# Three.\n\t\tFour five\n");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(5);
 		});
 
 		it("should count variables as one word", () => {
@@ -2471,6 +2523,19 @@ describe("Parser", () => {
 			expect(wordCount).to.equal(4);
 		});
 
+		it("should count variables embedded in other text as one word", () => {
+			let fakeDocument = createDocument("A one-${variable} word.");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(3);
+		});
+
 		it("should count only the contents of a multireplace", () => {
 			let fakeDocument = createDocument("Multireplace: @{(2 > 3) first bit|longer second bit|super longer third bit}");
 			let received: Array<Diagnostic> = [];
@@ -2482,6 +2547,19 @@ describe("Parser", () => {
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(10);
+		});
+
+		it("should count multireplaces embedded in other text properly", () => {
+			let fakeDocument = createDocument("re@{(2 > 3) diculous|markable|-do the count}");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+	
+			const wordCount = parse(fakeDocument, fakeCallbacks);
+
+			expect(wordCount).to.equal(5);
 		});
 
 		it("should not count bold or italic markup symbols", () => {

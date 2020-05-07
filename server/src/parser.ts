@@ -1419,13 +1419,17 @@ export function countWords(section: string, textDocument: TextDocument): number 
 	const markup = RegExp(markupPattern, 'g');
 	section = section.replace(markup, "");
 
+	// Get rid of every leading option character & allowed commands
+	// (so that we don't mis-count "# I'm an option!" as having 4 words
+	// or miss options that have an *if in front of them)
+	const choiceLine = RegExp(optionStartingLinePattern, 'g');
+	// Keep the leading newline (if it exists)
+	section = section.replace(choiceLine, "$1 ");
+
 	// Get rid of every line that's a command
 	const commandLine = RegExp(commandPattern, 'g');
-	section = section.replace(commandLine, "");
-
-	// Get rid of every leading option character (so that we don't mis-count "# I'm an option!" as having 4 words)
-	const choiceLine = RegExp(optionStartingLinePattern, 'g');
-	section = section.replace(choiceLine, "");
+	// Keep the leading newline (if it exists)
+	section = section.replace(commandLine, "$1");
 
 	// Go through and reduce each multi pattern or replacement to its equivalent words
 	const pattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
@@ -1438,7 +1442,7 @@ export function countWords(section: string, textDocument: TextDocument): number 
 			continue;
 		}
 
-		portions.push(section.slice(lastIndex, m.index).trim());
+		portions.push(section.slice(lastIndex, m.index));
 
 		if (m.groups.replacement) {
 			const replacement = extractToMatchingDelimiter(section, '{', '}', m.index + m[0].length);
@@ -1451,7 +1455,12 @@ export function countWords(section: string, textDocument: TextDocument): number 
 			const multiTokens = tokenizeMultireplace(section, textDocument, contentsIndex, contentsIndex);
 			if (multiTokens !== undefined) {
 				for (let i = 0, len = multiTokens.body.length; i < len; i++) {
-					portions.push(multiTokens.body[i].text);
+					let text = multiTokens.body[i].text;
+					if (i > 0) {
+						// Add space so we count multi-replace portions properly
+						text = ` ${text}`;
+					}
+					portions.push(text);
 				}
 				pattern.lastIndex = multiTokens.endIndex;
 			}
@@ -1459,17 +1468,17 @@ export function countWords(section: string, textDocument: TextDocument): number 
 
 		lastIndex = pattern.lastIndex;
 	}
-	portions.push(section.slice(lastIndex).trim());
+	portions.push(section.slice(lastIndex));
 
-	let count = 0;
+	// Rejoin the portions
+	section = portions.join("").trim();
 
-	for (let i = 0, len = portions.length; i < len; i++) {
-		if (portions[i] != "") {
-			count += portions[i].split(/\s+/).length;
-		}
+	// Special case the empty string
+	if (section === "") {
+		return 0;
 	}
 
-	return count;
+	return section.trim().split(/\s+/).length;
 }
 
 /**
