@@ -4,8 +4,13 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- Word count appears in the status bar.
+
 ### Fixed
-- todo now highlighted in multireplaces
+
+- `todo` now highlighted in multireplaces
 
 ## [1.3.0] - 2020-04-19
 

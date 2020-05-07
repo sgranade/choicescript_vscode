@@ -20,13 +20,28 @@ const fsPromises = require('fs').promises;
 import url = require('url');
 import globby = require('globby');
 
-import { updateProjectIndex } from './indexer';
 import { ProjectIndex, Index } from "./index";
+import { updateProjectIndex } from './indexer';
 import { generateDiagnostics } from './validator';
 import { uriIsStartupFile } from './language';
 import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
+import { countWords } from './parser';
 import { generateSymbols } from './structure';
+
+/**
+ * Server event arguments about an updated word count in a document.
+ */
+interface UpdatedWordCount {
+	/**
+	 * Document URI.
+	 */
+	uri: string;
+	/**
+	 * New word count, or undefined if it has none.
+	 */
+	count?: number;
+}
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -74,6 +89,10 @@ connection.onInitialized(() => {
 		if (workspaces && workspaces.length > 0)
 			findStartupFiles(workspaces);
 	});
+	
+	// Handle our custom requests from the client for word count
+	connection.onRequest("custom/wordcount", onWordCount);
+	connection.onRequest("custom/selectionwordcount", onSelectionWordCount);
 });
 
 function findStartupFiles(workspaces: WorkspaceFolder[]): void {
@@ -137,6 +156,7 @@ connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescr
 
 documents.onDidOpen(e => {
 	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
+	notifyChangedWordCount(e.document);
 });
 
 // A document has been opened or its content has been changed.
@@ -144,6 +164,7 @@ documents.onDidChangeContent(change => {
 	const isStartupFile = uriIsStartupFile(change.document.uri);
 
 	updateProjectIndex(change.document, isStartupFile, projectIndex);
+	notifyChangedWordCount(change.document);
 
 	if (isStartupFile) {
 		// Since the startup file defines global variables, if it changes, re-validate all other files
@@ -153,6 +174,19 @@ documents.onDidChangeContent(change => {
 		validateTextDocument(change.document, projectIndex);
 	}
 });
+
+/**
+ * Notify the client about a document's word count.
+ * @param document Document whose word count is to be sent.
+ */
+function notifyChangedWordCount(document: TextDocument): void {
+	const e: UpdatedWordCount = {
+		uri: document.uri,
+		count: projectIndex.getWordCount(document.uri)
+	};
+
+	connection.sendNotification("custom/updatedwordcount", e);
+}
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
 	const diagnostics = generateDiagnostics(textDocument, projectIndex);
@@ -212,6 +246,27 @@ connection.onDocumentSymbol(
 		return generateSymbols(document, projectIndex);
 	}
 );
+
+function onWordCount(uri: string): number | undefined {
+	return projectIndex.getWordCount(uri);
+}
+
+function onSelectionWordCount(location: Location): number | undefined {
+	const document = documents.get(location.uri);
+	if (document === undefined) {
+		return undefined;
+	}
+
+	const startIndex = document.offsetAt(location.range.start);
+	const endIndex = document.offsetAt(location.range.end);
+	if (startIndex == endIndex) {
+		return undefined;
+	}
+
+	const section = document.getText().slice(startIndex, endIndex);
+	
+	return countWords(section, document);
+}
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

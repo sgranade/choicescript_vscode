@@ -17,6 +17,7 @@ A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/),
 - Rename variables project-wide
 - Snippets to match Choice of Games style rules
 - Italicizing and bolding text
+- Word count that counts only what the player will see
 
 ## Installation
 

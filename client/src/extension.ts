@@ -1,15 +1,160 @@
-
 import * as path from 'path';
-import { ExtensionContext, commands, Selection, TextEditor } from 'vscode';
+import { ExtensionContext, commands, Selection, TextEditor, StatusBarItem, StatusBarAlignment, Disposable, window, TextEditorSelectionChangeEvent } from 'vscode';
+import * as URI from 'urijs';
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
+	Location,
+	Range,
 	TransportKind
 } from 'vscode-languageclient';
 
+/**
+ * Server message about an updated word count in a document.
+ */
+interface UpdatedWordCount {
+	/**
+	 * Document URI.
+	 */
+	uri: string;
+	/**
+	 * New word count, or undefined if it has none.
+	 */
+	count?: number;
+}
+
 let client: LanguageClient;
+
+/**
+ * Status bar item that shows word count.
+ */
+export class WordCountBar {
+	private _statusBarItem: StatusBarItem;
+	private _wordCount: number | undefined;
+	private _selectionCount: number | undefined;
+
+	constructor() {
+		this._statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 1000);
+	}
+
+	public showOrHide(editor: TextEditor | undefined): void {
+		if (editor === undefined) {
+			this._statusBarItem.hide();
+		}
+		else {
+			const doc = editor.document;
+
+			if (doc.languageId === "choicescript") {
+				this._updateText();
+				this._statusBarItem.show();
+			}
+			else {
+				this._statusBarItem.hide();
+			}
+		}
+	}
+
+	private _updateText(): void {
+		let text = "$(pencil) ";
+		if (this._wordCount === undefined) {
+			text += "counting words";
+		}
+		else {
+			text += `${this._wordCount} word`;
+
+			if (this._wordCount != 1) {
+				text += "s";
+			}
+			if (this._selectionCount !== undefined) {
+				text += ` (${this._selectionCount} selected)`;
+			}
+		}
+
+		this._statusBarItem.text = text;
+	}
+
+	public updateWordCount(wordCount: number | undefined = undefined): void {
+		this._wordCount = wordCount;
+		this._updateText();
+	}
+
+	public updateSelectionCount(selectionCount: number | undefined = undefined): void {
+		this._selectionCount = selectionCount;
+		this._updateText();
+	}
+
+	public dispose(): void {
+		this._statusBarItem.dispose();
+	}
+}
+
+/**
+ * Controller for the word count status bar item.
+ */
+class WordCountController {
+	private _wordCountBar: WordCountBar;
+	private _disposable: Disposable;
+
+	constructor(wordCountBar: WordCountBar, client: LanguageClient) {
+		this._wordCountBar = wordCountBar;
+		this._wordCountBar.updateWordCount();
+
+		// Subscribe to selection change & editor activation
+		const subscriptions: Disposable[] = [];
+		window.onDidChangeActiveTextEditor(this._onDidChangeActiveTextEditor, this, subscriptions);
+		window.onDidChangeTextEditorSelection(this._onDidChangeTextEditorSelection, this, subscriptions);
+
+		this._disposable = Disposable.from(...subscriptions);
+
+		// Subscribe to word count updates from the CS language server
+		client.onReady().then(() => {
+			client.onNotification("custom/updatedwordcount", this._onUpdatedWordCount);
+		});
+	}
+
+	// This is an instance function so we can properly capture "this" b/c of how it's called
+	private _onUpdatedWordCount = (e: UpdatedWordCount): void => {
+		const editor = window.activeTextEditor;
+
+		if (editor === undefined) {
+			return;
+		}
+
+		const editorUri = URI(editor.document.uri.toString()).normalize();
+		const updatedUri = URI(e.uri).normalize();
+		if (editorUri.equals(updatedUri)) {
+			this._wordCountBar.showOrHide(editor);
+			this._wordCountBar.updateWordCount(e.count);
+		}
+	}
+
+	private _onDidChangeActiveTextEditor(e: TextEditor): void {
+		this._wordCountBar.showOrHide(e);
+		client.sendRequest("custom/wordcount", e.document.uri.toString()).then((count: number | null) => {
+			count = (count === null) ? undefined : count;
+			this._wordCountBar.updateWordCount(count);
+		});
+	}
+
+	private _onDidChangeTextEditorSelection(e: TextEditorSelectionChangeEvent): void {
+		const location = Location.create(
+			e.textEditor.document.uri.toString(),
+			Range.create(e.selections[0].start, e.selections[0].end)
+		);
+		client.sendRequest("custom/selectionwordcount", location).then(
+			(count: number | null) => {
+				count = (count === null) ? undefined : count;
+				this._wordCountBar.updateSelectionCount(count);
+			}
+		);
+	}
+
+	public dispose(): void {
+		this._disposable.dispose();
+	}
+}
 
 /**
  * Surround the current selection with bbcode delimiters like [i] and [/i].
@@ -26,7 +171,8 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string): void {
 	const document = editor.document;
 	const selection = editor.selection;
 	if (selection.isEmpty) {
-		editor.edit(edit => edit.insert(selection.start, `${open}${close}`)).then(x => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		editor.edit(edit => edit.insert(selection.start, `${open}${close}`)).then(_x => {
 			const newStartIndex = document.offsetAt(editor.selection.start) - close.length;
 			editor.selection = new Selection(
 				document.positionAt(newStartIndex),
@@ -36,7 +182,8 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string): void {
 	}
 	else {
 		const word = document.getText(selection);
-		editor.edit(edit => edit.replace(selection, `${open}${word}${close}`)).then(x => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		editor.edit(edit => edit.replace(selection, `${open}${word}${close}`)).then(_x => {
 			const newStartIndex = document.offsetAt(editor.selection.start) + open.length;
 			const newEndIndex = document.offsetAt(editor.selection.end) - close.length;
 			editor.selection = new Selection(
@@ -48,7 +195,7 @@ function bbcodeDelimit(editor: TextEditor, delimitCharacters: string): void {
 }
 
 export function activate(context: ExtensionContext): void {
-	// Register our commands
+	// Register our formatting commands
 	const italicsCommandRegistration = commands.registerTextEditorCommand(
 		'choicescript.italicize', (editor) => {
 			bbcodeDelimit(editor, "i");
@@ -84,7 +231,6 @@ export function activate(context: ExtensionContext): void {
 		documentSelector: [{ scheme: 'file', language: 'choicescript' }]
 	};
 
-	// Create the language client and start the client.
 	client = new LanguageClient(
 		'choicescriptVsCode',
 		'ChoiceScript VSCode',
@@ -92,7 +238,11 @@ export function activate(context: ExtensionContext): void {
 		clientOptions
 	);
 
-	// Start the client. This will also launch the server
+	const wordCountBar = new WordCountBar();
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const controller = new WordCountController(wordCountBar, client);
+
+	// Start the client & launch the server
 	client.start();
 }
 
