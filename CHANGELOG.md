@@ -7,6 +7,9 @@ Changes to the plugin.
 ### Added
 
 - Word count appears in the status bar.
+- More error catching.
+  - Properly checks the use of `*disable/enable/hide_reuse`, and `*if/*selectable_if` commands before #options.
+  - Catches `*create` commands used after `*temp` commands.
 
 ### Fixed
 
@@ -20,7 +23,7 @@ Changes to the plugin.
 
 ### Changed
 
-- Outline now lists all #options in a *choice.
+- Outline now lists all #options in a `*choice`.
 
 ### Fixed
 
@@ -33,8 +36,8 @@ Changes to the plugin.
 - The document outline lets you see the flow of choices, labels, and variables in your game.
 - Error catching expanded.
   - Parentheses' contents are now inspected for errors.
-  - Problems with *set commands.
-  - Problems with *if and *elseif commands.
+  - Problems with `*set` commands.
+  - Problems with `*if` and `*elseif` commands.
   - Errors with comparisons like `1 < 2`.
   - Errors with values passed to functions like `not()`.
   - Commands with arguments that don't allow them.
@@ -64,9 +67,9 @@ Changes to the plugin.
 - Rename achievements.
 - Choices with more than 15 words are now flagged for review.
 - Error catching greatly expanded.
-  - Local *temp variables with the same name as *global variables now generate a warning.
+  - Local `*temp` variables with the same name as `*create`d global variables now generate a warning.
   - Re-creating variables or labels are now flagged.
-  - *stat_chart commands are now parsed and errors flagged.
+  - `*stat_chart` commands are now parsed and errors flagged.
   - Nested multireplaces are now flagged.
   - Invalid operators are now flagged.
 
@@ -75,8 +78,8 @@ Changes to the plugin.
 - Experimental array syntax is no longer flagged as an error.
 - Properly indexes files when the workspace isn't opened in the scenes folder.
 - Definitions now only allowed on actual variable, label, or achievement references, not any old text in the document.
-- References in *goto and *gosub commands are now indexed.
-- References in *stat_chart are now indexed.
+- References in `*goto` and `*gosub` commands are now indexed.
+- References in `*stat_chart` are now indexed.
 - Fixed potential endless recursion in parser.
 
 ## [1.0.0] - 2019-12-31

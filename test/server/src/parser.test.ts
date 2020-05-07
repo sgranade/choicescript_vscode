@@ -2005,6 +2005,38 @@ describe("Parser", () => {
 		
 				expect(received.length).to.equal(0);
 			});
+
+			it("should flag *create commands in a non-startup file", () => {
+				let fakeDocument = createDocument("*create variable true", "file:///scene.txt");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("can only be used in startup.txt");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(7);
+			});
+
+			it("should flag *create commands after a *temp command", () => {
+				let fakeDocument = createDocument("*temp var1 false\n*create var2 true");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must come before any *temp commands");
+				expect(received[0].range.start.line).to.equal(18);
+				expect(received[0].range.end.line).to.equal(24);
+			});
 		});
 
 		describe("Variable Reference Commands", () => {

@@ -90,11 +90,17 @@ export class ParsingState {
 	 * Callbacks for parsing events
 	 */
 	callbacks: ParserCallbacks;
+	/**
+	 * Whether or not any temp variables have been created.
+	 * Needed to validate *create commands don't come after *temp ones
+	 */
+	createdTempVariables: boolean;
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
 		this.sectionGlobalIndex = -1;
 		this.callbacks = callbacks;
+		this.createdTempVariables = false;
 	}
 }
 
@@ -533,11 +539,12 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState): 
 /**
  * Parse a symbol creating or manipulating command.
  * @param command Command that defines or references a symbol.
+ * @param commandSectionIndex Location of the command in the section being parsed.
  * @param line Remainder of the line after the command. Guaranteed to have content.
  * @param lineSectionIndex Location of the line in the section being parsed.
  * @param state Indexing state.
  */
-function parseSymbolManipulationCommand(command: string, line: string, lineSectionIndex: number, state: ParsingState): void {
+function parseSymbolManipulationCommand(command: string, commandSectionIndex: number, line: string, lineSectionIndex: number, state: ParsingState): void {
 	// The *params command is odd in that it takes an entire expression, and *set has two
 	// different expressions to handle, so parse them separately
 	if (command == "params") {
@@ -564,6 +571,13 @@ function parseSymbolManipulationCommand(command: string, line: string, lineSecti
 		case "create":
 			// *create instantiates global variables
 			state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
+			// Warn about using *create after *temp in startup.txt
+			if (state.createdTempVariables && uriIsStartupFile(state.textDocument.uri)) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					commandSectionIndex, commandSectionIndex + command.length,
+					"Must come before any *temp commands", state);
+				state.callbacks.onParseError(diagnostic);
+			}
 			if (expression === undefined) {
 				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
@@ -577,6 +591,7 @@ function parseSymbolManipulationCommand(command: string, line: string, lineSecti
 		case "temp":
 			// *temp instantiates variables local to the scene file
 			state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
+			state.createdTempVariables = true;
 			if (expression !== undefined) {
 				parseExpression(expression, expressionSectionIndex, state);
 			}
@@ -1343,7 +1358,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	}
 
 	if (symbolManipulationCommandsLookup.has(command)) {
-		parseSymbolManipulationCommand(command, line, lineIndex, state);
+		parseSymbolManipulationCommand(command, commandSectionIndex, line, lineIndex, state);
 	}
 	else if (variableReferenceCommandsLookup.has(command)) {
 		parseVariableReferenceCommand(command, line, lineIndex, state);
