@@ -667,7 +667,10 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0; 
 
 			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
+				const oldEnclosingBlock = state.enclosingBlock;
+				state.enclosingBlock = "option";
 				parseSection(m.groups.commandLine+"#fake", state.sectionGlobalIndex + commandLineIndex, state);
+				state.enclosingBlock = oldEnclosingBlock;
 			}
 			else {
 				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
@@ -735,7 +738,10 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 	if (hashIndex == -1) {
 		// This better be an *if statement
 		if (optionLine.splitLine.contents.startsWith("*if ")) {
+			const oldEnclosingBlock = state.enclosingBlock;
+			state.enclosingBlock = "option";
 			parseSection(optionLine.line, state.sectionGlobalIndex + optionLine.index, state);
+			state.enclosingBlock = oldEnclosingBlock;
 			const nextOptionLine = readLine(text, optionLine.index + optionLine.line.length);
 			if (nextOptionLine === undefined || nextOptionLine.splitLine === undefined) {
 				return undefined;
@@ -1213,7 +1219,15 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 
 	// Parse the block's contents
 	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
-	parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+	if (blockContents.trim() == "" && state.enclosingBlock != "option") {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex, lineSectionIndex + line.length,
+			`*${command} must have an indented line with contents after it.`, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else {
+		parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+	}
 
 	// As long as we have a next line w/an equal indent and it has an *elseif or an *else, keep going!
 	let nextLine: NewLine | undefined;
@@ -1253,7 +1267,15 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 		contentsIndex = nextLine.index + nextLine.line.length;
 		currentIndex = contentsIndex;
 		const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
-		parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+		if (blockContents.trim() == "") {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				newCommandIndex, newCommandLineIndex + newCommandLine.length,
+				`*${newCommand} must have an indented line with contents after it.`, state);
+			state.callbacks.onParseError(diagnostic);
+		}
+		else {
+			parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+		}
 	
 		currentIndex += blockContents.length;
 
@@ -1450,7 +1472,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	if (insideBlockCommandsLookup.has(command)) {
 		if ((command == "selectable_if" && state.enclosingBlock !== "option") ||
 		(command != "selectable_if" && state.enclosingBlock !== "if")) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandSectionIndex, commandSectionIndex + command.length,
 				`Command *${command} must be ${(command == "selectable_if" ? "in front of an #option" : "part of an *if command block")}.`,
 				state);

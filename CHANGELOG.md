@@ -11,6 +11,7 @@ Changes to the plugin.
   - Properly checks the use of `*disable/enable/hide_reuse`, and `*if/*selectable_if` commands before #options.
   - Catches `*create` commands used after `*temp` commands.
   - Flags `*else` and `*elseif` used outside of an `*if` block.
+  - Catches `*if`, `*elseif`, and `*if` commands with no contents.
 
 ### Fixed
 
@@ -20,7 +21,7 @@ Changes to the plugin.
 
 ### Added
 
-- Can now auto-complete variables after a *rand command.
+- Can now auto-complete variables after a `*rand` command.
 
 ### Changed
 
@@ -28,7 +29,7 @@ Changes to the plugin.
 
 ### Fixed
 
-- *rand command now syntax highlights its contents correctly.
+- `*rand` command now syntax highlights its contents correctly.
 
 ## [1.2.0] - 2020-03-05
 

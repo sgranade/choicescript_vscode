@@ -1,7 +1,6 @@
 # TODO
 
 - Error on mixed tabs and spaces
-- Flag a missing line in an *if/*elseif/*else block (must have at least one line)
 - Add user-settable options for warnings
 - Investigate syntax highlighting from the plugin itself
 - Don't use the Variable token type to indicate "I don't know this token's contents"

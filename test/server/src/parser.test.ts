@@ -1602,6 +1602,25 @@ describe("Parser", () => {
 		});
 
 		describe("Flow Control", () => {
+			it("should flag empty lines in an *if statement", () => {
+				let fakeDocument = createDocument("*if true\n\n*elseif false\n\tThis is okay.\n*else\n\n");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(2);
+				expect(received[0].message).to.include("*if must have an indented line with contents after it");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(8);
+				expect(received[1].message).to.include("*else must have an indented line with contents after it");
+				expect(received[1].range.start.line).to.equal(40);
+				expect(received[1].range.end.line).to.equal(44);
+			});
+
 			it("should flag an *elseif after an *else", () => {
 				let fakeDocument = createDocument("*if true\n\  content\n*else\n  content\n*elseif false\n  stuff");
 				let received: Array<Diagnostic> = [];
@@ -2132,8 +2151,8 @@ describe("Parser", () => {
 		});
 
 		describe("Variable Reference Commands", () => {
-			it("should flag *if not(condition) before a #choice", () => {
-				let fakeDocument = createDocument("*if not(false) #Choice");
+			it("should flag *if not(condition) before an #option", () => {
+				let fakeDocument = createDocument("*choice\n\t*if not(false) #Choice\n\t\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2144,12 +2163,12 @@ describe("Parser", () => {
 		
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Without parentheses, this expression will always be true");
-				expect(received[0].range.start.line).to.equal(4);
-				expect(received[0].range.end.line).to.equal(14);
+				expect(received[0].range.start.line).to.equal(13);
+				expect(received[0].range.end.line).to.equal(23);
 			});
 	
 			it("should be okay with *if (not(condition)) before a #choice", () => {
-				let fakeDocument = createDocument("*if (not(false)) #Choice");
+				let fakeDocument = createDocument("*choice\n\t*if (not(false)) #Choice\n\t\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2162,7 +2181,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag non-boolean results", () => {
-				let fakeDocument = createDocument("*if 1");
+				let fakeDocument = createDocument("*if 1\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2178,7 +2197,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag non-boolean functions", () => {
-				let fakeDocument = createDocument("*if round(2)");
+				let fakeDocument = createDocument("*if round(2)\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2194,7 +2213,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag unbalanced parentheses", () => {
-				let fakeDocument = createDocument("*if not(var1&(var2&var3)");
+				let fakeDocument = createDocument("*if not(var1&(var2&var3)\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2210,7 +2229,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag chained conditions", () => {
-				let fakeDocument = createDocument("*if true and false and true");
+				let fakeDocument = createDocument("*if true and false and true\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2226,7 +2245,7 @@ describe("Parser", () => {
 			});
 	
 			it("should not flag properly parenthesized conditions", () => {
-				let fakeDocument = createDocument("*if true and (false and true)");
+				let fakeDocument = createDocument("*if true and (false and true)\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2239,7 +2258,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag a not that's missing parentheses", () => {
-				let fakeDocument = createDocument("*if not true");
+				let fakeDocument = createDocument("*if not true\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2255,7 +2274,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag a non-boolean function", () => {
-				let fakeDocument = createDocument("*if round(1.1)");
+				let fakeDocument = createDocument("*if round(1.1)\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2271,7 +2290,7 @@ describe("Parser", () => {
 			});
 
 			it("should be good with number comparisons", () => {
-				let fakeDocument = createDocument("*if 1 > 3");
+				let fakeDocument = createDocument("*if 1 > 3\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2284,7 +2303,7 @@ describe("Parser", () => {
 			});
 
 			it("should be good with truth comparisons", () => {
-				let fakeDocument = createDocument("*if variable and true");
+				let fakeDocument = createDocument("*if variable and true\n\tHi.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
