@@ -57,6 +57,11 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.4.0]
+
+- Word counter added that skips code but counts words shown to the reader.
+- Improved parsing and error checking of `*choice` and `*if`/`*elseif`/`*else` blocks.
+
 ### [1.3.0]
 
 - The document outline now lists all individual options in a choice.
