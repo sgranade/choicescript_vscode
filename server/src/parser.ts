@@ -7,11 +7,12 @@ import {
 	optionStartingLinePattern,
 	markupPattern,
 	variableManipulationCommands,
-	variableReferenceCommands,
+	insideBlockCommands,
 	flowControlCommands,
 	symbolCreationCommands,
 	commandPattern,
 	argumentRequiredCommands,
+	variableReferenceCommands,
 	startupCommands,
 	uriIsStartupFile,
 	extractTokenAtIndex,
@@ -36,8 +37,10 @@ import {
 	extractToMatchingDelimiter,
 	createDiagnostic,
 	readLine,
+	readNextNonblankLine,
 	NewLine,
-	summarize
+	summarize,
+	extractToMatchingIndent
 } from './utilities';
 import { SummaryScope } from '.';
 
@@ -51,15 +54,16 @@ const argumentDisallowedCommandsLookup: ReadonlyMap<string, number> = new Map(ar
 const argumentIgnoredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentIgnoredCommands.map(x => [x, 1]));
 const startupCommandsLookup: ReadonlyMap<string, number> = new Map(startupCommands.map(x => [x, 1]));
 const optionAllowedCommandsLookup: ReadonlyMap<string, number> = new Map(optionAllowedCommands.map(x => [x, 1]));
-const symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 const variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(variableReferenceCommands.map(x => [x, 1]));
+const symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
+const insideBlockCommandsLookup: ReadonlyMap<string, number> = new Map(insideBlockCommands.map(x => [x, 1]));
 const flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
 const nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
 const booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 
 
 export interface ParserCallbacks {
-	/** Called for anything that looks like a *command, valid or not */
+	/* Called for anything that looks like a *command, valid or not */
 	onCommand(prefix: string, command: string, spacing: string, line: string, commandLocation: Location, state: ParsingState): void;
 	onGlobalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
 	onLocalVariableCreate(symbol: string, location: Location, state: ParsingState): void;
@@ -95,6 +99,10 @@ export class ParsingState {
 	 * Needed to validate *create commands don't come after *temp ones
 	 */
 	createdTempVariables: boolean;
+	/**
+	 * Enclosing block (for parsing e.g. *if or *choice commands)
+	 */
+	enclosingBlock: string | undefined;
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
@@ -614,28 +622,6 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 }
 
 /**
- * Read the next non-blank line.
- * @param text Text to read from.
- * @param lineStart Start of the next line.
- */
-function readNextNonblankLine(text: string, lineStart: number): NewLine | undefined {
-	let nextLine: NewLine | undefined;
-	while (true) {
-		nextLine = readLine(text, lineStart);
-		if (nextLine === undefined) {
-			break;
-		}
-		if (nextLine.line.trim() == "") {
-			lineStart += nextLine.line.length;
-		}
-		else {
-			break;
-		}
-	}
-	return nextLine;
-}
-
-/**
  * Parse text before an #option.
  * @param preText Text before the #option.
  * @param preTextIndex Index of that text in the global document.
@@ -669,8 +655,10 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 		}
 		// No other commands can come after an "if", so parse it as a single line. Add in a "#"
 		// so that the parsing knows it's an *if before an #option
+		const oldEnclosingBlock = state.enclosingBlock;
+		state.enclosingBlock = "option";
 		parseSection(preText+"#fake", state.sectionGlobalIndex + preTextIndex, state);
-
+		state.enclosingBlock = oldEnclosingBlock;
 	}
 	else {  // *hide_reuse and similar
 		// There should be no other text after the *_reuse command other than an *if/*selectable_if
@@ -813,6 +801,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 	let lineStart = optionContentsIndex;
 
 	while (true) {
+		// TODO could this switch to readNextNonblankLine?
 		nextLine = readLine(text, lineStart);
 		if (nextLine === undefined) {
 			break;
@@ -880,6 +869,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
  * @param commandSectionIndex Index at the start of the *choice command.
  * @param optionsSectionIndex Index at the start of the options.
  * @param state Parsing state.
+ * @returns Index at the end of the choice block.
  */
 function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, optionsSectionIndex: number, state: ParsingState): number {
 	// commandPadding can include a leading \n, so don't count that
@@ -1203,6 +1193,85 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 }
 
 /**
+ * 
+ * @param text Document text to scan.
+ * @param command Command that is being parsed.
+ * @param commandPadding: Spacing before the *if command.
+ * @param commandSectionIndex Index at the start of the *if command.
+ * @param line The rest of the line following the *if command
+ * @param lineSectionIndex Index to the rest of the line
+ * @param contentsIndex Index at the start of the *if block contents.
+ * @param state Parsing state.
+ * @returns Index at the end of the choice block.
+ */
+function parseIfBlock(text: string, command: string, commandPadding: string, commandSectionIndex: number, line: string, lineSectionIndex: number, contentsIndex: number, state: ParsingState): number {
+	// commandPadding can include a leading \n, so don't count that
+	const commandIndent = commandPadding.replace("\n", "").length;
+
+	// Parse the command itself
+	parseVariableReferenceCommand(command, line, lineSectionIndex, state);
+
+	// Parse the block's contents
+	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
+	parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+
+	// As long as we have a next line w/an equal indent and it has an *elseif or an *else, keep going!
+	let nextLine: NewLine | undefined;
+	const commandRegExp = RegExp(commandPattern);
+	let m: RegExpExecArray | null;
+	let currentIndex = contentsIndex + blockContents.length;
+	while (true) {
+		nextLine = readNextNonblankLine(text, currentIndex);
+		// The next line must exist and be a command
+		if (nextLine === undefined || !(m = commandRegExp.exec(nextLine.line))) {
+			break;
+		}
+		// It must have the same indent
+		if ((nextLine.splitLine?.padding.length ?? 0) != commandIndent) {
+			break;
+		}
+		// It must be an elseif, elsif, or else
+		if (m.groups === undefined || (m.groups.command != "elseif" && m.groups.command != "elsif" && m.groups.command != "else")) {
+			break;
+		}
+
+		const newCommand = m.groups.command;
+		const newCommandIndex = nextLine.index + (m.groups.commandPrefix?.length ?? 0) + 1;
+		const newCommandSpacing = m.groups.commandSpacing || "";
+		const newCommandLine = m.groups.commandLine || "";
+		const newCommandLineIndex = newCommandIndex + newCommand.length + newCommandSpacing.length;
+
+		// Check the command for errors
+		checkCommandArgumentContents(newCommand, newCommandIndex, newCommandLine, newCommandLineIndex, state);
+
+		// Parse the command if needed
+		if (m.groups.command == "elseif" || m.groups.command == "elsif") {
+			parseVariableReferenceCommand(newCommand, newCommandLine, newCommandLineIndex, state);
+		}
+
+		// Parse the block
+		contentsIndex = nextLine.index + nextLine.line.length;
+		currentIndex = contentsIndex;
+		const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
+		parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
+	
+		currentIndex += blockContents.length;
+
+		if (m.groups.command == "else") {
+			break;
+		}
+	}
+
+	// If we didn't bomb out on account of reaching the end of the file, back the index up one
+	// to before the \n of the previous line, so the parsing regex will work properly
+	if (nextLine !== undefined) {
+		currentIndex--;
+	}
+
+	return currentIndex;
+}
+
+/**
  * Parse a command that references labels, such as *goto.
  * @param command Command.
  * @param commandSectionIndex: Index of the command in the section being parsed.
@@ -1304,6 +1373,42 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
 }
 
 /**
+ * Check a command to see if its arguments are incorrect
+ * @param command Command to check.
+ * @param commandSectionIndex Location of the command in the document section.
+ * @param commandLine Line after the command.
+ * @param commandLineSectionIndex Location of the line in the document section.
+ * @param state Parsing state.
+ * @returns False if the command's arguments are wrong and there's no need to continue parsing; true otherwise.
+ */
+function checkCommandArgumentContents(command: string, commandSectionIndex: number, commandLine: string, commandLineSectionIndex: number, state: ParsingState): boolean {
+	if (argumentRequiredCommandsLookup.has(command) && commandLine.trim() == "") {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandSectionIndex, commandSectionIndex + command.length,
+			`Command *${command} is missing its arguments.`, state);
+		state.callbacks.onParseError(diagnostic);
+		return false;
+	}
+	
+	if (argumentDisallowedCommandsLookup.has(command) && commandLine.trim() != "") {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			commandLineSectionIndex, commandLineSectionIndex + commandLine.length,
+			`Command *${command} must not have anything after it.`, state);
+		state.callbacks.onParseError(diagnostic);
+		return false;
+	}
+
+	if (argumentIgnoredCommandsLookup.has(command) && commandLine.trim() != "") {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+			commandLineSectionIndex, commandLineSectionIndex + commandLine.length,
+			`This will be ignored.`, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+
+	return true;
+}
+
+/**
  * Parse a command line.
  * 
  * @param document Document being parsed.
@@ -1330,34 +1435,34 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		state.callbacks.onParseError(diagnostic);
 		return endParseIndex;  // Short-circuit: Nothing more to be done
 	}
-	else if (argumentRequiredCommandsLookup.has(command) && line.trim() == "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex, commandSectionIndex + command.length,
-			`Command *${command} is missing its arguments.`, state);
-		state.callbacks.onParseError(diagnostic);
-		return endParseIndex;  // Short circuit
-	}
-	else if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
+
+	if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex, commandSectionIndex + command.length,
 			`Command *${command} can only be used in startup.txt.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
 
-	if (argumentDisallowedCommandsLookup.has(command) && line.trim() != "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			lineIndex, lineIndex + line.length,
-			`Command *${command} must not have anything after it.`, state);
-		state.callbacks.onParseError(diagnostic);
-	}
-	else if (argumentIgnoredCommandsLookup.has(command) && line.trim() != "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-			lineIndex, lineIndex + line.length,
-			`This will be ignored.`, state);
-		state.callbacks.onParseError(diagnostic);
+	if (!checkCommandArgumentContents(command, commandSectionIndex, line, lineIndex, state)) {
+		return endParseIndex;
 	}
 
-	if (symbolManipulationCommandsLookup.has(command)) {
+	if (insideBlockCommandsLookup.has(command)) {
+		if ((command == "selectable_if" && state.enclosingBlock !== "option") ||
+		(command != "selectable_if" && state.enclosingBlock !== "if")) {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+				commandSectionIndex, commandSectionIndex + command.length,
+				`Command *${command} must be ${(command == "selectable_if" ? "in front of an #option" : "part of an *if command block")}.`,
+				state);
+			state.callbacks.onParseError(diagnostic);	
+		}
+	}
+
+	if (command == "if") {
+		const nextLineIndex = findLineEnd(document, commandSectionIndex);
+		endParseIndex = parseIfBlock(document, command, prefix, commandSectionIndex, line, lineIndex, nextLineIndex, state);
+	}
+	else if (symbolManipulationCommandsLookup.has(command)) {
 		parseSymbolManipulationCommand(command, commandSectionIndex, line, lineIndex, state);
 	}
 	else if (variableReferenceCommandsLookup.has(command)) {

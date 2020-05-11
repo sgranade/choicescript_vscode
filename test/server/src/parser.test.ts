@@ -483,6 +483,20 @@ describe("Parser", () => {
 			expect(received[4].range.end.line).to.equal(54);
 		});
 
+		it("should parse the line right after a choice block", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\n*comment parsed");
+			let received: Array<string> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onCommand(Arg.all()).mimicks((prefix: string, command: string, spacing: string, line: string, commandLocation: Location, state: ParsingState) => {
+				received.push(command);
+				received.push(line);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received).to.eql(["choice", "", "comment", "parsed"]);
+		});
+
 		it("should summarize a choice with the command's name", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText\n\t#Two\nEnd");
 			let received: Array<SummaryScope> = [];
@@ -1296,6 +1310,36 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(21);
 		});
 
+		it("should callback on local variables in nested reference comands", () => {
+			let fakeDocument = createDocument("*if variable > 1\n  *if other_variable < 1\n    Content");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[1].text).to.equal("other_variable");
+			expect(received[1].location.range.start.line).to.equal(23);
+			expect(received[1].location.range.end.line).to.equal(37);
+		});
+
+		it("should parse the line right after an *if block", () => {
+			let fakeDocument = createDocument("*if variable\n  Content\n*comment parsed");
+			let received: Array<string> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onCommand(Arg.all()).mimicks((prefix: string, command: string, spacing: string, line: string, commandLocation: Location, state: ParsingState) => {
+				received.push(command);
+				received.push(line);
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received).to.eql(["if", "variable", "comment", "parsed"]);
+		});
+
 		it("should not callback on array references", () => {
 			let fakeDocument = createDocument('*if variable[other_var] = "other_variable"');
 			let received: Array<Symbol> = [];
@@ -1508,7 +1552,7 @@ describe("Parser", () => {
 			});
 	
 			it("should flag commands with arguments that don't allow them", () => {
-				let fakeDocument = createDocument("*else true");
+				let fakeDocument = createDocument("*if true\n  stuff\n*else true\n  stuff");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -1519,8 +1563,8 @@ describe("Parser", () => {
 		
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("must not have anything after it");
-				expect(received[0].range.start.line).to.equal(6);
-				expect(received[0].range.end.line).to.equal(10);
+				expect(received[0].range.start.line).to.equal(23);
+				expect(received[0].range.end.line).to.equal(27);
 			});
 	
 			it("should warn commands with arguments that silently ignore them", () => {
@@ -1558,6 +1602,54 @@ describe("Parser", () => {
 		});
 
 		describe("Flow Control", () => {
+			it("should flag an *elseif after an *else", () => {
+				let fakeDocument = createDocument("*if true\n\  content\n*else\n  content\n*elseif false\n  stuff");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *elseif must be part of an *if");
+				expect(received[0].range.start.line).to.equal(36);
+				expect(received[0].range.end.line).to.equal(42);
+			});
+
+			it("should flag a bare *else", () => {
+				let fakeDocument = createDocument("*else\n  content");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *else must be part of an *if");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(5);
+			});
+
+			it("should flag a bare *elseif", () => {
+				let fakeDocument = createDocument("*elseif true\n  content");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *elseif must be part of an *if");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(7);
+			});
+
 			it("should flag bad parameters passed to a gosub", () => {
 				let fakeDocument = createDocument("*gosub label -param");
 				let received: Array<Diagnostic> = [];

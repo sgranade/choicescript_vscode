@@ -217,6 +217,51 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 }
 
 /**
+ * Read the next non-blank line.
+ * @param text Text to read from.
+ * @param lineStart Start of the next line.
+ * @returns Next non-blank line or undefined if the end of the string is reached.
+ */
+export function readNextNonblankLine(text: string, lineStart: number): NewLine | undefined {
+	let nextLine: NewLine | undefined;
+	while (true) {
+		nextLine = readLine(text, lineStart);
+		if (nextLine === undefined) {
+			break;
+		}
+		if (nextLine.line.trim() == "") {
+			lineStart += nextLine.line.length;
+		}
+		else {
+			break;
+		}
+	}
+	return nextLine;
+}
+
+/**
+ * Extract an indented block from text.
+ * 
+ * The extracted text includes the newline (if any) at the end of the block.
+ * @param text Text to read from.
+ * @param initialIndent Initial indent of the line that defines the block (like an *if command).
+ * @param startIndex Index inside of text where the block begins (after the line that defines the block).
+ */
+export function extractToMatchingIndent(text: string, initialIndent: number, startIndex = 0): string {
+	let lastIndex = startIndex;
+	let nextLine: NewLine | undefined;
+
+	while (true) {
+		nextLine = readNextNonblankLine(text, lastIndex);
+		if (nextLine === undefined || (nextLine.splitLine?.padding.length ?? 0) <= initialIndent) {
+			break;
+		}
+		lastIndex = nextLine.index + nextLine.line.length;
+	}
+	return text.slice(startIndex, lastIndex);
+}
+
+/**
 * Normalize a URI.
 * 
 * @param uriString URI to normalize.

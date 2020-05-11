@@ -66,9 +66,19 @@ export const optionAllowedCommands: ReadonlyArray<string> = [
 export const reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
 
 /**
+ * Commands that must only be in containing blocks (like "*if" or "*choice")
+ */
+export const insideBlockCommands: ReadonlyArray<string> = ["selectable_if", "elseif", "elsif", "else"];
+
+/**
  * Commands that create labels or variables.
  */
 export const symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];
+
+/**
+ * Commands that reference variables that won't otherise be handled if they're outside their proper containing command (like "*if" or "*choice")
+ */
+export const variableReferenceCommands: ReadonlyArray<string> = ["selectable_if", "elseif", "elsif"];
 
 /**
  * Commands that manipulate the contents of variables.
@@ -76,11 +86,6 @@ export const symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "
 export const variableManipulationCommands: ReadonlyArray<string> = [
 	"set", "delete", "rand", "input_text", "input_number"
 ];
-
-/**
- * Commands that reference variables.
- */
-export const variableReferenceCommands: ReadonlyArray<string> = [ "if", "selectable_if", "elseif", "elsif" ];
 
 /**
  * Commands that control flow.

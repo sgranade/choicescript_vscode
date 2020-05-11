@@ -1,7 +1,9 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, readLine } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, readLine, extractToMatchingIndent, readNextNonblankLine } from '../../../server/src/utilities';
+
+/* eslint-disable */
 
 describe("Utilities", () => {
 	describe("Case-Insensitive Map", () => {
@@ -125,36 +127,91 @@ describe("Utilities", () => {
 	});
 
 	describe("Reading Lines", () => {
-		it("should read a line at the start", () => {
-			let text = "line1\nline2";
+		describe("Reading Next Lines", () => {
+			it("should read a line at the start", () => {
+				let text = "line1\nline2";
+		
+				let line = readLine(text, 0);
+		
+				expect(line).to.eql({ line: "line1\n", index: 0 });
+			});
 	
-			let line = readLine(text, 0);
+			it("should read a line in the middle", () => {
+				let text = "line1\nline2";
+		
+				let line = readLine(text, 6);
+		
+				expect(line).to.eql({ line: "line2", index: 6 });
+			});
 	
-			expect(line).to.eql({ line: "line1\n", index: 0 });
+			it("should capture leading whitespace", () => {
+				let text = "line1\n  line2";
+		
+				let line = readLine(text, 6);
+		
+				expect(line).to.eql({ line: "  line2", index: 6, splitLine: { padding: "  ", contents: "line2" } });
+			});
+	
+			it("should capture leading whitespace and a trailing carriage return", () => {
+				let text = "  line1\n  line2";
+		
+				let line = readLine(text, 0);
+		
+				expect(line).to.eql({ line: "  line1\n", index: 0, splitLine: { padding: "  ", contents: "line1" } });
+			});
 		});
 
-		it("should read a line in the middle", () => {
-			let text = "line1\nline2";
+		describe("Reading Next Non-Blank Lines", () => {
+			it("should skip empty lines", () => {
+				let text = "line1\n\nline2";
+		
+				let line = readNextNonblankLine(text, 6);
+		
+				expect(line).to.eql({ line: "line2", index: 7 });
+			});
+
+			it("should skip lines with spaces", () => {
+				let text = "line1\n    \nline2\n";
+		
+				let line = readNextNonblankLine(text, 6);
+		
+				expect(line).to.eql({ line: "line2\n", index: 11 });
+			});
+		});
+	});
+
 	
-			let line = readLine(text, 6);
+	describe("Extract Block", () => {
+		it("should read a block indented by spaces", () => {
+			let text = "start\n  line 1\n  line 2\n  line 3\nend";
 	
-			expect(line).to.eql({ line: "line2", index: 6 });
+			let block = extractToMatchingIndent(text, 0, 6);
+	
+			expect(block).to.eql("  line 1\n  line 2\n  line 3\n");
 		});
 
-		it("should capture leading whitespace", () => {
-			let text = "line1\n  line2";
+		it("should read a block indented by tabs", () => {
+			let text = "start\n\tline 1\n\tline 2\n\tline 3\nend";
 	
-			let line = readLine(text, 6);
+			let block = extractToMatchingIndent(text, 0, 6);
 	
-			expect(line).to.eql({ line: "  line2", index: 6, splitLine: { padding: "  ", contents: "line2" } });
+			expect(block).to.eql("\tline 1\n\tline 2\n\tline 3\n");
 		});
 
-		it("should capture leading whitespace and a trailing carriage return", () => {
-			let text = "  line1\n  line2";
+		it("should include deeper-indented blocks", () => {
+			let text = "start\n\tline 1\n\t\tline a\n\t\tline b\n\tline 2\n\tline 3\nend";
 	
-			let line = readLine(text, 0);
+			let block = extractToMatchingIndent(text, 0, 6);
 	
-			expect(line).to.eql({ line: "  line1\n", index: 0, splitLine: { padding: "  ", contents: "line1" } });
+			expect(block).to.eql("\tline 1\n\t\tline a\n\t\tline b\n\tline 2\n\tline 3\n");
+		});
+
+		it("should take into account the starting indent value", () => {
+			let text = "start\n\tline 1\n\t\tline a\n\t\tline b\n\tline 2\n\tline 3\nend";
+	
+			let block = extractToMatchingIndent(text, 1, 14);
+	
+			expect(block).to.eql("\t\tline a\n\t\tline b\n");
 		});
 	});
 })

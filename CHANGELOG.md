@@ -10,6 +10,7 @@ Changes to the plugin.
 - More error catching.
   - Properly checks the use of `*disable/enable/hide_reuse`, and `*if/*selectable_if` commands before #options.
   - Catches `*create` commands used after `*temp` commands.
+  - Flags `*else` and `*elseif` used outside of an `*if` block.
 
 ### Fixed
 
