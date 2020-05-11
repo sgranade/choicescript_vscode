@@ -676,4 +676,30 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
+
+	describe("Indent Validation", () => {
+		it("should flag a switch from spaces to tabs", () => {
+			let fakeDocument = createDocument("*if true\n  indent\n*if false\n\tindent");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('Switched from spaces to tabs');
+			expect(diagnostics[0].range.start.line).to.equal(28);
+			expect(diagnostics[0].range.end.line).to.equal(29);
+		});
+
+		it("should flag a switch from tabs to spaces", () => {
+			let fakeDocument = createDocument("*if true\n\tindent\n*if false\n  indent");
+			let fakeIndex = createIndex({});
+	
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+	
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('Switched from tabs to spaces');
+			expect(diagnostics[0].range.start.line).to.equal(27);
+			expect(diagnostics[0].range.end.line).to.equal(29);
+		});
+	});
 });

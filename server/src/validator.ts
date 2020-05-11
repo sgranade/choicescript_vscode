@@ -34,7 +34,9 @@ class ValidationState {
 	 * Document being validated
 	 */
 	textDocument: TextDocument;
-
+	/**
+	 * Document text as fetched from textDocument
+	 */
 	text = "";
 
 	constructor(projectIndex: ProjectIndex, textDocument: TextDocument) {
@@ -44,6 +46,10 @@ class ValidationState {
 	}
 }
 
+/**
+ * Validate all variables' names.
+ * @param state Current parsing state.
+ */
 function validateVariables(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
@@ -378,6 +384,38 @@ function validateOption(option: string, index: number, state: ValidationState): 
 	return diagnostic;
 }
 
+function validateIndents(state: ValidationState): Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+
+	let m = /(?:^|\n)([ \t])/.exec(state.text);
+
+	if (m !== null) {
+		const indentChar = m[1];
+
+		let searchRegex: RegExp;
+		let errorMessage: string;
+
+		if (indentChar == " ") {
+			// Look for tabs
+			searchRegex = /(?:^|\n) *(\t+)/g;
+			errorMessage = "Switched from spaces to tabs";
+		}
+		else {
+			searchRegex = /(?:^|\n)\t*( +)/g;
+			errorMessage = "Switched from tabs to spaces";
+		}
+
+		while ((m = searchRegex.exec(state.text))) {
+			const diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
+				m.index + m[0].length - m[1].length, m.index + m[0].length,
+				errorMessage);
+			diagnostics.push(diagnostic);
+		}
+	}
+
+	return diagnostics;
+}
+
 /**
  * Validate a text file and generate diagnostics against it.
  * 
@@ -399,6 +437,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate flow control
 	diagnostics.push(...validateFlowControlEvents(state));
+
+	// Validate tabs/spaces
+	diagnostics.push(...validateIndents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
 	const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');

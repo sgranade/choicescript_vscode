@@ -12,6 +12,7 @@ Changes to the plugin.
   - Catches `*create` commands used after `*temp` commands.
   - Flags `*else` and `*elseif` used outside of an `*if` block.
   - Catches `*if`, `*elseif`, and `*if` commands with no contents.
+  - Catches a switch from spaces to tabs (or vice versa)
 
 ### Fixed
 
