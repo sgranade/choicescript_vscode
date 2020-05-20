@@ -2,13 +2,19 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Variable references in `*bug` commands are now indexed correctly.
+
 ## [1.4.0] - 2020-05-11
 
 ### Added
 
 - Word count appears in the status bar.
 - More error catching.
-  - Properly checks the use of `*disable/enable/hide_reuse`, and `*if/*selectable_if` commands before #options.
+  - Properly checks the use of `*disable/enable/hide_reuse`, and `*if`/`*selectable_if` commands before #options.
   - Catches `*create` commands used after `*temp` commands.
   - Flags `*else` and `*elseif` used outside of an `*if` block.
   - Catches `*if`, `*elseif`, and `*if` commands with no contents.

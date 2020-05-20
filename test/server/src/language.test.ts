@@ -3,6 +3,8 @@ import 'mocha';
 
 import { extractTokenAtIndex, sceneFromUri, convertAchievementToVariable } from '../../../server/src/language';
 
+/* eslint-disable */
+
 describe("Language Routines", () => {
 	describe("Token Extraction", () => {
 		it("should extract a bare word", () => {

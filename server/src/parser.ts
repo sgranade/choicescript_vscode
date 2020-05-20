@@ -1442,9 +1442,9 @@ function checkCommandArgumentContents(command: string, commandSectionIndex: numb
  * @param state Parsing state.
  */
 function parseCommand(document: string, prefix: string, command: string, spacing: string, line: string, commandSectionIndex: number, state: ParsingState): number {
-	const lineIndex = commandSectionIndex + command.length + spacing.length;
+	const lineSectionIndex = commandSectionIndex + command.length + spacing.length;
 	// By default a command's parsing ends at the end of the line
-	let endParseIndex = lineIndex + line.length;
+	let endParseIndex = lineSectionIndex + line.length;
 
 	const commandLocation = createParsingLocation(commandSectionIndex, commandSectionIndex + command.length, state);
 
@@ -1465,7 +1465,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		state.callbacks.onParseError(diagnostic);
 	}
 
-	if (!checkCommandArgumentContents(command, commandSectionIndex, line, lineIndex, state)) {
+	if (!checkCommandArgumentContents(command, commandSectionIndex, line, lineSectionIndex, state)) {
 		return endParseIndex;
 	}
 
@@ -1482,22 +1482,26 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	if (command == "if") {
 		const nextLineIndex = findLineEnd(document, commandSectionIndex);
-		endParseIndex = parseIfBlock(document, command, prefix, commandSectionIndex, line, lineIndex, nextLineIndex, state);
+		endParseIndex = parseIfBlock(document, command, prefix, commandSectionIndex, line, lineSectionIndex, nextLineIndex, state);
 	}
 	else if (symbolManipulationCommandsLookup.has(command)) {
-		parseSymbolManipulationCommand(command, commandSectionIndex, line, lineIndex, state);
+		parseSymbolManipulationCommand(command, commandSectionIndex, line, lineSectionIndex, state);
 	}
 	else if (variableReferenceCommandsLookup.has(command)) {
-		parseVariableReferenceCommand(command, line, lineIndex, state);
+		parseVariableReferenceCommand(command, line, lineSectionIndex, state);
 	}
 	else if (flowControlCommandsLookup.has(command)) {
-		parseFlowControlCommand(command, commandSectionIndex, line, lineIndex, state);
+		parseFlowControlCommand(command, commandSectionIndex, line, lineSectionIndex, state);
 	}
 	else if (command == "choice" || command == "fake_choice") {
 		const nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
 			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, nextLineIndex, state);
 		}
+	}
+	else if (command == "bug") {
+		// A *bug command treats the rest of the line as regular text output, which may contain variable references
+		parseBareString(line, lineSectionIndex, line.length, state);
 	}
 	else if (command == "scene_list") {
 		const nextLineIndex = findLineEnd(document, commandSectionIndex);
@@ -1515,14 +1519,14 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		const codenameMatch = line.match(/^\S+/);
 		if (codenameMatch) {
 			const codename = codenameMatch[0];
-			parseAchievement(codename, lineIndex, state);
+			parseAchievement(codename, lineSectionIndex, state);
 		}
 	}
 	else if (command == "achieve") {
 		const codenameMatch = line.match(/^\S+/);
 		if (codenameMatch) {
 			const codename = codenameMatch[0];
-			parseAchievementReference(codename, lineIndex, state);
+			parseAchievementReference(codename, lineSectionIndex, state);
 		}
 	}
 

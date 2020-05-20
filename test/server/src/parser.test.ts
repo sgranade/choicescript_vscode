@@ -1326,6 +1326,22 @@ describe("Parser", () => {
 			expect(received[1].location.range.end.line).to.equal(37);
 		});
 
+		it("should callback on variables referenced in non-specialized commands", () => {
+			let fakeDocument = createDocument("*bug Here's a ${reference}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("reference");
+			expect(received[0].location.range.start.line).to.equal(16);
+			expect(received[0].location.range.end.line).to.equal(25);
+		});
+
 		it("should parse the line right after an *if block", () => {
 			let fakeDocument = createDocument("*if variable\n  Content\n*comment parsed");
 			let received: Array<string> = [];
