@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Fixed
 
 - Variable references in `*bug` commands are now indexed correctly.
+- Syntax highlighting now applied to multireplaces in string literals.
 
 ## [1.4.0] - 2020-05-11
 
