@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
@@ -24,6 +26,17 @@ describe("Tokenizing", () => {
 	
 				expect(expression.tokens.length).to.equal(1);
 				expect(expression.tokens[0].type).to.equal(ExpressionTokenType.Number);
+			});
+	
+			it("should set the global index of tokenized parentheses properly", () => {
+				let text = "(1) and (2)";
+				let fakeDocument = createDocument(text);
+	
+				let expression = new Expression(text, 2, fakeDocument);
+	
+				expect(expression.tokens.length).to.equal(3);
+				expect(expression.tokens[0].contents.globalIndex).to.equal(3);
+				expect(expression.tokens[2].contents.globalIndex).to.equal(11);
 			});
 	
 			it("should flag functions with no arguments", () => {

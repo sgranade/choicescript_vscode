@@ -530,7 +530,7 @@ export class Expression {
 				if (tokenType != ExpressionTokenType.String) {
 					tokenizedContents = new Expression(
 						contents,
-						this.globalIndex + openDelimiterIndex + 1,
+						this.globalIndex + tokenizingIndex + openDelimiterIndex + 1,
 						this.textDocument);
 				}
 				contents += closeDelimiter;

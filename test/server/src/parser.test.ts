@@ -1182,6 +1182,25 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(12);
 		});
 	
+		it("should callback on all local variables after a reference comand", () => {
+			let fakeDocument = createDocument("*if var1 > var2");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[0].text).to.equal("var1");
+			expect(received[0].location.range.start.line).to.equal(4);
+			expect(received[0].location.range.end.line).to.equal(8);
+			expect(received[1].text).to.equal("var2");
+			expect(received[1].location.range.start.line).to.equal(11);
+			expect(received[1].location.range.end.line).to.equal(15);
+		});
+	
 		it("should callback on local variables in parentheses", () => {
 			let fakeDocument = createDocument("*if (variable > 1)");
 			let received: Array<Symbol> = [];
@@ -1196,6 +1215,25 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(5);
 			expect(received[0].location.range.end.line).to.equal(13);
+		});
+	
+		it("should callback on variables in multiple parentheses", () => {
+			let fakeDocument = createDocument("*if (var1 > 1) or (var2 < 3)");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[0].text).to.equal("var1");
+			expect(received[0].location.range.start.line).to.equal(5);
+			expect(received[0].location.range.end.line).to.equal(9);
+			expect(received[1].text).to.equal("var2");
+			expect(received[1].location.range.start.line).to.equal(19);
+			expect(received[1].location.range.end.line).to.equal(23);
 		});
 	
 		it("should not callback on strings", () => {
