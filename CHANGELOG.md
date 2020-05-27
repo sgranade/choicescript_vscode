@@ -6,7 +6,8 @@ Changes to the plugin.
 
 ### Fixed
 
-- Variables in multi-parentheses expressions like `*if (var1) or (var2)` were not indexed properly.
+- Variables in multi-parentheses expressions like `*if (var1) or (var2)` are now indexed properly.
+- Variable references in choice options like `  #Option ${var}` are now indexed properly.
 - Variable references in `*bug` commands are now indexed correctly.
 - Syntax highlighting now applied to multireplaces in string literals.
 

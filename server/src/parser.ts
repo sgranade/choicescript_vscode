@@ -780,6 +780,8 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 			const preTextIndex = optionLine.index + padding.length;
 			parseTextBeforeAnOption(preText, preTextIndex, state);
 		}
+		// Parse the option as if it were a string, since it can have ${references}
+		parseBareString(optionText, optionLine.index + optionLine.splitLine.padding.length + hashIndex, optionText.length, state);
 
 		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
 	} 
