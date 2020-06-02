@@ -16,7 +16,7 @@ import {
 	SymbolInformation
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-const fsPromises = require('fs').promises;
+import fs = require('fs');
 import url = require('url');
 import globby = require('globby');
 
@@ -137,7 +137,7 @@ async function indexFile(path: string): Promise<void> {
 	const fileUri = url.pathToFileURL(path).toString();
 
 	try {
-		const data = await fsPromises.readFile(path, 'utf8');
+		const data = await fs.promises.readFile(path, 'utf8');
 		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
 		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
 	}
