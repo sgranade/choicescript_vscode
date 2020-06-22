@@ -281,12 +281,34 @@
 		"italics": {
 			"begin": "\\[i\\]",
 			"end": "\\[/i\\]",
-			"contentName": "markup.italic"
+			"contentName": "markup.italic",
+			"patterns": [
+				{
+					"include": "#multireplace"
+				},
+				{
+					"include": "#variable-display"
+				},
+				{
+					"include": "#todo"
+				}
+			]
 		},
 		"bold": {
 			"begin": "\\[b\\]",
 			"end": "\\[/b\\]",
-			"contentName": "markup.bold"
+			"contentName": "markup.bold",
+			"patterns": [
+				{
+					"include": "#multireplace"
+				},
+				{
+					"include": "#variable-display"
+				},
+				{
+					"include": "#todo"
+				}
+			]
 		}
 	},
 	"scopeName": "source.cs"
