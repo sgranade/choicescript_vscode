@@ -1163,6 +1163,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.start.line).to.equal(18);
 			expect(received[0].location.range.end.line).to.equal(26);
 		});
+
+		it("should callback on multireplace in a *choice's #option", () => {
+			let fakeDocument = createDocument("*choice\n\t#One @{variable this|that}\n\t\tContents");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(16);
+			expect(received[0].location.range.end.line).to.equal(24);
+		});
 	});
 	
 	describe("Variable-Referencing Command Parsing", () => {

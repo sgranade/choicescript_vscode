@@ -341,7 +341,7 @@ function parseBareString(
 		}
 		else if (m.groups.multi !== undefined) {
 			newLocalIndex = parseMultireplacement(
-				text, m.groups.multi.length, startSectionIndex, contentsLocalIndex, state);
+				text, m.groups.multi.length, startSectionIndex + contentsLocalIndex, contentsLocalIndex, state);
 		}
 		else {
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
