@@ -2,7 +2,7 @@
 
 Changes to the plugin.
 
-## Unreleased
+## [1.4.1] - 2020-06-30
 
 ### Fixed
 
@@ -12,6 +12,9 @@ Changes to the plugin.
 - Variable references in `*bug` commands are now indexed correctly.
 - Syntax highlighting now applied to multireplaces in string literals.
 - Syntax highlighting now applied to variables and multireplaces in bold and italicized sections.
+- More error catching.
+  - Flags any arguments to an `*if` before an `#Option` that aren't in parentheses.
+  - Flags `*label` names with spaces in them.
 
 ## [1.4.0] - 2020-05-11
 

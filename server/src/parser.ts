@@ -571,8 +571,9 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 		const symbol: string = lineMatch.groups.symbol;
 		const symbolLocation = createParsingLocation(lineSectionIndex, lineSectionIndex + symbol.length, state);
 		const expression: string | undefined = lineMatch.groups.expression;
+		const spacing: string | undefined = lineMatch.groups.spacing;
 		let expressionSectionIndex = lineSectionIndex + symbol.length;
-		if (lineMatch.groups.spacing) {
+		if (spacing) {
 			expressionSectionIndex += lineMatch.groups.spacing.length;
 		}
 		switch (command) {
@@ -605,8 +606,15 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 			}
 			break;
 		case "label":
-			// *label creates a goto/gosub label local to the scene file
+			// *label creates a goto/gosub label local to the scene file.
 			state.callbacks.onLabelCreate(symbol, symbolLocation, state);
+			// A label's name can't contain spaces and then extra info
+			if (expression !== undefined && expression.trim() !== "" && spacing !== undefined) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					expressionSectionIndex - spacing.length, expressionSectionIndex,
+					"*label names can't have spaces", state);
+				state.callbacks.onParseError(diagnostic);
+			}
 			break;
 		case "delete":
 		case "rand":
@@ -1176,24 +1184,24 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 
 	// For an *if on the line with an #option, we need to perform extra checks.
 	if (optionOnLineWithIf) {
-		// If we've got > 1 combined token, then we need parentheses
-		if (tokenizedExpression.combinedTokens.length > 1) {
-			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-				tokenizedExpression.globalIndex,
-				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
-				`Arguments to ${command == "selectable_if" ? "a" : "an"} *${command} before an #option must be in parentheses`,
-				state);
-			state.callbacks.onParseError(diagnostic);
-		}
 		// *if not(var) #option will always be true and needs parentheses
-		else if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
+		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 				tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
 				"Without parentheses, this expression will always be true",
+				state);
+			state.callbacks.onParseError(diagnostic);
+		}
+		// In fact, everything has to be in parentheses for an *if on the line with an #option
+		else if (tokenizedExpression.combinedTokens.length > 1 || tokenizedExpression.combinedTokens[0].type != ExpressionTokenType.Parentheses) {
+			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+				tokenizedExpression.globalIndex,
+				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+				`Arguments to ${command == "selectable_if" ? "a" : "an"} *${command} before an #option must be in parentheses`,
 				state);
 			state.callbacks.onParseError(diagnostic);
 		}

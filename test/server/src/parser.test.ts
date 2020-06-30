@@ -1786,6 +1786,35 @@ describe("Parser", () => {
 				expect(received[0].range.start.line).to.equal(25);
 				expect(received[0].range.end.line).to.equal(26);
 			});
+
+			it("should flag labels with spaces in them", () => {
+				let fakeDocument = createDocument("*label this_is wrong");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*label names can't have spaces");
+				expect(received[0].range.start.line).to.equal(14);
+				expect(received[0].range.end.line).to.equal(15);
+			});
+
+			it("should be okay with labels that have only spaces after them", () => {
+				let fakeDocument = createDocument("*label this_is  ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(0);
+			});
 		});
 
 		describe("Choice Command", () => {
@@ -1845,6 +1874,22 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 		
 				expect(received.length).to.equal(0);
+			});
+
+			it("should flag an if command in front of an option that has no parentheses", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Arguments to an *if before an #option must be in parentheses");
+				expect(received[0].range.start.line).to.equal(23);
+				expect(received[0].range.end.line).to.equal(28);
 			});
 
 			it("should be okay with a selectable_if command in front of an option", () => {

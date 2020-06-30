@@ -57,6 +57,11 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.4.1]
+
+- Bug fixes to symbol indexing and syntax highlighting.
+- Improved error handling for `*label` and `*if` in front of an `#option`.
+
 ### [1.4.0]
 
 - Word counter added that skips code but counts words shown to the reader.
