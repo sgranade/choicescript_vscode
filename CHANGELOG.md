@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Expression errors inside `*if` blocks and similar are now marked in the proper location.
+
 ## [1.4.1] - 2020-06-30
 
 ### Fixed

@@ -413,6 +413,28 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
+
+				it("should be good with a string and index operator with a number second value", () => {
+					let text = '"s1"#2';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(0);
+				});
+
+				it("should flag a string and index operator with a not-number second value", () => {
+					let text = '"s1"#"s2"';
+					let fakeDocument = createDocument(text);
+	
+					let expression = new Expression(text, 2, fakeDocument);
+	
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(7);
+					expect(expression.validateErrors[0].range.end.line).to.equal(11);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
 			});
 
 			describe("Variable", () => {

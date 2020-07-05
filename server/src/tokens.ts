@@ -272,8 +272,16 @@ function checkTokenAgainstOperator(
 		}
 		break;
 	case ExpressionTokenType.StringOperator:
-		if (!isStringCompatible(token)) {
-			errorMessage = "Must be a string or a variable";
+		// String operators are a special case, since the "#" operator works on numbers
+		if (operator.text == "#") {
+			if (!isNumberCompatible(token)) {
+				errorMessage = "Must be a number or a variable";
+			}
+		}
+		else {
+			if (!isStringCompatible(token)) {
+				errorMessage = "Must be a string or a variable";
+			}	
 		}
 		break;
 	case ExpressionTokenType.BooleanNamedOperator:

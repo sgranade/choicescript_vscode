@@ -2605,6 +2605,22 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(16);
 			});
 	
+			it("should flag a not-number value after a string and the index operator", () => {
+				let fakeDocument = createDocument('*set var other_var#"hi"');
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be a number or a variable");
+				expect(received[0].range.start.line).to.equal(19);
+				expect(received[0].range.end.line).to.equal(23);
+			});
+	
 			it("should flag a not-string value after a string operator", () => {
 				let fakeDocument = createDocument('*set var "yep" & 1');
 				let received: Array<Diagnostic> = [];
@@ -2716,6 +2732,23 @@ describe("Parser", () => {
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(17);
 			});
+
+			it("should locate expression errors properly inside an *if block", () => {
+				let fakeDocument = createDocument("*if true\n\t*set variable and true");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+		
+				parse(fakeDocument, fakeCallbacks);
+		
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be a numeric operator");
+				expect(received[0].range.start.line).to.equal(24);
+				expect(received[0].range.end.line).to.equal(27);
+			});
+	
 		});
 
 		describe("Stat Charts", () => {

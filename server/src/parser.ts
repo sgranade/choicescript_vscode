@@ -202,7 +202,7 @@ function parseString(text: string, sectionIndex: number, localIndex: number, sta
  */
 function parseTokenizedExpression(tokenizedExpression: Expression, state: ParsingState): void {
 	for (const token of tokenizedExpression.tokens) {
-		const tokenSectionIndex = tokenizedExpression.globalIndex + token.index;
+		const tokenSectionIndex = tokenizedExpression.globalIndex - state.sectionGlobalIndex + token.index;
 		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
 		case ExpressionTokenType.String:
@@ -303,7 +303,7 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
 	}
 	else {
 		// References contain expressions, so let the expression parser handle that
-		parseExpression(reference, localIndex + textToSectionDelta, state);
+		parseExpression(reference, localIndex + textToSectionDelta + state.sectionGlobalIndex, state);
 		newLocalIndex = localIndex + reference.length + 1;
 	}
 
@@ -390,7 +390,9 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 		textToSectionDelta = sectionIndex - localIndex;
 	}
 
-	const tokens = tokenizeMultireplace(text, state.textDocument, sectionIndex, localIndex);
+	const tokens = tokenizeMultireplace(
+		text, state.textDocument, sectionIndex + state.sectionGlobalIndex, localIndex
+	);
 
 	if (tokens === undefined) {
 		const lineEndIndex = findLineEnd(text, localIndex);
@@ -507,7 +509,9 @@ function parseParams(line: string, lineSectionIndex: number, state: ParsingState
  * @param state Indexing state.
  */
 function parseSet(line: string, lineSectionIndex: number, state: ParsingState): void {
-	const tokenizedExpression = new Expression(line, lineSectionIndex, state.textDocument, true);
+	const tokenizedExpression = new Expression(
+		line, lineSectionIndex+state.sectionGlobalIndex, state.textDocument, true
+	);
 	const tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
@@ -1177,20 +1181,21 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		}
 	}
 	// The line that follows a command that can reference a variable is an expression
-	const tokenizedExpression = parseExpression(line, lineSectionIndex, state);
+	const tokenizedExpression = parseExpression(line, lineSectionIndex + state.sectionGlobalIndex, state);
 	if (tokenizedExpression.evalType != ExpressionEvalType.Error) {
 		validateConditionExpression(tokenizedExpression, state);
 	}
 
 	// For an *if on the line with an #option, we need to perform extra checks.
 	if (optionOnLineWithIf) {
+		const tokenizedExpressionSectionIndex = tokenizedExpression.globalIndex - state.sectionGlobalIndex;
 		// *if not(var) #option will always be true and needs parentheses
 		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-				tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
-				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+				tokenizedExpressionSectionIndex + tokenizedExpression.combinedTokens[0].index,
+				tokenizedExpressionSectionIndex + lastToken.index + lastToken.text.length,
 				"Without parentheses, this expression will always be true",
 				state);
 			state.callbacks.onParseError(diagnostic);
@@ -1199,8 +1204,8 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		else if (tokenizedExpression.combinedTokens.length > 1 || tokenizedExpression.combinedTokens[0].type != ExpressionTokenType.Parentheses) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-				tokenizedExpression.globalIndex,
-				tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
+				tokenizedExpressionSectionIndex,
+				tokenizedExpressionSectionIndex + lastToken.index + lastToken.text.length,
 				`Arguments to ${command == "selectable_if" ? "a" : "an"} *${command} before an #option must be in parentheses`,
 				state);
 			state.callbacks.onParseError(diagnostic);
