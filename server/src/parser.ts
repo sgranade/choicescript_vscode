@@ -106,7 +106,7 @@ export class ParsingState {
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
-		this.sectionGlobalIndex = -1;
+		this.sectionGlobalIndex = 0;
 		this.callbacks = callbacks;
 		this.createdTempVariables = false;
 	}
@@ -1339,7 +1339,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 
 		// Evaluate first token expression (if any)
 		if (firstToken != "" && firstToken[0] == '{') {
-			parseExpression(firstToken.slice(1, -1), lineSectionIndex+1, state);
+			parseExpression(firstToken.slice(1, -1), state.sectionGlobalIndex+lineSectionIndex+1, state);
 		}
 
 		if (command.endsWith("_scene")) {
@@ -1375,7 +1375,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 		if (command.startsWith("gosub") && remainderLine.trim() != "") {
 			// Handle potential parameters by tokenizing them as if they were an expression, but then consider them
 			// one at a time
-			const remainderLineGlobalIndex = lineSectionIndex + remainderLineLocalIndex;
+			const remainderLineGlobalIndex = lineSectionIndex + remainderLineLocalIndex + state.sectionGlobalIndex;
 			const expression = new Expression(remainderLine, remainderLineGlobalIndex, state.textDocument);
 			for (const token of expression.combinedTokens) {
 				// Let the expression parsing handle each token

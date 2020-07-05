@@ -780,6 +780,25 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
 	
+		it("should callback on more complex variable references", () => {
+			let fakeDocument = createDocument("*comment \n*set {var1} {var2 & \"hi\"}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(2);
+			expect(received[0].text).to.equal("var1");
+			expect(received[0].location.range.start.line).to.equal(16);
+			expect(received[0].location.range.end.line).to.equal(20);
+			expect(received[1].text).to.equal("var2");
+			expect(received[1].location.range.start.line).to.equal(23);
+			expect(received[1].location.range.end.line).to.equal(27);
+		});
+	
 		it("should not callback on strings", () => {
 			let fakeDocument = createDocument('*set variable "value"');
 			let received: Array<Symbol> = [];
@@ -1394,6 +1413,38 @@ describe("Parser", () => {
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(23);
 			expect(received[1].location.range.end.line).to.equal(37);
+		});
+
+		it("should callback on variables referenced as parameters in a *gosub", () => {
+			let fakeDocument = createDocument("*if true\n\t*gosub label {reference}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("reference");
+			expect(received[0].location.range.start.line).to.equal(24);
+			expect(received[0].location.range.end.line).to.equal(33);
+		});
+
+		it("should callback on variables referenced as a scene in a *gosub_scene", () => {
+			let fakeDocument = createDocument("*if true\n\t*gosub_scene {scene} label");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("scene");
+			expect(received[0].location.range.start.line).to.equal(24);
+			expect(received[0].location.range.end.line).to.equal(29);
 		});
 
 		it("should callback on variables referenced in non-specialized commands", () => {
