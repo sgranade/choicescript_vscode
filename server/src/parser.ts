@@ -598,7 +598,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
-				parseExpression(expression, expressionSectionIndex, state);
+				parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
 			}
 			break;
 		case "temp":
@@ -606,7 +606,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 			state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
 			state.createdTempVariables = true;
 			if (expression !== undefined) {
-				parseExpression(expression, expressionSectionIndex, state);
+				parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
 			}
 			break;
 		case "label":
@@ -1099,7 +1099,7 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 					state.callbacks.onParseError(diagnostic);
 				}
 				else if (variable[0] == '{') {
-					parseExpression(variable?.slice(1, -1), remainderStart+1, state);
+					parseExpression(variable?.slice(1, -1), remainderStart+1+state.sectionGlobalIndex, state);
 				}
 				else {
 					const location = createParsingLocation(remainderStart, remainderStart + variable.length, state);

@@ -168,6 +168,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(15);
 		});
 
+		it("should create a reference on goto with a reference label in a section", () => {
+			let fakeDocument = createDocument("*choice\n\t#Option\n\t\t*goto {variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(26);
+			expect(received[0].location.range.end.line).to.equal(34);
+		});
+
 		it("should create a reference on gosub with a reference label", () => {
 			let fakeDocument = createDocument("*gosub {variable}");
 			let received: Array<Symbol> = [];
@@ -632,6 +648,22 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("other_variable");
 			expect(received[0].location.range.start.line).to.equal(16);
 			expect(received[0].location.range.end.line).to.equal(30);
+		});
+	
+		it("should callback on references in local variable creation inside a containing block", () => {
+			let fakeDocument = createDocument("*choice\n\t#Option\n\t\t*temp variable {other_variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("other_variable");
+			expect(received[0].location.range.start.line).to.equal(35);
+			expect(received[0].location.range.end.line).to.equal(49);
 		});
 	
 		it("should callback on label creation", () => {
@@ -1534,6 +1566,38 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("text_var");
 			expect(received[0].location.range.start.line).to.equal(18);
 			expect(received[0].location.range.end.line).to.equal(26);
+		});
+
+		it("should callback on sub-references in text commands", () => {
+			let fakeDocument = createDocument("*stat_chart\n\ttext {text_var}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("text_var");
+			expect(received[0].location.range.start.line).to.equal(19);
+			expect(received[0].location.range.end.line).to.equal(27);
+		});
+
+		it("should callback on sub-references in text commands that are in a section", () => {
+			let fakeDocument = createDocument("*choice\n\t#Option\n\t\t*stat_chart\n\t\t\ttext {text_var}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({text: s, location: l});
+			});
+	
+			parse(fakeDocument, fakeCallbacks);
+	
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("text_var");
+			expect(received[0].location.range.start.line).to.equal(40);
+			expect(received[0].location.range.end.line).to.equal(48);
 		});
 
 		it("should handle variable references in text commands", () => {
