@@ -433,12 +433,12 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			state.callbacks.onParseError(diagnostic);
 		}
 		else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
-			let startIndex = tokens.test.globalIndex + tokens.test.bareExpression.length;
+			let startLocalIndex = tokens.test.globalIndex - state.sectionGlobalIndex + tokens.test.bareExpression.length;
 			if (tokens.text.startsWith("(")) {
-				startIndex++;
+				startLocalIndex++;
 			}
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				startIndex, tokens.endIndex + textToSectionDelta,
+				startLocalIndex, tokens.endIndex + textToSectionDelta,
 				"Multireplace has no options", state);
 			state.callbacks.onParseError(diagnostic);
 		}
@@ -468,7 +468,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				const firstText = tokens.body[0].text.split(' ')[0];
 				if (nonWordOperatorsLookup.has(firstText)) {
 					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
-						tokens.test.globalIndex,
+						tokens.test.globalIndex - state.sectionGlobalIndex,
 						tokens.body[0].localIndex + firstText.length + textToSectionDelta,
 						"Potentially missing parentheses",
 						state);
