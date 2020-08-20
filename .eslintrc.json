@@ -21,7 +21,7 @@
         "@typescript-eslint"
     ],
     "rules": {
-        "indent": ["error", "tab"],
+        "indent": ["error", "tab", {"SwitchCase": 1],
         "no-constant-condition": ["error", { "checkLoops": false }],
         "prefer-const": "warn",
         "semi": ["error", "always"],
