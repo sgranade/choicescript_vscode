@@ -10,12 +10,12 @@ import { FlowControlEvent, SummaryScope } from '../../../server/src';
 
 const fakeDocumentUri = "file:///startup.txt";
 
-function createDocument(text: string, 
+function createDocument(text: string,
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
-	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return(Position.create(index, 0)); });
+	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }
 
@@ -40,63 +40,63 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onCommand(Arg.all()).mimicks(
 				(prefix: string, command: string, spacing: string, line: string, l: Location, state: ParsingState) => {
-				received.push({
-					prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					received.push({
+						prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					});
 				});
-			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].command).to.equal("fake_command");
 		});
-	
+
 		it("should ignore commands that aren't on a line by themselves", () => {
 			let fakeDocument = createDocument("incorrect *fake_command");
 			let received: Array<CommandLine> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onCommand(Arg.all()).mimicks(
 				(prefix: string, command: string, spacing: string, line: string, l: Location, state: ParsingState) => {
-				received.push({
-					prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					received.push({
+						prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					});
 				});
-			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(0);
 		});
-	
+
 		it("should send any spaces before the command", () => {
 			let fakeDocument = createDocument("\n  *fake_command");
 			let received: Array<CommandLine> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onCommand(Arg.all()).mimicks(
 				(prefix: string, command: string, spacing: string, line: string, l: Location, state: ParsingState) => {
-				received.push({
-					prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					received.push({
+						prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					});
 				});
-			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].prefix).to.equal("\n  ");
 		});
-	
+
 		it("should capture spacing and the rest of the line", () => {
 			let fakeDocument = createDocument("*fake_command  with arguments ");
 			let received: Array<CommandLine> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onCommand(Arg.all()).mimicks(
 				(prefix: string, command: string, spacing: string, line: string, l: Location, state: ParsingState) => {
-				received.push({
-					prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					received.push({
+						prefix: prefix, command: command, spacing: spacing, line: line, location: l
+					});
 				});
-			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].spacing).to.equal("  ");
 			expect(received[0].line).to.equal("with arguments ");
@@ -110,11 +110,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-				received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 		});
 
@@ -124,11 +124,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("label");
 			expect(received[0].labelLocation.range.start.line).to.equal(6);
@@ -141,11 +141,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});	
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("label");
 			expect(received[0].labelLocation.range.start.line).to.equal(7);
@@ -157,11 +157,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(7);
@@ -173,11 +173,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(26);
@@ -189,11 +189,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(8);
@@ -205,11 +205,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("param");
 			expect(received[0].location.range.start.line).to.equal(13);
@@ -222,11 +222,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("");
 			expect(received[0].sceneLocation).is.undefined;
@@ -238,11 +238,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("");
 			expect(received[0].sceneLocation).is.undefined;
@@ -254,11 +254,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(12);
@@ -271,11 +271,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(13);
@@ -288,11 +288,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("");
 			expect(received[0].labelLocation).is.undefined;
@@ -304,11 +304,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("");
 			expect(received[0].labelLocation).is.undefined;
@@ -320,11 +320,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("1-scenename");
 			expect(received[0].sceneLocation.range.start.line).to.equal(12);
@@ -337,11 +337,11 @@ describe("Parser", () => {
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
 				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
-					received.push({command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation});
-			});
-	
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("labelname");
 			expect(received[0].labelLocation.range.start.line).to.equal(22);
@@ -353,11 +353,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(23);
@@ -370,11 +370,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("parameter");
 			expect(received[0].location.range.start.line).to.equal(29);
@@ -390,9 +390,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(45);
@@ -409,9 +409,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
@@ -428,9 +428,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
@@ -447,9 +447,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(33);
@@ -464,9 +464,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(3);
 			expect(received[0].range.start.line).to.equal(8);
 			expect(received[0].range.end.line).to.equal(27);
@@ -483,9 +483,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(5);
 			expect(received[0].range.start.line).to.equal(24);
 			expect(received[0].range.end.line).to.equal(48);
@@ -507,9 +507,9 @@ describe("Parser", () => {
 				received.push(command);
 				received.push(line);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received).to.eql(["choice", "", "comment", "parsed"]);
 		});
 
@@ -520,9 +520,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received[0].summary).to.equal("choice");
 		});
 
@@ -533,9 +533,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received[0].summary).to.equal("fake_choice");
 		});
 
@@ -546,9 +546,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received[1].summary).to.equal("#One");
 		});
 
@@ -559,9 +559,9 @@ describe("Parser", () => {
 			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
 				received.push(scope);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received[1].summary).to.equal("#A very long first choice, it runs…");
 		});
 	});
@@ -572,59 +572,59 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onGlobalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(8);
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
-	
+
 		it("should callback on references in global variable creation", () => {
 			let fakeDocument = createDocument("*create variable {other_variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("other_variable");
 			expect(received[0].location.range.start.line).to.equal(18);
 			expect(received[0].location.range.end.line).to.equal(32);
 		});
-	
+
 		it("should callback on local variable creation", () => {
 			let fakeDocument = createDocument("*temp variable 3");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(6);
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
-	
+
 		it("should callback on param variable creation", () => {
 			let fakeDocument = createDocument("*params var1 var2");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(8);
@@ -633,49 +633,49 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(13);
 			expect(received[1].location.range.end.line).to.equal(17);
 		});
-	
+
 		it("should callback on references in local variable creation", () => {
 			let fakeDocument = createDocument("*temp variable {other_variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("other_variable");
 			expect(received[0].location.range.start.line).to.equal(16);
 			expect(received[0].location.range.end.line).to.equal(30);
 		});
-	
+
 		it("should callback on references in local variable creation inside a containing block", () => {
 			let fakeDocument = createDocument("*choice\n\t#Option\n\t\t*temp variable {other_variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("other_variable");
 			expect(received[0].location.range.start.line).to.equal(35);
 			expect(received[0].location.range.end.line).to.equal(49);
 		});
-	
+
 		it("should callback on label creation", () => {
 			let fakeDocument = createDocument("*label variable");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLabelCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(7);
@@ -687,141 +687,141 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onLocalVariableCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(29);
 			expect(received[0].location.range.end.line).to.equal(37);
 		});
 	});
-	
+
 	describe("Symbol-Manipulating Command Parsing", () => {
 		it("should callback on delete commands", () => {
 			let fakeDocument = createDocument("*delete variable");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(8);
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
-	
+
 		it("should callback on rand commands", () => {
 			let fakeDocument = createDocument("*rand variable 0 100");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(6);
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
-	
+
 		it("should callback on input_text commands", () => {
 			let fakeDocument = createDocument("*input_text variable");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(12);
 			expect(received[0].location.range.end.line).to.equal(20);
 		});
-	
+
 		it("should callback on input_number commands", () => {
 			let fakeDocument = createDocument("*input_number variable");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(14);
 			expect(received[0].location.range.end.line).to.equal(22);
 		});
-	
+
 		it("should callback on bare variables", () => {
 			let fakeDocument = createDocument("*set variable 3");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(5);
 			expect(received[0].location.range.end.line).to.equal(13);
 		});
-	
+
 		it("should callback on variables that are added to", () => {
 			let fakeDocument = createDocument("*set variable+3");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(5);
 			expect(received[0].location.range.end.line).to.equal(13);
 		});
-	
+
 		it("should callback on variable references", () => {
 			let fakeDocument = createDocument("*set {variable} 3");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(6);
 			expect(received[0].location.range.end.line).to.equal(14);
 		});
-	
+
 		it("should callback on more complex variable references", () => {
 			let fakeDocument = createDocument("*comment \n*set {var1} {var2 & \"hi\"}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(16);
@@ -830,47 +830,47 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(23);
 			expect(received[1].location.range.end.line).to.equal(27);
 		});
-	
+
 		it("should not callback on strings", () => {
 			let fakeDocument = createDocument('*set variable "value"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
-	
+
 		it("should callback on complex variable references", () => {
 			let fakeDocument = createDocument('*set {"this" + variable} 3');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(15);
 			expect(received[0].location.range.end.line).to.equal(23);
 		});
-	
+
 		it("should callback on variable replacements in strings", () => {
 			let fakeDocument = createDocument('*set variable "${other_variable}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(5);
@@ -879,93 +879,93 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(17);
 			expect(received[1].location.range.end.line).to.equal(31);
 		});
-	
+
 		it("should callback on multireplacements in strings", () => {
 			let fakeDocument = createDocument('*set variable "@{other_variable this | that}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("variable");
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(17);
 			expect(received[1].location.range.end.line).to.equal(31);
 		});
-	
+
 		it("should callback on set commands in choices", () => {
 			let fakeDocument = createDocument("*choice\n\t#First\n\t\t*set variable 3");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(23);
 			expect(received[0].location.range.end.line).to.equal(31);
 		});
-	
+
 		it("should not callback on variable references in strings", () => {
 			let fakeDocument = createDocument('*set variable "{other_variable}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
-	
+
 		it("should not callback on named operators", () => {
 			let fakeDocument = createDocument('*set variable 4 modulo 2');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
-	
-	
+
+
 		it("should not callback on functions", () => {
 			let fakeDocument = createDocument('*set variable round(2.3)');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
-	
+
 		it("should not callback on named values", () => {
 			let fakeDocument = createDocument('*set variable true');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 		});
@@ -975,11 +975,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(0);
 		});
 
@@ -988,75 +988,75 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("final_var");
 		});
 	});
-	
+
 	describe("Replace Parsing", () => {
 		it("should callback on bare variables", () => {
 			let fakeDocument = createDocument("${variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(2);
 			expect(received[0].location.range.end.line).to.equal(10);
 		});
-	
+
 		it("should callback on capitalized replacements", () => {
 			let fakeDocument = createDocument("$!{variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(3);
 			expect(received[0].location.range.end.line).to.equal(11);
 		});
-	
+
 		it("should callback on all-caps replacements", () => {
 			let fakeDocument = createDocument("$!!{variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(12);
 		});
-	
+
 		it("should callback on multiple variables in the replacement", () => {
 			let fakeDocument = createDocument('${var1 + var2}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(2);
@@ -1065,83 +1065,99 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(9);
 			expect(received[1].location.range.end.line).to.equal(13);
 		});
-	
+
 		it("should not callback on strings in the replacement", () => {
 			let fakeDocument = createDocument('${"var1" && var2}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("var2");
 			expect(received[0].location.range.start.line).to.equal(12);
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
-	
+
+		it("should callback on replacements in a page_break", () => {
+			let fakeDocument = createDocument("*page_break ${variable}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(14);
+			expect(received[0].location.range.end.line).to.equal(22);
+		});
+
 		it("should callback on replacements in an option", () => {
 			let fakeDocument = createDocument("*choice\n\t#One\n\t\t${variable}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(18);
 			expect(received[0].location.range.end.line).to.equal(26);
 		});
-	
+
 		it("should callback on multireplacements in the replacement", () => {
 			let fakeDocument = createDocument('${@{var1 true | false}}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(8);
 		});
 	});
-	
+
 	describe("Multireplace Parsing", () => {
 		it("should callback on bare variables in the test", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(2);
 			expect(received[0].location.range.end.line).to.equal(10);
 		});
-	
+
 		it("should callback on multiple variables in the test", () => {
 			let fakeDocument = createDocument('@{(var1 + var2 > 2) true | false}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(3);
@@ -1150,33 +1166,33 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(10);
 			expect(received[1].location.range.end.line).to.equal(14);
 		});
-	
+
 		it("should not callback on strings in the test", () => {
 			let fakeDocument = createDocument('@{("var1" = var2) true | false}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("var2");
 			expect(received[0].location.range.start.line).to.equal(12);
 			expect(received[0].location.range.end.line).to.equal(16);
 		});
-	
+
 		it("should callback on variables in the body", () => {
 			let fakeDocument = createDocument('@{true true bit | ${var}}');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("var");
 			expect(received[0].location.range.start.line).to.equal(20);
@@ -1188,15 +1204,31 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(2);
 			expect(received[0].location.range.end.line).to.equal(6);
+		});
+
+		it("should callback on multireplace in a *page_break", () => {
+			let fakeDocument = createDocument("*page_break @{variable this|that}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(14);
+			expect(received[0].location.range.end.line).to.equal(22);
 		});
 
 		it("should callback on multireplace in a *choice", () => {
@@ -1204,11 +1236,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(18);
@@ -1220,45 +1252,45 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(16);
 			expect(received[0].location.range.end.line).to.equal(24);
 		});
 	});
-	
+
 	describe("Variable-Referencing Command Parsing", () => {
 		it("should callback on local variables directly after a reference comand", () => {
 			let fakeDocument = createDocument("*if variable > 1");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(12);
 		});
-	
+
 		it("should callback on all local variables after a reference comand", () => {
 			let fakeDocument = createDocument("*if var1 > var2");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(4);
@@ -1267,33 +1299,33 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(11);
 			expect(received[1].location.range.end.line).to.equal(15);
 		});
-	
+
 		it("should callback on local variables in parentheses", () => {
 			let fakeDocument = createDocument("*if (variable > 1)");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(5);
 			expect(received[0].location.range.end.line).to.equal(13);
 		});
-	
+
 		it("should callback on variables in multiple parentheses", () => {
 			let fakeDocument = createDocument("*if (var1 > 1) or (var2 < 3)");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[0].text).to.equal("var1");
 			expect(received[0].location.range.start.line).to.equal(5);
@@ -1302,97 +1334,97 @@ describe("Parser", () => {
 			expect(received[1].location.range.start.line).to.equal(19);
 			expect(received[1].location.range.end.line).to.equal(23);
 		});
-	
+
 		it("should not callback on strings", () => {
 			let fakeDocument = createDocument('*if variable = "other_variable"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(4);
 			expect(received[0].location.range.end.line).to.equal(12);
 		});
-	
+
 		it("should callback on variable replacements in strings", () => {
 			let fakeDocument = createDocument('*if variable = "${other_variable}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(18);
 			expect(received[1].location.range.end.line).to.equal(32);
 		});
-	
+
 		it("should callback on complex variable replacements in strings", () => {
 			let fakeDocument = createDocument('*if variable = "${other_variable}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(18);
 			expect(received[1].location.range.end.line).to.equal(32);
 		});
-	
+
 		it("should callback on multireplacements in strings", () => {
 			let fakeDocument = createDocument('*if variable = "@{other_variable this | that}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(18);
 			expect(received[1].location.range.end.line).to.equal(32);
 		});
-	
+
 		it("should callback on multireplacements with replacements in strings", () => {
 			let fakeDocument = createDocument('*if variable = "@{true ${other_variable} | that}"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(25);
 			expect(received[1].location.range.end.line).to.equal(39);
 		});
-	
+
 		it("should callback on a reference command inside a choice command", () => {
 			let fakeDocument = createDocument("*choice\n\t*if variable\n\t\t# This is a choice");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(13);
@@ -1404,11 +1436,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(31);
@@ -1420,11 +1452,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(13);
@@ -1436,11 +1468,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("other_variable");
 			expect(received[1].location.range.start.line).to.equal(23);
@@ -1452,11 +1484,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("reference");
 			expect(received[0].location.range.start.line).to.equal(24);
@@ -1468,11 +1500,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("scene");
 			expect(received[0].location.range.start.line).to.equal(24);
@@ -1484,11 +1516,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("reference");
 			expect(received[0].location.range.start.line).to.equal(16);
@@ -1503,9 +1535,9 @@ describe("Parser", () => {
 				received.push(command);
 				received.push(line);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received).to.eql(["if", "variable", "comment", "parsed"]);
 		});
 
@@ -1514,28 +1546,28 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(0);
 		});
-	
+
 		it("should not callback on 2D arrays", () => {
 			let fakeDocument = createDocument('*if variable[other_var][another_var] = "other_variable"');
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(0);
 		});
 	});
-	
+
 	describe("Scene Parsing", () => {
 		it("should callback on scene definitions", () => {
 			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
@@ -1544,24 +1576,24 @@ describe("Parser", () => {
 			fakeCallbacks.onSceneDefinition(Arg.all()).mimicks((s: string[], l: Location, state: ParsingState) => {
 				received.push(s);
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received).to.eql([['scene-1', 'scene-2']]);
 		});
 	});
-	
+
 	describe("Stat Chart Command Parsing", () => {
 		it("should callback on references in text commands", () => {
 			let fakeDocument = createDocument("*stat_chart\n\ttext text_var");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("text_var");
 			expect(received[0].location.range.start.line).to.equal(18);
@@ -1573,11 +1605,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("text_var");
 			expect(received[0].location.range.start.line).to.equal(19);
@@ -1589,11 +1621,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("text_var");
 			expect(received[0].location.range.start.line).to.equal(40);
@@ -1605,11 +1637,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("text_var");
 			expect(received[0].location.range.start.line).to.equal(19);
@@ -1621,11 +1653,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(2);
 			expect(received[1].text).to.equal("title_var");
 			expect(received[1].location.range.start.line).to.equal(29);
@@ -1637,11 +1669,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("percent_var");
 			expect(received[0].location.range.start.line).to.equal(21);
@@ -1653,11 +1685,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("pair_var");
 			expect(received[0].location.range.start.line).to.equal(26);
@@ -1669,11 +1701,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(3);
 			expect(received[1].text).to.equal("text_var");
 			expect(received[1].location.range.start.line).to.equal(55);
@@ -1683,18 +1715,18 @@ describe("Parser", () => {
 			expect(received[2].location.range.end.line).to.equal(84);
 		});
 	});
-	
+
 	describe("Achievement Parsing", () => {
 		it("should callback on an achievement", () => {
 			let fakeDocument = createDocument("*achievement code_name");
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onAchievementCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("code_name");
 			expect(received[0].location.range.start.line).to.equal(13);
@@ -1706,11 +1738,11 @@ describe("Parser", () => {
 			let received: Array<Symbol> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onAchievementReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({text: s, location: l});
+				received.push({ text: s, location: l });
 			});
-	
+
 			parse(fakeDocument, fakeCallbacks);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].text).to.equal("code_name");
 			expect(received[0].location.range.start.line).to.equal(9);
@@ -1727,15 +1759,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*fake_command isn't a valid");
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(13);
 			});
-	
+
 			it("should flag commands with missing arguments", () => {
 				let fakeDocument = createDocument("*set");
 				let received: Array<Diagnostic> = [];
@@ -1743,15 +1775,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*set is missing its");
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(4);
 			});
-	
+
 			it("should flag commands with arguments that don't allow them", () => {
 				let fakeDocument = createDocument("*if true\n  stuff\n*else true\n  stuff");
 				let received: Array<Diagnostic> = [];
@@ -1759,15 +1791,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("must not have anything after it");
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(27);
 			});
-	
+
 			it("should warn commands with arguments that silently ignore them", () => {
 				let fakeDocument = createDocument("*choice ignored");
 				let received: Array<Diagnostic> = [];
@@ -1775,16 +1807,16 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
 				expect(received[0].message).to.include("This will be ignored");
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(15);
 			});
-	
+
 			it("should flag commands that can only be used in startup.txt", () => {
 				let fakeDocument = createDocument("*create var 3", "file:///scene.txt");
 				let received: Array<Diagnostic> = [];
@@ -1792,9 +1824,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*create can only be used in");
 				expect(received[0].range.start.line).to.equal(1);
@@ -1810,9 +1842,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(2);
 				expect(received[0].message).to.include("*if must have an indented line with contents after it");
 				expect(received[0].range.start.line).to.equal(1);
@@ -1829,9 +1861,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Command *elseif must be part of an *if");
 				expect(received[0].range.start.line).to.equal(36);
@@ -1845,9 +1877,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Command *else must be part of an *if");
 				expect(received[0].range.start.line).to.equal(1);
@@ -1861,9 +1893,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Command *elseif must be part of an *if");
 				expect(received[0].range.start.line).to.equal(1);
@@ -1877,9 +1909,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Not a valid value");
 				expect(received[0].range.start.line).to.equal(13);
@@ -1893,9 +1925,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Not a valid value");
 				expect(received[0].range.start.line).to.equal(25);
@@ -1909,9 +1941,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*label names can't have spaces");
 				expect(received[0].range.start.line).to.equal(14);
@@ -1925,9 +1957,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 		});
@@ -1940,9 +1972,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
 				expect(received[0].range.start.line).to.equal(19);
@@ -1956,9 +1988,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -1969,9 +2001,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Nothing except an *if or *selectable_if is allowed between *hide_reuse and the #option");
 				expect(received[0].range.start.line).to.equal(31);
@@ -1985,9 +2017,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -1998,9 +2030,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Arguments to an *if before an #option must be in parentheses");
 				expect(received[0].range.start.line).to.equal(23);
@@ -2014,9 +2046,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -2027,9 +2059,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Arguments to a *selectable_if before an #option must be in parentheses");
 				expect(received[0].range.start.line).to.equal(34);
@@ -2043,9 +2075,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -2056,9 +2088,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*disable_reuse must be before *selectable_if");
 				expect(received[0].range.start.line).to.equal(42);
@@ -2072,9 +2104,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be either an #option or an *if");
 				expect(received[0].range.start.line).to.equal(19);
@@ -2088,9 +2120,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -2101,9 +2133,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Line is not indented far enough");
 				expect(received[0].range.start.line).to.equal(37);
@@ -2117,9 +2149,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Tabs and spaces can't be mixed");
 				expect(received[0].range.start.line).to.equal(15);
@@ -2133,9 +2165,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Spaces used instead of tabs");
 				expect(received[0].range.start.line).to.equal(21);
@@ -2149,9 +2181,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Tabs used instead of spaces");
 				expect(received[0].range.start.line).to.equal(22);
@@ -2167,15 +2199,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Replacement is missing its }");
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(22);
 			});
-	
+
 			it("should flag an unterminated replace in a block", () => {
 				let fakeDocument = createDocument("*if true\n\treplace ${ with errors");
 				let received: Array<Diagnostic> = [];
@@ -2183,15 +2215,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Replacement is missing its }");
 				expect(received[0].range.start.line).to.equal(18);
 				expect(received[0].range.end.line).to.equal(32);
 			});
-	
+
 			it("should flag an empty replace", () => {
 				let fakeDocument = createDocument("replace ${} with errors");
 				let received: Array<Diagnostic> = [];
@@ -2199,15 +2231,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Replacement is empty");
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(11);
 			});
-	
+
 			it("should flag an empty replace in a block", () => {
 				let fakeDocument = createDocument("*if true\n\treplace ${} with errors");
 				let received: Array<Diagnostic> = [];
@@ -2215,9 +2247,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Replacement is empty");
 				expect(received[0].range.start.line).to.equal(18);
@@ -2233,9 +2265,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is missing its }");
 				expect(received[0].range.start.line).to.equal(13);
@@ -2249,9 +2281,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is missing its }");
 				expect(received[0].range.start.line).to.equal(23);
@@ -2265,15 +2297,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is empty");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(16);
 			});
-	
+
 			it("should flag an empty multireplace in a block", () => {
 				let fakeDocument = createDocument("*if true\n\tmultireplace @{} with errors");
 				let received: Array<Diagnostic> = [];
@@ -2281,15 +2313,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is empty");
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(26);
 			});
-	
+
 			it("should flag a multireplace with no options", () => {
 				let fakeDocument = createDocument("@{(var > 2) }");
 				let received: Array<Diagnostic> = [];
@@ -2297,15 +2329,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace has no options");
 				expect(received[0].range.start.line).to.equal(11);
 				expect(received[0].range.end.line).to.equal(13);
 			});
-	
+
 			it("should flag a multireplace with no options", () => {
 				let fakeDocument = createDocument("*if true\n\t@{(var > 2) }");
 				let received: Array<Diagnostic> = [];
@@ -2313,15 +2345,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace has no options");
 				expect(received[0].range.start.line).to.equal(21);
 				expect(received[0].range.end.line).to.equal(23);
 			});
-	
+
 			it("should flag a multireplace with only one option", () => {
 				let fakeDocument = createDocument("multireplace @{var true} with errors");
 				let received: Array<Diagnostic> = [];
@@ -2329,15 +2361,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace must have at least two options separated by |");
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(24);
 			});
-	
+
 			it("should flag a multireplace with only one option in a block", () => {
 				let fakeDocument = createDocument("*if true\n\tmultireplace @{var true} with errors");
 				let received: Array<Diagnostic> = [];
@@ -2345,15 +2377,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace must have at least two options separated by |");
 				expect(received[0].range.start.line).to.equal(33);
 				expect(received[0].range.end.line).to.equal(34);
 			});
-	
+
 			it("should not flag a multireplace with a blank first option", () => {
 				let fakeDocument = createDocument("multireplace @{(var) |, the redsmith's son,}");
 				let received: Array<Diagnostic> = [];
@@ -2361,12 +2393,12 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
-	
+
 			it("should flag a mistakenly nested multi-replace", () => {
 				let fakeDocument = createDocument('Previous line that is very very long\n@{var1 true bit | @{var2 other true bit | false bit}}\nNext line');
 				let received: Array<Diagnostic> = [];
@@ -2374,9 +2406,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplaces cannot be nested");
 				expect(received[0].range.start.line).to.equal(55);
@@ -2390,9 +2422,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplaces cannot be nested");
 				expect(received[0].range.start.line).to.equal(65);
@@ -2406,9 +2438,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Potentially missing parentheses");
 				expect(received[0].range.start.line).to.equal(2);
@@ -2422,9 +2454,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Potentially missing parentheses");
 				expect(received[0].range.start.line).to.equal(12);
@@ -2438,13 +2470,13 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 		});
-	
+
 		describe("Variable Creation Commands", () => {
 			it("should flag *create commands with no value to set the variable to", () => {
 				let fakeDocument = createDocument("*create variable");
@@ -2453,9 +2485,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Missing value to set the variable to");
 				expect(received[0].range.start.line).to.equal(16);
@@ -2469,9 +2501,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -2482,9 +2514,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("can only be used in startup.txt");
 				expect(received[0].range.start.line).to.equal(1);
@@ -2498,9 +2530,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must come before any *temp commands");
 				expect(received[0].range.start.line).to.equal(18);
@@ -2516,15 +2548,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Without parentheses, this expression will always be true");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(23);
 			});
-	
+
 			it("should be okay with *if (not(condition)) before a #choice", () => {
 				let fakeDocument = createDocument("*choice\n\t*if (not(false)) #Choice\n\t\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2532,12 +2564,12 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
-	
+
 			it("should flag non-boolean results", () => {
 				let fakeDocument = createDocument("*if 1\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2545,15 +2577,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(5);
 			});
-	
+
 			it("should flag non-boolean functions", () => {
 				let fakeDocument = createDocument("*if round(2)\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2561,15 +2593,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(12);
 			});
-	
+
 			it("should flag unbalanced parentheses", () => {
 				let fakeDocument = createDocument("*if not(var1&(var2&var3)\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2577,15 +2609,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Missing end )");
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(24);
 			});
-	
+
 			it("should flag chained conditions", () => {
 				let fakeDocument = createDocument("*if true and false and true\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2593,15 +2625,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Too many elements - are you missing parentheses");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(27);
 			});
-	
+
 			it("should not flag properly parenthesized conditions", () => {
 				let fakeDocument = createDocument("*if true and (false and true)\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2609,12 +2641,12 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
-	
+
 			it("should flag a not that's missing parentheses", () => {
 				let fakeDocument = createDocument("*if not true\n\tHi.");
 				let received: Array<Diagnostic> = [];
@@ -2622,9 +2654,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Function must be followed by");
 				expect(received[0].range.start.line).to.equal(4);
@@ -2638,9 +2670,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a boolean value");
 				expect(received[0].range.start.line).to.equal(4);
@@ -2654,9 +2686,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 
@@ -2667,9 +2699,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
 		});
@@ -2682,15 +2714,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Not a variable or variable reference");
 				expect(received[0].range.start.line).to.equal(5);
 				expect(received[0].range.end.line).to.equal(6);
 			});
-	
+
 			it("should flag a missing symbol after a bare math operator", () => {
 				let fakeDocument = createDocument("*set var +");
 				let received: Array<Diagnostic> = [];
@@ -2698,15 +2730,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Not a valid value");
 				expect(received[0].range.start.line).to.equal(9);
 				expect(received[0].range.end.line).to.equal(10);
 			});
-	
+
 			it("should flag too many symbols after a bare math operator", () => {
 				let fakeDocument = createDocument("*set var +1 + 2");
 				let received: Array<Diagnostic> = [];
@@ -2714,15 +2746,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Too many elements");
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(15);
 			});
-	
+
 			it("should flag a non-number symbol after a bare math operator", () => {
 				let fakeDocument = createDocument('*set var +"nope"');
 				let received: Array<Diagnostic> = [];
@@ -2730,15 +2762,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a number or a variable");
 				expect(received[0].range.start.line).to.equal(10);
 				expect(received[0].range.end.line).to.equal(16);
 			});
-	
+
 			it("should flag when there's no value to set the variable to", () => {
 				let fakeDocument = createDocument("*set variable");
 				let received: Array<Diagnostic> = [];
@@ -2746,15 +2778,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Missing value to set the variable to");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(13);
 			});
-	
+
 			it("should allow unbalanced operators", () => {
 				let fakeDocument = createDocument("*set variable +1");
 				let received: Array<Diagnostic> = [];
@@ -2762,12 +2794,12 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
-	
+
 			it("should flag a missing operator", () => {
 				let fakeDocument = createDocument('*set var 1 4');
 				let received: Array<Diagnostic> = [];
@@ -2775,15 +2807,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Incomplete expression");
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
-	
+
 			it("should flag a missing number after an operator", () => {
 				let fakeDocument = createDocument('*set var 1 +');
 				let received: Array<Diagnostic> = [];
@@ -2791,15 +2823,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Incomplete expression");
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
-	
+
 			it("should flag a not-number after a math operator", () => {
 				let fakeDocument = createDocument('*set var 1 + "nope"');
 				let received: Array<Diagnostic> = [];
@@ -2807,15 +2839,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a number");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(19);
 			});
-	
+
 			it("should flag a not-string operator after a string", () => {
 				let fakeDocument = createDocument('*set var "yep" + "nope"');
 				let received: Array<Diagnostic> = [];
@@ -2823,15 +2855,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Not a string or comparison operator");
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(16);
 			});
-	
+
 			it("should flag a not-number value after a string and the index operator", () => {
 				let fakeDocument = createDocument('*set var other_var#"hi"');
 				let received: Array<Diagnostic> = [];
@@ -2839,15 +2871,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a number or a variable");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(23);
 			});
-	
+
 			it("should flag a not-string value after a string operator", () => {
 				let fakeDocument = createDocument('*set var "yep" & 1');
 				let received: Array<Diagnostic> = [];
@@ -2855,15 +2887,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a string");
 				expect(received[0].range.start.line).to.equal(17);
 				expect(received[0].range.end.line).to.equal(18);
 			});
-	
+
 			it("should flag a non-number operator at the start of the expression", () => {
 				let fakeDocument = createDocument("*set variable and true");
 				let received: Array<Diagnostic> = [];
@@ -2871,15 +2903,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a numeric operator");
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(17);
 			});
-	
+
 			it("should flag unknown operators", () => {
 				let fakeDocument = createDocument("*set variable !var1");
 				let received: Array<Diagnostic> = [];
@@ -2887,9 +2919,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(2);
 				expect(received[0].message).to.include("Unknown operator");
 				expect(received[0].range.start.line).to.equal(14);
@@ -2898,7 +2930,7 @@ describe("Parser", () => {
 				expect(received[1].range.start.line).to.equal(19);
 				expect(received[1].range.end.line).to.equal(19);
 			});
-	
+
 			it("should flag unbalanced parentheses", () => {
 				let fakeDocument = createDocument("*set variable (1 + 2");
 				let received: Array<Diagnostic> = [];
@@ -2906,15 +2938,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Missing end )");
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(20);
 			});
-	
+
 			it("should flag chained operators", () => {
 				let fakeDocument = createDocument("*set variable 1 + 2 + 3");
 				let received: Array<Diagnostic> = [];
@@ -2922,15 +2954,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Too many elements");
 				expect(received[0].range.start.line).to.equal(20);
 				expect(received[0].range.end.line).to.equal(23);
 			});
-	
+
 			it("should not flag properly parenthesized operations", () => {
 				let fakeDocument = createDocument("*set variable true and (false and true)");
 				let received: Array<Diagnostic> = [];
@@ -2938,12 +2970,12 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(0);
 			});
-	
+
 			it("should flag a not that's missing parentheses", () => {
 				let fakeDocument = createDocument("*set variable not 1");
 				let received: Array<Diagnostic> = [];
@@ -2951,9 +2983,9 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Function must be followed by parentheses");
 				expect(received[0].range.start.line).to.equal(14);
@@ -2967,15 +2999,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be a numeric operator");
 				expect(received[0].range.start.line).to.equal(24);
 				expect(received[0].range.end.line).to.equal(27);
 			});
-	
+
 		});
 
 		describe("Stat Charts", () => {
@@ -2986,15 +3018,15 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("*stat_chart must have at least one stat");
 				expect(received[0].range.start.line).to.equal(0);
 				expect(received[0].range.end.line).to.equal(11);
 			});
-	
+
 			it("should raise an error for an unrecognized *stat_chart sub-command", () => {
 				let fakeDocument = createDocument("*stat_chart\n\tunrecognized command");
 				let received: Array<Diagnostic> = [];
@@ -3002,14 +3034,14 @@ describe("Parser", () => {
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 					received.push(e);
 				});
-		
+
 				parse(fakeDocument, fakeCallbacks);
-		
+
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(25);
-			});	
+			});
 		});
 	});
 
@@ -3021,7 +3053,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
@@ -3034,7 +3066,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(0);
@@ -3047,7 +3079,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(4);
@@ -3060,7 +3092,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
@@ -3073,7 +3105,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
@@ -3086,7 +3118,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
@@ -3099,7 +3131,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(8);
@@ -3112,7 +3144,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(5);
@@ -3125,7 +3157,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(4);
@@ -3138,7 +3170,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(3);
@@ -3151,7 +3183,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(10);
@@ -3164,7 +3196,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(5);
@@ -3177,7 +3209,7 @@ describe("Parser", () => {
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
 				received.push(e);
 			});
-	
+
 			const wordCount = parse(fakeDocument, fakeCallbacks);
 
 			expect(wordCount).to.equal(9);

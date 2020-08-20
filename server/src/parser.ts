@@ -1,7 +1,7 @@
 import { Range, Location, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 
-import { 
-	validCommands, 
+import {
+	validCommands,
 	multiStartPattern,
 	replacementStartPattern,
 	optionStartingLinePattern,
@@ -118,7 +118,7 @@ export class ParsingState {
  * @param state Parsing state.
  */
 function parsingPositionAt(offset: number, state: ParsingState): Position {
-	return state.textDocument.positionAt(state.sectionGlobalIndex + offset);	
+	return state.textDocument.positionAt(state.sectionGlobalIndex + offset);
 }
 
 /**
@@ -133,7 +133,7 @@ function parsingPositionAt(offset: number, state: ParsingState): Position {
  * @param state Parsing state.
  */
 function createParsingDiagnostic(severity: DiagnosticSeverity, start: number, end: number, message: string, state: ParsingState): Diagnostic {
-	return createDiagnostic(severity, state.textDocument, start+state.sectionGlobalIndex, end+state.sectionGlobalIndex, message);
+	return createDiagnostic(severity, state.textDocument, start + state.sectionGlobalIndex, end + state.sectionGlobalIndex, message);
 }
 
 /**
@@ -205,23 +205,23 @@ function parseTokenizedExpression(tokenizedExpression: Expression, state: Parsin
 		const tokenSectionIndex = tokenizedExpression.globalIndex - state.sectionGlobalIndex + token.index;
 		// Parse tokens in ways that aren't handled by the tokenizer
 		switch (token.type) {
-		case ExpressionTokenType.String:
-			parseString(token.text, tokenSectionIndex, 1, state);
-			break;
-		case ExpressionTokenType.Variable: {
-			const location = createParsingLocation(tokenSectionIndex, tokenSectionIndex + token.text.length, state);
-			state.callbacks.onVariableReference(token.text, location, state);
-			break;
-		}
-		case ExpressionTokenType.UnknownOperator: {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				tokenSectionIndex,
-				tokenSectionIndex + token.text.length,
-				"Unknown operator",
-				state);
-			state.callbacks.onParseError(diagnostic);
-			break;
-		}
+			case ExpressionTokenType.String:
+				parseString(token.text, tokenSectionIndex, 1, state);
+				break;
+			case ExpressionTokenType.Variable: {
+				const location = createParsingLocation(tokenSectionIndex, tokenSectionIndex + token.text.length, state);
+				state.callbacks.onVariableReference(token.text, location, state);
+				break;
+			}
+			case ExpressionTokenType.UnknownOperator: {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					tokenSectionIndex,
+					tokenSectionIndex + token.text.length,
+					"Unknown operator",
+					state);
+				state.callbacks.onParseError(diagnostic);
+				break;
+			}
 		}
 	}
 
@@ -362,7 +362,7 @@ function parseBareString(
  * @param state Parsing state.
  * @returns The local index to the end of the replacement.
  */
-function parseReplacement(text: string, openDelimiterLength: number, sectionIndex: number, 
+function parseReplacement(text: string, openDelimiterLength: number, sectionIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
 	// Internally, a replacement acts like a reference, so we can forward to it
 	return parseReference(text, openDelimiterLength, sectionIndex, localIndex, state);
@@ -378,7 +378,7 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
  * @param state Parsing state.
  * @returns The local index to the end of the multireplacement.
  */
-function parseMultireplacement(text: string, openDelimiterLength: number, sectionIndex: number, 
+function parseMultireplacement(text: string, openDelimiterLength: number, sectionIndex: number,
 	localIndex: number | undefined, state: ParsingState): number {
 
 	let textToSectionDelta: number;
@@ -510,7 +510,7 @@ function parseParams(line: string, lineSectionIndex: number, state: ParsingState
  */
 function parseSet(line: string, lineSectionIndex: number, state: ParsingState): void {
 	const tokenizedExpression = new Expression(
-		line, lineSectionIndex+state.sectionGlobalIndex, state.textDocument, true
+		line, lineSectionIndex + state.sectionGlobalIndex, state.textDocument, true
 	);
 	const tokens = tokenizedExpression.tokens;
 
@@ -581,54 +581,54 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 			expressionSectionIndex += lineMatch.groups.spacing.length;
 		}
 		switch (command) {
-		case "create":
-			// *create instantiates global variables
-			state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
-			// Warn about using *create after *temp in startup.txt
-			if (state.createdTempVariables && uriIsStartupFile(state.textDocument.uri)) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					commandSectionIndex, commandSectionIndex + command.length,
-					"Must come before any *temp commands", state);
-				state.callbacks.onParseError(diagnostic);
-			}
-			if (expression === undefined) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
-					"Missing value to set the variable to", state);
-				state.callbacks.onParseError(diagnostic);
-			}
-			else {
-				parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
-			}
-			break;
-		case "temp":
-			// *temp instantiates variables local to the scene file
-			state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
-			state.createdTempVariables = true;
-			if (expression !== undefined) {
-				parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
-			}
-			break;
-		case "label":
-			// *label creates a goto/gosub label local to the scene file.
-			state.callbacks.onLabelCreate(symbol, symbolLocation, state);
-			// A label's name can't contain spaces and then extra info
-			if (expression !== undefined && expression.trim() !== "" && spacing !== undefined) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					expressionSectionIndex - spacing.length, expressionSectionIndex,
-					"*label names can't have spaces", state);
-				state.callbacks.onParseError(diagnostic);
-			}
-			break;
-		case "delete":
-		case "rand":
-		case "input_text":
-		case "input_number":
-			// these reference a variable
-			state.callbacks.onVariableReference(symbol, symbolLocation, state);
-			break;
-		default:
-			throw Error(`Unexpected command ${command} in parseSymbolManipulatingCommand`);
+			case "create":
+				// *create instantiates global variables
+				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
+				// Warn about using *create after *temp in startup.txt
+				if (state.createdTempVariables && uriIsStartupFile(state.textDocument.uri)) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						commandSectionIndex, commandSectionIndex + command.length,
+						"Must come before any *temp commands", state);
+					state.callbacks.onParseError(diagnostic);
+				}
+				if (expression === undefined) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
+						"Missing value to set the variable to", state);
+					state.callbacks.onParseError(diagnostic);
+				}
+				else {
+					parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
+				}
+				break;
+			case "temp":
+				// *temp instantiates variables local to the scene file
+				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
+				state.createdTempVariables = true;
+				if (expression !== undefined) {
+					parseExpression(expression, expressionSectionIndex + state.sectionGlobalIndex, state);
+				}
+				break;
+			case "label":
+				// *label creates a goto/gosub label local to the scene file.
+				state.callbacks.onLabelCreate(symbol, symbolLocation, state);
+				// A label's name can't contain spaces and then extra info
+				if (expression !== undefined && expression.trim() !== "" && spacing !== undefined) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						expressionSectionIndex - spacing.length, expressionSectionIndex,
+						"*label names can't have spaces", state);
+					state.callbacks.onParseError(diagnostic);
+				}
+				break;
+			case "delete":
+			case "rand":
+			case "input_text":
+			case "input_number":
+				// these reference a variable
+				state.callbacks.onVariableReference(symbol, symbolLocation, state);
+				break;
+			default:
+				throw Error(`Unexpected command ${command} in parseSymbolManipulatingCommand`);
 		}
 	}
 }
@@ -639,8 +639,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
  * @param preTextIndex Index of that text in the global document.
  * @param state Parsing state.
  */
-function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): void
-{
+function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): void {
 	// Text before an #option must be either a single allowed command or a *_reuse *if set of commands (in that order)
 	const m = RegExp(commandPattern).exec(preText);
 	if (!m || m.groups === undefined || !optionAllowedCommandsLookup.has(m.groups.command)) {
@@ -654,34 +653,34 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 		const mReuse = /(?<=\s|^)\*(disable|enable|hide)_reuse(?=\s|$)/.exec(m.groups.commandLine ?? "");
 		if (mReuse !== null) {
 			const commandIndex = m.groups.commandPrefix.length;
-			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0; 
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0;
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				preTextIndex + commandLineIndex + mReuse.index,
 				preTextIndex + commandLineIndex + mReuse.index + mReuse[0].length,
 				`${mReuse[0]} must be before *${m.groups.command}`, state);
 			state.callbacks.onParseError(diagnostic);
 			// Take the command out of the string
-			preText = preText.slice(0, commandLineIndex + mReuse.index) 
-				+ " ".repeat(m[0].length) 
+			preText = preText.slice(0, commandLineIndex + mReuse.index)
+				+ " ".repeat(m[0].length)
 				+ preText.slice(commandLineIndex + mReuse.index + mReuse[0].length);
 		}
 		// No other commands can come after an "if", so parse it as a single line. Add in a "#"
 		// so that the parsing knows it's an *if before an #option
 		const oldEnclosingBlock = state.enclosingBlock;
 		state.enclosingBlock = "option";
-		parseSection(preText+"#fake", state.sectionGlobalIndex + preTextIndex, state);
+		parseSection(preText + "#fake", state.sectionGlobalIndex + preTextIndex, state);
 		state.enclosingBlock = oldEnclosingBlock;
 	}
 	else {  // *hide_reuse and similar
 		// There should be no other text after the *_reuse command other than an *if/*selectable_if
 		if (m.groups.commandLine?.trim() ?? "" !== "") {
 			const commandIndex = m.groups.commandPrefix.length;
-			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0; 
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0;
 
 			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
 				const oldEnclosingBlock = state.enclosingBlock;
 				state.enclosingBlock = "option";
-				parseSection(m.groups.commandLine+"#fake", state.sectionGlobalIndex + commandLineIndex, state);
+				parseSection(m.groups.commandLine + "#fake", state.sectionGlobalIndex + commandLineIndex, state);
 				state.enclosingBlock = oldEnclosingBlock;
 			}
 			else {
@@ -705,7 +704,7 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
  * @param state Parsing state.
  * @returns Text of the option, index of the line containing the option's contents, and the number of whitespace characters for the block.
  */
-function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number, 
+function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number,
 	optionIndent: number, isTabs: boolean, state: ParsingState): { optionText: string; optionContentsIndex: number; blockIndent: number } | undefined {
 	if (optionLine.splitLine === undefined) {  // We gotta have some indent
 		return undefined;
@@ -768,7 +767,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 			}
 			else {
 				return parseSingleOptionLine(
-					text, nextOptionLine, commandIndent, 
+					text, nextOptionLine, commandIndent,
 					nextOptionLine.splitLine.padding.length,
 					isTabs, state
 				);
@@ -796,7 +795,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 		parseBareString(optionText, optionLine.index + optionLine.splitLine.padding.length + hashIndex, optionText.length, state);
 
 		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
-	} 
+	}
 }
 
 /**
@@ -812,7 +811,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
  * @param state Parsing state.
  * @returns Tuple containing the last content line and the next line after the contents.
  */
-function parseSingleOptionContents(text: string, optionContentsIndex: number, optionIndent: number, 
+function parseSingleOptionContents(text: string, optionContentsIndex: number, optionIndent: number,
 	isTabs: boolean, state: ParsingState): [NewLine | undefined, NewLine | undefined] {
 	let optionContents = "";
 	let optionContentsIndent = -1;
@@ -1026,7 +1025,7 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
 		sceneList.push(m[3]);
 		lineStart = lineEnd;
 	}
-	
+
 	const startPosition = parsingPositionAt(startSectionIndex, state);
 	const endPosition = Position.create(
 		startPosition.line + sceneList.length, 0
@@ -1099,7 +1098,7 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 					state.callbacks.onParseError(diagnostic);
 				}
 				else if (variable[0] == '{') {
-					parseExpression(variable?.slice(1, -1), remainderStart+1+state.sectionGlobalIndex, state);
+					parseExpression(variable?.slice(1, -1), remainderStart + 1 + state.sectionGlobalIndex, state);
 				}
 				else {
 					const location = createParsingLocation(remainderStart, remainderStart + variable.length, state);
@@ -1153,7 +1152,7 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 	if (tokenizedExpression.evalType != ExpressionEvalType.Boolean &&
 		tokenizedExpression.evalType != ExpressionEvalType.Empty &&
 		tokenizedExpression.evalType != ExpressionEvalType.Unknowable) {
-		const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length-1];
+		const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 			tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
@@ -1190,7 +1189,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 	if (optionOnLineWithIf) {
 		const tokenizedExpressionSectionIndex = tokenizedExpression.globalIndex - state.sectionGlobalIndex;
 		// *if not(var) #option will always be true and needs parentheses
-		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) && 
+		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) &&
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
@@ -1291,7 +1290,7 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 		else {
 			parseSection(blockContents, state.sectionGlobalIndex + contentsIndex, state);
 		}
-	
+
 		currentIndex += blockContents.length;
 
 		if (m.groups.command == "else") {
@@ -1339,7 +1338,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 
 		// Evaluate first token expression (if any)
 		if (firstToken != "" && firstToken[0] == '{') {
-			parseExpression(firstToken.slice(1, -1), state.sectionGlobalIndex+lineSectionIndex+1, state);
+			parseExpression(firstToken.slice(1, -1), state.sectionGlobalIndex + lineSectionIndex + 1, state);
 		}
 
 		if (command.endsWith("_scene")) {
@@ -1360,7 +1359,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 			if (secondToken != "") {
 				// Parse the second token if necessary
 				if (secondToken[0] == '{') {
-					parseExpression(secondToken.slice(1, -1), lineSectionIndex+secondTokenLocalIndex+1, state);
+					parseExpression(secondToken.slice(1, -1), lineSectionIndex + secondTokenLocalIndex + 1, state);
 				}
 				label = secondToken;
 				const labelIndex = lineSectionIndex + secondTokenLocalIndex;
@@ -1426,7 +1425,7 @@ function checkCommandArgumentContents(command: string, commandSectionIndex: numb
 		state.callbacks.onParseError(diagnostic);
 		return false;
 	}
-	
+
 	if (argumentDisallowedCommandsLookup.has(command) && commandLine.trim() != "") {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandLineSectionIndex, commandLineSectionIndex + commandLine.length,
@@ -1486,12 +1485,12 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	if (insideBlockCommandsLookup.has(command)) {
 		if ((command == "selectable_if" && state.enclosingBlock !== "option") ||
-		(command != "selectable_if" && state.enclosingBlock !== "if")) {
+			(command != "selectable_if" && state.enclosingBlock !== "if")) {
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandSectionIndex, commandSectionIndex + command.length,
 				`Command *${command} must be ${(command == "selectable_if" ? "in front of an #option" : "part of an *if command block")}.`,
 				state);
-			state.callbacks.onParseError(diagnostic);	
+			state.callbacks.onParseError(diagnostic);
 		}
 	}
 
@@ -1514,8 +1513,8 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, nextLineIndex, state);
 		}
 	}
-	else if (command == "bug") {
-		// A *bug command treats the rest of the line as regular text output, which may contain variable references
+	else if (command == "bug" || command == "page_break") {
+		// Both *bug and *page_break commands treat the rest of the line as regular text output, which may contain variable references
 		parseBareString(line, lineSectionIndex, line.length, state);
 	}
 	else if (command == "scene_list") {
@@ -1560,7 +1559,7 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 	// and put the new one in the parsing state
 	const oldSectionIndex = state.sectionGlobalIndex;
 	state.sectionGlobalIndex = sectionGlobalIndex;
-	
+
 	const pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
