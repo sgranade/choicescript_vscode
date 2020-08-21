@@ -57,6 +57,12 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.4.2]
+
+- Greatly sped up the extension by refactoring parsing and validation.
+- Expression errors inside `*if` blocks and similar are now marked in the proper location.
+- Multireplace errors inside `*if` blocks and similar are now marked in the proper location.
+
 ### [1.4.1]
 
 - Bug fixes to symbol indexing and syntax highlighting.
