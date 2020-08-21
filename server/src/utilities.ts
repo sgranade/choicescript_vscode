@@ -5,7 +5,7 @@ import { Diagnostic, DiagnosticSeverity, TextDocument, Location, Range, Position
  * Map that stores and accesses string keys without regard to case.
  */
 export class CaseInsensitiveMap<T, U> extends Map<T, U> {
-	set (key: T, value: U): this {
+	set(key: T, value: U): this {
 		if (typeof key === 'string') {
 			key = key.toLowerCase() as unknown as T;
 		}
@@ -88,10 +88,10 @@ export function summarize(text: string, maxLength: number): string {
 		const trimmedText = text.slice(0, maxLength);
 		const m = /^(.*)(?: )/.exec(trimmedText);
 		if (m !== null) {
-			text = m[1]+"…";
+			text = m[1] + "…";
 		}
 		else {
-			text = trimmedText.slice(0, maxLength-1)+"…";
+			text = trimmedText.slice(0, maxLength - 1) + "…";
 		}
 	}
 
@@ -189,13 +189,24 @@ export function readLine(text: string, lineStart: number): NewLine | undefined {
  * @returns String contained within the delimiters, not including the closing delimiter.
  */
 export function extractToMatchingDelimiter(text: string, openDelimiter: string, closeDelimiter: string, startIndex = 0): string | undefined {
-	const match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
-	match.lastIndex = startIndex;
 	let matchEnd: number | undefined = undefined;
 	let delimiterCount = 0;
-	let extract: string | undefined = undefined;
-
 	let m: RegExpExecArray | null;
+
+	// Break out the case where the open and close delimiter are the same for speeeeed
+	if (openDelimiter == closeDelimiter) {
+		const match = RegExp(`(?<!\\\\)(\\${openDelimiter})`, 'g');
+		match.lastIndex = startIndex;
+
+		matchEnd = text.search(match);
+		if (matchEnd == -1) {
+			return undefined;
+		}
+		return text.slice(startIndex, matchEnd);
+	}
+
+	const match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
+	match.lastIndex = startIndex;
 
 	while ((m = match.exec(text))) {
 		if (m[0] == closeDelimiter) {
@@ -210,10 +221,10 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 			delimiterCount++;
 		}
 	}
-
-	if (matchEnd !== undefined)
-		extract = text.slice(startIndex, matchEnd);
-	return extract;
+	if (matchEnd == undefined) {
+		return undefined;
+	}
+	return text.slice(startIndex, matchEnd);
 }
 
 /**
@@ -329,7 +340,7 @@ export function rangeInOtherRange(range1: Range, range2: Range): boolean {
  * @param end End location in the text of the diagnostic message.
  * @param message Diagnostic message.
  */
-export function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument, 
+export function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument,
 	start: number, end: number, message: string): Diagnostic {
 	const diagnostic: Diagnostic = {
 		severity: severity,

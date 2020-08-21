@@ -2338,7 +2338,7 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(13);
 			});
 
-			it("should flag a multireplace with no options", () => {
+			it("should flag a multireplace in an if block with no options", () => {
 				let fakeDocument = createDocument("*if true\n\t@{(var > 2) }");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
