@@ -6,6 +6,7 @@ Changes to the plugin.
 
 ### Fixed
 
+- Greatly sped up the extension by refactoring parsing and validation.
 - Expression errors inside `*if` blocks and similar are now marked in the proper location.
 - Multireplace errors inside `*if` blocks and similar are now marked in the proper location.
 

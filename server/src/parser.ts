@@ -149,6 +149,8 @@ function createParsingLocation(start: number, end: number, state: ParsingState):
 	));
 }
 
+const stringDelimiterGlobalRegex = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
+
 /**
  * Parse a string in an expression as delimited by quote marks.
  * 
@@ -164,12 +166,12 @@ function parseString(text: string, sectionIndex: number, localIndex: number, sta
 	if (localIndex === undefined) {
 		localIndex = sectionIndex;
 	}
+	const oldDelimiterLastIndex = stringDelimiterGlobalRegex.lastIndex;
 
 	// Find the end of the string while dealing with any replacements or multireplacements we run into along the way
-	const delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
-	delimiterPattern.lastIndex = localIndex;
+	stringDelimiterGlobalRegex.lastIndex = localIndex;
 	let m: RegExpExecArray | null;
-	while ((m = delimiterPattern.exec(text))) {
+	while ((m = stringDelimiterGlobalRegex.exec(text))) {
 		if (m.groups === undefined)
 			break;
 
@@ -188,9 +190,11 @@ function parseString(text: string, sectionIndex: number, localIndex: number, sta
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
 		}
 
-		delimiterPattern.lastIndex = newLocalIndex;
+		stringDelimiterGlobalRegex.lastIndex = newLocalIndex;
 		localIndex = newLocalIndex;
 	}
+
+	stringDelimiterGlobalRegex.lastIndex = oldDelimiterLastIndex;
 
 	return localIndex;
 }
@@ -310,6 +314,8 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
 	return newLocalIndex;
 }
 
+const bareStringDelimiterGlobalRegex = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+
 /**
  * Parse a bare string.
  * 
@@ -326,9 +332,12 @@ function parseBareString(
 	const subsection = text.slice(0, endLocalIndex);
 
 	// Deal with any replacements or multireplacements
-	const delimiterPattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+	// Since we're using a single shared regex for speed, and this function can be called recursively,
+	// we need to be careful about how we use the regex's lastIndex setting
+	const previousLastIndex = bareStringDelimiterGlobalRegex.lastIndex;
+	bareStringDelimiterGlobalRegex.lastIndex = 0;  // Reset the global regex
 	let m: RegExpExecArray | null;
-	while ((m = delimiterPattern.exec(subsection))) {
+	while ((m = bareStringDelimiterGlobalRegex.exec(subsection))) {
 		if (m.groups === undefined)
 			break;
 
@@ -347,8 +356,9 @@ function parseBareString(
 			newLocalIndex = contentsLocalIndex;  // b/c contentsIndex points beyond the end of the string
 		}
 
-		delimiterPattern.lastIndex = newLocalIndex;
+		bareStringDelimiterGlobalRegex.lastIndex = newLocalIndex;
 	}
+	bareStringDelimiterGlobalRegex.lastIndex = previousLastIndex;
 }
 
 
@@ -367,6 +377,8 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
 	// Internally, a replacement acts like a reference, so we can forward to it
 	return parseReference(text, openDelimiterLength, sectionIndex, localIndex, state);
 }
+
+const multiStartRegex = RegExp(multiStartPattern);
 
 /**
  * Parse a multireplacement @{var true | false}.
@@ -403,8 +415,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 	}
 	else {
 		// Flag any nested multireplacements
-		const multiPattern = RegExp(multiStartPattern);
-		const m = tokens.text.match(multiPattern);
+		const m = tokens.text.match(multiStartRegex);
 		if (m !== null && m.index !== undefined) {
 			const startLocalIndex = localIndex + m.index;
 			let endLocalIndex: number;
@@ -633,6 +644,8 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 	}
 }
 
+const commandRegex = RegExp(commandPattern);
+
 /**
  * Parse text before an #option.
  * @param preText Text before the #option.
@@ -641,7 +654,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
  */
 function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): void {
 	// Text before an #option must be either a single allowed command or a *_reuse *if set of commands (in that order)
-	const m = RegExp(commandPattern).exec(preText);
+	const m = commandRegex.exec(preText);
 	if (!m || m.groups === undefined || !optionAllowedCommandsLookup.has(m.groups.command)) {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			preTextIndex, preTextIndex + preText.trimRight().length,
@@ -1245,13 +1258,12 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 
 	// As long as we have a next line w/an equal indent and it has an *elseif or an *else, keep going!
 	let nextLine: NewLine | undefined;
-	const commandRegExp = RegExp(commandPattern);
 	let m: RegExpExecArray | null;
 	let currentIndex = contentsIndex + blockContents.length;
 	while (true) {
 		nextLine = readNextNonblankLine(text, currentIndex);
 		// The next line must exist and be a command
-		if (nextLine === undefined || !(m = commandRegExp.exec(nextLine.line))) {
+		if (nextLine === undefined || !(m = commandRegex.exec(nextLine.line))) {
 			break;
 		}
 		// It must have the same indent
@@ -1547,6 +1559,8 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	return endParseIndex;
 }
 
+const sectionParsingGlobalRegex = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
+
 /**
  * Parse a section of a ChoiceScript document
  * 
@@ -1556,14 +1570,15 @@ function parseCommand(document: string, prefix: string, command: string, spacing
  */
 function parseSection(section: string, sectionGlobalIndex: number, state: ParsingState): void {
 	// Since we recursively parse sections, save off the old section index
-	// and put the new one in the parsing state
+	// and put the new one in the parsing state. Also do the same for the section-parsing regex
 	const oldSectionIndex = state.sectionGlobalIndex;
 	state.sectionGlobalIndex = sectionGlobalIndex;
+	const oldPatternLastIndex = sectionParsingGlobalRegex.lastIndex;
+	sectionParsingGlobalRegex.lastIndex = 0;
 
-	const pattern = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
 	let m: RegExpExecArray | null;
 
-	while ((m = pattern.exec(section))) {
+	while ((m = sectionParsingGlobalRegex.exec(section))) {
 		if (m.groups === undefined) {
 			continue;
 		}
@@ -1577,24 +1592,30 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 			const commandIndex = m.index + prefix.length + 1;
 			// Command parsing occasionally consumes more than one line
 			const endIndex = parseCommand(section, prefix, command, spacing, line, commandIndex, state);
-			pattern.lastIndex = endIndex;
+			sectionParsingGlobalRegex.lastIndex = endIndex;
 		}
 		else if (m.groups.replacement) {
 			const subsectionIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
 			const endIndex = parseReplacement(section, m[0].length, subsectionIndex, undefined, state);
-			pattern.lastIndex = endIndex;
+			sectionParsingGlobalRegex.lastIndex = endIndex;
 		}
 		else if (m.groups.multi) {
 			const subsectionIndex = m.index + m[0].length;
 			// Since the match doesn't consume the whole replacement, jigger the pattern's last index by hand
 			const endIndex = parseMultireplacement(section, m[0].length, subsectionIndex, undefined, state);
-			pattern.lastIndex = endIndex;
+			sectionParsingGlobalRegex.lastIndex = endIndex;
 		}
 	}
 
+	sectionParsingGlobalRegex.lastIndex = oldPatternLastIndex;
 	state.sectionGlobalIndex = oldSectionIndex;
 }
+
+const markupGlobalRegex = RegExp(markupPattern, 'g');
+const optionStartingLineGlobalRegex = RegExp(optionStartingLinePattern, 'g');
+const commandLineGlobalRegex = RegExp(commandPattern, 'g');
+const replacementMultiStartGlobalRegex = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
 
 /**
  * Count the number of words in a section of the document.
@@ -1605,28 +1626,35 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
  */
 export function countWords(section: string, textDocument: TextDocument): number {
 	// Get rid of every bit of markup
-	const markup = RegExp(markupPattern, 'g');
-	section = section.replace(markup, "");
+	const oldMarkupLastIndex = markupGlobalRegex.lastIndex;
+	markupGlobalRegex.lastIndex = 0;
+	section = section.replace(markupGlobalRegex, "");
+	markupGlobalRegex.lastIndex = oldMarkupLastIndex;
 
 	// Get rid of every leading option character & allowed commands
 	// (so that we don't mis-count "# I'm an option!" as having 4 words
 	// or miss options that have an *if in front of them)
-	const choiceLine = RegExp(optionStartingLinePattern, 'g');
 	// Keep the leading newline (if it exists)
-	section = section.replace(choiceLine, "$1 ");
+	const oldStartingLineLastIndex = optionStartingLineGlobalRegex.lastIndex;
+	optionStartingLineGlobalRegex.lastIndex = 0;
+	section = section.replace(optionStartingLineGlobalRegex, "$1 ");
+	optionStartingLineGlobalRegex.lastIndex = oldStartingLineLastIndex;
 
 	// Get rid of every line that's a command
-	const commandLine = RegExp(commandPattern, 'g');
 	// Keep the leading newline (if it exists)
-	section = section.replace(commandLine, "$1");
+	const oldCommandLineLastIndex = commandLineGlobalRegex.lastIndex;
+	commandLineGlobalRegex.lastIndex = 0;
+	section = section.replace(commandLineGlobalRegex, "$1");
+	commandLineGlobalRegex.lastIndex = oldCommandLineLastIndex;
 
 	// Go through and reduce each multi pattern or replacement to its equivalent words
-	const pattern = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
+	const oldReplacementMultiLastIndex = replacementMultiStartGlobalRegex.lastIndex;
+	replacementMultiStartGlobalRegex.lastIndex = 0;
 	let m: RegExpExecArray | null;
 	const portions = [];
 	let lastIndex = 0;
 
-	while ((m = pattern.exec(section))) {
+	while ((m = replacementMultiStartGlobalRegex.exec(section))) {
 		if (m.groups === undefined) {
 			continue;
 		}
@@ -1636,7 +1664,7 @@ export function countWords(section: string, textDocument: TextDocument): number 
 		if (m.groups.replacement) {
 			const replacement = extractToMatchingDelimiter(section, '{', '}', m.index + m[0].length);
 			if (replacement !== undefined) {
-				pattern.lastIndex += replacement.length;
+				replacementMultiStartGlobalRegex.lastIndex += replacement.length;
 			}
 		}
 		else if (m.groups.multi) {
@@ -1651,13 +1679,14 @@ export function countWords(section: string, textDocument: TextDocument): number 
 					}
 					portions.push(text);
 				}
-				pattern.lastIndex = multiTokens.endIndex;
+				replacementMultiStartGlobalRegex.lastIndex = multiTokens.endIndex;
 			}
 		}
 
-		lastIndex = pattern.lastIndex;
+		lastIndex = replacementMultiStartGlobalRegex.lastIndex;
 	}
 	portions.push(section.slice(lastIndex));
+	replacementMultiStartGlobalRegex.lastIndex = oldReplacementMultiLastIndex;
 
 	// Rejoin the portions
 	section = portions.join("").trim();

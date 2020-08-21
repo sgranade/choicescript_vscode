@@ -2,9 +2,9 @@ import { TextDocument, Location, Diagnostic, DiagnosticSeverity } from 'vscode-l
 
 import { ProjectIndex } from "./index";
 import { findVariableCreationLocations, findLabelLocation } from "./searches";
-import { 
+import {
 	builtinVariables,
-	uriIsStartupFile, 
+	uriIsStartupFile,
 	stylePattern,
 	variableIsAchievement,
 	variableIsPossibleParameter,
@@ -159,9 +159,9 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 		else if (!builtinVariablesLookup.has(variable)) {
 			const scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
 			let trimmedLocations = locations;
-			
+
 			// Get rid of any variables that are legal achievement variables
-			if (scopes.achievementVarScopes.length > 0 && 
+			if (scopes.achievementVarScopes.length > 0 &&
 				variableIsAchievement(variable, state.projectIndex.getAchievements()) !== undefined) {
 				for (const scopeRange of scopes.achievementVarScopes) {
 					trimmedLocations = locations.filter((location: Location) => {
@@ -222,6 +222,8 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 	return diagnostics;
 }
 
+const commandRegex = RegExp(commandPattern);
+
 /**
  * Validate a set of characters against the Choice of Games style manual.
  * 
@@ -231,10 +233,9 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
  * @returns Diagnostic message, if any.
  */
 function validateStyle(characters: string, index: number, state: ValidationState): Diagnostic | undefined {
-	const lineBegin = findLineBegin(state.text, index-1);
-	const line = state.text.substring(lineBegin, index-1);
-	const commandSearch = RegExp(commandPattern);
-	const m = commandSearch.exec(line);
+	const lineBegin = findLineBegin(state.text, index - 1);
+	const line = state.text.substring(lineBegin, index - 1);
+	const m = commandRegex.exec(line);
 	let actualCommand = m?.groups?.command;
 	if (actualCommand === undefined) {
 		actualCommand = "";
@@ -267,10 +268,9 @@ function validateCommandInLine(command: string, index: number, state: Validation
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (validCommandsLookup.has(command)) {
-		const lineBegin = findLineBegin(state.text, index-1);
-		const line = state.text.substring(lineBegin, index-1);
-		const commandSearch = RegExp(commandPattern);
-		const m = commandSearch.exec(line);
+		const lineBegin = findLineBegin(state.text, index - 1);
+		const line = state.text.substring(lineBegin, index - 1);
+		const m = commandRegex.exec(line);
 		const actualCommand = m?.groups?.command ?? "";
 
 		// Anything goes in a comment
@@ -282,7 +282,7 @@ function validateCommandInLine(command: string, index: number, state: Validation
 		if ((command == "if" || command == "selectable_if") && (reuseCommandsLookup.has(actualCommand))) {
 			return;
 		}
-		
+
 		// Throw out this corner case since it's an error that's caught in parsing
 		if (reuseCommandsLookup.has(command) && (actualCommand == "if" || actualCommand == "selectable_if")) {
 			return;
@@ -295,6 +295,8 @@ function validateCommandInLine(command: string, index: number, state: Validation
 
 	return diagnostic;
 }
+
+const mulitStartRegex = RegExp(multiStartPattern);
 
 /**
  * Validate a choice option.
@@ -310,11 +312,10 @@ function validateOption(option: string, index: number, state: ValidationState): 
 
 	// Count words while handling multireplaces
 	let runningWordCount = 0;
-	const multiPattern = RegExp(multiStartPattern);
 	let e: RegExpExecArray | null;
 	let remainingOption = option;
 	let remainingLocalIndex = 0;
-	while ((e = multiPattern.exec(remainingOption))) {
+	while ((e = mulitStartRegex.exec(remainingOption))) {
 		const contentsSublocalIndex = e.index + e[0].length;
 		const tokens = tokenizeMultireplace(
 			remainingOption, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
@@ -467,6 +468,6 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 				diagnostics.push(diagnostic);
 		}
 	}
-	
+
 	return diagnostics;
 }

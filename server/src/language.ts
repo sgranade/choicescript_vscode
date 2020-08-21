@@ -90,17 +90,17 @@ export const variableManipulationCommands: ReadonlyArray<string> = [
 /**
  * Commands that control flow.
  */
-export const flowControlCommands: ReadonlyArray<string> = [ "goto", "gosub", "goto_scene", "gosub_scene", "return" ];
+export const flowControlCommands: ReadonlyArray<string> = ["goto", "gosub", "goto_scene", "gosub_scene", "return"];
 
 /**
  * Sub-commands under a *stat_chart command.
  */
-export const statChartCommands: ReadonlyArray<string> = [ "text", "percent", "opposed_pair" ];
+export const statChartCommands: ReadonlyArray<string> = ["text", "percent", "opposed_pair"];
 
 /**
  * Sub-commands under a *stat_chart command that have at least one indented line after.
  */
-export const statChartBlockCommands: ReadonlyArray<string> = [ "opposed_pair" ];
+export const statChartBlockCommands: ReadonlyArray<string> = ["opposed_pair"];
 
 /* COMPLETIONS */
 
@@ -258,9 +258,11 @@ export function extractSymbolAtIndex(text: string, index: number): string {
 	while (end < text.length && symbolCharacter.test(text[end]))
 		end++;
 
-	const symbol = text.slice(start+1, end);
+	const symbol = text.slice(start + 1, end);
 	return symbol;
 }
+
+const wordCharGlobalRegex = /\w+/g;
 
 /**
  * Extract a token from a string.
@@ -283,15 +285,21 @@ export function extractTokenAtIndex(
 	}
 	for (let i = 0; i < delimiters.length; i += 2) {
 		if (text[index] == delimiters[i]) {
-			const match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i+1], index+1);
+			const match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i + 1], index + 1);
 			if (match !== undefined) {
-				return delimiters[i] + match + delimiters[i+1];
+				return delimiters[i] + match + delimiters[i + 1];
 			}
 			return undefined;
 		}
 	}
 
-	const pattern = RegExp(`[${symbolChars}]+`, 'g');
+	let pattern: RegExp;
+	if (symbolChars == "\\w") {
+		pattern = wordCharGlobalRegex;
+	}
+	else {
+		pattern = RegExp(`[${symbolChars}]+`, 'g');
+	}
 	pattern.lastIndex = index;
 	const m = pattern.exec(text);
 	if (m !== null && m.index == index) {
