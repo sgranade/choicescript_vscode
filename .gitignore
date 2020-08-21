@@ -7,4 +7,5 @@ out/
 *.vsix
 .nyc_output
 coverage.lcov
+vscode-profile*
 private-notes.txt

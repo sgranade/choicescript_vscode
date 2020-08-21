@@ -179,6 +179,12 @@ export function readLine(text: string, lineStart: number): NewLine | undefined {
 	return processedLine;
 }
 
+// extractToMatchingDelimiter is called a _lot_, so caching the regexes we commonly use speeds
+// everything up lots
+const quoteSearch = /(?<!\\)"/g;
+const bracketSearch = /(?<!\\)[{}]/g;
+const parensSearch = /(?<!\\)[()]/g;
+
 /**
  * Scan text to find a matching delimiter, skipping escaped delimiters.
  * 
@@ -192,10 +198,29 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 	let matchEnd: number | undefined = undefined;
 	let delimiterCount = 0;
 	let m: RegExpExecArray | null;
+	let match: RegExp;
+
+	let sameDelimiter = false;
+	if (closeDelimiter == '}') {
+		match = bracketSearch;
+	}
+	else if (closeDelimiter == '"') {
+		match = quoteSearch;
+		sameDelimiter = true;
+	}
+	else if (closeDelimiter == ')') {
+		match = parensSearch;
+	}
+	else if (openDelimiter == closeDelimiter) {
+		match = RegExp(`(?<!\\\\)\\${openDelimiter})`, 'g');
+		sameDelimiter = true;
+	}
+	else {
+		match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
+	}
 
 	// Break out the case where the open and close delimiter are the same for speeeeed
 	if (openDelimiter == closeDelimiter) {
-		const match = RegExp(`(?<!\\\\)(\\${openDelimiter})`, 'g');
 		match.lastIndex = startIndex;
 
 		matchEnd = text.search(match);
@@ -204,27 +229,27 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 		}
 		return text.slice(startIndex, matchEnd);
 	}
+	else {
+		match.lastIndex = startIndex;
 
-	const match = RegExp(`(?<!\\\\)(\\${openDelimiter}|\\${closeDelimiter})`, 'g');
-	match.lastIndex = startIndex;
-
-	while ((m = match.exec(text))) {
-		if (m[0] == closeDelimiter) {
-			if (delimiterCount)
-				delimiterCount--;
-			else {
-				matchEnd = m.index;
-				break;
+		while ((m = match.exec(text))) {
+			if (m[0] == closeDelimiter) {
+				if (delimiterCount)
+					delimiterCount--;
+				else {
+					matchEnd = m.index;
+					break;
+				}
+			}
+			else if (m[0] == openDelimiter) {
+				delimiterCount++;
 			}
 		}
-		else if (m[0] == openDelimiter) {
-			delimiterCount++;
+		if (matchEnd == undefined) {
+			return undefined;
 		}
+		return text.slice(startIndex, matchEnd);
 	}
-	if (matchEnd == undefined) {
-		return undefined;
-	}
-	return text.slice(startIndex, matchEnd);
 }
 
 /**
