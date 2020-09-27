@@ -1,16 +1,17 @@
-import { Diagnostic, TextDocument, DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic } from './utilities';
-import { 
-	functions, 
-	booleanNamedOperators, 
-	numericNamedOperators, 
-	booleanNamedValues, 
-	mathOperators, 
-	comparisonOperators, 
-	stringOperators, 
-	numberFunctions, 
-	booleanFunctions 
+import {
+	functions,
+	booleanNamedOperators,
+	numericNamedOperators,
+	booleanNamedValues,
+	mathOperators,
+	comparisonOperators,
+	stringOperators,
+	numberFunctions,
+	booleanFunctions
 } from './language';
 
 const functionsLookup: ReadonlyMap<string, number> = new Map(functions.map(x => [x, 1]));
@@ -79,7 +80,7 @@ export interface ExpressionToken {
  */
 function functionArgumentType(token: ExpressionToken): ExpressionEvalType {
 	let type: ExpressionEvalType;
-	
+
 	const functionName = token.text.split('(')[0];
 	if (numberFunctionsLookup.has(functionName)) {
 		// Special case length(), which takes a string
@@ -179,24 +180,24 @@ export function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType 
 			effectiveType = ExpressionTokenType.BooleanNamedValue;
 		}
 	}
-	
+
 	// Ditto for parentheses
 	if (effectiveType == ExpressionTokenType.Parentheses && token.contents !== undefined) {
 		switch (token.contents.evalType) {
-		case ExpressionEvalType.Number:
-			effectiveType = ExpressionTokenType.Number;
-			break;
-		case ExpressionEvalType.Boolean:
-			effectiveType = ExpressionTokenType.BooleanNamedValue;
-			break;
-		case ExpressionEvalType.String:
-			effectiveType = ExpressionTokenType.String;
-			break;
-		case ExpressionEvalType.Empty:
-		case ExpressionEvalType.Unknowable:
-		case ExpressionEvalType.Error:
-			effectiveType = ExpressionTokenType.Variable;
-			break;
+			case ExpressionEvalType.Number:
+				effectiveType = ExpressionTokenType.Number;
+				break;
+			case ExpressionEvalType.Boolean:
+				effectiveType = ExpressionTokenType.BooleanNamedValue;
+				break;
+			case ExpressionEvalType.String:
+				effectiveType = ExpressionTokenType.String;
+				break;
+			case ExpressionEvalType.Empty:
+			case ExpressionEvalType.Unknowable:
+			case ExpressionEvalType.Error:
+				effectiveType = ExpressionTokenType.Variable;
+				break;
 		}
 	}
 
@@ -217,28 +218,28 @@ function checkOperatorAgainstToken(
 
 	const effectiveType = tokenEffectiveType(token);
 
-	switch(effectiveType) {
-	case ExpressionTokenType.Number:
-		if (operator.type !== ExpressionTokenType.MathOperator &&
+	switch (effectiveType) {
+		case ExpressionTokenType.Number:
+			if (operator.type !== ExpressionTokenType.MathOperator &&
 				operator.type !== ExpressionTokenType.ComparisonOperator) {
-			errorMessage = "Not a numeric operator";
-		}
-		break;
-	case ExpressionTokenType.BooleanNamedValue:
-		if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
-			errorMessage = "Not a boolean operator";
-		}
-		break;
-	case ExpressionTokenType.String:
-		if (operator.type == ExpressionTokenType.ComparisonOperator) {
-			if (operator.text != "!=" && operator.text != "=") {
-				errorMessage = "Not compatible with strings";
+				errorMessage = "Not a numeric operator";
 			}
-		}
-		else if (operator.type != ExpressionTokenType.StringOperator) {
-			errorMessage = "Not a string or comparison operator";
-		}
-		break;
+			break;
+		case ExpressionTokenType.BooleanNamedValue:
+			if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
+				errorMessage = "Not a boolean operator";
+			}
+			break;
+		case ExpressionTokenType.String:
+			if (operator.type == ExpressionTokenType.ComparisonOperator) {
+				if (operator.text != "!=" && operator.text != "=") {
+					errorMessage = "Not compatible with strings";
+				}
+			}
+			else if (operator.type != ExpressionTokenType.StringOperator) {
+				errorMessage = "Not a string or comparison operator";
+			}
+			break;
 	}
 
 	return errorMessage;
@@ -256,39 +257,39 @@ function checkTokenAgainstOperator(
 	token: ExpressionToken): string | undefined {
 	let errorMessage: string | undefined = undefined;
 
-	switch(operator.type) {
-	case ExpressionTokenType.MathOperator:
-	case ExpressionTokenType.NumericNamedOperator:
-		if (!isNumberCompatible(token)) {
-			errorMessage = "Must be a number or a variable";
-		}
-		break;
-	case ExpressionTokenType.ComparisonOperator:
-		if (operator.text != "!=" && operator.text != "=") {
-			// Inequality check
+	switch (operator.type) {
+		case ExpressionTokenType.MathOperator:
+		case ExpressionTokenType.NumericNamedOperator:
 			if (!isNumberCompatible(token)) {
 				errorMessage = "Must be a number or a variable";
 			}
-		}
-		break;
-	case ExpressionTokenType.StringOperator:
-		// String operators are a special case, since the "#" operator works on numbers
-		if (operator.text == "#") {
-			if (!isNumberCompatible(token)) {
-				errorMessage = "Must be a number or a variable";
+			break;
+		case ExpressionTokenType.ComparisonOperator:
+			if (operator.text != "!=" && operator.text != "=") {
+				// Inequality check
+				if (!isNumberCompatible(token)) {
+					errorMessage = "Must be a number or a variable";
+				}
 			}
-		}
-		else {
-			if (!isStringCompatible(token)) {
-				errorMessage = "Must be a string or a variable";
-			}	
-		}
-		break;
-	case ExpressionTokenType.BooleanNamedOperator:
-		if (!isBooleanCompatible(token)) {
-			errorMessage = "Must be a boolean value or a variable";
-		}
-		break;
+			break;
+		case ExpressionTokenType.StringOperator:
+			// String operators are a special case, since the "#" operator works on numbers
+			if (operator.text == "#") {
+				if (!isNumberCompatible(token)) {
+					errorMessage = "Must be a number or a variable";
+				}
+			}
+			else {
+				if (!isStringCompatible(token)) {
+					errorMessage = "Must be a string or a variable";
+				}
+			}
+			break;
+		case ExpressionTokenType.BooleanNamedOperator:
+			if (!isBooleanCompatible(token)) {
+				errorMessage = "Must be a boolean value or a variable";
+			}
+			break;
 	}
 
 	return errorMessage;
@@ -309,24 +310,24 @@ function determineEvalType(token: ExpressionToken): ExpressionEvalType {
 		return ExpressionEvalType.Error;
 	}
 
-	switch(tokenEffectiveType(token)) {
-	case ExpressionTokenType.Number:
-	case ExpressionTokenType.MathOperator:
-	case ExpressionTokenType.NumericNamedOperator:
-		return ExpressionEvalType.Number;
+	switch (tokenEffectiveType(token)) {
+		case ExpressionTokenType.Number:
+		case ExpressionTokenType.MathOperator:
+		case ExpressionTokenType.NumericNamedOperator:
+			return ExpressionEvalType.Number;
 
-	case ExpressionTokenType.BooleanNamedValue:
-	case ExpressionTokenType.ComparisonOperator:
-	case ExpressionTokenType.BooleanNamedOperator:
-		return ExpressionEvalType.Boolean;
+		case ExpressionTokenType.BooleanNamedValue:
+		case ExpressionTokenType.ComparisonOperator:
+		case ExpressionTokenType.BooleanNamedOperator:
+			return ExpressionEvalType.Boolean;
 
-	case ExpressionTokenType.String:
-	case ExpressionTokenType.StringOperator:
-		return ExpressionEvalType.String;
+		case ExpressionTokenType.String:
+		case ExpressionTokenType.StringOperator:
+			return ExpressionEvalType.String;
 
-	case ExpressionTokenType.Variable:
-	case ExpressionTokenType.VariableReference:
-		return ExpressionEvalType.Unknowable;
+		case ExpressionTokenType.Variable:
+		case ExpressionTokenType.VariableReference:
+			return ExpressionEvalType.Unknowable;
 	}
 
 	return ExpressionEvalType.Error;
@@ -373,8 +374,8 @@ export class Expression {
 	/**
 	 * Slice an expression into a sub-expression by the tokens.
 	 * @param state: Parsing state
-     * @param start The beginning token of the specified portion of the expression.
-     * @param end The end token of the specified portion of the expression. This is exclusive of the token at the index 'end'.
+	 * @param start The beginning token of the specified portion of the expression.
+	 * @param end The end token of the specified portion of the expression. This is exclusive of the token at the index 'end'.
 	 */
 	slice(start?: number, end?: number): Expression {
 		if (start === undefined || start < 0) {
@@ -431,11 +432,11 @@ export class Expression {
 			// The word boundary split breaks apart floating point numbers because of the period
 			// so glue those back together. Numbers are guaranteed to have no spaces around them
 			// since that's a word boundary -- a transition from number to space or space to number.
-			if (stringIsNumber(chunk) && i + 1 < chunks.length && chunks[i+1] == ".") {
+			if (stringIsNumber(chunk) && i + 1 < chunks.length && chunks[i + 1] == ".") {
 				chunk = chunk + ".";
 				i++;
-				if (i + 1 < chunks.length && stringIsNumber(chunks[i+1])) {
-					chunk = chunk + chunks[i+1];
+				if (i + 1 < chunks.length && stringIsNumber(chunks[i + 1])) {
+					chunk = chunk + chunks[i + 1];
 					i++;
 				}
 			}
@@ -545,7 +546,7 @@ export class Expression {
 			}
 			contents = openDelimiter + contents;
 			partialTokens.push({ text: contents, index: tokenizingIndex + openDelimiterIndex, type: tokenType, contents: tokenizedContents });
-			tokenizingExpression = tokenizingExpression.slice(openDelimiterIndex +  contents.length);
+			tokenizingExpression = tokenizingExpression.slice(openDelimiterIndex + contents.length);
 			tokenizingIndex += openDelimiterIndex + contents.length;
 		}
 
@@ -599,11 +600,11 @@ export class Expression {
 	}
 
 	/**
- 	 * Combine tokens as needed.
-  	 * 
-  	 * Tokens like functions are combined with their following parentheses.
-  	 * @param tokens Tokens to process.
-  	 */
+	   * Combine tokens as needed.
+		 * 
+		 * Tokens like functions are combined with their following parentheses.
+		 * @param tokens Tokens to process.
+		 */
 	private combineTokens(tokens: ExpressionToken[]): ExpressionToken[] {
 		const combinedTokens: ExpressionToken[] = [];
 		let index = -1;
@@ -726,7 +727,7 @@ export class Expression {
 		}
 
 		// Flag missing end delimeters, which are marked by the tokens having empty tokenized contents
-		if ((token.type == ExpressionTokenType.Parentheses || token.type == ExpressionTokenType.FunctionAndContents) 
+		if ((token.type == ExpressionTokenType.Parentheses || token.type == ExpressionTokenType.FunctionAndContents)
 			&& token.contents === undefined) {
 			this.validateErrors.push(this.createTokenError(
 				token, "Missing end )"
@@ -740,7 +741,7 @@ export class Expression {
 			return false;
 		}
 		// ...except for strings
-		else if (token.type == ExpressionTokenType.String && token.text[token.text.length-1] != '"') {
+		else if (token.type == ExpressionTokenType.String && token.text[token.text.length - 1] != '"') {
 			this.validateErrors.push(this.createTokenError(
 				token, 'Missing end "'
 			));
@@ -756,18 +757,18 @@ export class Expression {
 				const argumentType = functionArgumentType(token);
 				if (argumentType != token.contents.evalType) {
 					switch (argumentType) {
-					case ExpressionEvalType.Number:
-						errorMessage = "Not a number or variable";
-						break;
-					case ExpressionEvalType.Boolean:
-						errorMessage = "Not a boolean or variable";
-						break;
-					case ExpressionEvalType.String:
-						errorMessage = "Not a string or variable";
-						break;
-					case ExpressionEvalType.Error:
-						errorMessage = "Unknown function error";
-						break;
+						case ExpressionEvalType.Number:
+							errorMessage = "Not a number or variable";
+							break;
+						case ExpressionEvalType.Boolean:
+							errorMessage = "Not a boolean or variable";
+							break;
+						case ExpressionEvalType.String:
+							errorMessage = "Not a string or variable";
+							break;
+						case ExpressionEvalType.Error:
+							errorMessage = "Unknown function error";
+							break;
 					}
 				}
 			}

@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Position, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
 import { FlowControlEvent, SummaryScope } from '../../../server/src';

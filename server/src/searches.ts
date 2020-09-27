@@ -1,4 +1,5 @@
-import { Position, Location, TextDocument, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
+import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';
@@ -41,7 +42,7 @@ export interface SymbolInformation {
  * @param index Project index.
  */
 export function findVariableCreationLocations(
-	variable: string, considerEffectiveLocation: boolean, 
+	variable: string, considerEffectiveLocation: boolean,
 	document: TextDocument, index: ProjectIndex): Location[] | undefined {
 	// Precedence order: effective location variable location; local; global
 	let location: Location | undefined = undefined;
@@ -99,7 +100,7 @@ export function findLabelLocation(
  */
 function findAchievementLocation(codename: string, index: ProjectIndex): Location | undefined {
 	const location = index.getAchievements().get(codename);
-	
+
 	return location;
 }
 
@@ -165,8 +166,8 @@ function findMatchingLabel(documentUri: string, position: Position, index: Reado
  * @returns Array of symbol, location, type, and whether it's a definition (it is!), or undefined if not found.
  */
 export function findDefinitions(
-	document: TextDocument, 
-	position: Position, 
+	document: TextDocument,
+	position: Position,
 	projectIndex: ProjectIndex): SymbolInformation[] | undefined {
 	let definitions: SymbolInformation[] | undefined = undefined;
 	const uri = document.uri;
@@ -262,7 +263,7 @@ export function findDefinitions(
 	// See if we have a label reference at this location
 	const events = projectIndex.getFlowControlEvents(uri);
 	const event = events.find((event) => {
-		return (event.labelLocation !== undefined && 
+		return (event.labelLocation !== undefined &&
 			positionInRange(position, event.labelLocation.range));
 	});
 	if (event !== undefined) {
@@ -325,11 +326,11 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
 
 	if (definition.type == SymbolType.GlobalVariable) {
 		information = projectIndex.getVariableReferences(definition.symbol).map(reference => {
-			return { 
-				symbol: definition.symbol, 
-				location: reference, 
-				type: definition.type, 
-				isDefinition: false 
+			return {
+				symbol: definition.symbol,
+				location: reference,
+				type: definition.type,
+				isDefinition: false
 			};
 		});
 	}
@@ -338,11 +339,11 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
 		const possibleLocations = localReferences.get(definition.symbol);
 		if (possibleLocations !== undefined) {
 			information = possibleLocations.map((reference: Location): SymbolInformation => {
-				return { 
-					symbol: definition.symbol, 
-					location: reference, 
-					type: definition.type, 
-					isDefinition: false 
+				return {
+					symbol: definition.symbol,
+					location: reference,
+					type: definition.type,
+					isDefinition: false
 				};
 			});
 		}
@@ -357,11 +358,11 @@ function findVariableReferences(definition: SymbolInformation, projectIndex: Pro
  */
 function findLabelReferences(definition: SymbolInformation, projectIndex: ProjectIndex): SymbolInformation[] {
 	const information = projectIndex.getLabelReferences(definition.symbol).map(reference => {
-		return { 
-			symbol: definition.symbol, 
-			location: reference, 
-			type: definition.type, 
-			isDefinition: false 
+		return {
+			symbol: definition.symbol,
+			location: reference,
+			type: definition.type,
+			isDefinition: false
 		};
 	});
 
@@ -375,23 +376,23 @@ function findLabelReferences(definition: SymbolInformation, projectIndex: Projec
  */
 function findAchievementReferences(definition: SymbolInformation, projectIndex: ProjectIndex): SymbolInformation[] {
 	const information = projectIndex.getAchievementReferences(definition.symbol).map(reference => {
-		return { 
-			symbol: definition.symbol, 
-			location: reference, 
-			type: definition.type, 
-			isDefinition: false 
+		return {
+			symbol: definition.symbol,
+			location: reference,
+			type: definition.type,
+			isDefinition: false
 		};
 	});
 	// Add variable-based references, if any
 	information.push(...projectIndex.getVariableReferences(
 		convertAchievementToVariable(definition.symbol)).map(reference => {
-		return { 
-			symbol: definition.symbol, 
-			location: reference, 
-			type: SymbolType.LocalVariable, 
-			isDefinition: false 
-		};
-	})
+			return {
+				symbol: definition.symbol,
+				location: reference,
+				type: SymbolType.LocalVariable,
+				isDefinition: false
+			};
+		})
 	);
 
 	return information;
@@ -453,7 +454,7 @@ export function generateRenames(
 	textDocument: TextDocument, position: Position, newName: string, projectIndex: ProjectIndex
 ): WorkspaceEdit | null {
 
-	const referencesToChange = findReferences(textDocument, position, {includeDeclaration: true}, projectIndex);
+	const referencesToChange = findReferences(textDocument, position, { includeDeclaration: true }, projectIndex);
 
 	if (referencesToChange === undefined) {
 		return null;

@@ -1,5 +1,6 @@
 import * as URI from 'urijs';
-import { Diagnostic, DiagnosticSeverity, TextDocument, Location, Range, Position } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
  * Map that stores and accesses string keys without regard to case.

@@ -1,4 +1,5 @@
-import { TextDocument, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from "./index";
 import { findVariableCreationLocations, findLabelLocation } from "./searches";

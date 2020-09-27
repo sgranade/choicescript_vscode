@@ -1,4 +1,5 @@
-import { TextDocument, SymbolInformation, SymbolKind } from 'vscode-languageserver';
+import { SymbolInformation, SymbolKind } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from './index';
 import { uriIsStartupFile } from './language';
@@ -11,11 +12,11 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 			return {
 				name: label.label,
 				kind: SymbolKind.Namespace,
-				location:  {
+				location: {
 					range: label.scope,
 					uri: label.location.uri
 				}
-			};	
+			};
 		}
 		else {
 			return {

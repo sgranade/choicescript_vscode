@@ -21,10 +21,31 @@
         "@typescript-eslint"
     ],
     "rules": {
-        "indent": ["error", "tab", {"SwitchCase": 1],
-        "no-constant-condition": ["error", { "checkLoops": false }],
+        "indent": [
+            "error",
+            "tab",
+            {
+                "SwitchCase": 1
+            },
+            4
+        ],
+        "no-constant-condition": [
+            "error",
+            {
+                "checkLoops": false
+            }
+        ],
         "prefer-const": "warn",
-        "semi": ["error", "always"],
-        "@typescript-eslint/no-use-before-define": ["error", { "functions": false, "classes": true }]
+        "semi": [
+            "error",
+            "always"
+        ],
+        "@typescript-eslint/no-use-before-define": [
+            "error",
+            {
+                "functions": false,
+                "classes": true
+            }
+        ]
     }
 }

@@ -3,26 +3,27 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { TextDocument, Position, Diagnostic } from 'vscode-languageserver';
+import { Position, Diagnostic } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { 
-	ProjectIndex, 
-	IdentifierIndex, 
-	IdentifierMultiIndex, 
-	LabelIndex, 
-	FlowControlEvent, 
-	DocumentScopes 
+import {
+	ProjectIndex,
+	IdentifierIndex,
+	IdentifierMultiIndex,
+	LabelIndex,
+	FlowControlEvent,
+	DocumentScopes
 } from '../../../server/src/index';
 import { updateProjectIndex } from '../../../server/src/indexer';
 
 const fakeDocumentUri = "file:///startup.txt";
 
-function createDocument(text: string, 
+function createDocument(text: string,
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
 	fakeDocument.uri.returns(uri);
-	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return(Position.create(index, 0)); });
+	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }
 
@@ -33,9 +34,9 @@ describe("Indexer", () => {
 			let received: Array<IdentifierIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateGlobalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...received[0].keys()]).to.eql(['variable']);
 			expect(received[0].get('variable').range.start.line).to.equal(8);
 			expect(received[0].get('variable').range.end.line).to.equal(16);
@@ -46,9 +47,9 @@ describe("Indexer", () => {
 			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...received[0].keys()]).to.eql(['variable']);
 			expect(received[0].get('variable').length).to.eql(1);
 			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
@@ -60,9 +61,9 @@ describe("Indexer", () => {
 			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...received[0].keys()]).to.eql(['variable']);
 			expect(received[0].get('variable').length).to.eql(2);
 			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
@@ -76,67 +77,67 @@ describe("Indexer", () => {
 			let received: Array<IdentifierIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...received[0].keys()]).to.eql(['variable']);
 			expect(received[0].get('variable').range.start.line).to.equal(1);
 			expect(received[0].get('variable').range.end.line).to.equal(6);
 		});
 
 	});
-	
+
 	describe("Symbol Command Indexing", () => {
 		it("should index bare variables in the command", () => {
 			let fakeDocument = createDocument("*set variable 3");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
 			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(5);
 		});
 	});
-	
+
 	describe("Multireplace Indexing", () => {
 		it("should index variables in the test", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
 			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(2);
 		});
 	});
-	
+
 	describe("Variable Reference Command Indexing", () => {
 		it("should index local variables directly after a reference command", () => {
 			let fakeDocument = createDocument("*if variable > 1");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
 			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(4);
 		});
 	});
-	
+
 	describe("Flow Control Event Indexing", () => {
 		it("should capture the flow control command", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences.length).to.equal(1);
 			expect(receivedReferences[0].length).to.equal(1);
 			expect(receivedReferences[0][0].command).to.equal("gosub");
@@ -147,9 +148,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].label).to.equal("label");
 		});
 
@@ -158,9 +159,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].labelLocation.range.start.line).to.equal(7);
 			expect(receivedReferences[0][0].labelLocation.range.end.line).to.equal(12);
 		});
@@ -170,9 +171,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].scene).equals("");
 			expect(receivedReferences[0][0].sceneLocation).is.undefined;
 		});
@@ -182,9 +183,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].scene).to.eql("scene-name");
 		});
 
@@ -193,9 +194,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
 			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
 		});
@@ -205,9 +206,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].label).equals("");
 			expect(receivedReferences[0][0].labelLocation).is.undefined;
 		});
@@ -217,9 +218,9 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].scene).to.eql("scene-name");
 			expect(receivedReferences[0][0].label).to.eql("other_label");
 		});
@@ -229,38 +230,38 @@ describe("Indexer", () => {
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
 			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
 			expect(receivedReferences[0][0].labelLocation.range.start.line).to.eql(24);
 			expect(receivedReferences[0][0].labelLocation.range.end.line).to.eql(35);
 		});
 	});
-		
+
 	describe("Scene Indexing", () => {
 		it("should index scenes in startup files", () => {
 			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
 			let receivedScenes: Array<Array<string>> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedScenes).to.eql([['scene-1', 'scene-2']]);
 		});
 	});
-	
+
 	describe("Achievement Indexing", () => {
 		it("should index an achievement", () => {
 			let fakeDocument = createDocument("*achievement code_name");
 			let receivedAchievements: IdentifierIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedAchievements[0].size).to.equal(1);
 			expect(receivedAchievements[0]).has.keys(['code_name']);
 		});
@@ -270,27 +271,27 @@ describe("Indexer", () => {
 			let receivedAchievementReferences: IdentifierMultiIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateAchievementReferences(Arg.any(), Arg.any()).mimicks(
-				(uri, index) => { 
-					receivedAchievementReferences.push(index); 
+				(uri, index) => {
+					receivedAchievementReferences.push(index);
 				}
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedAchievementReferences[0].size).to.equal(1);
 			expect(receivedAchievementReferences[0]).has.keys(['code_name']);
 		});
 	});
-	
+
 	describe("Label Indexing", () => {
 		it("should index a label", () => {
 			let fakeDocument = createDocument("*label label_name");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedLabels[0].size).to.equal(1);
 			expect(receivedLabels[0]).has.keys(['label_name']);
 		});
@@ -300,9 +301,9 @@ describe("Indexer", () => {
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedLabels[0].size).to.equal(1);
 			expect(receivedLabels[0].get('label_name').scope).to.be.undefined;
 		});
@@ -312,9 +313,9 @@ describe("Indexer", () => {
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedLabels[0].size).to.equal(1);
 			expect(receivedLabels[0].get('label_name').scope.start.line).to.equal(7);
 			expect(receivedLabels[0].get('label_name').scope.end.line).to.equal(32);
@@ -325,9 +326,9 @@ describe("Indexer", () => {
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(receivedLabels[0].size).to.equal(2);
 			expect(receivedLabels[0].get('label_one').scope).to.be.undefined;
 			expect(receivedLabels[0].get('label_two').scope.start.line).to.equal(31);
@@ -343,9 +344,9 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].achievementVarScopes.length).to.equal(1);
 		});
@@ -357,12 +358,12 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			// These positions are due to the fake document converting an index directly into a line number
-			expect(received[0].achievementVarScopes[0].start).to.eql({line: 8, character: 0});
-			expect(received[0].achievementVarScopes[0].end).to.eql({line: 43, character: 0});
+			expect(received[0].achievementVarScopes[0].start).to.eql({ line: 8, character: 0 });
+			expect(received[0].achievementVarScopes[0].end).to.eql({ line: 43, character: 0 });
 		});
 
 		it("should capture *params scopes", () => {
@@ -372,9 +373,9 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].paramScopes.length).to.equal(1);
 		});
@@ -386,12 +387,12 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			// These positions are due to the fake document converting an index directly into a line number
-			expect(received[0].paramScopes[0].start).to.eql({line: 8, character: 0});
-			expect(received[0].paramScopes[0].end).to.eql({line: 31, character: 0});
+			expect(received[0].paramScopes[0].start).to.eql({ line: 8, character: 0 });
+			expect(received[0].paramScopes[0].end).to.eql({ line: 31, character: 0 });
 		});
 	});
 
@@ -404,9 +405,9 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			// expect(received[0].labelScopes.length).to.equal(1);
 		});
@@ -418,9 +419,9 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			// These positions are due to the fake document converting an index directly into a line number
 			// expect(received[0].labelScopes[0].range.start).to.eql({line: 8, character: 0});
 			// expect(received[0].labelScopes[0].range.end).to.eql({line: 43, character: 0});
@@ -435,9 +436,9 @@ describe("Indexer", () => {
 			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 		});
 	});
@@ -450,9 +451,9 @@ describe("Indexer", () => {
 			fakeIndex.updateParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
 			expect(received[0][0].message).to.include('Variable "variable" was already created');
@@ -467,9 +468,9 @@ describe("Indexer", () => {
 			fakeIndex.updateParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
 			expect(received[0][0].message).to.include('Label "previous_label" was already created');
@@ -484,9 +485,9 @@ describe("Indexer", () => {
 			fakeIndex.updateParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
 			expect(received[0][0].message).to.include('*return has no associated label');
@@ -503,9 +504,9 @@ describe("Indexer", () => {
 			fakeIndex.updateWordCount(Arg.all()).mimicks(
 				(uri: string, count: number) => { received.push(count); }
 			);
-	
+
 			updateProjectIndex(fakeDocument, true, fakeIndex);
-	
+
 			expect(received.length).to.equal(1);
 			expect(received[0]).to.equal(3);
 		});

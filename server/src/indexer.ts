@@ -1,4 +1,5 @@
-import { Location, Range, Position, TextDocument, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
 import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
@@ -71,7 +72,7 @@ function* identifiersBetweenLocations(
 	for (const [identifier, locations] of identifiers.entries()) {
 		for (const location of locations) {
 			if (comparePositions(location.range.start, start) >= 0 &&
-			comparePositions(location.range.start, end) <= 0) {
+				comparePositions(location.range.start, end) <= 0) {
 				yield identifier;
 			}
 		}
@@ -128,7 +129,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	const indexingState = new IndexingState(textDocument);
 
 	const callbacks: ParserCallbacks = {
-		onCommand: (prefix: string, command: string, spacing: string, line: string, 
+		onCommand: (prefix: string, command: string, spacing: string, line: string,
 			commandLocation: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
 			// Record where achievement temporary variables are brought into existence
 			if (command == "check_achievements" && indexingState.checkAchievementLocation === undefined) {
@@ -205,7 +206,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 					));
 				}
 				else {
-					const label = Array.from(indexingState.labels)[size-1][1];
+					const label = Array.from(indexingState.labels)[size - 1][1];
 					label.scope = Range.create(
 						label.location.range.start, commandLocation.range.end);
 				}
