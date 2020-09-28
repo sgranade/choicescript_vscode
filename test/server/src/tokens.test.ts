@@ -796,12 +796,35 @@ describe("Tokenizing", () => {
 	});
 
 	describe("Multireplace Tokenization", () => {
+		it("should extract a multiexpression with just a variable", () => {
+			let text = "variable}"
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.unterminated).to.be.false;
+			expect(tokens.test.bareExpression).to.equal("variable");
+			expect(tokens.body.length).to.equal(0);
+		});
+
+		it("should extract an unterminated multiexpression with just a variable", () => {
+			let text = "variable"
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.unterminated).to.be.true;
+			expect(tokens.test.bareExpression).to.equal("variable");
+			expect(tokens.body.length).to.equal(0);
+		});
+
 		it("should extract a bare variable test", () => {
 			let text = "variable yes | no} extra content";
 			let fakeDocument = createDocument(text);
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
+			expect(tokens.unterminated).to.be.false;
 			expect(tokens.test.bareExpression).to.equal("variable");
 			expect(tokens.test.globalIndex).to.equal(2);
 		});
@@ -812,6 +835,7 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
+			expect(tokens.unterminated).to.be.false;
 			expect(tokens.test.bareExpression).to.equal("var1 + var2");
 			expect(tokens.test.globalIndex).to.equal(3);
 		});
@@ -822,6 +846,7 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
+			expect(tokens.unterminated).to.be.false;
 			expect(tokens.body[0].text).to.equal("yes");
 			expect(tokens.body[0].localIndex).to.equal(9);
 			expect(tokens.body[1].text).to.equal("no");
@@ -845,6 +870,7 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2, 13);
 
+			expect(tokens.unterminated).to.be.false;
 			expect(tokens.test.bareExpression).to.equal("variable");
 			expect(tokens.body[0].text).to.equal("yes");
 			expect(tokens.body[1].text).to.equal("no");

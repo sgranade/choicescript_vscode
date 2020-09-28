@@ -321,8 +321,8 @@ function validateOption(option: string, index: number, state: ValidationState): 
 		const tokens = tokenizeMultireplace(
 			remainingOption, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
 		);
-		if (tokens === undefined) {
-			// Unterminated multireplace, so give up
+		if (tokens === undefined || tokens.unterminated) {
+			// Content-free or unterminated multireplace, so give up
 			break;
 		}
 		else {

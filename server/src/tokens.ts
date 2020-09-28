@@ -1,7 +1,7 @@
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic } from './utilities';
+import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic, readLine } from './utilities';
 import {
 	functions,
 	booleanNamedOperators,
@@ -915,6 +915,7 @@ export interface TextWithIndex {
  * A tokenized multireplace @{variable if-true | if-false}
  */
 interface Multireplace {
+	unterminated: boolean;
 	text: string;
 	test: Expression;
 	body: TextWithIndex[];
@@ -928,16 +929,23 @@ interface Multireplace {
  * @param textDocument: Document the section is in.
  * @param contentsGlobalIndex: Global index where the multireplace contents begin (right inside the @{)).
  * @param contentsLocalIndex Index into the section where the multireplace contents begin.
+ * @returns Tokenized multireplace, or undefined if there is no content to tokenize.
  */
 export function tokenizeMultireplace(
 	section: string, textDocument: TextDocument, contentsGlobalIndex: number, contentsLocalIndex = 0
 ): Multireplace | undefined {
 	let test: Expression;
 	const body: TextWithIndex[] = [];
+	let unterminated = false;
 
 	let workingText = extractToMatchingDelimiter(section, "{", "}", contentsLocalIndex);
-	if (workingText === undefined)
-		return undefined;
+	if (workingText === undefined) {
+		unterminated = true;
+		const fullLine = readLine(section, contentsLocalIndex);
+		if (fullLine === undefined)
+			return undefined;
+		workingText = fullLine.line;
+	}
 	const fullText = workingText;
 
 	const multireplaceEndLocalIndex = workingText.length + 1;
@@ -963,18 +971,21 @@ export function tokenizeMultireplace(
 	}
 
 	workingText = workingText.slice(testEndLocalIndex);
-	const bareTokens = workingText.split('|');
-	let runningIndex = 0;
-	for (const bareToken of bareTokens) {
-		const trimmed = bareToken.trim();
-		body.push({
-			text: trimmed,
-			localIndex: contentsLocalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
-		});
-		runningIndex += bareToken.length + 1;
+	if (workingText.trim() != "") {
+		const bareTokens = workingText.split('|');
+		let runningIndex = 0;
+		for (const bareToken of bareTokens) {
+			const trimmed = bareToken.trim();
+			body.push({
+				text: trimmed,
+				localIndex: contentsLocalIndex + testEndLocalIndex + runningIndex + bareToken.indexOf(trimmed)
+			});
+			runningIndex += bareToken.length + 1;
+		}
 	}
 
 	return {
+		unterminated: unterminated,
 		text: fullText,
 		test: test,
 		body: body,

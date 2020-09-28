@@ -153,6 +153,7 @@ export interface NewLine {
  * Read a line, splitting it into leading padding and contents.
  * @param text Text containing the line.
  * @param lineStart Index to the start of the line.
+ * @returns The line, or undefined if lineStart is at the end of text.
  */
 export function readLine(text: string, lineStart: number): NewLine | undefined {
 	let processedLine: NewLine;
@@ -221,7 +222,7 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
 	}
 
 	// Break out the case where the open and close delimiter are the same for speeeeed
-	if (openDelimiter == closeDelimiter) {
+	if (sameDelimiter) {
 		match.lastIndex = startIndex;
 
 		matchEnd = text.search(match);

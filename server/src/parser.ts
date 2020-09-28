@@ -407,7 +407,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 		text, state.textDocument, sectionIndex + state.sectionGlobalIndex, localIndex
 	);
 
-	if (tokens === undefined) {
+	if (tokens === undefined || tokens.unterminated) {
 		const lineEndIndex = findLineEnd(text, localIndex);
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			localIndex - openDelimiterLength + textToSectionDelta, localIndex + textToSectionDelta,
