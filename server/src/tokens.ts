@@ -953,13 +953,30 @@ export function tokenizeMultireplace(
 
 	if (workingText[0] != '(') {
 		// The multireplace only has a bare symbol as its test
-		while (testEndLocalIndex < section.length) {
-			if (!/\w/.test(workingText[testEndLocalIndex])) {
+		// Skip over any leading whitespace
+		let testStartLocalIndex = 0;
+		while (testStartLocalIndex < section.length) {
+			if (/\w/.test(workingText[testStartLocalIndex])) {
 				break;
 			}
-			testEndLocalIndex++;
+			testStartLocalIndex++;
 		}
-		test = new Expression(workingText.slice(0, testEndLocalIndex), contentsGlobalIndex, textDocument);
+
+		if (testStartLocalIndex == section.length) {
+			testStartLocalIndex = 0;
+			testEndLocalIndex = section.length;
+		}
+		else {
+			testEndLocalIndex = testStartLocalIndex;
+			while (testEndLocalIndex < section.length) {
+				if (/\W/.test(workingText[testEndLocalIndex])) {
+					break;
+				}
+				testEndLocalIndex++;
+			}
+
+		}
+		test = new Expression(workingText.slice(testStartLocalIndex, testEndLocalIndex), testStartLocalIndex + contentsGlobalIndex, textDocument);
 	}
 	else {
 		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");

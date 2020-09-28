@@ -1149,6 +1149,54 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(10);
 		});
 
+		it("should callback on bare variables in the test with leading spaces", () => {
+			let fakeDocument = createDocument("@{  variable this | that}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(4);
+			expect(received[0].location.range.end.line).to.equal(12);
+		});
+
+		it("should callback on bare variables in multireplaces with no choices", () => {
+			let fakeDocument = createDocument("@{variable text}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(2);
+			expect(received[0].location.range.end.line).to.equal(10);
+		});
+
+		it("should callback on bare variables in incomplete multireplace", () => {
+			let fakeDocument = createDocument("@{variable text");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(2);
+			expect(received[0].location.range.end.line).to.equal(10);
+		});
+
 		it("should callback on multiple variables in the test", () => {
 			let fakeDocument = createDocument('@{(var1 + var2 > 2) true | false}');
 			let received: Array<Symbol> = [];
@@ -2260,7 +2308,7 @@ describe("Parser", () => {
 
 		describe("Multireplaces", () => {
 			it("should flag an unterminated multireplace", () => {
-				let fakeDocument = createDocument("multireplace @{ no end in sight");
+				let fakeDocument = createDocument("multireplace @{no end|in sight");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2272,11 +2320,11 @@ describe("Parser", () => {
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is missing its }");
 				expect(received[0].range.start.line).to.equal(13);
-				expect(received[0].range.end.line).to.equal(31);
+				expect(received[0].range.end.line).to.equal(15);
 			});
 
 			it("should flag an unterminated multireplace in a block", () => {
-				let fakeDocument = createDocument("*if true\n\tmultireplace @{ no end in sight");
+				let fakeDocument = createDocument("*if true\n\tmultireplace @{no end|in sight");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2288,7 +2336,7 @@ describe("Parser", () => {
 				expect(received.length).to.equal(1);
 				expect(received[0].message).to.include("Multireplace is missing its }");
 				expect(received[0].range.start.line).to.equal(23);
-				expect(received[0].range.end.line).to.equal(41);
+				expect(received[0].range.end.line).to.equal(25);
 			});
 
 			it("should flag an empty multireplace", () => {
@@ -2321,6 +2369,22 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Multireplace is empty");
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(26);
+			});
+
+			it("should flag a multireplace with a space before its variable", () => {
+				let fakeDocument = createDocument("multireplace @{ var one|two}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Spaces aren't allowed at the start of a multireplace");
+				expect(received[0].range.start.line).to.equal(15);
+				expect(received[0].range.end.line).to.equal(16);
 			});
 
 			it("should flag a multireplace with no options", () => {

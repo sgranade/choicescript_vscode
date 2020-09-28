@@ -414,7 +414,8 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			"Multireplace is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
-	else {
+
+	if (tokens !== undefined) {
 		// Flag any nested multireplacements
 		const m = tokens.text.match(multiStartRegex);
 		if (m !== null && m.index !== undefined) {
@@ -444,51 +445,64 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				state);
 			state.callbacks.onParseError(diagnostic);
 		}
-		else if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
-			let startLocalIndex = tokens.test.globalIndex - state.sectionGlobalIndex + tokens.test.bareExpression.length;
-			if (tokens.text.startsWith("(")) {
-				startLocalIndex++;
-			}
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				startLocalIndex, tokens.endIndex + textToSectionDelta,
-				"Multireplace has no options", state);
-			state.callbacks.onParseError(diagnostic);
-		}
-		else if (tokens.body.length == 1) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,
-				tokens.endIndex + textToSectionDelta,
-				"Multireplace must have at least two options separated by |",
-				state);
-			state.callbacks.onParseError(diagnostic);
-		}
 		else {
+			const whitespaceMatch = tokens.text.match(/^\s+/);
+			if (whitespaceMatch !== null) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					localIndex + textToSectionDelta,
+					localIndex + whitespaceMatch[0].length + textToSectionDelta,
+					"Spaces aren't allowed at the start of a multireplace",
+					state);
+				state.callbacks.onParseError(diagnostic);
+			}
+
 			// The test portion is an already-tokenized expression
 			parseTokenizedExpression(tokens.test, state);
 
-			// Treat the body portions as strings without surrounding quote marks
-			for (const token of tokens.body) {
-				// Since we can't nest multireplaces, and we've already flagged them above as errors,
-				// get rid of any opening multireplaces in the string
-				const text = token.text.replace('@{', '  ');
-				parseBareString(text, token.localIndex + textToSectionDelta, token.text.length, state);
+			if (tokens.body.length == 0 || (tokens.body.length == 1 && tokens.body[0].text.trim() == "")) {
+				let startLocalIndex = tokens.test.globalIndex - state.sectionGlobalIndex + tokens.test.bareExpression.length;
+				if (tokens.text.startsWith("(")) {
+					startLocalIndex++;
+				}
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					startLocalIndex, tokens.endIndex + textToSectionDelta,
+					"Multireplace has no options", state);
+				state.callbacks.onParseError(diagnostic);
 			}
-
-			// Check the first body for a leading operator and warn about it if we don't have parens around the test
-			// We only check for non-word operators so we don't catch regular English words like "and"
-			if (!tokens.text.startsWith("(")) {
-				const firstText = tokens.body[0].text.split(' ')[0];
-				if (nonWordOperatorsLookup.has(firstText)) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
-						tokens.test.globalIndex - state.sectionGlobalIndex,
-						tokens.body[0].localIndex + firstText.length + textToSectionDelta,
-						"Potentially missing parentheses",
+			else {
+				if (tokens.body.length == 1) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,
+						tokens.endIndex + textToSectionDelta,
+						"Multireplace must have at least two options separated by |",
 						state);
 					state.callbacks.onParseError(diagnostic);
 				}
-			}
 
-			localIndex = tokens.endIndex;
+				// Treat the body portions as strings without surrounding quote marks
+				for (const token of tokens.body) {
+					// Since we can't nest multireplaces, and we've already flagged them above as errors,
+					// get rid of any opening multireplaces in the string
+					const text = token.text.replace('@{', '  ');
+					parseBareString(text, token.localIndex + textToSectionDelta, token.text.length, state);
+				}
+
+				// Check the first body for a leading operator and warn about it if we don't have parens around the test
+				// We only check for non-word operators so we don't catch regular English words like "and"
+				if (!tokens.text.startsWith("(")) {
+					const firstText = tokens.body[0].text.split(' ')[0];
+					if (nonWordOperatorsLookup.has(firstText)) {
+						const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
+							tokens.test.globalIndex - state.sectionGlobalIndex,
+							tokens.body[0].localIndex + firstText.length + textToSectionDelta,
+							"Potentially missing parentheses",
+							state);
+						state.callbacks.onParseError(diagnostic);
+					}
+				}
+
+				localIndex = tokens.endIndex;
+			}
 		}
 	}
 
