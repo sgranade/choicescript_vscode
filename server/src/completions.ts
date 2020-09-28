@@ -1,5 +1,4 @@
-import { 
-	TextDocument,
+import {
 	Position,
 	Range,
 	Location,
@@ -7,12 +6,13 @@ import {
 	CompletionItem,
 	CompletionItemKind
 } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 import { extractToMatchingDelimiter, comparePositions, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
-function generateCompletionsFromArray(array: ReadonlyArray<string>, 
+function generateCompletionsFromArray(array: ReadonlyArray<string>,
 	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return array.map((x: string) => ({
 		label: x,
@@ -21,11 +21,12 @@ function generateCompletionsFromArray(array: ReadonlyArray<string>,
 	}));
 }
 
-function generateCompletionsFromIndex(index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex, 
+function generateCompletionsFromIndex(
+	index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex,
 	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return Array.from(iteratorMap(index.keys(), (x: string) => ({
-		label: x, 
-		kind: kind, 
+		label: x,
+		kind: kind,
 		data: dataDescription
 	})));
 }
@@ -48,8 +49,8 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 	});
 
 	const completions = Array.from(iteratorMap(availableVariablesGenerator, ([variable, location]: [string, readonly Location[]]) => ({  // eslint-disable-line @typescript-eslint/no-unused-vars
-		label: variable, 
-		kind: CompletionItemKind.Variable, 
+		label: variable,
+		kind: CompletionItemKind.Variable,
 		data: "variable-local"
 	})));
 
@@ -101,7 +102,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 	if (start !== undefined) {
 		// Auto-complete commands
 		if (text[start] == '*') {
-			const tokens = text.slice(i+1, index).split(/\s+/);
+			const tokens = text.slice(i + 1, index).split(/\s+/);
 			if (tokens.length == 1) {
 				completions = [...validCommandsCompletions];  // makin' copies
 				// Add in startup-only commands if valid
@@ -111,56 +112,56 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 			else {
 				switch (tokens[0]) {
-				case "goto":
-				case "gosub":
-					if (tokens.length == 2) {
-						completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
-					}
-					break;
-
-				case "goto_scene":
-				case "gosub_scene":
-					if(tokens.length == 2) {
-						completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
-						// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
-						// Get around that by specifying the replacement range if needed
-						if (tokens[1].includes("-")) {
-							const range = Range.create(document.positionAt(index - tokens[1].length), position);
-							completions.forEach(completion => {
-								completion.textEdit = TextEdit.replace(range, completion.label);
-							});
+					case "goto":
+					case "gosub":
+						if (tokens.length == 2) {
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
 						}
-					}
-					else if (tokens.length == 3) {
-						const sceneUri = projectIndex.getSceneUri(tokens[1]);
-						if (sceneUri !== undefined) {
-							completions = generateCompletionsFromIndex(projectIndex.getLabels(sceneUri), CompletionItemKind.Reference, "labels-scene");
+						break;
+
+					case "goto_scene":
+					case "gosub_scene":
+						if (tokens.length == 2) {
+							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
+							// Get around that by specifying the replacement range if needed
+							if (tokens[1].includes("-")) {
+								const range = Range.create(document.positionAt(index - tokens[1].length), position);
+								completions.forEach(completion => {
+									completion.textEdit = TextEdit.replace(range, completion.label);
+								});
+							}
 						}
-					}
-					break;
+						else if (tokens.length == 3) {
+							const sceneUri = projectIndex.getSceneUri(tokens[1]);
+							if (sceneUri !== undefined) {
+								completions = generateCompletionsFromIndex(projectIndex.getLabels(sceneUri), CompletionItemKind.Reference, "labels-scene");
+							}
+						}
+						break;
 
-				case "set":
-				case "delete":
-				case "if":
-				case "elseif":
-				case "elsif":
-				case "rand":
-					completions = generateVariableCompletions(document, position, projectIndex);
-					break;
+					case "set":
+					case "delete":
+					case "if":
+					case "elseif":
+					case "elsif":
+					case "rand":
+						completions = generateVariableCompletions(document, position, projectIndex);
+						break;
 
-				case "achieve":
-					completions = generateCompletionsFromIndex(
-						projectIndex.getAchievements(),
-						CompletionItemKind.Variable,
-						"achievement"
-					);
+					case "achieve":
+						completions = generateCompletionsFromIndex(
+							projectIndex.getAchievements(),
+							CompletionItemKind.Variable,
+							"achievement"
+						);
 				}
 			}
 		}
 		// Auto-complete variable references
 		else if (text[start] == '{') {
 			let isMultireplace = false;
-			for (let j = start-1; j >= 0 && j >= start-3; j--) {
+			for (let j = start - 1; j >= 0 && j >= start - 3; j--) {
 				if (text[j] == '@') {
 					isMultireplace = true;
 					break;
@@ -170,7 +171,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 
 			// In a multi-replace like @{}, only auto-complete if we're in the first section
 			if (isMultireplace) {
-				const section = text.slice(start + 1, index+1);
+				const section = text.slice(start + 1, index + 1);
 				if (section == "}" || section == "\r" || section.trim() == "") {
 					returnVariableCompletions = true;
 				}
@@ -181,10 +182,8 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 						returnVariableCompletions = true;
 					}
 				}
-				else {
-					if (!/\W/.test(section)) {
-						returnVariableCompletions = true;
-					}
+				else if (!/\W/.test(section) || (!/\W/.test(section.slice(0, -1)) && section.slice(-1) == " ")) {
+					returnVariableCompletions = true;
 				}
 			}
 			else {
