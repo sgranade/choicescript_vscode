@@ -410,7 +410,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 	if (tokens === undefined) {
 		const lineEndIndex = findLineEnd(text, localIndex);
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			localIndex - openDelimiterLength + textToSectionDelta, lineEndIndex + textToSectionDelta,
+			localIndex - openDelimiterLength + textToSectionDelta, localIndex + textToSectionDelta,
 			"Multireplace is missing its }", state);
 		state.callbacks.onParseError(diagnostic);
 	}
