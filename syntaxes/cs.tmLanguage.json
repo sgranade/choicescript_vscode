@@ -35,9 +35,11 @@
 			"name": "comment.line.cs",
 			"begin": "^\\s*\\*comment",
 			"end": "(?=$)",
-			"patterns": [{
-				"include": "#todo"
-			}]
+			"patterns": [
+				{
+					"include": "#todo"
+				}
+			]
 		},
 		"command": {
 			"comment": "Any command and its contents",
@@ -128,17 +130,21 @@
 					"name": "string.interpolated"
 				}
 			},
-			"patterns": [{
-				"include": "#expression"
-			}]
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
 		},
 		"variable-substitution": {
 			"name": "constant.language.cs",
 			"begin": "(?<![$@]|[$@]!|[$@]!!){",
 			"end": "\\}",
-			"patterns": [{
-				"include": "#expression"
-			}]
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
 		},
 		"multireplace": {
 			"begin": "(@!?!?\\{)",
@@ -236,7 +242,7 @@
 		},
 		"function": {
 			"name": "entity.name.function.cs",
-			"match": "(not|round|timestamp|log|length|auto)"
+			"match": "\\b(not|round|timestamp|log|length|auto)\\b"
 		},
 		"literal": {
 			"name": "constant.language.cs",
@@ -263,10 +269,12 @@
 			]
 		},
 		"todo": {
-			"patterns": [{
-				"name": "invalid.illegal.cs",
-				"match": "todo|TODO"
-			}]
+			"patterns": [
+				{
+					"name": "invalid.illegal.cs",
+					"match": "todo|TODO"
+				}
+			]
 		},
 		"markup": {
 			"patterns": [
