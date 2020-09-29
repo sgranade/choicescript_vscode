@@ -182,7 +182,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 						returnVariableCompletions = true;
 					}
 				}
-				else if (!/\W/.test(section) || (!/\W/.test(section.slice(0, -1)) && section.slice(-1) == " ")) {
+				else if (!/\s/.test(section) || (!/\s/.test(section.slice(0, -1)) && section.slice(-1) == " ")) {
 					returnVariableCompletions = true;
 				}
 			}
