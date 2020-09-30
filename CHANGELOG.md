@@ -4,7 +4,7 @@ Changes to the plugin.
 
 ## Unreleased
 
-### Fixed
+### [1.4.3] - 2020-09-29
 
 - Variable completion now works properly in multireplaces.
 - Multireplace error catching improved.
