@@ -2,7 +2,7 @@
 	"name": "choicescript-vscode",
 	"displayName": "ChoiceScript Language",
 	"description": "ChoiceScript language support for VS Code",
-	"version": "1.4.2",
+	"version": "1.4.3",
 	"author": {
 		"name": "Stephen Granade",
 		"email": "stephen@granades.com",
