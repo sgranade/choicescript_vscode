@@ -8,6 +8,8 @@ Changes to the plugin.
 
 - Variable completion now works properly in multireplaces.
 - Multireplace error catching improved.
+- Multireplace syntax highlighting now properly handles nested parentheses thanks to [a timely mailing list email from 2007](https://lists.macromates.com/textmate/2007-September/022055.html).
+- Can you tell I focused on multireplaces this go-round?
 
 ## [1.4.2] - 2020-08-21
 
