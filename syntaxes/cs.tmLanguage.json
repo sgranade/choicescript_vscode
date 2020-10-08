@@ -167,10 +167,17 @@
 				},
 				{
 					"comment": "Expression in parentheses at start of multireplace",
-					"match": "\\G\\s*((\\()(?<balanced>[^()]|\\(\\g<balanced>*\\))*(\\)))",
+					"match": "\\G\\s*(\\()((?<balanced>[^()]|\\(\\g<balanced>*\\))*)(\\))",
 					"captures": {
-						"2": {
+						"1": {
 							"name": "variable.language.other"
+						},
+						"2": {
+							"patterns": [
+								{
+									"include": "#expression"
+								}
+							]
 						},
 						"4": {
 							"name": "variable.language.other"

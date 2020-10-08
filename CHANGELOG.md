@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Multireplace syntax highlighting updated to properly highlight variables in parentheses.
+
 ## [1.4.3] - 2020-09-29
 
 ### Fixed
