@@ -2451,6 +2451,38 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(34);
 			});
 
+			it("should flag a multireplace with no space after its parentheses", () => {
+				let fakeDocument = createDocument("multireplace @{(var)true|false}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Multireplace must have a space after parentheses");
+				expect(received[0].range.start.line).to.equal(19);
+				expect(received[0].range.end.line).to.equal(20);
+			});
+
+			it("should flag a multireplace with no space after its parentheses in a block", () => {
+				let fakeDocument = createDocument("*if true\n\tmultireplace @{(var)true|false}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Multireplace must have a space after parentheses");
+				expect(received[0].range.start.line).to.equal(29);
+				expect(received[0].range.end.line).to.equal(30);
+			});
+
 			it("should not flag a multireplace with a blank first option", () => {
 				let fakeDocument = createDocument("multireplace @{(var) |, the redsmith's son,}");
 				let received: Array<Diagnostic> = [];

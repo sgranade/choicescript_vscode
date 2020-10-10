@@ -918,6 +918,7 @@ interface Multireplace {
 	unterminated: boolean;
 	text: string;
 	test: Expression;
+	bareTest: TextWithIndex | undefined;
 	body: TextWithIndex[];
 	endIndex: number;
 }
@@ -935,6 +936,7 @@ export function tokenizeMultireplace(
 	section: string, textDocument: TextDocument, contentsGlobalIndex: number, contentsLocalIndex = 0
 ): Multireplace | undefined {
 	let test: Expression;
+	let bareTest: TextWithIndex | undefined = undefined;
 	const body: TextWithIndex[] = [];
 	let unterminated = false;
 
@@ -976,12 +978,22 @@ export function tokenizeMultireplace(
 			}
 
 		}
-		test = new Expression(workingText.slice(testStartLocalIndex, testEndLocalIndex), testStartLocalIndex + contentsGlobalIndex, textDocument);
+		bareTest = {
+			text: workingText.slice(testStartLocalIndex, testEndLocalIndex),
+			localIndex: testStartLocalIndex
+		}
+		test = new Expression(bareTest.text, testStartLocalIndex + contentsGlobalIndex, textDocument);
 	}
 	else {
 		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");
 		if (testContents === undefined) {
 			testContents = "";
+		}
+		else {
+			bareTest = {
+				text: "(" + testContents + ")",
+				localIndex: contentsLocalIndex
+			}
 		}
 		test = new Expression(testContents, contentsGlobalIndex + 1, textDocument);
 		testEndLocalIndex = testContents.length + 2;
@@ -1005,6 +1017,7 @@ export function tokenizeMultireplace(
 		unterminated: unterminated,
 		text: fullText,
 		test: test,
+		bareTest: bareTest,
 		body: body,
 		endIndex: contentsLocalIndex + multireplaceEndLocalIndex
 	};

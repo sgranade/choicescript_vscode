@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Fixed
 
 - Multireplace syntax highlighting updated to properly highlight variables in parentheses.
+- Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
 
 ## [1.4.3] - 2020-09-29
 

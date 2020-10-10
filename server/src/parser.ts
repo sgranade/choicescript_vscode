@@ -470,6 +470,20 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
+				if (
+					tokens.bareTest !== undefined &&
+					tokens.bareTest.text.endsWith(")") &&
+					tokens.body[0].text.trim() !== "" &&
+					tokens.bareTest.localIndex + tokens.bareTest.text.length == tokens.body[0].localIndex
+				) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						tokens.body[0].localIndex - 1 + textToSectionDelta,
+						tokens.body[0].localIndex + textToSectionDelta,
+						"Multireplace must have a space after parentheses",
+						state);
+					state.callbacks.onParseError(diagnostic);
+				}
+
 				if (tokens.body.length == 1) {
 					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 						tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,

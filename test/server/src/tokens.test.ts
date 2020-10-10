@@ -840,6 +840,16 @@ describe("Tokenizing", () => {
 			expect(tokens.test.globalIndex).to.equal(3);
 		});
 
+		it("should save a bare variable test with an extra leading space in bareTest without that space", () => {
+			let text = " variable yes | no} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.bareTest.text).to.equal("variable")
+			expect(tokens.bareTest.localIndex).to.equal(1);
+		});
+
 		it("should extract a parenthesized test", () => {
 			let text = "(var1 + var2) yes | no} extra content";
 			let fakeDocument = createDocument(text);
@@ -849,6 +859,16 @@ describe("Tokenizing", () => {
 			expect(tokens.unterminated).to.be.false;
 			expect(tokens.test.bareExpression).to.equal("var1 + var2");
 			expect(tokens.test.globalIndex).to.equal(3);
+		});
+
+		it("should save a test's parentheses in bareTest", () => {
+			let text = "(var1 + var2) yes | no} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.bareTest.text).to.equal("(var1 + var2)")
+			expect(tokens.bareTest.localIndex).to.equal(0);
 		});
 
 		it("should extract the bodies", () => {
