@@ -7,6 +7,8 @@ Changes to the plugin.
 ### Added
 
 - More error catching.
+  - #Options outside of a `*choice` command are flagged as an error.
+  - #Options in a `*choice` command must have contents.
   - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
 
 ### Fixed

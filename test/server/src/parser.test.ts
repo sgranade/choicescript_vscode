@@ -2015,7 +2015,7 @@ describe("Parser", () => {
 
 		describe("Choice Command", () => {
 			it("should flag text in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2031,7 +2031,7 @@ describe("Parser", () => {
 			});
 
 			it("should be okay with a reuse command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2044,7 +2044,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag text after a reuse command and in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse bad #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse bad #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2060,7 +2060,7 @@ describe("Parser", () => {
 			});
 
 			it("should be okay with an if command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2073,7 +2073,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag an if command in front of an option that has no parentheses", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2089,7 +2089,7 @@ describe("Parser", () => {
 			});
 
 			it("should be okay with a selectable_if command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2102,7 +2102,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag a selectable_if command in front of an option that needs parentheses", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if 1 < 2 #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if 1 < 2 #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2118,7 +2118,7 @@ describe("Parser", () => {
 			});
 
 			it("should be okay with a *_reuse followed by a *selectable_if in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse *if (1 < 2) #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2131,7 +2131,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag a *selectable_if followed by a *_reuse in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (false) *disable_reuse #One\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (false) *disable_reuse #One\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2147,7 +2147,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag a non-choice non-*if line", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    Nope\n        Text\n    #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    Nope\n        Text\n    #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2162,8 +2162,53 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(24);
 			});
 
+			it("should flag another option in a choice with no contents", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n    #Option one\n    #Option 2\n        Contents\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An option in a *choice must have contents");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(31);
+			});
+
+			it("should flag an option in a choice with no contents", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t#Totally Empty\n\t#Two\n\t\tContents\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An option in a *choice must have contents");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(31);
+			});
+
+			it("should not flag an option in a fake choice with no contents", () => {
+				let fakeDocument = createDocument("Line 0\n*fake_choice\n\t#Empty\n\t#Two\n\t\tContentsEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
 			it("should be okay with an if command on the line before an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2176,7 +2221,7 @@ describe("Parser", () => {
 			});
 
 			it("should flag not-enough-indented choice", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\nEnd");
+				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {

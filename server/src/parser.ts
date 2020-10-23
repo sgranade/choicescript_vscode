@@ -933,6 +933,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
  * @returns Index at the end of the choice block.
  */
 function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, optionsSectionIndex: number, state: ParsingState): number {
+	const isFakeChoice = (command == "fake_choice");
 	// commandPadding can include a leading \n, so don't count that
 	const commandIndent = commandPadding.replace("\n", "").length;
 	let setPaddingType = false;
@@ -998,6 +999,13 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 				summary: summarize(parseOptionResults.optionText, 35),
 				range: Range.create(optionStartGlobalPosition, contentsEndGlobalPosition)
 			});
+			// If this is a choice, it has to have contents
+			if (!isFakeChoice) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					endOptionIndex, endOptionIndex + 1,
+					"An option in a *choice must have contents", state);
+				state.callbacks.onParseError(diagnostic);
+			}
 		}
 		else {
 			contentsEndIndex = lastContentLine.index + lastContentLine.line.trimRight().length;
