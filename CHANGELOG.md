@@ -4,17 +4,24 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- More error catching.
+  - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
+
 ### Fixed
 
 - Multireplace syntax highlighting updated to properly highlight variables in parentheses.
-- Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
 
 ## [1.4.3] - 2020-09-29
+
+### Added
+
+- Multireplace error catching improved.
 
 ### Fixed
 
 - Variable completion now works properly in multireplaces.
-- Multireplace error catching improved.
 - Multireplace syntax highlighting now properly handles nested parentheses thanks to [a timely mailing list email from 2007](https://lists.macromates.com/textmate/2007-September/022055.html).
 - Can you tell I focused on multireplaces this go-round?
 
@@ -28,6 +35,12 @@ Changes to the plugin.
 
 ## [1.4.1] - 2020-06-30
 
+### Added
+
+- More error catching.
+  - Flags any arguments to an `*if` before an `#Option` that aren't in parentheses.
+  - Flags `*label` names with spaces in them.
+
 ### Fixed
 
 - Variables in multi-parentheses expressions like `*if (var1) or (var2)` are now indexed correctly.
@@ -36,9 +49,6 @@ Changes to the plugin.
 - Variable references in `*bug` commands are now indexed correctly.
 - Syntax highlighting now applied to multireplaces in string literals.
 - Syntax highlighting now applied to variables and multireplaces in bold and italicized sections.
-- More error catching.
-  - Flags any arguments to an `*if` before an `#Option` that aren't in parentheses.
-  - Flags `*label` names with spaces in them.
 
 ## [1.4.0] - 2020-05-11
 

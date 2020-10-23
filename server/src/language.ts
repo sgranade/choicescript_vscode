@@ -223,13 +223,9 @@ export const multiStartPattern = "(?<multi>@!?!?{)";
  */
 export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
- * Pattern to find an option.
+ * Pattern to find a choice option line, along with allowed commands.
  */
-export const optionPattern = "(?<option>#.*)";
-/**
- * Pattern to find an entire choice option line, along with allowed commands.
- */
-export const optionStartingLinePattern = "(\\n|^)[ \t]*?(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?#";
+export const optionPattern = "(\\n|^)[ \t]*?(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?(?<option>#(?<optionContents>.*))";
 /**
  * Pattern to find a markup element like bold or italic.
  */

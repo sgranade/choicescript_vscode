@@ -384,7 +384,7 @@ describe("Parser", () => {
 	});
 
 	describe("Choice Command Parsing", () => {
-		it("should callback on an choice with spaces", () => {
+		it("should callback on a choice with spaces", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
 			let received: Array<SummaryScope> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
@@ -3138,6 +3138,53 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(25);
+			});
+		});
+
+		describe("Other", () => {
+			it("should flag an #option outside of a *choice", () => {
+				let fakeDocument = createDocument("#This option isn't part of a *choice");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice (check that indention is correct)");
+				expect(received[0].range.start.line).to.equal(0);
+				expect(received[0].range.end.line).to.equal(1);
+			});
+
+			it("should flag an #option outside of a *choice but inside a block", () => {
+				let fakeDocument = createDocument("*if true\n\t#This option isn't part of a *choice");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice (check that indention is correct)");
+				expect(received[0].range.start.line).to.equal(10);
+				expect(received[0].range.end.line).to.equal(11);
+			});
+
+			it("should not flag a pound sign inside regular text as a misplaced #option", () => {
+				let fakeDocument = createDocument("No #error here");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
 			});
 		});
 	});

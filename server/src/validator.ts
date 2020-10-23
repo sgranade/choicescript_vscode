@@ -303,7 +303,7 @@ const mulitStartRegex = RegExp(multiStartPattern);
  * Validate a choice option.
  * 
  * @param option Text of the option.
- * @param index Location of the option, starting with its leading "#".
+ * @param index Location of the option, starting at its leading "#".
  * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
@@ -464,7 +464,8 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 				diagnostics.push(diagnostic);
 		}
 		else if (m.groups.option !== undefined) {
-			const diagnostic = validateOption(m.groups.option, m.index, state);
+			// The option match captures the entire line including the "#"
+			const diagnostic = validateOption(m.groups.option, m.index + m[0].length - m.groups.option.length, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

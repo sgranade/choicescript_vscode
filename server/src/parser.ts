@@ -5,7 +5,7 @@ import {
 	validCommands,
 	multiStartPattern,
 	replacementStartPattern,
-	optionStartingLinePattern,
+	optionPattern,
 	markupPattern,
 	variableManipulationCommands,
 	insideBlockCommands,
@@ -1588,7 +1588,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	return endParseIndex;
 }
 
-const sectionParsingGlobalRegex = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}`, 'g');
+const sectionParsingGlobalRegex = RegExp(`${commandPattern}|${replacementStartPattern}|${multiStartPattern}|${optionPattern}`, 'g');
 
 /**
  * Parse a section of a ChoiceScript document
@@ -1612,7 +1612,7 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 			continue;
 		}
 
-		// Pattern options: command, replacement (${}), multi (@{})
+		// Pattern options: command, replacement (${}), multi (@{}), option (#)
 		if (m.groups.command) {
 			const command = m.groups.command;
 			const prefix = m.groups.commandPrefix ? m.groups.commandPrefix : "";
@@ -1635,6 +1635,17 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 			const endIndex = parseMultireplacement(section, m[0].length, subsectionIndex, undefined, state);
 			sectionParsingGlobalRegex.lastIndex = endIndex;
 		}
+		else if (m.groups.option) {
+			// An option outside a *choice isn't allowed, so mark it as an error
+			const optionIndex = m.index + m[0].length - m.groups.option.length;
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				optionIndex, optionIndex + 1,
+				"An #option must only appear inside a *choice or *fake_choice (check that indention is correct)",
+				state);
+			state.callbacks.onParseError(diagnostic);
+			// The match consumes the entire line, so back up the index to just after the "#"
+			sectionParsingGlobalRegex.lastIndex = optionIndex + 1;
+		}
 	}
 
 	sectionParsingGlobalRegex.lastIndex = oldPatternLastIndex;
@@ -1642,7 +1653,7 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 }
 
 const markupGlobalRegex = RegExp(markupPattern, 'g');
-const optionStartingLineGlobalRegex = RegExp(optionStartingLinePattern, 'g');
+const optionGlobalRegex = RegExp(optionPattern, 'g');
 const commandLineGlobalRegex = RegExp(commandPattern, 'g');
 const replacementMultiStartGlobalRegex = RegExp(`${replacementStartPattern}|${multiStartPattern}`, 'g');
 
@@ -1664,10 +1675,11 @@ export function countWords(section: string, textDocument: TextDocument): number 
 	// (so that we don't mis-count "# I'm an option!" as having 4 words
 	// or miss options that have an *if in front of them)
 	// Keep the leading newline (if it exists)
-	const oldStartingLineLastIndex = optionStartingLineGlobalRegex.lastIndex;
-	optionStartingLineGlobalRegex.lastIndex = 0;
-	section = section.replace(optionStartingLineGlobalRegex, "$1 ");
-	optionStartingLineGlobalRegex.lastIndex = oldStartingLineLastIndex;
+	const oldOptionLastIndex = optionGlobalRegex.lastIndex;
+	optionGlobalRegex.lastIndex = 0;
+	// The option regex eats the leading newline, so put it back in
+	section = section.replace(optionGlobalRegex, "\n$<optionContents>");
+	optionGlobalRegex.lastIndex = oldOptionLastIndex;
 
 	// Get rid of every line that's a command
 	// Keep the leading newline (if it exists)
