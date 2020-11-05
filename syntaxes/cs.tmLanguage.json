@@ -197,6 +197,9 @@
 					"match": "\\|"
 				},
 				{
+					"include": "#markup"
+				},
+				{
 					"include": "#todo"
 				}
 			]

@@ -14,6 +14,7 @@ Changes to the plugin.
 ### Fixed
 
 - Multireplace syntax highlighting updated to properly highlight variables in parentheses.
+- Italic and bold text in a multireplace now show as italic and bold.
 
 ## [1.4.3] - 2020-09-29
 
