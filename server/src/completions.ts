@@ -112,15 +112,27 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 			else {
 				switch (tokens[0]) {
-					case "goto":
 					case "gosub":
+						// Complete variables
+						if (tokens.length > 2) {
+							completions = generateVariableCompletions(document, position, projectIndex);
+							break;
+						}
+						// Fall through to the goto
+					case "goto":
 						if (tokens.length == 2) {
 							completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
 						}
 						break;
 
-					case "goto_scene":
 					case "gosub_scene":
+						// Complete variables
+						if (tokens.length > 3) {
+							completions = generateVariableCompletions(document, position, projectIndex);
+							break;
+						}
+						// Fall through to the goto_scene
+					case "goto_scene":
 						if (tokens.length == 2) {
 							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
 							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
