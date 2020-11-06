@@ -161,6 +161,13 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 						completions = generateVariableCompletions(document, position, projectIndex);
 						break;
 
+					case "create":
+					case "temp":
+						if (tokens.length > 2) {
+							completions = generateVariableCompletions(document, position, projectIndex);
+						}
+						break;
+
 					case "achieve":
 						completions = generateCompletionsFromIndex(
 							projectIndex.getAchievements(),

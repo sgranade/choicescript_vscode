@@ -13,6 +13,7 @@ Changes to the plugin.
 
 ### Fixed
 
+- `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
 - Multireplace syntax highlighting updated to properly highlight variables in parentheses.
 - Italic and bold text in a multireplace now show as italic and bold.
 
