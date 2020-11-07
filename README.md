@@ -57,6 +57,11 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.5.0]
+
+- Warn when a `*temp` variable has the same name as an earlier-created one.
+- `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
+
 ### [1.4.3]
 
 - Variable completion now works properly in multireplaces.

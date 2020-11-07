@@ -2,19 +2,19 @@
 
 Changes to the plugin.
 
-## Unreleased
+## [1.5.0] - 2020-11-06
 
 ### Added
 
+- Warn when a `*temp` variable has the same name as an earlier-created one.
+- `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
 - More error catching.
   - #Options outside of a `*choice` command are flagged as an error.
   - #Options in a `*choice` command must have contents.
   - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
-- Warn when a `*temp` variable has the same name as an earlier-created one.
 
 ### Fixed
 
-- `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
 - Multireplace syntax highlighting updated to properly highlight variables in parentheses.
 - Italic and bold text in a multireplace now show as italic and bold.
 
