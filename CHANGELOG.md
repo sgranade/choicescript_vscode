@@ -10,6 +10,7 @@ Changes to the plugin.
   - #Options outside of a `*choice` command are flagged as an error.
   - #Options in a `*choice` command must have contents.
   - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
+- Warn when a `*temp` variable has the same name as an earlier-created one.
 
 ### Fixed
 

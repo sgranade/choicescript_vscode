@@ -281,7 +281,9 @@ describe("Validator", () => {
 
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 
-			expect(diagnostics.length).to.equal(0);
+			// We do get a warning for the variable re-creation though
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include('"local_var" was defined earlier');
 		});
 
 		it("should not flag a local variable referenced before it's created if a global variable exists", () => {
@@ -459,6 +461,17 @@ describe("Validator", () => {
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
+		});
+
+		it("should flag local variables with a repeated name", () => {
+			let localVariables = new Map([["local_var", [Substitute.for<Location>(), Substitute.for<Location>()]]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ localVariables: localVariables });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
 		});
 	});
 

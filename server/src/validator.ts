@@ -1,4 +1,4 @@
-import { Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from "./index";
@@ -54,15 +54,36 @@ class ValidationState {
 function validateVariables(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
-	// Make sure no local variables have the same name as global ones
+	// Make sure no local variables have the same name as global ones or are repeated
 	const globalVariables = state.projectIndex.getGlobalVariables();
 	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
-		for (const location of locations) {
-			if (globalVariables.has(variable)) {
-				diagnostics.push(createDiagnosticFromLocation(
+		if (locations.length > 1) {
+			const relatedInformation: DiagnosticRelatedInformation = {
+				location: locations[0],
+				message: `First creation of "${variable}"`
+			}
+			for (const location of locations.slice(1)) {
+				const diagnostic = createDiagnosticFromLocation(
 					DiagnosticSeverity.Information, location,
-					`*temp variable "${variable}" has the same name as a global variable`
-				));
+					`Local variable "${variable}" was defined earlier`
+				);
+				diagnostic.relatedInformation = [relatedInformation];
+				diagnostics.push(diagnostic);
+			}
+		}
+		const globalLocation = globalVariables.get(variable);
+		if (globalLocation !== undefined) {
+			const relatedInformation: DiagnosticRelatedInformation = {
+				location: globalLocation,
+				message: `First creation of "${variable}"`
+			}
+			for (const location of locations) {
+				const diagnostic = createDiagnosticFromLocation(
+					DiagnosticSeverity.Information, location,
+					`Local variable "${variable}" has the same name as a global variable`
+				);
+				diagnostic.relatedInformation = [relatedInformation];
+				diagnostics.push(diagnostic);
 			}
 		}
 	}
