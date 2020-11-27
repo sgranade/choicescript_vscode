@@ -1,6 +1,6 @@
 # ChoiceScript VS Code
 
-[![Build Status](https://travis-ci.com/sgranade/choicescript_vscode.svg?branch=master)](https://travis-ci.com/sgranade/choicescript_vscode.svg?branch=master)
+![Build Status](https://github.com/sgranade/choicescript_vscode/workflows/build/badge.svg)
 [![Coverage](https://codecov.io/gh/sgranade/choicescript_vscode/branch/master/graph/badge.svg)](https://codecov.io/gh/sgranade/choicescript_vscode)
 
 
