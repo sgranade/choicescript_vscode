@@ -28,3 +28,8 @@ jobs:
       if: runner.os == 'Linux'
     - run: npm test
       if: runner.os != 'Linux'
+    - name: Coverage
+      run: npm run report-coverage
+    - uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.lcov
