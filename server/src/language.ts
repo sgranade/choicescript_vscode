@@ -275,7 +275,8 @@ export function extractTokenAtIndex(
 	text: string,
 	index: number,
 	delimiters = "{}",
-	symbolChars = "\\w"): string | undefined {
+	symbolChars = "\\w"
+): string | undefined {
 	if (delimiters.length % 2) {
 		throw Error(`Delimiters ${delimiters} are not paired`);
 	}

@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Label indexing now properly handles labels with punctuation.
+
 ## [1.5.0] - 2020-11-06
 
 ### Added

@@ -606,8 +606,11 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 		parseSet(line, lineSectionIndex, state);
 	}
 	else {
-		const linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/g;
-		linePattern.lastIndex = 0;
+		var linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/;
+		if (command == "label") {
+			// *label accepts *any* punctuation in the label so we need a different regex
+			linePattern = /(?<symbol>\S+)((?<spacing>\s+?)(?<expression>.+))?/;
+		}
 		const lineMatch = linePattern.exec(line);
 		if (lineMatch === null || lineMatch.groups === undefined) {
 			return;
@@ -1377,8 +1380,15 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 		let secondTokenLocalIndex = 0;
 		let remainderLine = "";
 		let remainderLineLocalIndex = 0;
+		const sceneCommand = command.endsWith("_scene");
+
+		let tokenDelimiters = "\\w-"
+		// If it's a scene command, then the first token is a scene file (word characters + dash). Otherwise, it's a label (non-space characters)
+		if (!sceneCommand) {
+			tokenDelimiters = "\\S";
+		}
 		// Get the first token, which may be a {} reference
-		let token = extractTokenAtIndex(line, 0, "{}", "\\w-");
+		let token = extractTokenAtIndex(line, 0, "{}", tokenDelimiters);
 		firstToken = (token !== undefined) ? token : "";
 		if (firstToken != "") {
 			remainderLineLocalIndex = firstToken.length;
@@ -1390,12 +1400,12 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 			parseExpression(firstToken.slice(1, -1), state.sectionGlobalIndex + lineSectionIndex + 1, state);
 		}
 
-		if (command.endsWith("_scene")) {
+		if (sceneCommand) {
 			// There's a optional second token
 			const m = remainderLine.match(/^(?<spacing>[ \t]+)/);
 			if (m !== null && m.groups !== undefined) {
 				const spacing = m.groups.spacing;
-				token = extractTokenAtIndex(remainderLine, spacing.length);
+				token = extractTokenAtIndex(remainderLine, spacing.length, undefined, "\\S");
 				secondToken = (token !== undefined) ? token : "";
 				secondTokenLocalIndex = remainderLineLocalIndex + spacing.length;
 				remainderLineLocalIndex = secondTokenLocalIndex + secondToken.length;

@@ -136,6 +136,23 @@ describe("Parser", () => {
 			expect(received[0].labelLocation.range.end.line).to.equal(11);
 		});
 
+		it("should callback on goto with a punctuated label", () => {
+			let fakeDocument = createDocument("*goto l'abel");
+			let received: Array<FlowControlEvent> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("l'abel");
+			expect(received[0].labelLocation.range.start.line).to.equal(6);
+			expect(received[0].labelLocation.range.end.line).to.equal(12);
+		});
+
 		it("should callback on gosub", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let received: Array<FlowControlEvent> = [];
@@ -151,6 +168,23 @@ describe("Parser", () => {
 			expect(received[0].label).to.equal("label");
 			expect(received[0].labelLocation.range.start.line).to.equal(7);
 			expect(received[0].labelLocation.range.end.line).to.equal(12);
+		});
+
+		it("should callback on gosub with a punctuated label", () => {
+			let fakeDocument = createDocument("*gosub l'abel");
+			let received: Array<FlowControlEvent> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
+				(command: string, commandLocation: Location, label: string, scene: string, labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState) => {
+					received.push({ command: command, commandLocation: commandLocation, label: label, scene: scene, labelLocation: labelLocation, sceneLocation: sceneLocation });
+				});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].label).to.equal("l'abel");
+			expect(received[0].labelLocation.range.start.line).to.equal(7);
+			expect(received[0].labelLocation.range.end.line).to.equal(13);
 		});
 
 		it("should create a reference on goto with a reference label", () => {
@@ -333,7 +367,7 @@ describe("Parser", () => {
 		});
 
 		it("should send scene and label on goto_scene", () => {
-			let fakeDocument = createDocument("*goto_scene scenename labelname");
+			let fakeDocument = createDocument("*goto_scene scenename l'abelname");
 			let received: Array<FlowControlEvent> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onFlowControlEvent(Arg.all()).mimicks(
@@ -344,9 +378,9 @@ describe("Parser", () => {
 			parse(fakeDocument, fakeCallbacks);
 
 			expect(received.length).to.equal(1);
-			expect(received[0].label).to.equal("labelname");
+			expect(received[0].label).to.equal("l'abelname");
 			expect(received[0].labelLocation.range.start.line).to.equal(22);
-			expect(received[0].labelLocation.range.end.line).to.equal(31);
+			expect(received[0].labelLocation.range.end.line).to.equal(32);
 		});
 
 		it("should create a reference if necessary from a goto_scene label", () => {
@@ -681,6 +715,22 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("variable");
 			expect(received[0].location.range.start.line).to.equal(7);
 			expect(received[0].location.range.end.line).to.equal(15);
+		});
+
+		it("should callback on labels with allowed punctuation", () => {
+			let fakeDocument = createDocument("*label don't");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onLabelCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("don't");
+			expect(received[0].location.range.start.line).to.equal(7);
+			expect(received[0].location.range.end.line).to.equal(12);
 		});
 
 		it("should callback on local variables created inside choices", () => {
