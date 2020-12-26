@@ -871,6 +871,27 @@ describe("Tokenizing", () => {
 			expect(tokens.bareTest.localIndex).to.equal(0);
 		});
 
+		it("should extract a function test", () => {
+			let text = "not(var1) yes | no} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.unterminated).to.be.false;
+			expect(tokens.test.bareExpression).to.equal("not(var1)");
+			expect(tokens.test.globalIndex).to.equal(2);
+		});
+
+		it("should save a function test in bareTest", () => {
+			let text = "not(var1) yes | no} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.bareTest.text).to.equal("not(var1)")
+			expect(tokens.bareTest.localIndex).to.equal(0);
+		});
+
 		it("should extract the bodies", () => {
 			let text = "variable yes | no | maybe } extra content";
 			let fakeDocument = createDocument(text);

@@ -1247,6 +1247,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(10);
 		});
 
+		it("should callback on variables in a function in the test", () => {
+			let fakeDocument = createDocument("@{not(variable) this | that}");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(6);
+			expect(received[0].location.range.end.line).to.equal(14);
+		});
+
 		it("should callback on multiple variables in the test", () => {
 			let fakeDocument = createDocument('@{(var1 + var2 > 2) true | false}');
 			let received: Array<Symbol> = [];

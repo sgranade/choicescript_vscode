@@ -954,29 +954,43 @@ export function tokenizeMultireplace(
 	let testEndLocalIndex = 0;
 
 	if (workingText[0] != '(') {
-		// The multireplace only has a bare symbol as its test
+		// The multireplace only has a bare symbol or a function as its test
 		// Skip over any leading whitespace
 		let testStartLocalIndex = 0;
-		while (testStartLocalIndex < section.length) {
+		while (testStartLocalIndex < workingText.length) {
 			if (/\w/.test(workingText[testStartLocalIndex])) {
 				break;
 			}
 			testStartLocalIndex++;
 		}
 
-		if (testStartLocalIndex == section.length) {
+		if (testStartLocalIndex == workingText.length) {
 			testStartLocalIndex = 0;
-			testEndLocalIndex = section.length;
+			testEndLocalIndex = workingText.length;
 		}
 		else {
 			testEndLocalIndex = testStartLocalIndex;
-			while (testEndLocalIndex < section.length) {
+			while (testEndLocalIndex < workingText.length) {
 				if (/\W/.test(workingText[testEndLocalIndex])) {
 					break;
 				}
 				testEndLocalIndex++;
 			}
-
+			// We may have a function
+			if (
+				workingText[testEndLocalIndex] == "(" && 
+				functionsLookup.has(workingText.slice(testStartLocalIndex, testEndLocalIndex))
+			) {
+				let functionContents = extractToMatchingDelimiter(
+					workingText, "(", ")", testEndLocalIndex + 1
+				);
+				if (functionContents === undefined) {
+					testEndLocalIndex = workingText.length;
+				}
+				else {
+					testEndLocalIndex += functionContents.length + 2;
+				}
+			}
 		}
 		bareTest = {
 			text: workingText.slice(testStartLocalIndex, testEndLocalIndex),

@@ -6,6 +6,7 @@ Changes to the plugin.
 
 ### Fixed
 
+- Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.
 - Label indexing now properly handles labels with punctuation.
 
 ## [1.5.0] - 2020-11-06
