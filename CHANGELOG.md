@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Changed
+
+- Empty `*if`/`*elseif`/`*else` errors now don't put the error squigglies on the whole line.
+
 ### Fixed
 
 - Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.

@@ -1962,10 +1962,10 @@ describe("Parser", () => {
 
 				expect(received.length).to.equal(2);
 				expect(received[0].message).to.include("*if must have an indented line with contents after it");
-				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(8);
 				expect(received[1].message).to.include("*else must have an indented line with contents after it");
-				expect(received[1].range.start.line).to.equal(40);
+				expect(received[1].range.start.line).to.equal(44);
 				expect(received[1].range.end.line).to.equal(44);
 			});
 

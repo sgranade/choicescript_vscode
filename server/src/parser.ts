@@ -1288,7 +1288,7 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
 	if (blockContents.trim() == "" && state.enclosingBlock != "option") {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex, lineSectionIndex + line.length,
+			lineSectionIndex + line.length, lineSectionIndex + line.length,
 			`*${command} must have an indented line with contents after it.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}
@@ -1335,7 +1335,8 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 		const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
 		if (blockContents.trim() == "") {
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				newCommandIndex, newCommandLineIndex + newCommandLine.length,
+				newCommandLineIndex + newCommandLine.length,
+				newCommandLineIndex + newCommandLine.length,
 				`*${newCommand} must have an indented line with contents after it.`, state);
 			state.callbacks.onParseError(diagnostic);
 		}
