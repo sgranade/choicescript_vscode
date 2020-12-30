@@ -10,6 +10,7 @@ Changes to the plugin.
 
 ### Fixed
 
+- Variables aren't flagged as not existing until the full project has been indexed, getting rid of the flash of errors on startup.
 - Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.
 - Label indexing now properly handles labels with punctuation.
 

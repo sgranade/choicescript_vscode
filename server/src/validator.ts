@@ -144,6 +144,7 @@ function validateSceneReference(
  */
 function validateReferences(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
+	const projectIsIndexed = state.projectIndex.getProjectIsIndexed();
 
 	// Validate references
 	const references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);
@@ -178,7 +179,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				}
 			}
 		}
-		else if (!builtinVariablesLookup.has(variable)) {
+		else if (!builtinVariablesLookup.has(variable) && projectIsIndexed) {
 			const scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
 			let trimmedLocations = locations;
 

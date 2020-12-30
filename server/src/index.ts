@@ -160,9 +160,18 @@ export interface ProjectIndex {
 	 */
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void;
 	/**
+	 * Update whether or not the project has been fully indexed.
+	 * @param isIndexed True if project indexing is complete.
+	 */
+	updateProjectIsIndexed(isIndexed: boolean): void;
+	/**
 	 * Determine if a document URI is the project's startup.txt file.
 	 */
 	isStartupFileUri(uri: string): boolean;
+	/**
+	 * Get whether or not the project has been fully indexed.
+	 */
+	getProjectIsIndexed(): boolean;
 	/**
 	 * Get the URI to a scene file.
 	 * @param scene Scene name.
@@ -256,6 +265,7 @@ export interface ProjectIndex {
  * Instantiable index class
  */
 export class Index implements ProjectIndex {
+	private _projectIndexState: boolean;
 	private _startupFileUri: string;
 	private _wordCounts: Map<string, number>;
 	private _globalVariables: IdentifierIndex;
@@ -270,6 +280,7 @@ export class Index implements ProjectIndex {
 	private _documentScopes: Map<string, DocumentScopes>;
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
+		this._projectIndexState = false;
 		this._startupFileUri = "";
 		this._wordCounts = new Map();
 		this._globalVariables = new Map();
@@ -321,8 +332,14 @@ export class Index implements ProjectIndex {
 	updateParseErrors(textDocumentUri: string, errors: Diagnostic[]): void {
 		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
 	}
+	updateProjectIsIndexed(isIndexed: boolean): void {
+		this._projectIndexState = isIndexed;
+	}
 	isStartupFileUri(uri: string): boolean {
 		return this._startupFileUri == normalizeUri(uri);
+	}
+	getProjectIsIndexed(): boolean {
+		return this._projectIndexState;
 	}
 	getSceneUri(scene: string): string | undefined {
 		if (this._startupFileUri == "") {

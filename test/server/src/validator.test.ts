@@ -34,12 +34,13 @@ interface IndexArgs {
 	variableReferences?: IdentifierMultiIndex;
 	flowControlEvents?: FlowControlEvent[];
 	scopes?: DocumentScopes;
+	projectIndexState?: boolean;
 }
 
 function createIndex({
 	globalVariables, localVariables, subroutineVariables, startupUri, labels,
 	labelsUri, sceneList, sceneFileUri, achievements,
-	variableReferences, flowControlEvents, scopes }: IndexArgs): SubstituteOf<ProjectIndex> {
+	variableReferences, flowControlEvents, scopes, projectIndexState }: IndexArgs): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new Map();
 	}
@@ -77,6 +78,9 @@ function createIndex({
 			paramScopes: [],
 		};
 	}
+	if (projectIndexState === undefined) {
+		projectIndexState = true;
+	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
 	fakeIndex.getGlobalVariables().returns(globalVariables);
@@ -98,6 +102,7 @@ function createIndex({
 	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
 	fakeIndex.getParseErrors(Arg.any()).returns([]);
+	fakeIndex.getProjectIsIndexed().returns(projectIndexState);
 
 	return fakeIndex;
 }
@@ -241,6 +246,17 @@ describe("Validator", () => {
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"unknown" not defined');
+		});
+
+		it("should not flag missing variables if the project hasn't been indexed", () => {
+			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let variableReferences: IdentifierMultiIndex = new Map([["unknown", [location]]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIndexState: false });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
 		});
 
 		it("should not flag existing local variables", () => {
