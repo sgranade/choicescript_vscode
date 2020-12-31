@@ -13,7 +13,7 @@
 	},
 	"dependencies": {
 		"globby": "^11.0.1",
-		"urijs": "^1.19.2",
+		"urijs": "^1.19.4",
 		"vscode-languageserver": "^6.1.1",
 		"vscode-languageserver-textdocument": "^1.0.1"
 	},
