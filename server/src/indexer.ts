@@ -243,17 +243,17 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	const subroutineVariables = findSubroutineVariables(indexingState);
 
 	if (isStartupFile) {
-		index.updateGlobalVariables(textDocument.uri, indexingState.globalVariables);
-		index.updateSceneList(indexingState.scenes);
-		index.updateAchievements(indexingState.achievements);
+		index.setGlobalVariables(textDocument.uri, indexingState.globalVariables);
+		index.setSceneList(indexingState.scenes);
+		index.setAchievements(indexingState.achievements);
 	}
-	index.updateWordCount(textDocument.uri, wordCount);
-	index.updateLocalVariables(textDocument.uri, indexingState.localVariables);
-	index.updateSubroutineLocalVariables(textDocument.uri, subroutineVariables);
-	index.updateVariableReferences(textDocument.uri, indexingState.variableReferences);
-	index.updateLabels(textDocument.uri, indexingState.labels);
-	index.updateAchievementReferences(textDocument.uri, indexingState.achievementReferences);
-	index.updateDocumentScopes(textDocument.uri, scopes);
-	index.updateFlowControlEvents(textDocument.uri, indexingState.flowControlEvents);
-	index.updateParseErrors(textDocument.uri, indexingState.parseErrors);
+	index.setWordCount(textDocument.uri, wordCount);
+	index.setLocalVariables(textDocument.uri, indexingState.localVariables);
+	index.setSubroutineLocalVariables(textDocument.uri, subroutineVariables);
+	index.setVariableReferences(textDocument.uri, indexingState.variableReferences);
+	index.setLabels(textDocument.uri, indexingState.labels);
+	index.setAchievementReferences(textDocument.uri, indexingState.achievementReferences);
+	index.setDocumentScopes(textDocument.uri, scopes);
+	index.setFlowControlEvents(textDocument.uri, indexingState.flowControlEvents);
+	index.setParseErrors(textDocument.uri, indexingState.parseErrors);
 }

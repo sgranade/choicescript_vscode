@@ -144,7 +144,7 @@ function validateSceneReference(
  */
 function validateReferences(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
-	const projectIsIndexed = state.projectIndex.getProjectIsIndexed();
+	const projectIsIndexed = state.projectIndex.projectIsIndexed();
 
 	// Validate references
 	const references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);

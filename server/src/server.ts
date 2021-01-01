@@ -106,7 +106,7 @@ function findStartupFiles(workspaces: WorkspaceFolder[]): void {
 
 function indexProject(pathsToProjectFiles: string[]): void {
 	if (pathsToProjectFiles.length == 0) {
-		projectIndex.updateProjectIsIndexed(true); // No startup.txt file to index
+		projectIndex.setProjectIsIndexed(true); // No startup.txt file to index
 	}
 	pathsToProjectFiles.map(async (path) => {
 		// TODO handle multiple startup.txt files in multiple directories
@@ -131,7 +131,7 @@ function indexProject(pathsToProjectFiles: string[]): void {
 
 		await Promise.all(promises);
 
-		projectIndex.updateProjectIsIndexed(true);
+		projectIndex.setProjectIsIndexed(true);
 
 		// Revalidate all open text documents
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));

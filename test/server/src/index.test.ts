@@ -22,7 +22,7 @@ describe("Project Index", () => {
 				["vArIaBlE", [referenceLocation2]]
 			]);
 			let index = new Index();
-			index.updateVariableReferences(documentUri, originalReferences);
+			index.setVariableReferences(documentUri, originalReferences);
 
 			let references = index.getVariableReferences("variable");
 
@@ -52,7 +52,7 @@ describe("Project Index", () => {
 				}
 			];
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
+			index.setFlowControlEvents(documentUri, events);
 
 			let references = index.getLabelReferences("local_label");
 
@@ -84,8 +84,8 @@ describe("Project Index", () => {
 				}
 			];
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, localEvents);
-			index.updateFlowControlEvents(otherSceneUri, otherSceneEvents);
+			index.setFlowControlEvents(documentUri, localEvents);
+			index.setFlowControlEvents(otherSceneUri, otherSceneEvents);
 
 			let references = index.getLabelReferences('local_label');
 
@@ -100,7 +100,7 @@ describe("Project Index", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
 			let achievementReferences = new Map([["achieve", [referenceLocation]]]);
 			let index = new Index();
-			index.updateAchievementReferences(documentUri, achievementReferences);
+			index.setAchievementReferences(documentUri, achievementReferences);
 
 			let references = index.getDocumentAchievementReferences(documentUri);
 			let achieveReferences = references.get('achieve');
@@ -117,8 +117,8 @@ describe("Project Index", () => {
 			let otherReferenceLocation = Location.create(otherSceneUri, Range.create(9, 1, 9, 7));
 			let otherAchievementReferences = new Map([["achieve", [otherReferenceLocation]]]);
 			let index = new Index();
-			index.updateAchievementReferences(documentUri, localAchievementReferences);
-			index.updateAchievementReferences(otherSceneUri, otherAchievementReferences);
+			index.setAchievementReferences(documentUri, localAchievementReferences);
+			index.setAchievementReferences(otherSceneUri, otherAchievementReferences);
 
 			let references = index.getAchievementReferences("achieve");
 

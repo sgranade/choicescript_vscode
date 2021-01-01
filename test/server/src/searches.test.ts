@@ -783,8 +783,8 @@ describe("Symbol References", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: labelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -810,8 +810,8 @@ describe("Symbol References", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: definitionLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -837,8 +837,8 @@ describe("Symbol References", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: labelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -867,9 +867,9 @@ describe("Symbol References", () => {
 			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: otherSceneLabelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
-			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
+			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -897,11 +897,11 @@ describe("Symbol References", () => {
 			let otherSceneLabelsIndex: LabelIndex = new Map([["other_label", { label: "other_label", location: otherSceneLabelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateGlobalVariables('file:///startup.txt', new Map());
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
-			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
-			index.updateSceneList([documentUri, otherSceneUri]);
+			index.setGlobalVariables('file:///startup.txt', new Map());
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
+			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.setSceneList([documentUri, otherSceneUri]);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -929,9 +929,9 @@ describe("Symbol References", () => {
 			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: otherSceneLabelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
-			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
+			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
@@ -1205,8 +1205,8 @@ describe("Symbol Renames", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: labelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 
@@ -1237,8 +1237,8 @@ describe("Symbol Renames", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: definitionLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(2, 1);
 
@@ -1269,9 +1269,9 @@ describe("Symbol Renames", () => {
 			let otherSceneLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: otherSceneLabelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
-			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
+			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 
@@ -1302,11 +1302,11 @@ describe("Symbol Renames", () => {
 			let otherSceneLabelsIndex: LabelIndex = new Map([["other_label", { label: "other_label", location: otherSceneLabelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateGlobalVariables('file:///startup.txt', new Map());
-			index.updateFlowControlEvents(documentUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
-			index.updateLabels(otherSceneUri, otherSceneLabelsIndex);
-			index.updateSceneList([documentUri, otherSceneUri]);
+			index.setGlobalVariables('file:///startup.txt', new Map());
+			index.setFlowControlEvents(documentUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
+			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
+			index.setSceneList([documentUri, otherSceneUri]);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(2, 1);
 
@@ -1333,8 +1333,8 @@ describe("Symbol Renames", () => {
 			let documentLabelsIndex: LabelIndex = new Map([["local_label", { label: "local_label", location: labelLocation }]]);
 			// The logic for finding label references is complex enough that I'll use an actual Index
 			let index = new Index();
-			index.updateFlowControlEvents(otherSceneUri, events);
-			index.updateLabels(documentUri, documentLabelsIndex);
+			index.setFlowControlEvents(otherSceneUri, events);
+			index.setLabels(documentUri, documentLabelsIndex);
 			let fakeDocument = createDocument("Placeholder");
 			let position = Position.create(5, 1);
 

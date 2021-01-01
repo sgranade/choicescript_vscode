@@ -34,13 +34,14 @@ interface IndexArgs {
 	variableReferences?: IdentifierMultiIndex;
 	flowControlEvents?: FlowControlEvent[];
 	scopes?: DocumentScopes;
-	projectIndexState?: boolean;
+	projectIsIndexed?: boolean;
 }
 
 function createIndex({
 	globalVariables, localVariables, subroutineVariables, startupUri, labels,
 	labelsUri, sceneList, sceneFileUri, achievements,
-	variableReferences, flowControlEvents, scopes, projectIndexState }: IndexArgs): SubstituteOf<ProjectIndex> {
+	variableReferences, flowControlEvents, scopes, 
+	projectIsIndexed }: IndexArgs): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new Map();
 	}
@@ -78,8 +79,8 @@ function createIndex({
 			paramScopes: [],
 		};
 	}
-	if (projectIndexState === undefined) {
-		projectIndexState = true;
+	if (projectIsIndexed === undefined) {
+		projectIsIndexed = true;
 	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
@@ -102,7 +103,7 @@ function createIndex({
 	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
 	fakeIndex.getParseErrors(Arg.any()).returns([]);
-	fakeIndex.getProjectIsIndexed().returns(projectIndexState);
+	fakeIndex.projectIsIndexed().returns(projectIsIndexed);
 
 	return fakeIndex;
 }
@@ -252,7 +253,7 @@ describe("Validator", () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: IdentifierMultiIndex = new Map([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
-			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIndexState: false });
+			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIsIndexed: false });
 
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
 

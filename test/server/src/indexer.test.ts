@@ -33,7 +33,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*create variable 3");
 			let received: Array<IdentifierIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateGlobalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setGlobalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -46,7 +46,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*temp variable 3");
 			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
+			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -60,7 +60,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*temp variable 3\n*temp variable 1");
 			let received: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
+			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -76,7 +76,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub subroutine\n*finish\n*label subroutine\n*temp variable 3\n*return\n");
 			let received: Array<IdentifierIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -92,7 +92,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*set variable 3");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -106,7 +106,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -120,7 +120,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*if variable > 1");
 			let receivedReferences: Array<IdentifierMultiIndex> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -134,7 +134,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -147,7 +147,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -158,7 +158,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -170,7 +170,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -182,7 +182,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub_scene scene-name");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -193,7 +193,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub_scene scene-name");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -205,7 +205,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub_scene scene-name");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -217,7 +217,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub_scene scene-name other_label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -229,7 +229,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*gosub_scene scene-name other_label");
 			let receivedReferences: Array<FlowControlEvent[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
+			fakeIndex.setFlowControlEvents(Arg.all()).mimicks((uri: string, events: FlowControlEvent[]) => { receivedReferences.push(events); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -245,7 +245,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
 			let receivedScenes: Array<Array<string>> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -258,7 +258,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*achievement code_name");
 			let receivedAchievements: IdentifierIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index); });
+			fakeIndex.setAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -270,7 +270,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*achieve code_name");
 			let receivedAchievementReferences: IdentifierMultiIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateAchievementReferences(Arg.any(), Arg.any()).mimicks(
+			fakeIndex.setAchievementReferences(Arg.any(), Arg.any()).mimicks(
 				(uri, index) => {
 					receivedAchievementReferences.push(index);
 				}
@@ -288,7 +288,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.setLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -300,7 +300,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.setLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -312,7 +312,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_name\nLine 1\n*return\nLine 3");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.setLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -325,7 +325,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label label_one\nLine 1\n*label label_two\nLine 3\n*return\nLine 5");
 			let receivedLabels: LabelIndex[] = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
+			fakeIndex.setLabels(Arg.any(), Arg.any()).mimicks((uri: string, index: LabelIndex) => { receivedLabels.push(index); });
 
 			updateProjectIndex(fakeDocument, true, fakeIndex);
 
@@ -341,7 +341,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -355,7 +355,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*check_achievements\nLine 2\nLast line");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -370,7 +370,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*params\nLine 2");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -384,7 +384,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*params\nLine 2\nLast line");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -396,13 +396,12 @@ describe("Indexer", () => {
 		});
 	});
 
-	// TODO
 	describe("Label Scoping", () => {
 		it("should capture the scope of a *label followed by a *return", () => {
 			let fakeDocument = createDocument("Line 0\n*label\nLine 2\n*return\nLine 4");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -416,7 +415,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*label\nLine 2\n*return\nLine 4");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -433,7 +432,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
 			let received: Array<DocumentScopes> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateDocumentScopes(Arg.all()).mimicks(
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
 				(uri: string, scope: DocumentScopes) => { received.push(scope); }
 			);
 
@@ -448,7 +447,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*create variable 3\n*create variable 9");
 			let received: Array<Diagnostic[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+			fakeIndex.setParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
 
@@ -465,7 +464,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*label previous_label\n*label previous_label");
 			let received: Array<Diagnostic[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+			fakeIndex.setParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
 
@@ -482,7 +481,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*return");
 			let received: Array<Diagnostic[]> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateParseErrors(Arg.all()).mimicks(
+			fakeIndex.setParseErrors(Arg.all()).mimicks(
 				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
 			);
 
@@ -501,7 +500,7 @@ describe("Indexer", () => {
 			let fakeDocument = createDocument("*create variable 3\nIt's three words\n*comment don't count me");
 			let received: Array<number> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
-			fakeIndex.updateWordCount(Arg.all()).mimicks(
+			fakeIndex.setWordCount(Arg.all()).mimicks(
 				(uri: string, count: number) => { received.push(count); }
 			);
 
