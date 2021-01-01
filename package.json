@@ -30,7 +30,7 @@
 		"interactive fiction"
 	],
 	"engines": {
-		"vscode": "^1.41.0"
+		"vscode": "^1.52.0"
 	},
 	"icon": "images/ChoiceOfGames.png",
 	"galleryBanner": {
