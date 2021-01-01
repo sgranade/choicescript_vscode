@@ -57,7 +57,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
-### [1.5.1]
+### [1.6.0]
 
 - Variables aren't flagged as not existing until the full project has been indexed, getting rid of the flash of errors on startup.
 - choicescript_stats is now recognized as a scene, allowing autocomplete and fixing erroneous warning messages.
