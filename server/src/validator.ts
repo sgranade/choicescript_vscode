@@ -218,19 +218,23 @@ function validateReferences(state: ValidationState): Diagnostic[] {
  */
 function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
+	const projectIsIndexed = state.projectIndex.projectIsIndexed()
 
 	for (const event of state.projectIndex.getFlowControlEvents(state.textDocument.uri)) {
 		if (event.scene != "" && event.sceneLocation !== undefined) {
-			let diagnostic = validateSceneReference(event.scene, event.sceneLocation, state);
-			if (diagnostic) {
-				diagnostics.push(diagnostic);
-			}
-			else if (event.label != "" && event.labelLocation !== undefined) {
-				diagnostic = validateLabelReference(
-					event.label, event.scene, event.labelLocation, state
-				);
-				if (diagnostic !== undefined)
+			// We can only validate flow control events that reference another scene once the full project's been indexed
+			if (projectIsIndexed) {
+				let diagnostic = validateSceneReference(event.scene, event.sceneLocation, state);
+				if (diagnostic) {
 					diagnostics.push(diagnostic);
+				}
+				else if (event.label != "" && event.labelLocation !== undefined) {
+					diagnostic = validateLabelReference(
+						event.label, event.scene, event.labelLocation, state
+					);
+					if (diagnostic !== undefined)
+						diagnostics.push(diagnostic);
+				}
 			}
 		}
 		else if (event.label != "" && event.labelLocation !== undefined) {

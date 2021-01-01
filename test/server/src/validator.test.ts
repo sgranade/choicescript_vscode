@@ -621,6 +621,23 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
 		});
 
+		it("should not flag bad scene names if the project hasn't been indexed", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "missing_scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ flowControlEvents: events, projectIsIndexed: false });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should be good with hyphenated scene names", () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -684,6 +701,30 @@ describe("Validator", () => {
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
+		});
+
+		it("should not flag missing labels in another scene if the project hasn't been indexed", () => {
+			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "gosub_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "missing_label",
+				labelLocation: referenceLocation,
+				scene: "other-scene",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				flowControlEvents: events,
+				labels: sceneLabels, labelsUri: fakeSceneUri,
+				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri,
+				projectIsIndexed: false
+			});
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
 		});
 
 		it("should not flag references in labels, even in another scene", () => {
