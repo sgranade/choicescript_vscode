@@ -10,7 +10,6 @@ import { ReadonlyIdentifierIndex } from "./index";
  * Commands that can only be used in startup.txt
  */
 export const startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
-// TODO deal with commands that are only allowed in choicescript_stats.txt
 
 /**
  * Complete list of valid commands.

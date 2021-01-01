@@ -865,7 +865,6 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 	let lineStart = optionContentsIndex;
 
 	while (true) {
-		// TODO could this switch to readNextNonblankLine?
 		nextLine = readLine(text, lineStart);
 		if (nextLine === undefined) {
 			break;

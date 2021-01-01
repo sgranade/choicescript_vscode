@@ -80,11 +80,6 @@ connection.onInitialize((params: InitializeParams) => {  // eslint-disable-line 
 });
 
 connection.onInitialized(() => {
-	// TODO this should be handled through server-to-client communications
-	// using custom messages like "workspace/xfind" or the like
-	// see https://stackoverflow.com/questions/51041337/vscode-language-client-extension-how-to-send-a-message-from-the-server-to-the/51081743#51081743
-	// and https://stackoverflow.com/questions/51806347/visual-studio-language-extension-how-do-i-call-my-own-functions?noredirect=1&lq=1
-	// for examples
 	connection.workspace.getWorkspaceFolders().then(workspaces => {
 		if (workspaces && workspaces.length > 0)
 			findStartupFiles(workspaces);
@@ -156,8 +151,6 @@ connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescr
 	// Revalidate all open text documents
 	documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 });
-
-// TODO deal with files being deleted, so that they're removed from the above
 
 documents.onDidOpen(e => {
 	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
