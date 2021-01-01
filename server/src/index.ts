@@ -1,4 +1,4 @@
-import { Location, Range, Diagnostic } from 'vscode-languageserver';
+import { Location, Range, Diagnostic } from 'vscode-languageserver/node';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
 import { uriIsStartupFile } from './language';

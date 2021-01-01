@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute } from '@fluffy-spoon/substitute';
-import { Location, Range } from 'vscode-languageserver';
+import { Location, Range } from 'vscode-languageserver/node';
 
 import { 
 	Index,

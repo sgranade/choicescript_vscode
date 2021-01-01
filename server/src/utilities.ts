@@ -1,5 +1,5 @@
 import * as URI from 'urijs';
-import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**

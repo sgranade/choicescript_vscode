@@ -5,7 +5,7 @@ import {
 	TextEdit,
 	CompletionItem,
 	CompletionItemKind
-} from 'vscode-languageserver';
+} from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";

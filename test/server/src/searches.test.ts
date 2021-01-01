@@ -3,7 +3,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Position, Location, Range, ReferenceContext, WorkspaceEdit } from 'vscode-languageserver';
+import { Position, Location, Range, ReferenceContext, WorkspaceEdit } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {

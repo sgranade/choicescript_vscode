@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
 import { ReadonlyIdentifierIndex } from "./index";

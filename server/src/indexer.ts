@@ -1,4 +1,4 @@
-import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import { ParserCallbacks, ParsingState, parse } from './parser';

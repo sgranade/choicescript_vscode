@@ -14,7 +14,7 @@ import {
 	TextDocumentSyncKind,
 	DocumentSymbolParams,
 	SymbolInformation
-} from 'vscode-languageserver';
+} from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import fs = require('fs');
 import url = require('url');

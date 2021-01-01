@@ -9,7 +9,7 @@ import {
 	Location,
 	Range,
 	TransportKind
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 
 /**
  * Server message about an updated word count in a document.

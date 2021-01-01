@@ -1,4 +1,4 @@
-import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
+import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";

@@ -1,4 +1,4 @@
-import { SymbolInformation, SymbolKind } from 'vscode-languageserver';
+import { SymbolInformation, SymbolKind } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from './index';
