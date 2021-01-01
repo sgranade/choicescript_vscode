@@ -363,3 +363,13 @@ export function sceneFromUri(uri: string): string | undefined {
 export function uriIsStartupFile(uriString: string): boolean {
 	return (getFilenameFromUri(uriString) == "startup.txt");
 }
+
+/**
+ * Determine if a URI points to a ChoiceScript stats file.
+ * 
+ * @param uriString URI to see if it refers to the stats file.
+ * @returns True if the URI is to the stats file, false otherwise.
+ */
+export function uriIsChoicescriptStatsFile(uriString: string): boolean {
+	return (getFilenameFromUri(uriString) == "choicescript_stats.txt");
+}

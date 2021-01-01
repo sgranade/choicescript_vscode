@@ -23,7 +23,7 @@ import globby = require('globby');
 import { ProjectIndex, Index } from "./index";
 import { updateProjectIndex } from './indexer';
 import { generateDiagnostics } from './validator';
-import { uriIsStartupFile } from './language';
+import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
 import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { countWords } from './parser';
@@ -139,7 +139,9 @@ async function indexFile(path: string): Promise<void> {
 	try {
 		const data = await fs.promises.readFile(path, 'utf8');
 		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
-		updateProjectIndex(textDocument, uriIsStartupFile(fileUri), projectIndex);
+		updateProjectIndex(
+			textDocument, uriIsStartupFile(fileUri), uriIsChoicescriptStatsFile(fileUri), projectIndex
+		);
 	}
 	catch (err) {
 		connection.console.error(`Could not read file ${path} (${err.name}: ${err.message} ${err.filename} ${err.lineNumber})`);
@@ -153,7 +155,9 @@ connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescr
 });
 
 documents.onDidOpen(e => {
-	updateProjectIndex(e.document, uriIsStartupFile(e.document.uri), projectIndex);
+	updateProjectIndex(
+		e.document, uriIsStartupFile(e.document.uri), uriIsChoicescriptStatsFile(e.document.uri), projectIndex
+	);
 	notifyChangedWordCount(e.document);
 });
 
@@ -161,7 +165,9 @@ documents.onDidOpen(e => {
 documents.onDidChangeContent(change => {
 	const isStartupFile = uriIsStartupFile(change.document.uri);
 
-	updateProjectIndex(change.document, isStartupFile, projectIndex);
+	updateProjectIndex(
+		change.document, isStartupFile, uriIsChoicescriptStatsFile(change.document.uri), projectIndex
+	);
 	notifyChangedWordCount(change.document);
 
 	if (isStartupFile) {

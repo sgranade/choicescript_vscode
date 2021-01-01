@@ -123,9 +123,10 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
  * 
  * @param textDocument Document to index.
  * @param isStartupFile True if the document is the ChoiceScript startup file.
+ * @param isChoicescriptStatsFile True if the document is the ChoiceScript stats file.
  * @param index Project index to update.
  */
-export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, index: ProjectIndex): void {
+export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, isChoicescriptStatsFile: boolean, index: ProjectIndex): void {
 	const indexingState = new IndexingState(textDocument);
 
 	const callbacks: ParserCallbacks = {
@@ -246,6 +247,9 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		index.setGlobalVariables(textDocument.uri, indexingState.globalVariables);
 		index.setSceneList(indexingState.scenes);
 		index.setAchievements(indexingState.achievements);
+	}
+	if (isChoicescriptStatsFile) {
+		index.setHasChoicescriptStats(true);
 	}
 	index.setWordCount(textDocument.uri, wordCount);
 	index.setLocalVariables(textDocument.uri, indexingState.localVariables);

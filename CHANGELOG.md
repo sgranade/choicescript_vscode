@@ -11,6 +11,7 @@ Changes to the plugin.
 ### Fixed
 
 - Variables aren't flagged as not existing until the full project has been indexed, getting rid of the flash of errors on startup.
+- choicescript_stats is now recognized as a scene, allowing autocomplete and fixing erroneous warning messages.
 - Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.
 - Label indexing now properly handles labels with punctuation.
 

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractTokenAtIndex, sceneFromUri, convertAchievementToVariable } from '../../../server/src/language';
+import { extractTokenAtIndex, sceneFromUri, convertAchievementToVariable, uriIsStartupFile, uriIsChoicescriptStatsFile } from '../../../server/src/language';
 
 /* eslint-disable */
 
@@ -82,6 +82,24 @@ describe("Language Routines", () => {
 			let variable = convertAchievementToVariable(codename);
 
 			expect(variable).to.equal("choice_achieved_codename");
+		});
+	})
+
+	describe("ChoiceScript URIs", () => {
+		it("should recognize the ChoiceScript startup file", () => {
+			let uri = 'file:///path/to/a/scene/startup.txt';
+
+			let isStartupFile = uriIsStartupFile(uri);
+
+			expect(isStartupFile).to.be.true;
+		});
+
+		it("should recognize the ChoiceScript stats file", () => {
+			let uri = 'file:///path/to/a/scene/choicescript_stats.txt';
+
+			let isStatsFile = uriIsChoicescriptStatsFile(uri);
+
+			expect(isStatsFile).to.be.true;
 		});
 	})
 })

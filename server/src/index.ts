@@ -361,6 +361,9 @@ export class Index implements ProjectIndex {
 	}
 	getSceneList(): ReadonlyArray<string> {
 		const scenes = Array.from(this._scenes);
+		if (this._hasChoicescriptStats) {
+			scenes.push("choicescript_stats");
+		}
 		return scenes;
 	}
 	getWordCount(sceneUri: string): number | undefined {

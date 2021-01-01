@@ -33,6 +33,14 @@ describe("Project Index", () => {
 			expect(references[1].range.end).to.eql({line: 2, character: 5});
 		});
 
+		it("should return choicescript_stats in the scene list if present in the index", () => {
+			let index = new Index();
+			index.setHasChoicescriptStats(true);
+
+			let scenes = index.getSceneList();
+
+			expect(scenes).to.eql(["choicescript_stats"]);
+		});
 
 		it("should find label references in a scene", () => {
 			let events: FlowControlEvent[] = [
