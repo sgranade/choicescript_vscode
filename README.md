@@ -57,6 +57,14 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+### [1.5.1]
+
+- Variables aren't flagged as not existing until the full project has been indexed, getting rid of the flash of errors on startup.
+- choicescript_stats is now recognized as a scene, allowing autocomplete and fixing erroneous warning messages.
+- Empty `*if`/`*elseif`/`*else` errors now don't put the error squigglies on the whole line.
+- Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.
+- Label indexing now properly handles labels with punctuation.
+
 ### [1.5.0]
 
 - Warn when a `*temp` variable has the same name as an earlier-created one.
