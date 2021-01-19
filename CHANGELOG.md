@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## [Unreleased]
+
+### Fixed
+
+- Empty multireplaces in an option (like `#Option @{true}`) no longer cause the extension to stop validating.
+
 ## [1.6.0] - 2021-01-01
 
 ### Changed

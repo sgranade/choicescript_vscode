@@ -351,21 +351,22 @@ function validateOption(option: string, index: number, state: ValidationState): 
 			// Content-free or unterminated multireplace, so give up
 			break;
 		}
-		else {
-			// See if the bit before the multireplace has too many words already
-			const pretext = remainingOption.slice(0, e.index);
-			// This pattern won't find the last word in the string if it's not followed by a space, but
-			// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
-			const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
-			if (pretextWordCount > 15 - runningWordCount) {
-				const m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-				if (m != null && m[0].length < pretext.length) {
-					overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
-					break;
-				}
-			}
 
-			runningWordCount += pretextWordCount;
+		// See if the bit before the multireplace has too many words already
+		const pretext = remainingOption.slice(0, e.index);
+		// This pattern won't find the last word in the string if it's not followed by a space, but
+		// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
+		const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
+		if (pretextWordCount > 15 - runningWordCount) {
+			const m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+			if (m != null && m[0].length < pretext.length) {
+				overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+				break;
+			}
+		}
+
+		runningWordCount += pretextWordCount;
+		if (tokens.body.length > 0) {
 			let longestBody = tokens.body[0];
 			let longestWordCount = longestBody.text.split(/\s+/).length;
 			for (const token of tokens.body.slice(1)) {
@@ -383,16 +384,16 @@ function validateOption(option: string, index: number, state: ValidationState): 
 				}
 			}
 			runningWordCount += longestWordCount;
-
-			let endIndex = tokens.endIndex;
-			// Any characters after the multireplace are part of its word count; don't double-count them
-			while (endIndex < remainingOption.length && remainingOption[endIndex] != ' ' && remainingOption[endIndex] != '\t') {
-				endIndex++;
-			}
-
-			remainingOption = remainingOption.slice(endIndex);
-			remainingLocalIndex += endIndex;
 		}
+
+		let endIndex = tokens.endIndex;
+		// Any characters after the multireplace are part of its word count; don't double-count them
+		while (endIndex < remainingOption.length && remainingOption[endIndex] != ' ' && remainingOption[endIndex] != '\t') {
+			endIndex++;
+		}
+
+		remainingOption = remainingOption.slice(endIndex);
+		remainingLocalIndex += endIndex;
 	}
 
 	if (overLimitLocalIndex === undefined && remainingOption.trim() != "") {

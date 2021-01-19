@@ -223,6 +223,15 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(144);
 		});
 
+		it("should ignore multireplaces with no body when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option has @{true} four five six seven eight nine ten eleven twelve thirteen fourteen words.");
+			let fakeIndex = createIndex({});
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should include a multireplace in the error if it makes the option too long", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have six seven eight nine ten eleven twelve thirteen fourteen @{true fifteen sixteen | fifteen} words.");
 			let fakeIndex = createIndex({});
@@ -233,6 +242,18 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.contain("more than 15");
 			expect(diagnostics[0].range.start.line).to.equal(110);
 			expect(diagnostics[0].range.end.line).to.equal(135);
+		});
+
+		it("should handle two multireplaces, one with no body, when counting words", () => {
+			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true} six seven eight and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
+			let fakeIndex = createIndex({});
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].range.start.line).to.equal(117);
+			expect(diagnostics[0].range.end.line).to.equal(138);
 		});
 	});
 
