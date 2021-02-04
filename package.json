@@ -61,11 +61,13 @@
 		"commands": [
 			{
 				"command": "choicescript.italicize",
-				"title": "Italicize"
+				"title": "Italicize",
+				"category": "ChoiceScript"
 			},
 			{
 				"command": "choicescript.bold",
-				"title": "Bold"
+				"title": "Bold",
+				"category": "ChoiceScript"
 			}
 		],
 		"menus": {

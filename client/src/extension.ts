@@ -102,15 +102,14 @@ class WordCountController {
 		this._wordCountBar.updateWordCount();
 
 		// Subscribe to selection change & editor activation
-		const subscriptions: Disposable[] = [];
-		window.onDidChangeActiveTextEditor(this._onDidChangeActiveTextEditor, this, subscriptions);
-		window.onDidChangeTextEditorSelection(this._onDidChangeTextEditorSelection, this, subscriptions);
-
-		this._disposable = Disposable.from(...subscriptions);
+		const disposables: Disposable[] = [];
+		window.onDidChangeActiveTextEditor(this._onDidChangeActiveTextEditor, this, disposables);
+		window.onDidChangeTextEditorSelection(this._onDidChangeTextEditorSelection, this, disposables);
 
 		// Subscribe to word count updates from the CS language server
 		client.onReady().then(() => {
-			client.onNotification("custom/updatedwordcount", this._onUpdatedWordCount);
+			disposables.push(client.onNotification("choicescript/updatedwordcount", this._onUpdatedWordCount));
+			this._disposable = Disposable.from(...disposables);
 		});
 	}
 
