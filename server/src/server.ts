@@ -17,6 +17,7 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import fs = require('fs');
+import path = require('path');
 import url = require('url');
 import globby = require('globby');
 
@@ -43,8 +44,6 @@ interface UpdatedWordCount {
 	count?: number;
 }
 
-// Create a connection for the server. The connection uses Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
 connection.console.info(`ChoiceScript language server running in node ${process.version}`);
 
@@ -85,9 +84,9 @@ connection.onInitialized(() => {
 			findStartupFiles(workspaces);
 	});
 	
-	// Handle our custom requests from the client for word count
-	connection.onRequest("custom/wordcount", onWordCount);
-	connection.onRequest("custom/selectionwordcount", onSelectionWordCount);
+	// Handle custom requests from the client
+	connection.onRequest("choicescript/wordcount", onWordCount);
+	connection.onRequest("choicescript/selectionwordcount", onSelectionWordCount);
 });
 
 function findStartupFiles(workspaces: WorkspaceFolder[]): void {
@@ -95,45 +94,65 @@ function findStartupFiles(workspaces: WorkspaceFolder[]): void {
 		const rootPath = url.fileURLToPath(workspace.uri);
 		globby('**/startup.txt', {
 			cwd: rootPath
-		}).then(paths => indexProject(paths));
+		}).then(paths => indexProject(rootPath, paths));
 	});
 }
 
-function indexProject(pathsToProjectFiles: string[]): void {
+function indexProject(workspacePath: string, pathsToProjectFiles: string[]): void {
 	if (pathsToProjectFiles.length == 0) {
 		projectIndex.setProjectIsIndexed(true); // No startup.txt file to index
 	}
-	pathsToProjectFiles.map(async (path) => {
+	pathsToProjectFiles.map(async (filePath) => {
 		// TODO handle multiple startup.txt files in multiple directories
 
-		let projectPath = path;
-		const startupFilename = path.split('/').pop();
-		if (startupFilename) {
-			projectPath = projectPath.replace(startupFilename, '');
-		}
-
-		console.info(`Indexing the CS project at ${path}`);
+		const projectPath = path.dirname(filePath);
+		// Filenames from globby are posix paths regardless of platform
+		const platformFullProjectPath = path.join(workspacePath, ...projectPath.split('/'));
+		
+		const projectFiles: string[] = [];
 
 		// Index the startup.txt file
-		await indexFile(path);
+		if (await indexFile(filePath)) {
+			projectFiles.push(
+				path.join(platformFullProjectPath, path.basename(filePath))
+			);
+		}
 
 		// Try to index the stats page (which might not exist)
-		indexFile(projectPath+"choicescript_stats.txt");
+		if (await indexFile(projectPath+"/choicescript_stats.txt")) {
+			projectFiles.push(path.join(platformFullProjectPath, "choicescript_stats.txt"));
+		}
 
-		// Try to index all of the scene files
-		const scenePaths = projectIndex.getSceneList().map(name => projectPath+name+".txt");
-		const promises = scenePaths.map(x => indexFile(x));
-
-		await Promise.all(promises);
-
+		const scenes = projectIndex.getSceneList();
+		if (scenes !== undefined) {
+			// Try to index all of the scene files
+			const scenePaths = projectIndex.getSceneList().map(name => projectPath+"/"+name+".txt");
+			projectFiles.push(
+				...scenes.map(
+					name => path.join(platformFullProjectPath, name+".txt")
+				)
+			);
+			const promises = scenePaths.map(x => indexFile(x));
+	
+			await Promise.all(promises);
+		}
 		projectIndex.setProjectIsIndexed(true);
+
+		// Let the client know we have updated project files
+		connection.sendNotification("choicescript/projectfiles", projectFiles);
 
 		// Revalidate all open text documents
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	});
 }
 
-async function indexFile(path: string): Promise<void> {
+/**
+ * Index a scene file.
+ * 
+ * @param path Path to the file to index.
+ * @returns True if the file indexed properly.
+ */
+async function indexFile(path: string): Promise<boolean> {
 	const fileUri = url.pathToFileURL(path).toString();
 
 	try {
@@ -142,10 +161,11 @@ async function indexFile(path: string): Promise<void> {
 		updateProjectIndex(
 			textDocument, uriIsStartupFile(fileUri), uriIsChoicescriptStatsFile(fileUri), projectIndex
 		);
+		return true;
 	}
 	catch (err) {
 		connection.console.error(`Could not read file ${path} (${err.name}: ${err.message} ${err.filename} ${err.lineNumber})`);
-		return;
+		return false;
 	}
 }
 
@@ -189,7 +209,7 @@ function notifyChangedWordCount(document: TextDocument): void {
 		count: projectIndex.getWordCount(document.uri)
 	};
 
-	connection.sendNotification("custom/updatedwordcount", e);
+	connection.sendNotification("choicescript/updatedwordcount", e);
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
@@ -272,9 +292,6 @@ function onSelectionWordCount(location: Location): number | undefined {
 	return countWords(section, document);
 }
 
-// Make the text document manager listen on the connection
-// for open, change and close text document events
 documents.listen(connection);
 
-// Listen on the connection
 connection.listen();

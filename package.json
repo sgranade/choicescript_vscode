@@ -68,6 +68,16 @@
 				"command": "choicescript.bold",
 				"title": "Bold",
 				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.openGame",
+				"title": "Open Game in Browser",
+				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.reloadGame",
+				"title": "Reload Game in Browser",
+				"category": "ChoiceScript"
 			}
 		],
 		"menus": {
@@ -79,6 +89,14 @@
 				{
 					"command": "choicescript.bold",
 					"when": "editorLangId == choicescript"
+				},
+				{
+					"command": "choicescript.openGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded"
+				},
+				{
+					"command": "choicescript.reloadGame",
+					"when": "editorLangId == choicescript && choicescript.gameOpened"
 				}
 			]
 		},

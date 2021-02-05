@@ -14,9 +14,15 @@
 	},
 	"dependencies": {
 		"urijs": "^1.19.5",
-		"vscode-languageclient": "^7.0.0"
+		"vscode-languageclient": "^7.0.0",
+		"express": "^4.17.1",
+		"compression": "^1.7.4",
+		"livereload": "^0.9.1",
+		"get-port": "^5.1.1",
+		"cside-choicescript": "github:ChoicescriptIDE/choicescript"
 	},
 	"devDependencies": {
+		"@types/express": "^4.11.1",
 		"@types/vscode": "^1.52.0"
 	}
 }

@@ -15,6 +15,7 @@ A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/),
 - Highlight usage
 - Scene outline
 - Rename variables project-wide
+- Run your game in the browser
 - Snippets to match Choice of Games style rules
 - Italicizing and bolding text
 - Word count that counts only what the player will see
