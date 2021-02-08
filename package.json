@@ -78,6 +78,16 @@
 				"command": "choicescript.reloadGame",
 				"title": "Reload Game in Browser",
 				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.runQuicktest",
+				"title": "Run Quicktest on Game",
+				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.cancelTest",
+				"title": "Cancel Running Test",
+				"category": "ChoiceScript"
 			}
 		],
 		"menus": {
@@ -97,6 +107,36 @@
 				{
 					"command": "choicescript.reloadGame",
 					"when": "editorLangId == choicescript && choicescript.gameOpened"
+				},
+				{
+					"command": "choicescript.runQuicktest",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+				},
+				{
+					"command": "choicescript.cancelTest",
+					"when": "editorLangId == choicescript && choicescript.testRunning"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "choicescript.openGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded",
+					"group": "ChoiceScript@1"
+				},
+				{
+					"command": "choicescript.reloadGame",
+					"when": "editorLangId == choicescript && choicescript.gameOpened",
+					"group": "ChoiceScript@2"
+				},
+				{
+					"command": "choicescript.runQuicktest",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"group": "ChoiceScript@3"
+				},
+				{
+					"command": "choicescript.cancelTest",
+					"when": "editorLangId == choicescript && choicescript.testRunning",
+					"group": "ChoiceScript@4"
 				}
 			]
 		},

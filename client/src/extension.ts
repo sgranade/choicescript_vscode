@@ -10,9 +10,10 @@ import {
 	TransportKind,
 	integer
 } from 'vscode-languageclient/node';
-import GameServer from './gameserver';
-import { LineAnnotationController } from './annotations';
 import { CSUrls, CustomCommands, CustomMessages, RelativePaths } from './constants';
+import { LineAnnotationController } from './annotations';
+import { runQuicktest, cancelTest } from './cstests';
+import GameServer from './gameserver';
 
 
 let client: LanguageClient;
@@ -211,7 +212,14 @@ class StatusBarController {
 }
 
 
-function handleCSError(scene: string, line: integer, message: string): void {
+/**
+ * Annotate an error from ChoiceScript in the editor.
+ * 
+ * @param scene Scene name (without `.txt`) that contains the error.
+ * @param line 1-based line number where the error occurred.
+ * @param message Error message.
+ */
+function annotateCSError(scene: string, line: integer, message: string): void {
 	if (projectFiles === undefined) {
 		return;
 	}
@@ -227,7 +235,7 @@ function handleCSError(scene: string, line: integer, message: string): void {
 					vscode.TextEditorRevealType.InCenterIfOutsideViewport
 				);
 				editor.selection = new vscode.Selection(line, 0, line, 0);
-				annotationController.addTrailingAnnotation(editor, line, `Error: ${message}`);
+				annotationController.addTrailingAnnotation(editor, line, `Error: ${message.trim()}`);
 			});
 		});
 	}
@@ -372,7 +380,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	const gameRunner = new GameRunner(
 		context,
 		controller,
-		handleCSError
+		annotateCSError
 	);
 	gameRunner.setGameIndexFile(context.asAbsolutePath(RelativePaths.GameIndex));
 	context.subscriptions.push(gameRunner);
@@ -394,8 +402,22 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand(
 			CustomCommands.ReloadGame, () => {
 				gameRunner.reload();
-			}
-		)
+		}),
+		vscode.commands.registerCommand(
+			CustomCommands.RunQuicktest, () => {
+				if (projectFiles !== undefined && projectFiles.size > 0) {
+					runQuicktest(
+						context.asAbsolutePath(RelativePaths.Autotest),
+						context.asAbsolutePath(RelativePaths.Choicescript),
+						path.dirname(Array.from(projectFiles.values())[0]),
+						annotateCSError
+					);
+				}
+		}),
+		vscode.commands.registerCommand(
+			CustomCommands.CancelTest, () => {
+				cancelTest();
+		}),
 	];
 
 	context.subscriptions.push(...csCommands);
