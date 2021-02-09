@@ -10,10 +10,11 @@ import {
 	TransportKind,
 	integer
 } from 'vscode-languageclient/node';
-import { CSUrls, CustomCommands, CustomMessages, RelativePaths } from './constants';
 import { LineAnnotationController } from './annotations';
-import { runQuicktest, cancelTest } from './cstests';
+import { CSUrls, CustomCommands, CustomMessages, RelativePaths } from './constants';
+import { runQuicktest, runRandomtest, cancelTest } from './csTests';
 import GameServer from './gameserver';
+import { Provider } from './logDocProvider';
 
 
 let client: LanguageClient;
@@ -35,10 +36,17 @@ interface UpdatedWordCount {
 	count?: number;
 }
 
+interface ProjectStatus {
+	loaded: boolean,
+	gameRunning: boolean,
+	testRunning: boolean
+}
+
 /**
  * Status bar items.
  */
 class StatusBarItems {
+	private _runningTestItem: vscode.StatusBarItem;
 	private _openGameStatusBarItem: vscode.StatusBarItem;
 	private _reloadGameStatusBarItem: vscode.StatusBarItem;
 	private _wordCountStatusBarItem: vscode.StatusBarItem;
@@ -47,21 +55,35 @@ class StatusBarItems {
 	private _disposable: vscode.Disposable;
 
 	constructor() {
-		this._openGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1002);
-		this._openGameStatusBarItem.text = "$(open-preview) Open"
+		this._runningTestItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 8);
+		this._runningTestItem.command = CustomCommands.CancelTest;
+		this._runningTestItem.text = "$(sync~spin) Running CS Test";
+		this._runningTestItem.tooltip = "Press to stop the running test";
+		this._openGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+		this._openGameStatusBarItem.text = "$(open-preview) Open";
+		this._openGameStatusBarItem.tooltip = "Press to open game in browser";
 		this._openGameStatusBarItem.command = CustomCommands.OpenGame;
-		this._reloadGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1001);
-		this._reloadGameStatusBarItem.text = "$(refresh) Reload"
+		this._reloadGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 9);
+		this._reloadGameStatusBarItem.text = "$(refresh) Reload";
+		this._openGameStatusBarItem.tooltip = "Press to reload previously-opened game";
 		this._reloadGameStatusBarItem.command = CustomCommands.ReloadGame;
 		this._wordCountStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000);
 		this._disposable = vscode.Disposable.from(
+			this._runningTestItem,
 			this._openGameStatusBarItem,
 			this._reloadGameStatusBarItem,
 			this._wordCountStatusBarItem
 		);
 	}
 
-	public showOrHide(editor: vscode.TextEditor | undefined, projectLoaded: boolean, gameRun: boolean): void {
+	public showOrHide(editor: vscode.TextEditor | undefined, projectStatus: ProjectStatus): void {
+		if (projectStatus.testRunning) {
+			this._runningTestItem.show();
+		}
+		else {
+			this._runningTestItem.hide();
+		}
+
 		if (editor === undefined) {
 			this._openGameStatusBarItem.hide();
 			this._reloadGameStatusBarItem.hide();
@@ -72,10 +94,10 @@ class StatusBarItems {
 
 			if (doc.languageId === "choicescript") {
 				this._updateText();
-				if (projectLoaded) {
+				if (projectStatus.loaded) {
 					this._openGameStatusBarItem.show();
 				}
-				if (gameRun) {
+				if (projectStatus.gameRunning) {
 					this._reloadGameStatusBarItem.show();
 				}
 				this._wordCountStatusBarItem.show();
@@ -127,13 +149,17 @@ class StatusBarItems {
  */
 class StatusBarController {
 	private _statusBar: StatusBarItems;
-	private _projectLoaded: boolean = false;
-	private _gameRun: boolean = false;
+	private _projectStatus: ProjectStatus;
 	private _disposable: vscode.Disposable;
 
 	constructor(statusBar: StatusBarItems) {
 		this._statusBar = statusBar;
 		this._statusBar.updateWordCount();
+		this._projectStatus = {
+			gameRunning: false,
+			loaded: false,
+			testRunning: false
+		}
 
 		// Subscribe to selection change & editor activation
 		const disposables: vscode.Disposable[] = [];
@@ -158,13 +184,13 @@ class StatusBarController {
 		const editorUri = URI(editor.document.uri.toString()).normalize();
 		const updatedUri = URI(e.uri).normalize();
 		if (editorUri.equals(updatedUri)) {
-			this._statusBar.showOrHide(editor, this._projectLoaded, this._gameRun);
+			this._statusBar.showOrHide(editor, this._projectStatus);
 			this._statusBar.updateWordCount(e.count);
 		}
 	}
 
 	private _onDidChangeActiveTextEditor(e: vscode.TextEditor): void {
-		this._statusBar.showOrHide(e, this._projectLoaded, this._gameRun);
+		this._statusBar.showOrHide(e, this._projectStatus);
 		client.sendRequest(CustomMessages.WordCountRequest, e.document.uri.toString()).then((count: number | null) => {
 			count = (count === null) ? undefined : count;
 			this._statusBar.updateWordCount(count);
@@ -188,10 +214,10 @@ class StatusBarController {
 	 * Notify the status bar controller that the project has loaded.
 	 */
 	projectLoaded(): void {
-		this._projectLoaded = true;
+		this._projectStatus.loaded = true;
 		const editor = vscode.window.activeTextEditor;
 		if (editor !== undefined) {
-			this._statusBar.showOrHide(editor, this._projectLoaded, this._gameRun);
+			this._statusBar.showOrHide(editor, this._projectStatus);
 		}
 	}
 
@@ -199,10 +225,23 @@ class StatusBarController {
 	 * Notify the status bar controller that the game has been run.
 	 */
 	gameRun(): void {
-		this._gameRun = true;
+		this._projectStatus.gameRunning = true;
 		const editor = vscode.window.activeTextEditor;
 		if (editor !== undefined) {
-			this._statusBar.showOrHide(editor, this._projectLoaded, this._gameRun);
+			this._statusBar.showOrHide(editor, this._projectStatus);
+		}
+	}
+
+	/**
+	 * Notify the status bar controller that tests are running or not.
+	 * 
+	 * @param running Whether tests are running or not.
+	 */
+	updateTestStatus(running: boolean) {
+		this._projectStatus.testRunning = running;
+		const editor = vscode.window.activeTextEditor;
+		if (editor !== undefined) {
+			this._statusBar.showOrHide(editor, this._projectStatus);
 		}
 	}
 
@@ -370,6 +409,10 @@ export function activate(context: vscode.ExtensionContext): void {
 		clientOptions
 	);
 
+	const provider = new Provider();
+	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(Provider.scheme, provider);
+	context.subscriptions.push(provider, providerRegistration);
+
 	const statusBar = new StatusBarItems();
 	const controller = new StatusBarController(statusBar);
 	context.subscriptions.push(statusBar, controller);
@@ -407,10 +450,39 @@ export function activate(context: vscode.ExtensionContext): void {
 			CustomCommands.RunQuicktest, () => {
 				if (projectFiles !== undefined && projectFiles.size > 0) {
 					runQuicktest(
-						context.asAbsolutePath(RelativePaths.Autotest),
+						context.asAbsolutePath(RelativePaths.Quicktest),
 						context.asAbsolutePath(RelativePaths.Choicescript),
 						path.dirname(Array.from(projectFiles.values())[0]),
-						annotateCSError
+						annotateCSError,
+						(running) => controller.updateTestStatus(running)
+					);
+				}
+		}),
+		vscode.commands.registerCommand(
+			CustomCommands.RunRandomtestDefault, () => {
+				if (projectFiles !== undefined && projectFiles.size > 0) {
+					runRandomtest(
+						context.asAbsolutePath(RelativePaths.Randomtest),
+						context.asAbsolutePath(RelativePaths.Choicescript),
+						path.dirname(Array.from(projectFiles.values())[0]),
+						false,
+						provider,
+						annotateCSError,
+						(running) => controller.updateTestStatus(running)
+					);
+				}
+		}),
+		vscode.commands.registerCommand(
+			CustomCommands.RunRandomtestInteractive, () => {
+				if (projectFiles !== undefined && projectFiles.size > 0) {
+					runRandomtest(
+						context.asAbsolutePath(RelativePaths.Randomtest),
+						context.asAbsolutePath(RelativePaths.Choicescript),
+						path.dirname(Array.from(projectFiles.values())[0]),
+						true,
+						provider,
+						annotateCSError,
+						(running) => controller.updateTestStatus(running)
 					);
 				}
 		}),

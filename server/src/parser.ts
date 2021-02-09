@@ -606,7 +606,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 		parseSet(line, lineSectionIndex, state);
 	}
 	else {
-		var linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/;
+		let linePattern = /(?<symbol>\w+)((?<spacing>\s+?)(?<expression>.+))?/;
 		if (command == "label") {
 			// *label accepts *any* punctuation in the label so we need a different regex
 			linePattern = /(?<symbol>\S+)((?<spacing>\s+?)(?<expression>.+))?/;

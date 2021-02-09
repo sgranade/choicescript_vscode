@@ -1,4 +1,6 @@
 .vscode/**
+.github/**
+.nyc_output/**
 **/*.ts
 **/*.map
 .gitignore
@@ -10,3 +12,5 @@ client/**
 !client/out/extension.js
 server/**
 !server/out/server.js
+coverage.lcov
+private-notes.txt

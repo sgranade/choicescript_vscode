@@ -81,7 +81,17 @@
 			},
 			{
 				"command": "choicescript.runQuicktest",
-				"title": "Run Quicktest on Game",
+				"title": "Run Quicktest",
+				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.runRandomtestInteractive",
+				"title": "Run Randomtest",
+				"category": "ChoiceScript"
+			},
+			{
+				"command": "choicescript.runRandomtestDefault",
+				"title": "Run Randomtest with Default Settings",
 				"category": "ChoiceScript"
 			},
 			{
@@ -113,6 +123,14 @@
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
 				{
+					"command": "choicescript.runRandomtestInteractive",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+				},
+				{
+					"command": "choicescript.runRandomtestDefault",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+				},
+				{
 					"command": "choicescript.cancelTest",
 					"when": "editorLangId == choicescript && choicescript.testRunning"
 				}
@@ -134,9 +152,19 @@
 					"group": "ChoiceScript@3"
 				},
 				{
+					"command": "choicescript.runRandomtestInteractive",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"group": "ChoiceScript@4"
+				},
+				{
+					"command": "choicescript.runRandomtestDefault",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"group": "ChoiceScript@5"
+				},
+				{
 					"command": "choicescript.cancelTest",
 					"when": "editorLangId == choicescript && choicescript.testRunning",
-					"group": "ChoiceScript@4"
+					"group": "ChoiceScript@6"
 				}
 			]
 		},
@@ -174,19 +202,52 @@
 			}
 		],
 		"configuration": {
-			"type": "object",
-			"title": "Example configuration",
+			"title": "ChoiceScript",
 			"properties": {
-				"choicescriptVsCode.trace.server": {
-					"scope": "window",
+				"choicescript.randomtest.putResultsInDocument": {
 					"type": "string",
+					"default": "fulltext",
 					"enum": [
-						"off",
-						"messages",
-						"verbose"
+						"never",
+						"always",
+						"fulltext"
 					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
+					"enumDescriptions": [
+						"Never put the results in a document",
+						"Always put the results in a document",
+						"Only put the results in a document when showing full game text"
+					],
+					"description": "When to put Randomtest results in a VS Code document that you can save."
+				},
+				"choicescript.randomtest.iterations": {
+					"type": "integer",
+					"default": 1000,
+					"description": "Number of times to run randomtest on a game."
+				},
+				"choicescript.randomtest.randomSeed": {
+					"type": "integer",
+					"default": 0,
+					"description": "Fixed random seed to use."
+				},
+				"choicescript.randomtest.avoidUsedOptions": {
+					"type": "boolean",
+					"default": true,
+					"description": "Avoid used options in testing, which is less random but can find bugs faster."
+				},
+				"choicescript.randomtest.showChoices": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show the choices randomtest made."
+				},
+				"choicescript.randomtest.showFullText": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show the full text that randomtest encounters."
+				},
+				"choicescript.randomtest.showLineCoverageStatistics": {
+					"type": "boolean",
+					"default": false,
+					"description": "After the test, show how many times each line was encountered."
 				}
 			}
 		}

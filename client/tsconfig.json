@@ -6,6 +6,6 @@
 		"rootDir": "src",
 		"sourceMap": true
 	},
-	"include": ["src"],
+	"include": ["src", "../choicescript"],
 	"exclude": ["node_modules", ".vscode-test"]
 }
