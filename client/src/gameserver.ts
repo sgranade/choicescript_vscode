@@ -2,7 +2,6 @@ import express = require('express');
 import fs = require('fs');
 import getPort = require('get-port');
 import http = require('http');
-import livereload = require('livereload');
 import path = require('path');
 import { env, Uri, window } from 'vscode';
 
@@ -59,7 +58,6 @@ function getIndexFilename(dirpath: string, index: string = 'index'): Promise<str
 export default class GameServer {
 	private static nextPort: number = 52330;
 	private server: http.Server | null;
-	private reloadServer: livereload.Server;
 	private rootPath: string;
 	private port: number | null;
 	private fileMap: Map<string, string>;
@@ -101,13 +99,6 @@ export default class GameServer {
 		env.openExternal(Uri.parse(url));
 	}
 
-	/**
-	 * Refresh any browser that's showing the game.
-	 */
-	public refreshBrowser(): void {
-		this.reloadServer.refresh("/");
-	}
-
 	public async create(): Promise<void> {
 		if (this.isDestroyed() || this.isReady()) {
 			return;
@@ -126,8 +117,6 @@ export default class GameServer {
 		this.port = await getPort({port: GameServer.nextPort++});
 		this.server = http.createServer(app);
 		this.server.listen(this.port);
-
-		this.reloadServer = livereload.createServer();
 
 		return new Promise<void>((resolve, reject) => {
 			const server = this.server as http.Server;
@@ -270,9 +259,6 @@ export default class GameServer {
 		}
 		if (this.server && this.isReady()) {
 			this.server.close();
-		}
-		if (this.reloadServer) {
-			this.reloadServer.close();
 		}
 		this.server = null;
 		this.port = null;

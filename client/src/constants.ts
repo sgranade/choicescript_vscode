@@ -24,7 +24,6 @@ export enum CustomCommands {
 	Italicize = 'choicescript.italicize',
 	OpenGame = 'choicescript.openGame',
 	ProjectLoaded = 'choicescript.projectLoaded',
-	ReloadGame = 'choicescript.reloadGame',
 	RunQuicktest = 'choicescript.runQuicktest',
 	RunRandomtestDefault = 'choicescript.runRandomtestDefault',
 	RunRandomtestInteractive = 'choicescript.runRandomtestInteractive',

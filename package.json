@@ -75,11 +75,6 @@
 				"category": "ChoiceScript"
 			},
 			{
-				"command": "choicescript.reloadGame",
-				"title": "Reload Game in Browser",
-				"category": "ChoiceScript"
-			},
-			{
 				"command": "choicescript.runQuicktest",
 				"title": "Run Quicktest",
 				"category": "ChoiceScript"
@@ -115,10 +110,6 @@
 					"when": "editorLangId == choicescript && choicescript.projectLoaded"
 				},
 				{
-					"command": "choicescript.reloadGame",
-					"when": "editorLangId == choicescript && choicescript.gameOpened"
-				},
-				{
 					"command": "choicescript.runQuicktest",
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
@@ -140,11 +131,6 @@
 					"command": "choicescript.openGame",
 					"when": "editorLangId == choicescript && choicescript.projectLoaded",
 					"group": "ChoiceScript@1"
-				},
-				{
-					"command": "choicescript.reloadGame",
-					"when": "editorLangId == choicescript && choicescript.gameOpened",
-					"group": "ChoiceScript@2"
 				},
 				{
 					"command": "choicescript.runQuicktest",

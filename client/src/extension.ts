@@ -48,7 +48,6 @@ interface ProjectStatus {
 class StatusBarItems {
 	private _runningTestItem: vscode.StatusBarItem;
 	private _openGameStatusBarItem: vscode.StatusBarItem;
-	private _reloadGameStatusBarItem: vscode.StatusBarItem;
 	private _wordCountStatusBarItem: vscode.StatusBarItem;
 	private _wordCount: number | undefined;
 	private _selectionCount: number | undefined;
@@ -63,15 +62,10 @@ class StatusBarItems {
 		this._openGameStatusBarItem.text = "$(open-preview) Open";
 		this._openGameStatusBarItem.tooltip = "Press to open game in browser";
 		this._openGameStatusBarItem.command = CustomCommands.OpenGame;
-		this._reloadGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 9);
-		this._reloadGameStatusBarItem.text = "$(refresh) Reload";
-		this._openGameStatusBarItem.tooltip = "Press to reload previously-opened game";
-		this._reloadGameStatusBarItem.command = CustomCommands.ReloadGame;
 		this._wordCountStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000);
 		this._disposable = vscode.Disposable.from(
 			this._runningTestItem,
 			this._openGameStatusBarItem,
-			this._reloadGameStatusBarItem,
 			this._wordCountStatusBarItem
 		);
 	}
@@ -86,7 +80,6 @@ class StatusBarItems {
 
 		if (editor === undefined) {
 			this._openGameStatusBarItem.hide();
-			this._reloadGameStatusBarItem.hide();
 			this._wordCountStatusBarItem.hide();
 		}
 		else {
@@ -97,14 +90,10 @@ class StatusBarItems {
 				if (projectStatus.loaded) {
 					this._openGameStatusBarItem.show();
 				}
-				if (projectStatus.gameRunning) {
-					this._reloadGameStatusBarItem.show();
-				}
 				this._wordCountStatusBarItem.show();
 			}
 			else {
 				this._openGameStatusBarItem.hide();
-				this._reloadGameStatusBarItem.hide();
 				this._wordCountStatusBarItem.hide();
 			}
 		}
@@ -327,14 +316,6 @@ class GameRunner {
 		this._statusBarController.gameRun();
 	}
 	
-	/**
-	 * Reload the game in any browser.
-	 */
-	public reload(): void {
-		annotationController.clear(vscode.window.activeTextEditor);
-		this._server.refreshBrowser();
-	}
-
 	public dispose(): void {
 		this._disposable.dispose();
 	}
@@ -441,10 +422,6 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand(
 			CustomCommands.OpenGame, async () => {
 				await gameRunner.run();
-		}),
-		vscode.commands.registerCommand(
-			CustomCommands.ReloadGame, () => {
-				gameRunner.reload();
 		}),
 		vscode.commands.registerCommand(
 			CustomCommands.RunQuicktest, () => {
