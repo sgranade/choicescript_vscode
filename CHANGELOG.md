@@ -4,6 +4,11 @@ Changes to the plugin.
 
 ## [Unreleased]
 
+### Added
+
+- Open game in a browser for live testing.
+- Run ChoiceScript's built-in Quicktest and Randomtest against a game.
+
 ### Fixed
 
 - Empty multireplaces in an option (like `#Option @{true}`) no longer cause the extension to stop validating.

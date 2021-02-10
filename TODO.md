@@ -1,8 +1,5 @@
 # TODO
 
-- Remove livereload
-- Remove CS-index
-- Minify choicescript on vsce package
 - Document run and test
 - Autocomplete doesn't work for `*input_text`.
 - In a choice, `*if variable #This choice has a period. Then it keeps going` doesn't parse right? Needs more investigation

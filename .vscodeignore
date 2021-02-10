@@ -12,5 +12,9 @@ client/**
 !client/out/extension.js
 server/**
 !server/out/server.js
+choicescript/**
+!choicescript/out/**
 coverage.lcov
 private-notes.txt
+utilities/**
+TODO.md

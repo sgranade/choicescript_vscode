@@ -16,6 +16,7 @@ A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/),
 - Scene outline
 - Rename variables project-wide
 - Run your game in the browser
+- Run [Randomtest and Quicktest](https://www.choiceofgames.com/make-your-own-games/testing-choicescript-games-automatically/) automated tests
 - Snippets to match Choice of Games style rules
 - Italicizing and bolding text
 - Word count that counts only what the player will see
@@ -24,11 +25,36 @@ A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/),
 
 [Install from the VSCode extension marketplace](https://marketplace.visualstudio.com/items?itemName=StephenGranade.choicescript-vscode).
 
-## Use
+## Getting Started
 
 Open your ChoiceScript folder, often named `mygame`, and the language server will index the entire project.
 
 Note that, since ChoiceScript files are just text files, the extension treats all `.txt` files as ChoiceScript files. To avoid that, only enable the extension for workspaces that contain your ChoiceScript game.
+
+## Running and Testing Your Game
+
+To run the game, press the Open button on the left side of the bottom status bar.
+
+![Open Game in Browser Button](images/cs-open-game-button.png)
+
+The game will open in your default browser. To restart the game, reload the browser window. The game will update with any changes you've made to your files.
+
+## Testing Your Game
+
+You can test your game using ChoiceScript's [Randomtest and Quicktest](https://www.choiceofgames.com/make-your-own-games/testing-choicescript-games-automatically/) utilities. Randomtest plays your game repeatedly to find bugs, making random selections at each choice. Quicktest methodically tests each #option in every choice.
+
+To run the tests, right-click on one of your game files and select the test you want from the context menu.
+
+![Run Tests from Context Menu](images/run-cs-tests-context-menu.png)
+
+Quicktest results will appear in the Output window at the bottom of the editor. If Quicktest finds an error, the extension will add an annotation to the line with the error.
+
+![Test with an Error](images/cs-test-error.png)
+
+Randomtest requires more steps. When you run Randomtest, the extension will prompt you for how many times to run randomtest, whether to show the game's text, and more. To skip that step, you can set default Randomtest settings in the [extension's settings](https://code.visualstudio.com/docs/getstarted/settings).
+
+If you run Randomtest without it printing the game's text, the results will appear in the Output window. If it prints the game's text, the results will open in a separate editor window that you can save. However, Randomtest can produce larger files than VS Code will allow the extension to open. In that case, it will save the results to a text file in your workspace. You can then open the file yourself.
+
 
 ## Settings
 

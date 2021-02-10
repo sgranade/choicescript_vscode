@@ -287,22 +287,22 @@ if (typeof importScripts != "undefined") {
 	load = function (file) {
 		vm.runInThisContext(fs.readFileSync(file), file);
 	};
-	load(path.join(csPath, "web/scene.js"));
-	load(path.join(csPath, "web/navigator.js"));
-	load(path.join(csPath, "web/util.js"));
+	load(path.join(csPath, "scene.js"));
+	load(path.join(csPath, "navigator.js"));
+	load(path.join(csPath, "util.js"));
+	load(path.join(csPath, "mygame.js"));
 	load(path.join(csPath, "headless.js"));
 	load(path.join(csPath, "seedrandom.js"));
-	load(path.join(csPath, "web/" + gameName + "/" + "mygame.js"));
 } else if (typeof args == "undefined") {
 	isRhino = true;
 	args = arguments;
 	parseArgs(args);
-	load(path.join(csPath, "web/scene.js"));
-	load(path.join(csPath, "web/navigator.js"));
-	load(path.join(csPath, "web/util.js"));
+	load(path.join(csPath, "scene.js"));
+	load(path.join(csPath, "navigator.js"));
+	load(path.join(csPath, "util.js"));
+	load(path.join(csPath, "mygame.js"));
 	load(path.join(csPath, "headless.js"));
 	load(path.join(csPath, "seedrandom.js"));
-	load(path.join(csPath, "web/" + gameName + "/" + "mygame.js"));
 	if (typeof console == "undefined") {
 		console = {
 			log: function (msg) { print(msg); }

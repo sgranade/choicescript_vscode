@@ -12,6 +12,6 @@ module.exports = withDefaults({
 	},
 	output: {
 		filename: 'extension.js',
-		path: path.join(__dirname, 'out')
-	}
+		path: path.join(__dirname, 'out'),
+	},
 });

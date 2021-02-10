@@ -31,12 +31,12 @@ path = require('path');
 load = function (file) {
 	vm.runInThisContext(fs.readFileSync(file), file);
 };
-load(path.join(csPath, "web/scene.js"));
-load(path.join(csPath, "web/navigator.js"));
-load(path.join(csPath, "web/util.js"));
+load(path.join(csPath, "scene.js"));
+load(path.join(csPath, "navigator.js"));
+load(path.join(csPath, "util.js"));
+load(path.join(csPath, "mygame.js"));
 load(path.join(csPath, "headless.js"));
-load(path.join(csPath, "web/mygame/mygame.js"));
-load(path.join(csPath, "editor/embeddable-autotester.js"));
+load(path.join(csPath, "embeddable-autotester.js"));
 print = function print(str) {
 	console.log(str);
 };

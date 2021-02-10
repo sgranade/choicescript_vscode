@@ -11,9 +11,9 @@ import {
 	integer
 } from 'vscode-languageclient/node';
 import { LineAnnotationController } from './annotations';
-import { CSUrls, CustomCommands, CustomMessages, RelativePaths } from './constants';
+import { CustomCommands, CustomMessages, RelativePaths } from './constants';
 import { runQuicktest, runRandomtest, cancelTest } from './csTests';
-import GameServer from './gameserver';
+import * as gameserver from './gameserver';
 import { Provider } from './logDocProvider';
 
 
@@ -270,7 +270,9 @@ function annotateCSError(scene: string, line: integer, message: string): void {
 }
 
 class GameRunner {
-	private _server: GameServer;
+	private _gameId: string;
+	private _csPath: string;
+	private _csErrorHandler: (scene: string, line: integer, message: string) => void | undefined;
 	private _statusBarController: StatusBarController;
 	private _disposable: vscode.Disposable;
 
@@ -280,38 +282,37 @@ class GameRunner {
 		csErrorHandler?: (scene: string, line: integer, message: string) => void
 	) {
 		const disposables: vscode.Disposable[] = [];
-		this._server = new GameServer(context.asAbsolutePath(RelativePaths.Choicescript), csErrorHandler);
-		disposables.push(this._server);
+		this._csPath = context.asAbsolutePath(RelativePaths.Choicescript);
+		this._csErrorHandler = csErrorHandler;
 		this._statusBarController = statusBarController;
 
 		client.onReady().then(() => {
-			disposables.push(client.onNotification(CustomMessages.UpdatedProjectFiles, (e: string[]): void => {
-				projectFiles = new Map(e.map((file: string) => [path.basename(file), file]));
-				const map = new Map(projectFiles);
-				map.set("cs-extension.js", context.asAbsolutePath(RelativePaths.CSExtension));
-				this._server.setFileMap(map);
-				statusBarController.projectLoaded();
-				vscode.commands.executeCommand('setContext', CustomCommands.ProjectLoaded, true);
+			disposables.push(
+				client.onNotification(CustomMessages.UpdatedProjectFiles, async (e: string[]) => {
+					await this._init();
+					projectFiles = new Map(e.map((file: string) => [path.basename(file), file]));
+					gameserver.updateGameFileMap(this._gameId, projectFiles);
+					statusBarController.projectLoaded();
+					vscode.commands.executeCommand('setContext', CustomCommands.ProjectLoaded, true);
 			}));
 			this._disposable = vscode.Disposable.from(...disposables);
+			gameserver.startServer();
 		})
 	}
 
-	/**
-	 * Set the game's index file.
-	 * 
-	 * @param indexFile Resolved path to the game index file.
-	 */
-	public setGameIndexFile(indexFile: string | undefined) {
-		this._server.setGameIndexFile(indexFile);
+	public async _init() {
+		if (this._gameId === undefined) {
+			this._gameId = await gameserver.createGame(this._csPath, undefined, this._csErrorHandler);
+		}
 	}
 
 	/**
 	 * Run the game.
 	 */
 	public async run(): Promise<void> {
+		await this._init();
 		annotationController.clear(vscode.window.activeTextEditor);
-		await this._server.openInBrowser(this._server.getRootPath()+CSUrls.GameIndex);
+		gameserver.openGameInBrowser(this._gameId);
 		vscode.commands.executeCommand('setContext', CustomCommands.GameOpened, true);
 		this._statusBarController.gameRun();
 	}
@@ -406,7 +407,6 @@ export function activate(context: vscode.ExtensionContext): void {
 		controller,
 		annotateCSError
 	);
-	gameRunner.setGameIndexFile(context.asAbsolutePath(RelativePaths.GameIndex));
 	context.subscriptions.push(gameRunner);
 
 	// Register our commands

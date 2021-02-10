@@ -39,14 +39,9 @@ export enum CustomMessages {
 
 // Paths relative to the extension
 export const RelativePaths = {
-	Choicescript: path.join('choicescript'),
-	CSExtension: path.join('choicescript', 'cs-extension.js'),
-	GameIndex: path.join('choicescript', 'cs-index.html'),
-	Quicktest: path.join('choicescript', 'autotest.js'),
-	Randomtest: path.join('choicescript', 'randomtest.js'),
+	Choicescript: path.join('choicescript', 'out'),
+	GameIndex: path.join('choicescript', 'out', 'index.html'),
+	Quicktest: path.join('choicescript', 'out', 'autotest.js'),
+	Randomtest: path.join('choicescript', 'out', 'randomtest.js'),
 	VSCodeExtensionServer: path.join('server', 'out', 'server.js')
-}
-
-export enum CSUrls {
-	GameIndex = '/web/mygame/index.html'
 }
