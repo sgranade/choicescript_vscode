@@ -2,7 +2,9 @@
 
 Changes to the plugin.
 
-## [Unreleased]
+## [2.0.0] - 2021-02-11
+
+This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
 
 ### Added
 

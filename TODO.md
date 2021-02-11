@@ -1,6 +1,5 @@
 # TODO
 
-- Document run and test
 - Autocomplete doesn't work for `*input_text`.
 - In a choice, `*if variable #This choice has a period. Then it keeps going` doesn't parse right? Needs more investigation
 - Increasing indents are an error. (extra space in front of any line)

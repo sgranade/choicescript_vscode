@@ -35,7 +35,7 @@ Note that, since ChoiceScript files are just text files, the extension treats al
 
 To run the game, press the Open button on the left side of the bottom status bar.
 
-![Open Game in Browser Button](images/cs-open-game-button.png)
+![Open Game in Browser Button](https://github.com/sgranade/choicescript_vscode/blob/master/images/cs-open-game-button.png)
 
 The game will open in your default browser. To restart the game, reload the browser window. The game will update with any changes you've made to your files.
 
@@ -45,11 +45,11 @@ You can test your game using ChoiceScript's [Randomtest and Quicktest](https://w
 
 To run the tests, right-click on one of your game files and select the test you want from the context menu.
 
-![Run Tests from Context Menu](images/run-cs-tests-context-menu.png)
+![Run Tests from Context Menu](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/run-cs-tests-context-menu.png)
 
 Quicktest results will appear in the Output window at the bottom of the editor. If Quicktest finds an error, the extension will add an annotation to the line with the error.
 
-![Test with an Error](images/cs-test-error.png)
+![Test with an Error](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/cs-test-error.png)
 
 Randomtest requires more steps. When you run Randomtest, the extension will prompt you for how many times to run randomtest, whether to show the game's text, and more. To skip that step, you can set default Randomtest settings in the [extension's settings](https://code.visualstudio.com/docs/getstarted/settings).
 
@@ -83,6 +83,10 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 - [Array notation](https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423). Right now it ignores arrays entirely.
 
 ## Release Notes
+
+## [2.0.0]
+
+This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
 
 ### [1.6.0]
 
@@ -119,30 +123,4 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 - Word counter added that skips code but counts words shown to the reader.
 - Improved parsing and error checking of `*choice` and `*if`/`*elseif`/`*else` blocks.
-
-### [1.3.0]
-
-- The document outline now lists all individual options in a choice.
-
-### [1.2.0]
-
-- The document outline lets you see the flow of choices, labels, and variables in your game.
-- Expanded error checking in expressions to commands like `*if`.
-- Expanded warnings on text that will be ignored.
-
-### [1.1.0]
-
-- Added ability to italicize text using `Ctrl`+`i` or `Ctrl`+`Shift`+`i` and bold text using `Ctrl`+`Shift`+`b`.
-- Labels and achievements can now be found and renamed.
-- Choices with more than 15 words are now flagged for review.
-- Error catching greatly expanded.
-
-### [1.0.0]
-
-Created a language server for ChoiceScript, which provides the following features:
-
-- IntelliSense automatic code completion for ChoiceScript commands like `*choice`
-- Diagnostics to highlight errors
-- Variable name changes project-wide
-- Auto-indention after commands that require it, like `*choice` and `*if`
-- Snippets to turn ... into an ellipsis and -- into an em-dash to match Choice of Games typography
+- Improved parsing and error checking of `*choice` and `*if`/`*elseif`/`*else` blocks.
