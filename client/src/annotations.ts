@@ -3,6 +3,7 @@ import {
 	DecorationRangeBehavior,
 	Disposable,
 	Range,
+	TextDocumentChangeEvent,
 	TextEditor,
 	TextEditorDecorationType,
 	ThemeColor,
@@ -21,22 +22,39 @@ const annotationDecoration: TextEditorDecorationType = window.createTextEditorDe
 
 export class LineAnnotationController implements Disposable {
 	private _editor: TextEditor | undefined;
+	private _docUriString: string | undefined;
+	private _line: number | undefined;
 
 	dispose() {
-		this.clearAnnotations(this._editor);
+		this.clearAnnotations();
 	}
 
-	clear(editor: TextEditor | undefined) {
-		if (this._editor !== editor && this._editor != null) {
-			this.clearAnnotations(this._editor);
+	/**
+	 * Clear annotations on a specific editor.
+	 */
+	clear(editor: TextEditor) {
+		if (editor == this._editor) {
+			this.clearAnnotations();
 		}
-		this.clearAnnotations(editor);
 	}
 
-	private clearAnnotations(editor: TextEditor | undefined) {
-		if (editor === undefined || (editor as any)._disposed === true) return;
+	/**
+	 * Clear all annotations.
+	 */
+	clearAll() {
+		this.clearAnnotations();
+	}
 
-		editor.setDecorations(annotationDecoration, []);
+	/**
+	 * Clear annotation on the editor we annotated.
+	 */
+	private clearAnnotations() {
+		if (this._editor === undefined || (this._editor as any)._disposed === true) return;
+
+		this._editor.setDecorations(annotationDecoration, []);
+		this._editor = undefined;
+		this._docUriString = undefined;
+		this._line = undefined;
 	}
 
 	/**
@@ -50,11 +68,13 @@ export class LineAnnotationController implements Disposable {
 	 * @param message Annotation message.
 	 */
 	addTrailingAnnotation(editor: TextEditor, line: number, message: string) {
-		this.clearAnnotations(this._editor);
+		this.clearAnnotations();
 		if (editor.document === null) {
 			return;
 		}
 		this._editor = editor;
+		this._docUriString = editor.document.uri.toString();
+		this._line = line;
 		const decorationRange = editor.document.validateRange(
 			new Range(line, Number.MAX_SAFE_INTEGER, line, Number.MAX_SAFE_INTEGER)
 		);
@@ -69,5 +89,11 @@ export class LineAnnotationController implements Disposable {
 			}
 		}];
 		editor.setDecorations(annotationDecoration, decorations);
+	}
+
+	onTextDocumentChanged(e: TextDocumentChangeEvent) {
+		if (e.document.uri.toString() == this._docUriString) {
+			this.clearAll();
+		}
 	}
 }
