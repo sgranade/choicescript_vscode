@@ -206,7 +206,7 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors[0].message).to.include("Too many elements - are you missing parentheses?")
 					expect(expression.validateErrors[0].range.start.line).to.equal(8);
 					expect(expression.validateErrors[0].range.end.line).to.equal(11);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 			});
 
@@ -654,6 +654,33 @@ describe("Tokenizing", () => {
 					expect(expression.validateErrors.length).to.equal(0);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
+
+				it("should flag that negative numbers can't be used before comparisons", () => {
+					let text = "-2 > 1";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Negative numbers can't be used in comparisons");
+					expect(expression.validateErrors[0].range.start.line).to.equal(2);
+					expect(expression.validateErrors[0].range.end.line).to.equal(4);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				})
+
+
+				it("should flag that negative numbers can't be used after comparisons", () => {
+					let text = "2 > -1";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Negative numbers can't be used in comparisons");
+					expect(expression.validateErrors[0].range.start.line).to.equal(6);
+					expect(expression.validateErrors[0].range.end.line).to.equal(8);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				})
 
 				it("should be good with comparing strings", () => {
 					let text = '"this" = "that"';

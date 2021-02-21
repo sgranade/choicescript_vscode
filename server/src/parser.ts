@@ -59,7 +59,6 @@ const variableReferenceCommandsLookup: ReadonlyMap<string, number> = new Map(var
 const symbolManipulationCommandsLookup: ReadonlyMap<string, number> = new Map(symbolCreationCommands.concat(variableManipulationCommands).map(x => [x, 1]));
 const insideBlockCommandsLookup: ReadonlyMap<string, number> = new Map(insideBlockCommands.map(x => [x, 1]));
 const flowControlCommandsLookup: ReadonlyMap<string, number> = new Map(flowControlCommands.map(x => [x, 1]));
-const nonWordOperatorsLookup: ReadonlyMap<string, number> = new Map(nonWordOperators.map(x => [x, 1]));
 const booleanFunctionsLookup: ReadonlyMap<string, number> = new Map(booleanFunctions.map(x => [x, 1]));
 
 
@@ -380,6 +379,9 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
 }
 
 const multiStartRegex = RegExp(multiStartPattern);
+// This is a bit of a hack: I want to glue all non-word operators together for a regex, but some
+// are regex special characters, like ^ and *. So stick backslashes in front of all of them.
+const nonWordOperatorsStartsWithRegex = RegExp("^\\"+nonWordOperators.join("|\\"));
 
 /**
  * Parse a multireplacement @{var true | false}.
@@ -505,7 +507,7 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				// We only check for non-word operators so we don't catch regular English words like "and"
 				if (!tokens.text.startsWith("(")) {
 					const firstText = tokens.body[0].text.split(' ')[0];
-					if (nonWordOperatorsLookup.has(firstText)) {
+					if (nonWordOperatorsStartsWithRegex.test(firstText)) {
 						const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
 							tokens.test.globalIndex - state.sectionGlobalIndex,
 							tokens.body[0].localIndex + firstText.length + textToSectionDelta,

@@ -35,7 +35,7 @@ Note that, since ChoiceScript files are just text files, the extension treats al
 
 To run the game, press the Open button on the left side of the bottom status bar.
 
-![Open Game in Browser Button](https://github.com/sgranade/choicescript_vscode/blob/master/images/cs-open-game-button.png)
+![Open Game in Browser Button](https://raw.github.com/sgranade/choicescript_vscode/blob/master/images/cs-open-game-button.png)
 
 The game will open in your default browser. To restart the game, reload the browser window. The game will update with any changes you've made to your files.
 
@@ -47,7 +47,7 @@ To run the tests, right-click on one of your game files and select the test you 
 
 ![Run Tests from Context Menu](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/run-cs-tests-context-menu.png)
 
-Quicktest results will appear in the Output window at the bottom of the editor. If Quicktest finds an error, the extension will add an annotation to the line with the error.
+Quicktest results will appear in the Output window at the bottom of VS Code. If Quicktest finds an error, the extension will add an annotation to the line with the error.
 
 ![Test with an Error](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/cs-test-error.png)
 

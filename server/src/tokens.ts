@@ -698,18 +698,47 @@ export class Expression {
 		}
 
 		if (this.combinedTokens.length > 3) {
-			const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
-				this.globalIndex + this.combinedTokens[3].index,
-				this.globalIndex + lastToken.index + lastToken.text.length,
-				"Too many elements - are you missing parentheses?");
-			this.validateErrors.push(diagnostic);
-		}
+			// Handle the corner case where someone's trying an expression like "-2 < 3" because
+			// Choicescript doesn't recognize negative numbers in expressions like that
+			let diagnostic: Diagnostic;
 
-		return this.validateThreeTokenExpression(
-			this.combinedTokens[0],
-			this.combinedTokens[1],
-			this.combinedTokens[2]
-		);
+			if (
+				this.combinedTokens[2].type == ExpressionTokenType.ComparisonOperator &&
+				this.combinedTokens[0].text == '-' &&
+				this.combinedTokens[1].type == ExpressionTokenType.Number
+			) {
+				diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + this.combinedTokens[0].index,
+					this.globalIndex + this.combinedTokens[1].index + this.combinedTokens[1].text.length,
+					"Negative numbers can't be used in comparisons");
+			}
+			else if (
+				this.combinedTokens[1].type == ExpressionTokenType.ComparisonOperator &&
+				this.combinedTokens[2].text == '-' &&
+				this.combinedTokens[3].type == ExpressionTokenType.Number
+			) {
+				diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + this.combinedTokens[2].index,
+					this.globalIndex + this.combinedTokens[3].index + this.combinedTokens[3].text.length,
+					"Negative numbers can't be used in comparisons");
+			}
+			else {
+				diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
+					this.globalIndex + this.combinedTokens[3].index,
+					this.globalIndex + lastToken.index + lastToken.text.length,
+					"Too many elements - are you missing parentheses?");
+			}
+			this.validateErrors.push(diagnostic);
+
+			return ExpressionEvalType.Error;
+		}
+		else {
+			return this.validateThreeTokenExpression(
+				this.combinedTokens[0],
+				this.combinedTokens[1],
+				this.combinedTokens[2]
+			);
+		}
 	}
 
 	/**

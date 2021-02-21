@@ -2,6 +2,19 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Changed
+
+- When running quicktest or randomtest, all open files are saved so that your latest code is used.
+- Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
+
+### Fixed
+
+- Error annotations are now removed when a new quicktest or randomtest is run.
+- Error annotations are now removed when the document with the error is edited.
+- Missing parentheses in multireplace tests without spaces, like `@{var=2 yes|no}`, are now reported properly.
+
 ## [2.0.0] - 2021-02-11
 
 This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
