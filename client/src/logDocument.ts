@@ -41,15 +41,15 @@ export default class LogDocument {
 
 	// Implement OutputChannel methods so csTests can call them
 	public appendLines(lines: string) {
-		this._append(lines.trimEnd().split('\n'));
+		this._append(lines.split('\n'));
 	}
 	
 	public appendLine(line: string) {
-		this._append(line.trimEnd().split('\n'));
+		this._append(line.split('\n'));
 	}
 
 	public append(line: string) {
-		this._append(line.trimEnd().split('\n'));
+		this._append(line.split('\n'));
 	}
 
 	public clear() {

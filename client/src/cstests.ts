@@ -325,9 +325,15 @@ function runTest(
 
 	runningProcess.stdout.setEncoding('utf-8');
 	runningProcess.stdout.on('data', (data: Buffer) => {
-		// Save the last line since it can have error information
 		lastLine = data.toString();
+		// We need to get rid of at most one carriage return at the end of the line, to handle
+		// the corner case where the incoming line ends with a blank line (trimEnd() would
+		// get rid of both \n's in that case)
+		if (lastLine.charAt(lastLine.length-1) == '\n') {
+			lastLine = lastLine.slice(0, -1);
+		}
 		output.append(lastLine);
+		// Save the last line since it can have error information
 		lastLine = lastLine.trim().split('\n').pop();  // Since I may get multiple lines at once
 	});
 

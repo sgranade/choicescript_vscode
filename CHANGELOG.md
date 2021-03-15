@@ -14,6 +14,7 @@ Changes to the plugin.
 - Error annotations are now removed when a new quicktest or randomtest is run.
 - Error annotations are now removed when the document with the error is edited.
 - Missing parentheses in multireplace tests without spaces, like `@{var=2 yes|no}`, are now reported properly.
+- Randomtest full-text output no longer loses the occasional blank line.
 
 ## [2.0.0] - 2021-02-11
 
