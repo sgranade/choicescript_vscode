@@ -228,13 +228,13 @@
 			]
 		},
 		"operator": {
-			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|\\/|%\\+|%-)|(&)|(and|or)",
+			"match": "(\\*|\\+|-|\\/|%\\+|%-)|(!?=|>=?|<=?|%)|(&)|(and|or)",
 			"captures": {
 				"1": {
-					"name": "keyword.operator.comparison.cs"
+					"name": "keyword.operator.arithmetic.cs"
 				},
 				"2": {
-					"name": "keyword.operator.arithmetic.cs"
+					"name": "keyword.operator.comparison.cs"
 				},
 				"3": {
 					"name": "keyword.operator.string.cs"
