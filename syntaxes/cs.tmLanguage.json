@@ -24,9 +24,6 @@
 			"include": "#multireplace"
 		},
 		{
-			"include": "#operator"
-		},
-		{
 			"include": "#markup"
 		}
 	],
@@ -231,7 +228,7 @@
 			]
 		},
 		"operator": {
-			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|/|%+|%-)|(&)|(and|or)",
+			"match": "(!?=|>=?|<=?|%)|(\\*|\\+|-|\\/|%\\+|%-)|(&)|(and|or)",
 			"captures": {
 				"1": {
 					"name": "keyword.operator.comparison.cs"
