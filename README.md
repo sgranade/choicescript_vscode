@@ -84,7 +84,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
-## [2.0.1]
+## [2.1.0]
 
 - When running quicktest or randomtest, all open files are saved so that your latest code is used.
 - Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
