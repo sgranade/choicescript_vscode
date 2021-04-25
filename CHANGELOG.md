@@ -2,7 +2,7 @@
 
 Changes to the plugin.
 
-## Unreleased
+## [2.0.1] - 2021-04-25
 
 ### Changed
 

@@ -84,6 +84,11 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+## [2.0.1]
+
+- When running quicktest or randomtest, all open files are saved so that your latest code is used.
+- Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
+
 ## [2.0.0]
 
 This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
@@ -118,9 +123,3 @@ This update brings big new features: the ability to run your game in a browser f
 
 - Bug fixes to symbol indexing and syntax highlighting.
 - Improved error handling for `*label` and `*if` in front of an `#option`.
-
-### [1.4.0]
-
-- Word counter added that skips code but counts words shown to the reader.
-- Improved parsing and error checking of `*choice` and `*if`/`*elseif`/`*else` blocks.
-- Improved parsing and error checking of `*choice` and `*if`/`*elseif`/`*else` blocks.
