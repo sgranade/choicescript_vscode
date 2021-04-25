@@ -47,6 +47,8 @@ class ValidationState {
 	}
 }
 
+const startsWithLetterRegex = /^[a-zA-Z]/;
+
 /**
  * Validate all variables' names.
  * @param state Current parsing state.
@@ -54,9 +56,27 @@ class ValidationState {
 function validateVariables(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
-	// Make sure no local variables have the same name as global ones or are repeated
+	// Make sure all variable names start with a letter
 	const globalVariables = state.projectIndex.getGlobalVariables();
+	for (const [variable, location] of globalVariables.entries())
+	{
+		if (!startsWithLetterRegex.test(variable)) {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, location,
+				`"${variable}" must start with a letter`
+			));
+		}
+	}
+	// Check variable names and make sure no local variables have the same name as global ones or are repeated
 	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
+		if (!startsWithLetterRegex.test(variable)) {
+			for (const location of locations) {
+				diagnostics.push(createDiagnosticFromLocation(
+					DiagnosticSeverity.Error, location,
+					`"${variable}" must start with a letter`
+				));
+			}
+		}
 		if (locations.length > 1) {
 			const relatedInformation: DiagnosticRelatedInformation = {
 				location: locations[0],

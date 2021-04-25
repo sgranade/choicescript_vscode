@@ -511,6 +511,30 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
 		});
+
+		it("should flag global variables that don't start with a letter", () => {
+			let globalVariables = new Map([["_invalid_var", Substitute.for<Location>()]]);
+
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ globalVariables: globalVariables });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
+		});
+
+		it("should flag local variables that don't start with a letter", () => {
+			let localVariables = new Map([["_invalid_var", [Substitute.for<Location>()]]]);
+
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ localVariables: localVariables });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
+		});
 	});
 
 	describe("Label Reference Commands Validation", () => {

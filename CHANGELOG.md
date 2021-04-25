@@ -12,6 +12,7 @@ Changes to the plugin.
 ### Fixed
 
 - Operators no longer get syntax highlighting in non-code lines. (courtesy Dan Spinola)
+- Variables that don't start with a letter, like `_var`, are now reported as an error.
 - Error annotations are now removed when a new quicktest or randomtest is run.
 - Error annotations are now removed when the document with the error is edited.
 - Missing parentheses in multireplace tests without spaces, like `@{var=2 yes|no}`, are now reported properly.
