@@ -54,15 +54,18 @@ class StatusBarItems {
 	private _disposable: vscode.Disposable;
 
 	constructor() {
-		this._runningTestItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 8);
+		this._runningTestItem = vscode.window.createStatusBarItem("cs_running_tests", vscode.StatusBarAlignment.Left, 8);
 		this._runningTestItem.command = CustomCommands.CancelTest;
+		this._runningTestItem.name = "ChoiceScript: Running Tests";
 		this._runningTestItem.text = "$(sync~spin) Running CS Test";
 		this._runningTestItem.tooltip = "Press to stop the running test";
-		this._openGameStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+		this._openGameStatusBarItem = vscode.window.createStatusBarItem("cs_open_game", vscode.StatusBarAlignment.Left, 10);
+		this._openGameStatusBarItem.name = "ChoiceScript: Open Game";
 		this._openGameStatusBarItem.text = "$(open-preview) Open";
 		this._openGameStatusBarItem.tooltip = "Press to open game in browser";
 		this._openGameStatusBarItem.command = CustomCommands.OpenGame;
-		this._wordCountStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000);
+		this._wordCountStatusBarItem = vscode.window.createStatusBarItem("cs_word_count", vscode.StatusBarAlignment.Right, 1000);
+		this._wordCountStatusBarItem.name = "ChoiceScript: Word Count";
 		this._disposable = vscode.Disposable.from(
 			this._runningTestItem,
 			this._openGameStatusBarItem,
