@@ -381,7 +381,7 @@ function parseReplacement(text: string, openDelimiterLength: number, sectionInde
 const multiStartRegex = RegExp(multiStartPattern);
 // This is a bit of a hack: I want to glue all non-word operators together for a regex, but some
 // are regex special characters, like ^ and *. So stick backslashes in front of all of them.
-const nonWordOperatorsStartsWithRegex = RegExp("^\\"+nonWordOperators.join("|\\"));
+const nonWordOperatorsStartsWithRegex = RegExp("^(\\"+nonWordOperators.join("|\\")+")");
 
 /**
  * Parse a multireplacement @{var true | false}.

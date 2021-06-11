@@ -2699,6 +2699,19 @@ describe("Parser", () => {
 
 				expect(received.length).to.equal(0);
 			});
+
+			it("should not flag a dashed compound word in a bare multireplace", () => {
+				let fakeDocument = createDocument("@{var compound-word|}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
 		});
 
 		describe("Variable Creation Commands", () => {
