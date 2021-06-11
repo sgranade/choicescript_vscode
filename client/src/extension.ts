@@ -87,8 +87,11 @@ class StatusBarItems {
 
 			if (doc.languageId === "choicescript") {
 				this._updateText();
-				if (projectStatus.loaded) {
+				if (projectStatus.loaded && vscode.workspace.isTrusted) {
 					this._openGameStatusBarItem.show();
+				}
+				else {
+					this._openGameStatusBarItem.hide();
 				}
 				this._wordCountStatusBarItem.show();
 			}
@@ -134,7 +137,7 @@ class StatusBarItems {
 }
 
 /**
- * Controller for the word count status bar item.
+ * Controller for the status bar items.
  */
 class StatusBarController {
 	private _statusBar: StatusBarItems;
@@ -154,6 +157,11 @@ class StatusBarController {
 		const disposables: vscode.Disposable[] = [];
 		vscode.window.onDidChangeActiveTextEditor(this._onDidChangeActiveTextEditor, this, disposables);
 		vscode.window.onDidChangeTextEditorSelection(this._onDidChangeTextEditorSelection, this, disposables);
+
+		// Subscribe to the event marking a workspace as trusted
+		vscode.workspace.onDidGrantWorkspaceTrust(() => {
+			this._statusBar.showOrHide(vscode.window.activeTextEditor, this._projectStatus);
+		});
 
 		// Subscribe to word count updates from the CS language server
 		client.onReady().then(() => {

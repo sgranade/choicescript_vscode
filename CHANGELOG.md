@@ -2,6 +2,16 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Added
+
+- To support [workspace trust](https://code.visualstudio.com/docs/editor/workspace-trust), the extension disables running, quicktesting, or randomtesting games in workspaces you haven't marked as trusted.
+
+### Fixed
+
+- No longer incorrectly flags multireplaces like `@{var dashed-word adjective|}` as potentially missing parentheses.
+
 ## [2.1.0] - 2021-04-25
 
 ### Changed
