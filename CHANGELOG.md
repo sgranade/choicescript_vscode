@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Improved quicktest error message handling to properly identify what file the error occurred in.
+
 ## [2.2.0] - 2021-06-12
 
 ### Added

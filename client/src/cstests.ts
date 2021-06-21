@@ -12,6 +12,9 @@ import { MultiStepInput } from './multiStepInput';
 const FILE_SIZE_LIMIT = 20*1024*1024;
 
 
+const quicktestFilenamePattern = /^([^,]+),\d+/;
+
+
 const outputChannel = vscode.window.createOutputChannel("ChoiceScript Test");
 let runningProcess: cp.ChildProcess;
 
@@ -309,6 +312,7 @@ function runTest(
 	statusCallback?: (running: boolean) => void
 ) {
 	let lastLine: string;
+	let lastFile: string;
 
 	if (runningProcess !== undefined) {
 		vscode.window.showErrorMessage("A test is already running");
@@ -333,8 +337,19 @@ function runTest(
 			lastLine = lastLine.slice(0, -1);
 		}
 		output.append(lastLine);
+		let lastLines = lastLine.trim().split('\n');
+		// Not every CS error message includes the filename, so scrape it from the lines as needed
+		const len = lastLines.length;
+		let i = len - 1;
+		for (; i >= 0; i--) {
+			const m = quicktestFilenamePattern.exec(lastLines[i]);
+			if (m !== null && m.length > 0) {
+				lastFile = m[1];
+				break;
+			}
+		}
 		// Save the last line since it can have error information
-		lastLine = lastLine.trim().split('\n').pop();  // Since I may get multiple lines at once
+		lastLine = lastLines.pop();  // Since I may get multiple lines at once
 	});
 
 	runningProcess.stderr.setEncoding('utf-8');
@@ -367,10 +382,17 @@ function runTest(
 			else {
 				if (csErrorHandler !== undefined) {
 					// ChoiceScript error messages are in the format
-					//   "[scene] line [#]: [message]"
+					//   "[scene] line [#]: [message]" ...sometimes
 					let results = /(\S+) line (\d+): (.+)/.exec(lastLine);
 					if (results !== null) {
 						csErrorHandler(results[1], parseInt(results[2]), results[3]);
+					}
+					// Other times they leave out the [scene], but we may have that from buffer output scraping
+					else if (lastFile !== undefined) {
+						results = /line (\d+): (.+)/.exec(lastLine);
+						if (results !== null) {
+							csErrorHandler(lastFile, parseInt(results[1]), results[2]);
+						}
 					}
 				}
 				let msg = `${testName} failed`;
