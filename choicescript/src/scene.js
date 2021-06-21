@@ -222,7 +222,7 @@ Scene.prototype.replaceVariables = function (line) {
       if (typeof value === "boolean" || /^(true|false)$/i.test(value)) {
         value = bool(value) ? 1 : 2;
       }
-      value = num(value, this.lineNum+1);
+      value = num(value, this.lineNum+1, this.name);
       if ((value | 0) !== value) {
         throw new Error(this.lineMsg() + "invalid "+result[0]+"} at letter " + (index + result.index + 1) + "; '"+expr+"' is equal to " + value + " which is not a whole integer number");
       } else if (value < 1) {
@@ -274,7 +274,7 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
       startLoading();
       var startedWaiting = new Date().getTime();
 
-      function retryScenes(command) {
+      function retryScenes(event, command) {
         if (!command) command = "retryscenes";
         clearScreen(function() {
           startLoading();
@@ -306,7 +306,7 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
               if (option == retry) {
                 retryScenes();
               } else {
-                retryScenes("requestscenesforce");
+                retryScenes(null, "requestscenesforce");
               }
             });
           }
@@ -341,7 +341,7 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
                 err = "403x";
               }
               main.innerHTML = "<div id='text'><p>Our apologies; there was a " + err + " error while loading game data."+
-              "  Please refresh now; if that doesn't work, please click the Restart button and email "+getSupportEmail()+" with details.</p>"+
+              "  Please refresh now; if that doesn't work, please click the Restart button and email "+getSupportEmail()+" with details, including the error number.</p>"+
               " <p><button class='next' onclick='window.location.reload();'>Refresh Now</button></p></div>";
               curl();
             } else {
@@ -412,11 +412,13 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
           if (window.console) console.error(e, e.stack);
         }
         if (window.isWeb && (xhr.status != 200 || !result)) {
+          doneLoading();
           var status = xhr.status;
           if (status == 200 || !status) status = "network";
-          main.innerHTML = "<p>Our apologies; there was a " + status + " error while loading game data."+
+          main.innerHTML = "<div id='text'><p>Our apologies; there was a " + status + " error while loading game data."+
           "  Please refresh your browser now; if that doesn't work, please click the Restart button and email "+getSupportEmail()+" with details.</p>"+
-          " <p><button onclick='window.location.reload();'>Refresh Now</button></p>";
+          " <p><button onclick='window.location.reload();'>Refresh Now</button></p></div>";
+          curl();
           return;
         } else if (xhr.responseText === "") {
           throw new Error("Couldn't load " + url + "\nThe file is probably missing or empty.");
@@ -667,7 +669,7 @@ Scene.prototype.checkSum = function checkSum() {
       var self = this;
       safeTimeout(function() {
         clearScreen(function() {
-          loadAndRestoreGame("backup", self.name);
+          loadAndRestoreGame("backup");
         });
       }, 0);
       return false;
@@ -1144,7 +1146,7 @@ Scene.prototype.finish = function finish(buttonName) {
         });
       }
     );
-    if (this.debugMode) println(toJson(this.stats));
+    if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 };
 
 Scene.prototype.autofinish = function autofinish(buttonName) {
@@ -1224,18 +1226,11 @@ Scene.prototype.goto_scene = function gotoScene(data) {
 // *redirect_scene foo
 Scene.prototype.redirect_scene = function redirectScene(data) {
   if (this.secondaryMode != "stats") throw new Error(this.lineMsg() + "The *redirect_scene command can only be used from the stats screen.");
-  var args = trim(data).split(/ /);
-  var sceneName, label;
-  if (args.length == 1) {
-    sceneName = data;
-  } else {
-    sceneName = args[0];
-    label = args[1];
-  }
+  var result = this.parseGotoScene(data);
   this.finished = true;
   this.skipFooter = true;
   var self = this;
-  redirectFromStats(sceneName, label, this.lineNum, function() {
+  redirectFromStats(result.sceneName, result.label, this.lineNum, function() {
     delete self.secondaryMode;
     delete self.saveSlot;
     self.redirectingFromStats = true;
@@ -1915,7 +1910,7 @@ Scene.prototype.renderOptions = function renderOptions(groups, options, callback
     this.paragraph();
     printOptions(groups, options, callback);
 
-    if (this.debugMode) println(toJson(this.stats));
+    if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 
     if (this.finished) printFooter();
 };
@@ -1936,7 +1931,7 @@ Scene.prototype.page_break = function page_break(buttonName) {
         self.resetPage();
       }
     );
-    if (this.debugMode) println(toJson(this.stats));
+    if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 };
 
 // *line_break
@@ -2089,7 +2084,7 @@ Scene.prototype.advertisement = function advertisement() {
 // The number of times a given line is allowed to be accessed
 Scene.prototype.looplimit_count = 1000;
 Scene.prototype.looplimit = function looplimit(count) {
-  this.looplimit_count = num(count, this.lineNum);
+  this.looplimit_count = num(count, this.lineNum, this.name);
 };
 
 Scene.prototype.hide_reuse = function hide_reuse() {
@@ -2118,26 +2113,38 @@ Scene.prototype.print = function scene_print(expr) {
     this.printLine(value);
 };
 
+Scene.prototype.parseInputText = function parseInputText(line) {
+  var stack = this.tokenizeExpr(line);
+  var variable = this.evaluateReference(stack);
+  if ("undefined" === typeof this.temps[variable] && "undefined" === typeof this.stats[variable]) {
+    throw new Error(this.lineMsg() + "Non-existent variable '" + variable + "'");
+  }
+
+  var inputOptions = { long: false, allow_blank: false };
+  for (var i = 0; i < stack.length; i++) {
+    var token = stack[i];
+    if (token.name !== "VAR") {
+      throw new Error(this.lineMsg() + "Couldn't understand this input_text line");
+    }
+    var option = token.value;
+    if (typeof inputOptions[option] === "undefined") {
+      throw new Error(this.lineMsg() + "Couldn't understand this input_text option: " + option);
+    }
+    inputOptions[option] = true;
+  }
+  return {variable:variable, inputOptions:inputOptions};
+}
+
 // *input_text var
 // record text typed by the user and store it in the specified variable
 Scene.prototype.input_text = function input_text(line) {
-    var stack = this.tokenizeExpr(line);
-    var variable = this.evaluateReference(stack);
-    if ("undefined" === typeof this.temps[variable] && "undefined" === typeof this.stats[variable]) {
-      throw new Error(this.lineMsg() + "Non-existent variable '"+variable+"'");
-    }
+    var result = this.parseInputText(line);
+    var variable = result.variable;
 
-    var inputType = "text";
-    if (stack.length == 1 && stack[0].name == "VAR" && stack[0].value == "long") {
-      inputType = "textarea";
-    }
-    if ("undefined" === typeof this.temps[variable] && "undefined" === typeof this.stats[variable]) {
-      throw new Error(this.lineMsg() + "Non-existent variable '"+variable+"'");
-    }
     this.finished = true;
     this.paragraph();
     var self = this;
-    printInput(this.target, inputType, function(value) {
+    printInput(this.target, result.inputOptions, function(value) {
       safeCall(self, function() {
         value = trim(String(value));
         value = value.replace(/\n/g, "[n/]");
@@ -2147,7 +2154,7 @@ Scene.prototype.input_text = function input_text(line) {
         self.resetPage();
       });
     });
-    if (this.debugMode) println(toJson(this.stats));
+    if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 };
 
 // *input_number var min max
@@ -2195,7 +2202,7 @@ Scene.prototype.input_number = function input_number(data) {
     this.finished = true;
     this.paragraph();
     var self = this;
-    printInput(this.target, "number", function(value) {
+    printInput(this.target, {numeric: true}, function(value) {
       safeCall(self, function() {
         var numValue = parseFloat(""+value);
         if (isNaN(numValue)) {
@@ -2220,7 +2227,7 @@ Scene.prototype.input_number = function input_number(data) {
         self.resetPage();
       });
     }, minimum, maximum, intRequired);
-    if (this.debugMode) println(toJson(this.stats));
+    if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 };
 
 // *script code
@@ -3619,6 +3626,8 @@ Scene.prototype.skipTrueBranch = function skipTrueBranch(inElse) {
           } else if (/^else?if$/.test(command)) {
               this.lineNum = this.lineNum; // code coverage
               this["if"](data);
+          } else if ("comment" == command) {
+              continue;
           } else {
               this.lineNum = this.previousNonBlankLineNum();
               this.rollbackLineCoverage();
@@ -3655,7 +3664,7 @@ Scene.prototype.tokenizeExpr = function tokenizeExpr(str) {
         var matched = false;
         for (var i = 0; i < tokenTypesLength; i++) {
             var tokenType = tokenTypes[i];
-            var token = tokenType.test(str, this.lineNum+1);
+            var token = tokenType.test(str, this.lineNum+1, this);
             if (token) {
                 matched = true;
                 str = str.substr(token.length);
@@ -4158,20 +4167,19 @@ Scene.prototype.achievement = function scene_achievement(data) {
   var achievementName = parsed[1];
   if (!/^[a-z][a-z0-9_]+$/.test(achievementName)) throw new Error(this.lineMsg()+"Invalid achievement name: " +achievementName);
 
+  if (!this.parsedAnAchievment && Object.keys(this.nav.achievements).length > 0) {
+    // blow away pre-existing mygame.js achievements
+    this.nav.achievements = {};
+    this.nav.achievementList = [];
+    this.achievementTotal = 0;
+    this.seenAchievementTitles = {};
+  }
+
+  this.parsedAnAchievment = true;
+
   if (this.nav.achievements.hasOwnProperty(achievementName)) {
-    // this achievement already exists...
     var preExisting = this.nav.achievements[achievementName];
-    if (!preExisting.lineNumber || preExisting.lineNumber == (this.lineNum+1)) {
-      // restarting/randomtest will naturally re-run *achievements; ignore those
-      // blow away pre-existing mygame.js achievements
-      this.nav.achievements = {};
-      this.nav.achievementList = [];
-      this.achievementTotal = 0;
-      this.seenAchievementTitles = {};
-    } else {
-      // don't allow redefining achievements
-      throw new Error(this.lineMsg()+"Achievement "+achievementName+" already defined on line " + this.nav.achievements[achievementName].lineNumber);
-    }
+    throw new Error(this.lineMsg()+"Achievement "+achievementName+" already defined on line " + this.nav.achievements[achievementName].lineNumber);
   }
 
   var lineNumber = this.lineNum+1;
@@ -4322,6 +4330,12 @@ Scene.prototype.feedback = function scene_feedback() {
       self.resetPage();
     }
 
+    if (value == "null") {
+      self.finished = false;
+      self.resetPage();
+      return;
+    }
+
     isRegistered(function(registered) {
       if (registered) {
         postFeedback();
@@ -4411,7 +4425,7 @@ Scene.tokens = [
     {name:"CLOSE_SQUARE", test:function(str){ return Scene.regexpMatch(str,/^\]/); } },
     {name:"FUNCTION", test:function(str){ return Scene.regexpMatch(str,/^(not|round|timestamp|log|length|auto)\s*\(/); } },
     {name:"NUMBER", test:function(str){ return Scene.regexpMatch(str,/^\d+(\.\d+)?\b/); } },
-    {name:"STRING", test:function(str, line) {
+    {name:"STRING", test:function(str, line, sceneObj) {
             var i;
             if (!/^\"/.test(str)) return null;
             for (i = 1; i < str.length; i++) {
@@ -4422,7 +4436,7 @@ Scene.tokens = [
                     return str.substring(0,i+1);
                 }
             }
-            throw new Error("line "+line+": Invalid string, open quote with no close quote: " + str);
+            throw new Error(sceneObj.lineMsg()+"Invalid string, open quote with no close quote: " + str);
         }
     },
     {name:"CURLY_QUOTE", test:function(str){ return Scene.regexpMatch(str,/^[\u201c\u201d]/); } },
@@ -4437,32 +4451,32 @@ Scene.tokens = [
     //
 ];
 Scene.operators = {
-    "+": function add(v1,v2,line) { return num(v1,line) + num(v2,line); },
-    "-": function subtract(v1,v2,line) { return num(v1,line) - num(v2,line); },
-    "*": function multiply(v1,v2,line) { return num(v1,line) * num(v2,line); },
-    "/": function divide(v1,v2,line) {
-      v2 = num(v2, line);
-      if (v2 === 0) throw new Error("line "+line+": can't divide by zero");
-      return num(v1,line) / num(v2,line);
+    "+": function add(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) + num(v2,line,sceneObj.name); },
+    "-": function subtract(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) - num(v2,line,sceneObj.name); },
+    "*": function multiply(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) * num(v2,line,sceneObj.name); },
+    "/": function divide(v1,v2,line,sceneObj) {
+      v2 = num(v2, line, sceneObj.name);
+      if (v2 === 0) throw new Error(sceneObj.name+" line "+line+": can't divide by zero");
+      return num(v1,line,sceneObj.name) / num(v2,line,sceneObj.name);
     },
-    "^": function exponent(v1,v2,line) { return Math.pow(num(v1,line), num(v2,line)); },
+    "^": function exponent(v1,v2,line,sceneObj) { return Math.pow(num(v1,line,sceneObj.name), num(v2,line,sceneObj.name)); },
     "&": function concatenate(v1,v2) { return [v1,v2].join(""); },
-    "#": function charAt(v1,v2,line) {
-      var i = num(v2,line);
+    "#": function charAt(v1,v2,line,sceneObj) {
+      var i = num(v2,line,sceneObj.name);
       if (i < 1) {
-        throw new Error("line "+line+": There is no character at position " + i + "; the position must be greater than or equal to 1.");
+        throw new Error(sceneObj.lineMsg()+"There is no character at position " + i + "; the position must be greater than or equal to 1.");
       }
       if (i > String(v1).length) {
-        throw new Error("line "+line+": There is no character at position " + i + ". \""+v1+"\" is only " + String(v1).length + " characters long.");
+        throw new Error(sceneObj.lineMsg()+"There is no character at position " + i + ". \""+v1+"\" is only " + String(v1).length + " characters long.");
       }
       return String(v1).charAt(i-1);
     },
-    "%+": function fairAdd(v1, v2, line) {
-        v1 = num(v1,line);
-        v2 = num(v2,line);
+    "%+": function fairAdd(v1, v2, line, sceneObj) {
+        v1 = num(v1,line,sceneObj.name);
+        v2 = num(v2,line,sceneObj.name);
         var validValue = (v1 >= 0 && v1 <= 100);
         if (!validValue) {
-            throw new Error("line "+line+": Can't fairAdd to non-percentile value: " + v1);
+            throw new Error(sceneObj.lineMsg()+"Can't fairAdd to non-percentile value: " + v1);
         }
         if (v2 > 0) {
           var multiplier = (100 - v1) / 100;
@@ -4480,24 +4494,24 @@ Scene.operators = {
           return value;
         }
     },
-    "%-": function fairSubtract(v1, v2, line) {
-        v2 = num(v2,line);
-        return Scene.operators["%+"](v1,0-v2,line);
+    "%-": function fairSubtract(v1, v2, line, sceneObj) {
+        v2 = num(v2,line,sceneObj.name);
+        return Scene.operators["%+"](v1,0-v2,line,sceneObj);
     },
     "=": function equals(v1,v2) { return v1 == v2 || String(v1) == String(v2); },
-    "<": function lessThan(v1,v2,line) {
-        return num(v1,line) < num(v2,line); },
-    ">": function greaterThan(v1,v2,line) { return num(v1,line) > num(v2,line); },
-    "<=": function lessThanOrEquals(v1,v2,line) { return num(v1,line) <= num(v2,line); },
-    ">=": function greaterThanOrEquals(v1,v2,line) { return num(v1,line) >= num(v2,line); },
+    "<": function lessThan(v1,v2,line,sceneObj) {
+        return num(v1,line,sceneObj.name) < num(v2,line,sceneObj.name); },
+    ">": function greaterThan(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) > num(v2,line,sceneObj.name); },
+    "<=": function lessThanOrEquals(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) <= num(v2,line,sceneObj.name); },
+    ">=": function greaterThanOrEquals(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) >= num(v2,line,sceneObj.name); },
     "!=": function notEquals(v1,v2) { return v1 != v2; },
-    "and": function and(v1, v2, line) {
-        return bool(v1,line) && bool(v2,line);
+    "and": function and(v1, v2, line, sceneObj) {
+        return bool(v1,line,sceneObj.name) && bool(v2,line,sceneObj.name);
     },
-    "or": function or(v1, v2, line) {
-        return bool(v1,line) || bool(v2,line);
+    "or": function or(v1, v2, line, sceneObj) {
+        return bool(v1,line,sceneObj.name) || bool(v2,line,sceneObj.name);
     },
-    "modulo": function modulo(v1,v2,line) { return num(v1,line) % num(v2,line); },
+    "modulo": function modulo(v1,v2,line,sceneObj) { return num(v1,line,sceneObj.name) % num(v2,line,sceneObj.name); },
 };
 
 Scene.initialCommands = {"create":1,"scene_list":1,"title":1,"author":1,"comment":1,"achievement":1,"product":1};

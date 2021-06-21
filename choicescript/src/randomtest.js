@@ -465,7 +465,7 @@ Scene.prototype.recordBalance = function (value, operator, rate, id) {
 		return result;
 	}
 	if (!balanceValues[this.name][id]) balanceValues[this.name][id] = [];
-	balanceValues[this.name][id].push(num(value, this.line));
+	balanceValues[this.name][id].push(num(value, this.line, this.name));
 	throw new Error("record balance");
 }
 
