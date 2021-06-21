@@ -244,6 +244,28 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
+				it("should be okay with named numeric operators", () => {
+					let text = "3 modulo 2";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(0);
+				});
+
+				it("should flag a boolean with a named numeric operator", () => {
+					let text = "2 modulo false";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(11);
+					expect(expression.validateErrors[0].range.end.line).to.equal(16);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+
 				it("should flag a number followed by not-an-operator", () => {
 					let text = "1 2 3";
 					let fakeDocument = createDocument(text);

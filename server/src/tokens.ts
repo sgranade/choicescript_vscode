@@ -221,7 +221,8 @@ function checkOperatorAgainstToken(
 	switch (effectiveType) {
 		case ExpressionTokenType.Number:
 			if (operator.type !== ExpressionTokenType.MathOperator &&
-				operator.type !== ExpressionTokenType.ComparisonOperator) {
+				operator.type !== ExpressionTokenType.ComparisonOperator &&
+				operator.type !== ExpressionTokenType.NumericNamedOperator) {
 				errorMessage = "Not a numeric operator";
 			}
 			break;
