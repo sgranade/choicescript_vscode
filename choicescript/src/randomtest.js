@@ -465,9 +465,17 @@ Scene.prototype.recordBalance = function (value, operator, rate, id) {
 		return result;
 	}
 	if (!balanceValues[this.name][id]) balanceValues[this.name][id] = [];
-	balanceValues[this.name][id].push(num(value, this.line, this.name));
-	throw new Error("record balance");
+	balanceValues[this.name][id].push(num(value, this.line));
+  throw new Error("skip run");
 }
+
+Scene.prototype.abort = function randomtest_abort(param) {
+  this.paragraph();
+  this.finished = true;
+  if (param === 'skip') {
+    throw new Error("skip run");
+  }
+};
 
 Scene.prototype.save_game = noop;
 
@@ -572,7 +580,15 @@ Scene.prototype.ending = function () {
 Scene.prototype.restart = Scene.prototype.ending;
 
 Scene.prototype.input_text = function (line) {
-	this.set(line + " \"blah blah\"");
+  var parsed = this.parseInputText(line);
+  var input = "blah blah";
+  if (parsed.inputOptions.allow_blank) {
+    if (!Math.floor(Math.random() * 4)) {
+      input = "";
+    }
+    this.randomLog("*input_text " + (this.lineNum + 1) + " " + input);
+  }
+  this.set(parsed.variable + " \""+input+"\"");
 }
 
 Scene.prototype.input_number = function (data) {
@@ -831,7 +847,8 @@ function randomtest() {
 			}
 			println(); // flush buffer
 		} catch (e) {
-			if (e.message == "record balance") {
+      if (e.message == "skip run") {
+        println("SKIPPED RUN " + i);
 				iterations++;
 				continue;
 			}
