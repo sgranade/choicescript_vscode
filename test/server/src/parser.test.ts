@@ -1578,6 +1578,22 @@ describe("Parser", () => {
 			expect(received[0].location.range.end.line).to.equal(21);
 		});
 
+		it("should callback on a variable in an *if before an option and after a reuse command", () => {
+			let fakeDocument = createDocument("*choice\n\t*hide_reuse *if variable # This is a choice");
+			let received: Array<Symbol> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onVariableReference(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
+				received.push({ text: s, location: l });
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].text).to.equal("variable");
+			expect(received[0].location.range.start.line).to.equal(25);
+			expect(received[0].location.range.end.line).to.equal(33);
+		});
+
 		it("should callback on local variables in nested reference comands", () => {
 			let fakeDocument = createDocument("*if variable > 1\n  *if other_variable < 1\n    Content");
 			let received: Array<Symbol> = [];

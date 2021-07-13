@@ -727,7 +727,7 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
 				const oldEnclosingBlock = state.enclosingBlock;
 				state.enclosingBlock = "option";
-				parseSection(m.groups.commandLine + "#fake", state.sectionGlobalIndex + commandLineIndex, state);
+				parseSection(m.groups.commandLine + "#fake", state.sectionGlobalIndex + preTextIndex + commandLineIndex, state);
 				state.enclosingBlock = oldEnclosingBlock;
 			}
 			else {
