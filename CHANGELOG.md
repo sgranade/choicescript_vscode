@@ -8,6 +8,7 @@ Changes to the plugin.
 
 - `modulo` is now correctly identified as a numeric operator.
 - In an `#option` line with a `*hide_reuse` (or similar reuse variable) and an `*if` statement that references a variable, that reference is no longer mis-located.
+- Fixed syntax highlighting to properly color comments, commands, and other similar items inside italic or bold markup.
 - Improved quicktest error message handling to properly identify what file the error occurred in.
 
 ## [2.2.0] - 2021-06-12

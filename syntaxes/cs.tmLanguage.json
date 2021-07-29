@@ -296,13 +296,25 @@
 			"contentName": "markup.italic",
 			"patterns": [
 				{
-					"include": "#multireplace"
+					"include": "#comment"
+				},
+				{
+					"include": "#command"
+				},
+				{
+					"include": "#choice"
+				},
+				{
+					"include": "#todo"
 				},
 				{
 					"include": "#variable-display"
 				},
 				{
-					"include": "#todo"
+					"include": "#variable-substitution"
+				},
+				{
+					"include": "#multireplace"
 				}
 			]
 		},
@@ -312,13 +324,25 @@
 			"contentName": "markup.bold",
 			"patterns": [
 				{
-					"include": "#multireplace"
+					"include": "#comment"
+				},
+				{
+					"include": "#command"
+				},
+				{
+					"include": "#choice"
+				},
+				{
+					"include": "#todo"
 				},
 				{
 					"include": "#variable-display"
 				},
 				{
-					"include": "#todo"
+					"include": "#variable-substitution"
+				},
+				{
+					"include": "#multireplace"
 				}
 			]
 		}
