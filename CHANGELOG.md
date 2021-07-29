@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
+
 ### Fixed
 
 - `modulo` is now correctly identified as a numeric operator.

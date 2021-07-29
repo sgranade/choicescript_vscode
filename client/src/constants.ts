@@ -20,13 +20,18 @@ export enum Configuration {
 export enum CustomCommands {
 	Bold = 'choicescript.bold',
 	CancelTest = 'choicescript.cancelTest',
-	GameOpened = 'choicescript.gameOpened',
 	Italicize = 'choicescript.italicize',
 	OpenGame = 'choicescript.openGame',
-	ProjectLoaded = 'choicescript.projectLoaded',
 	RunQuicktest = 'choicescript.runQuicktest',
 	RunRandomtestDefault = 'choicescript.runRandomtestDefault',
 	RunRandomtestInteractive = 'choicescript.runRandomtestInteractive',
+	RerunRandomTest = 'choicescript.rerunRandomtest'
+}
+
+export enum CustomContext {
+	GameOpened = 'choicescript.gameOpened',
+	ProjectLoaded = 'choicescript.projectLoaded',
+	PreviousRandomtestSettingsExist = 'choicescript.previousRandomtestSettingsExist',
 	TestRunning = 'choicescript.testRunning'
 }
 
@@ -35,6 +40,12 @@ export enum CustomMessages {
 	UpdatedProjectFiles = 'choicescript/projectfiles',
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
+}
+
+export enum RandomtestSettingsSource {
+	VSCodeConfiguration,
+	LastTestRun,
+	Interactive
 }
 
 // Paths relative to the extension

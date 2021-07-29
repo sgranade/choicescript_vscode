@@ -11,7 +11,7 @@ import {
 	integer
 } from 'vscode-languageclient/node';
 import { LineAnnotationController } from './annotations';
-import { CustomCommands, CustomMessages, RelativePaths } from './constants';
+import { CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
 import { runQuicktest, runRandomtest, cancelTest } from './csTests';
 import * as gameserver from './gameserver';
 import { Provider } from './logDocProvider';
@@ -304,7 +304,7 @@ class GameRunner {
 					projectFiles = new Map(e.map((file: string) => [path.basename(file), file]));
 					gameserver.updateGameFileMap(this._gameId, projectFiles);
 					statusBarController.projectLoaded();
-					vscode.commands.executeCommand('setContext', CustomCommands.ProjectLoaded, true);
+					vscode.commands.executeCommand('setContext', CustomContext.ProjectLoaded, true);
 			}));
 			this._disposable = vscode.Disposable.from(...disposables);
 			gameserver.startServer();
@@ -324,7 +324,7 @@ class GameRunner {
 		await this._init();
 		annotationController.clearAll();
 		gameserver.openGameInBrowser(this._gameId);
-		vscode.commands.executeCommand('setContext', CustomCommands.GameOpened, true);
+		vscode.commands.executeCommand('setContext', CustomContext.GameOpened, true);
 		this._statusBarController.gameRun();
 	}
 	
@@ -464,7 +464,7 @@ export function activate(context: vscode.ExtensionContext): void {
 							context.asAbsolutePath(RelativePaths.Randomtest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
 							path.dirname(Array.from(projectFiles.values())[0]),
-							false,
+							RandomtestSettingsSource.VSCodeConfiguration,
 							provider,
 							annotateCSError,
 							(running) => controller.updateTestStatus(running)
@@ -481,7 +481,24 @@ export function activate(context: vscode.ExtensionContext): void {
 							context.asAbsolutePath(RelativePaths.Randomtest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
 							path.dirname(Array.from(projectFiles.values())[0]),
-							true,
+							RandomtestSettingsSource.Interactive,
+							provider,
+							annotateCSError,
+							(running) => controller.updateTestStatus(running)
+						)
+					);
+				}
+		}),
+		vscode.commands.registerCommand(
+			CustomCommands.RerunRandomTest, () => {
+				if (projectFiles !== undefined && projectFiles.size > 0) {
+					annotationController.clearAll();
+					vscode.workspace.saveAll().then(
+						() => runRandomtest(
+							context.asAbsolutePath(RelativePaths.Randomtest),
+							context.asAbsolutePath(RelativePaths.Choicescript),
+							path.dirname(Array.from(projectFiles.values())[0]),
+							RandomtestSettingsSource.LastTestRun,
 							provider,
 							annotateCSError,
 							(running) => controller.updateTestStatus(running)

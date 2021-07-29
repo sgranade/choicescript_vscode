@@ -104,6 +104,12 @@
 				"enablement": "isWorkspaceTrusted"
 			},
 			{
+				"command": "choicescript.rerunRandomtest",
+				"title": "Re-run Randomtest with Previous Settings",
+				"category": "ChoiceScript",
+				"enablement": "isWorkspaceTrusted"
+			},
+			{
 				"command": "choicescript.cancelTest",
 				"title": "Cancel Running Test",
 				"category": "ChoiceScript",
@@ -137,6 +143,10 @@
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
 				{
+					"command": "choicescript.rerunRandomtest",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning"
+				},
+				{
 					"command": "choicescript.cancelTest",
 					"when": "editorLangId == choicescript && choicescript.testRunning"
 				}
@@ -153,19 +163,24 @@
 					"group": "ChoiceScript@3"
 				},
 				{
-					"command": "choicescript.runRandomtestInteractive",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"command": "choicescript.rerunRandomtest",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
 					"group": "ChoiceScript@4"
 				},
 				{
-					"command": "choicescript.runRandomtestDefault",
+					"command": "choicescript.runRandomtestInteractive",
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
 					"group": "ChoiceScript@5"
 				},
 				{
+					"command": "choicescript.runRandomtestDefault",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"group": "ChoiceScript@6"
+				},
+				{
 					"command": "choicescript.cancelTest",
 					"when": "editorLangId == choicescript && choicescript.testRunning",
-					"group": "ChoiceScript@6"
+					"group": "ChoiceScript@7"
 				}
 			]
 		},

@@ -2,7 +2,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { integer } from 'vscode-languageclient/node';
-import { CustomCommands, Configuration, RandomtestPutResultsInDocumentOptions } from './constants';
+import { CustomContext, Configuration, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from './constants';
 import { Provider, generateLogUri, logUriToFilename } from './logDocProvider';
 import LogDocument from './logDocument';
 import { MultiStepInput } from './multiStepInput';
@@ -25,6 +25,8 @@ interface randomtestSettings {
 	showCoverage: boolean,
 	putResultsInDocument: boolean
 }
+let previousRandomtestSettings: randomtestSettings = undefined;
+// So we can re-run randomtest with the previous settings
 
 
 async function showLogDocument(document: LogDocument) {
@@ -93,9 +95,9 @@ async function showLogDocument(document: LogDocument) {
 /**
  * Get the settings for a randomtest run.
  * 
- * @param interactive If true, get the settings interactively.
+ * @param source Where to get the test settings: VS Code configuration, previous run, or interactive.
  */
-async function getRandomtestSettings(interactive: boolean): Promise<randomtestSettings> {
+async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<randomtestSettings> {
 	const title = 'Randomtest Settings';
 	const config = vscode.workspace.getConfiguration(Configuration.BaseSection);
 	let settings: randomtestSettings = {
@@ -108,7 +110,10 @@ async function getRandomtestSettings(interactive: boolean): Promise<randomtestSe
 		putResultsInDocument: false  // placeholder -- will be updated at end
 	}
 
-		if (interactive) {
+	if (source == RandomtestSettingsSource.LastTestRun && previousRandomtestSettings !== undefined) {
+		settings = previousRandomtestSettings;
+	}
+	else if (source == RandomtestSettingsSource.Interactive) {
 		const booleanGroups: vscode.QuickPickItem[] = ['yes', 'no']
 			.map(label => ({ label }));
 
@@ -260,7 +265,7 @@ export function runQuicktest(
  * @param testScriptPath Path to the test script.
  * @param csPath Path to the ChoiceScript module.
  * @param scenePath Path to the scene files.
- * @param interactive If True, get the randomtest settings interactively.
+ * @param source Where to get the Randomtest settings: VS Code configuration, a previous run, or interactively.
  * @param provider Provider to generate log documents.
  * @param csErrorHandler Optional handler for if the test finds an error.
  * @param statusCallback Optional callback for when tests are running or not.
@@ -269,12 +274,12 @@ export async function runRandomtest(
 	testScriptPath: string, 
 	csPath: string,
 	scenePath: string,
-	interactive: boolean,
+	source: RandomtestSettingsSource,
 	provider: Provider,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void
 ) {
-	const settings = await getRandomtestSettings(interactive);
+	const settings = await getRandomtestSettings(source);
 	const args = [
 		`cs=${csPath}`,
 		`project=${scenePath}`,
@@ -286,7 +291,15 @@ export async function runRandomtest(
 		`showCoverage=${settings.showCoverage}`
 	];
 	let output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest")) : outputChannel;
-	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback);
+
+	function onSuccess(success: boolean) {
+		if (success) {
+			previousRandomtestSettings = settings;
+			vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
+		}
+	}
+
+	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback, onSuccess);
 }
 
 
@@ -299,6 +312,7 @@ export async function runRandomtest(
  * @param output Where to send the output from the run.
  * @param csErrorHandler Optional handler for if the test finds an error.
  * @param statusCallback Optional callback for when tests are running or not.
+ * @param successCallback Optional callback after a test for whether it succeeded or not.
  */
 function runTest(
 	testName: string,
@@ -306,7 +320,8 @@ function runTest(
 	testArgs: string[],
 	output: vscode.OutputChannel | LogDocument,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
-	statusCallback?: (running: boolean) => void
+	statusCallback?: (running: boolean) => void,
+	successCallback?: (running: boolean) => void
 ) {
 	let lastLine: string;
 
@@ -315,7 +330,7 @@ function runTest(
 		return;
 	}
 
-	vscode.commands.executeCommand('setContext', CustomCommands.TestRunning, true);
+	vscode.commands.executeCommand('setContext', CustomContext.TestRunning, true);
 	if (statusCallback !== undefined) {
 		statusCallback(true);
 	}
@@ -349,8 +364,9 @@ function runTest(
 	});
 
 	runningProcess.on('exit', async (code?: number, signal?: string) => {
+		let success = false;
 		runningProcess = undefined;
-		vscode.commands.executeCommand('setContext', CustomCommands.TestRunning, false);
+		vscode.commands.executeCommand('setContext', CustomContext.TestRunning, false);
 		if (statusCallback !== undefined) {
 			statusCallback!(false);
 		}
@@ -360,6 +376,7 @@ function runTest(
 		if (code !== undefined) {
 			if (code == 0) {
 				vscode.window.setStatusBarMessage(`${testName} passed`, 5000);
+				success = true;
 			}
 			else if (signal == 'SIGTERM') {
 				vscode.window.setStatusBarMessage(`${testName} stopped`, 5000);
@@ -382,6 +399,9 @@ function runTest(
 		}
 		else if (signal !== undefined) {
 			vscode.window.showInformationMessage(`${testName} received unexpected signal: ${signal}`, 'OK');
+		}
+		if (successCallback !== undefined) {
+			successCallback!(success);
 		}
 	});
 }
