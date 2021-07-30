@@ -2,7 +2,8 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { integer } from 'vscode-languageclient/node';
-import { CustomContext, Configuration, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from './constants';
+import { CustomContext, Configuration, LocalWorkspaceStorageKeys, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from './constants';
+import { LocalStorageService } from './localStorageService';
 import { Provider, generateLogUri, logUriToFilename } from './logDocProvider';
 import LogDocument from './logDocument';
 import { MultiStepInput } from './multiStepInput';
@@ -15,6 +16,7 @@ const FILE_SIZE_LIMIT = 20*1024*1024;
 const outputChannel = vscode.window.createOutputChannel("ChoiceScript Test");
 let runningProcess: cp.ChildProcess;
 
+let localWSStorage: LocalStorageService;
 
 interface randomtestSettings {
 	iterations: integer,
@@ -26,8 +28,45 @@ interface randomtestSettings {
 	putResultsInDocument: boolean,
 	putResultsInUniqueDocument: boolean
 }
-let previousRandomtestSettings: randomtestSettings = undefined;
-// So we can re-run randomtest with the previous settings
+
+
+/**
+ * Initialize ChoiceScript test provider.
+ * 
+ * @param localWorkspaceStorage Local storage object with workspace scope.
+ */
+export function initializeTestProvider(localWorkspaceStorage: LocalStorageService) {
+	localWSStorage = localWorkspaceStorage;
+	// If we've already got previous randomtest settings, pull them in
+	const tempy = getPreviousRandomtestSettings();
+	if (getPreviousRandomtestSettings()) {
+		vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
+	}
+}
+
+
+/**
+ * Get settings from the most recently run Randomtest.
+ * 
+ * @returns Previous Randomtest settings, or undefined if none exist.
+ */
+function getPreviousRandomtestSettings(): randomtestSettings | null {
+	return localWSStorage.getValue<randomtestSettings>(LocalWorkspaceStorageKeys.PreviousRandomtestSettings);
+}
+
+
+/**
+ * Update settings from the most recently run Randomtest.
+ * 
+ * @param newSettings Settings from the most recent Randomtest.
+ */
+function updatePreviousRandomtestSettings(newSettings: randomtestSettings) {
+	localWSStorage.setValue<randomtestSettings>(LocalWorkspaceStorageKeys.PreviousRandomtestSettings, newSettings);
+	vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
+}
+
+
+
 
 
 async function showLogDocument(document: LogDocument) {
@@ -111,10 +150,13 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
 		putResultsInDocument: false  // placeholder -- will be updated at end
 	}
 
-	if (source == RandomtestSettingsSource.LastTestRun && previousRandomtestSettings !== undefined) {
-		settings = previousRandomtestSettings;
-		// The `putResultsInUniqueDocument` setting should always reflect the user's current settings
-		settings.putResultsInUniqueDocument = config.get(Configuration.RandomtestPutResultsInUniqueDocument);
+	if (source == RandomtestSettingsSource.LastTestRun) {
+		const previousRandomtestSettings = getPreviousRandomtestSettings();
+		if (previousRandomtestSettings) {
+			settings = previousRandomtestSettings;
+			// The `putResultsInUniqueDocument` setting should always reflect the user's current settings
+			settings.putResultsInUniqueDocument = config.get(Configuration.RandomtestPutResultsInUniqueDocument);
+		}
 	}
 	else if (source == RandomtestSettingsSource.Interactive) {
 		const booleanGroups: vscode.QuickPickItem[] = ['yes', 'no']
@@ -297,8 +339,7 @@ export async function runRandomtest(
 
 	function onSuccess(success: boolean) {
 		if (success) {
-			previousRandomtestSettings = settings;
-			vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
+			updatePreviousRandomtestSettings(settings);
 		}
 	}
 

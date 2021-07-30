@@ -43,6 +43,10 @@ export enum CustomMessages {
 	WordCountRequest = 'choicescript/wordcount',
 }
 
+export enum LocalWorkspaceStorageKeys {
+	PreviousRandomtestSettings = 'randomtest.previousSettings'
+}
+
 export enum RandomtestSettingsSource {
 	VSCodeConfiguration,
 	LastTestRun,

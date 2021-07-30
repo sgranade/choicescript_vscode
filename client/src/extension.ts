@@ -12,8 +12,9 @@ import {
 } from 'vscode-languageclient/node';
 import { LineAnnotationController } from './annotations';
 import { CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
-import { runQuicktest, runRandomtest, cancelTest } from './csTests';
+import { cancelTest, initializeTestProvider, runQuicktest, runRandomtest } from './csTests';
 import * as gameserver from './gameserver';
+import { LocalStorageService } from './localStorageService';
 import { Provider } from './logDocProvider';
 
 
@@ -402,6 +403,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		clientOptions
 	);
 
+	// Register a new text document provider for log files
 	const provider = new Provider();
 	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(Provider.scheme, provider);
 	context.subscriptions.push(provider, providerRegistration);
@@ -418,6 +420,10 @@ export function activate(context: vscode.ExtensionContext): void {
 		annotationController,
 		annotationsTextDocumentChangedSubscription
 	);
+
+	// Prepare for future ChoiceScript test runs
+	const workspaceStorageManager = new LocalStorageService(context.workspaceState);
+	initializeTestProvider(workspaceStorageManager);
 
 	const gameRunner = new GameRunner(
 		context,
