@@ -65,22 +65,34 @@ function isLogUri(uri: vscode.Uri): boolean {
 
 
 /**
- * Generate a unique URI for a log.
+ * Generate a URI for a log.
  * 
  * @param logName Name of the log type (such as "Quicktest").
+ * @param unique If True, the URI will have a unique ID in its query.
  */
-export function generateLogUri(logName: string): vscode.Uri {
-	return vscode.Uri.parse(`${Provider.scheme}:Log.${logName}?id=${crypto.randomBytes(16).toString('hex')}`);
+export function generateLogUri(logName: string, unique: boolean): vscode.Uri {
+	const uriComponents = {
+		scheme: Provider.scheme,
+		path: `Log.${logName}`,
+		query: undefined
+	};
+	if (unique) {
+		uriComponents.query = `id=${crypto.randomBytes(16).toString('hex')}`;
+	}
+	return vscode.Uri.from(uriComponents);
 }
 
 
 /**
  * Convert a log URI to a filename suitable for saving that log.
  * 
- * @param uri URI to convert.
+ * @param uri Log URI to convert.
  */
 export function logUriToFilename(uri: vscode.Uri): string | undefined {
-	const testName = uri.path.split('.')[1];
-	const id = uri.query.replace('id=', '');
-	return `${testName}-${id}.txt`;
+	const resultsName = `${uri.path.split('.')[1]}-results`;
+	if (uri.query !== undefined && uri.query.startsWith('id=')) {
+		const id = uri.query.replace('id=','');
+		return `${resultsName}-${id}.txt`;
+	}
+	return `${resultsName}.txt`
 }

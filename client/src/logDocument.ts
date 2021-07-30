@@ -53,7 +53,10 @@ export default class LogDocument {
 	}
 
 	public clear() {
-		// noop
+		while (this._lines.length) {
+			this._lines.pop();
+		}
+		this._emitter.fire(this._uri);
 	}
 
 	public show() {

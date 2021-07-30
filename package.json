@@ -235,6 +235,11 @@
 					],
 					"description": "When to put Randomtest results in a VS Code document that you can save."
 				},
+				"choicescript.randomtest.putResultsInUniqueDocument": {
+					"type": "boolean",
+					"default": true,
+					"description": "After the test, put the results in a unique document so previous test results aren't overwritten."
+				},
 				"choicescript.randomtest.iterations": {
 					"type": "integer",
 					"default": 1000,

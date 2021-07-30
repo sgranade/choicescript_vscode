@@ -11,6 +11,7 @@ export enum Configuration {
 	RandomtestIterations = 'randomtest.iterations',
 	RandomtestSeed = 'randomtest.randomSeed',
 	RandomtestPutResultsInDocument = 'randomtest.putResultsInDocument',
+	RandomtestPutResultsInUniqueDocument = 'randomtest.putResultsInUniqueDocument',
 	RandomtestAvoidUsedOptions = 'randomtest.avoidUsedOptions',
 	RandomtestShowChoices = 'randomtest.showChoices',
 	RandomtestShowFullText = 'randomtest.showFullText',

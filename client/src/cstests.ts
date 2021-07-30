@@ -23,14 +23,14 @@ interface randomtestSettings {
 	avoidUsedOptions: boolean,
 	showChoices: boolean,
 	showCoverage: boolean,
-	putResultsInDocument: boolean
+	putResultsInDocument: boolean,
+	putResultsInUniqueDocument: boolean
 }
 let previousRandomtestSettings: randomtestSettings = undefined;
 // So we can re-run randomtest with the previous settings
 
 
 async function showLogDocument(document: LogDocument) {
-	const testy = logUriToFilename(document.uri);
 	if (document.length > 300000) {
 		// Document is too long to be shown as a virtual document, so save to disk and show it that way
 		const filename = logUriToFilename(document.uri);
@@ -107,11 +107,14 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
 		avoidUsedOptions: config.get(Configuration.RandomtestAvoidUsedOptions),
 		showChoices: config.get(Configuration.RandomtestShowChoices),
 		showCoverage: config.get(Configuration.RandomtestShowLineCoverageStatistics),
+		putResultsInUniqueDocument: config.get(Configuration.RandomtestPutResultsInUniqueDocument),
 		putResultsInDocument: false  // placeholder -- will be updated at end
 	}
 
 	if (source == RandomtestSettingsSource.LastTestRun && previousRandomtestSettings !== undefined) {
 		settings = previousRandomtestSettings;
+		// The `putResultsInUniqueDocument` setting should always reflect the user's current settings
+		settings.putResultsInUniqueDocument = config.get(Configuration.RandomtestPutResultsInUniqueDocument);
 	}
 	else if (source == RandomtestSettingsSource.Interactive) {
 		const booleanGroups: vscode.QuickPickItem[] = ['yes', 'no']
@@ -290,7 +293,7 @@ export async function runRandomtest(
 		`showChoices=${settings.showChoices}`,
 		`showCoverage=${settings.showCoverage}`
 	];
-	let output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest")) : outputChannel;
+	let output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest", settings.putResultsInUniqueDocument)) : outputChannel;
 
 	function onSuccess(success: boolean) {
 		if (success) {

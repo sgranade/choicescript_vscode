@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Added
 
 - You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
+- By default, each Randomtest run that captures output saves it to a unique document. A new setting lets you save results to the same document so it's easier to make changes to your game, re-run Randomtest, and immediately see the results.
 
 ### Fixed
 
