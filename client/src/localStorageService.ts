@@ -14,3 +14,29 @@ export class LocalStorageService {
 		this.storage.update(key, value);
 	}
 }
+
+let _workspaceStorageService, _globalStorageService: LocalStorageService;
+
+
+/**
+ * Set up storage managers for the workspace and global states.
+ * 
+ * @param workspaceState Memento for workspace state.
+ * @param globalState Memento for the global state.
+ */
+export function setupLocalStorages(workspaceState: Memento, globalState: Memento) {
+	_workspaceStorageService = new LocalStorageService(workspaceState);
+	_globalStorageService = new LocalStorageService(globalState);
+}
+
+
+/**
+ * Get the workspace storage service.
+ */
+export function getWorkspaceStorageService(): LocalStorageService { return _workspaceStorageService; }
+
+
+/**
+ * Get the global storage service.
+ */
+export function getGlobalStorageService(): LocalStorageService { return _globalStorageService; }

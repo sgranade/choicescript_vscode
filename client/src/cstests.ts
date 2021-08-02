@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { integer } from 'vscode-languageclient/node';
 import { CustomContext, Configuration, LocalWorkspaceStorageKeys, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from './constants';
-import { LocalStorageService } from './localStorageService';
+import { getWorkspaceStorageService } from './localStorageService';
 import { Provider, generateLogUri, logUriToFilename } from './logDocProvider';
 import LogDocument from './logDocument';
 import { MultiStepInput } from './multiStepInput';
@@ -15,8 +15,6 @@ const FILE_SIZE_LIMIT = 20*1024*1024;
 
 const outputChannel = vscode.window.createOutputChannel("ChoiceScript Test");
 let runningProcess: cp.ChildProcess;
-
-let localWSStorage: LocalStorageService;
 
 interface randomtestSettings {
 	iterations: integer,
@@ -35,8 +33,8 @@ interface randomtestSettings {
  * 
  * @param localWorkspaceStorage Local storage object with workspace scope.
  */
-export function initializeTestProvider(localWorkspaceStorage: LocalStorageService) {
-	localWSStorage = localWorkspaceStorage;
+export function initializeTestProvider() {
+	const localWSStorage = getWorkspaceStorageService();
 	// If we've already got previous randomtest settings, pull them in
 	const tempy = getPreviousRandomtestSettings();
 	if (getPreviousRandomtestSettings()) {
@@ -51,6 +49,7 @@ export function initializeTestProvider(localWorkspaceStorage: LocalStorageServic
  * @returns Previous Randomtest settings, or undefined if none exist.
  */
 function getPreviousRandomtestSettings(): randomtestSettings | null {
+	const localWSStorage = getWorkspaceStorageService();
 	return localWSStorage.getValue<randomtestSettings>(LocalWorkspaceStorageKeys.PreviousRandomtestSettings);
 }
 
@@ -61,6 +60,7 @@ function getPreviousRandomtestSettings(): randomtestSettings | null {
  * @param newSettings Settings from the most recent Randomtest.
  */
 function updatePreviousRandomtestSettings(newSettings: randomtestSettings) {
+	const localWSStorage = getWorkspaceStorageService();
 	localWSStorage.setValue<randomtestSettings>(LocalWorkspaceStorageKeys.PreviousRandomtestSettings, newSettings);
 	vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
 }

@@ -14,7 +14,7 @@ import { LineAnnotationController } from './annotations';
 import { CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
 import { cancelTest, initializeTestProvider, runQuicktest, runRandomtest } from './csTests';
 import * as gameserver from './gameserver';
-import { LocalStorageService } from './localStorageService';
+import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
 
 
@@ -421,9 +421,11 @@ export function activate(context: vscode.ExtensionContext): void {
 		annotationsTextDocumentChangedSubscription
 	);
 
+	// Set up storage services
+	setupLocalStorageManagers(context.workspaceState, context.globalState);
+
 	// Prepare for future ChoiceScript test runs
-	const workspaceStorageManager = new LocalStorageService(context.workspaceState);
-	initializeTestProvider(workspaceStorageManager);
+	initializeTestProvider();
 
 	const gameRunner = new GameRunner(
 		context,
