@@ -1,5 +1,5 @@
 import { Range, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument'
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
 	validCommands,
@@ -410,7 +410,6 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 	);
 
 	if (tokens === undefined || tokens.unterminated) {
-		const lineEndIndex = findLineEnd(text, localIndex);
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			localIndex - openDelimiterLength + textToSectionDelta, localIndex + textToSectionDelta,
 			"Multireplace is missing its }", state);
@@ -1243,7 +1242,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 	if (optionOnLineWithIf) {
 		const tokenizedExpressionSectionIndex = tokenizedExpression.globalIndex - state.sectionGlobalIndex;
 		// *if not(var) #option will always be true and needs parentheses
-		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0].text) &&
+		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0]?.text) &&
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
@@ -1254,7 +1253,9 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 			state.callbacks.onParseError(diagnostic);
 		}
 		// In fact, everything has to be in parentheses for an *if on the line with an #option
-		else if (tokenizedExpression.combinedTokens.length > 1 || tokenizedExpression.combinedTokens[0].type != ExpressionTokenType.Parentheses) {
+		else if (
+			tokenizedExpression.combinedTokens.length > 1 || 
+			(tokenizedExpression.combinedTokens.length > 0 && tokenizedExpression.combinedTokens[0].type != ExpressionTokenType.Parentheses)) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
 				tokenizedExpressionSectionIndex,
@@ -1384,7 +1385,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 		let remainderLineLocalIndex = 0;
 		const sceneCommand = command.endsWith("_scene");
 
-		let tokenDelimiters = "\\w-"
+		let tokenDelimiters = "\\w-";
 		// If it's a scene command, then the first token is a scene file (word characters + dash). Otherwise, it's a label (non-space characters)
 		if (!sceneCommand) {
 			tokenDelimiters = "\\S";
