@@ -86,23 +86,23 @@ app.use(async function pageNotFound(ctx) {
 	ctx.status = 404;
   
 	switch (ctx.accepts('html', 'json')) {
-	  case 'html':
-		ctx.type = 'html';
-		ctx.body = '<p>Page Not Found</p>';
-		break;
-	  case 'json':
-		ctx.body = {
-		  message: 'Page Not Found'
-		};
-		break;
-	  default:
-		ctx.type = 'text';
-		ctx.body = 'Page Not Found';
+		case 'html':
+			ctx.type = 'html';
+			ctx.body = '<p>Page Not Found</p>';
+			break;
+		case 'json':
+			ctx.body = {
+				message: 'Page Not Found'
+			};
+			break;
+		default:
+			ctx.type = 'text';
+			ctx.body = 'Page Not Found';
 	}
 });
 
 
-export function startServer() {
+export function startServer(): void {
 	app.listen(_listenPort);
 }
 
@@ -125,7 +125,7 @@ export async function createGame(
 }
 
 
-export function updateGameFileMap(gameId: string, newMap: Map<string, string>) {
+export function updateGameFileMap(gameId: string, newMap: Map<string, string>): void {
 	const gameInfo = _gameStore.get(gameId);
 	if (gameInfo === undefined) {
 		window.showErrorMessage(`Tried to update a non-existent game with ID ${gameId}`);
@@ -136,7 +136,7 @@ export function updateGameFileMap(gameId: string, newMap: Map<string, string>) {
 }
 
 
-export function openGameInBrowser(gameId: string) {
+export function openGameInBrowser(gameId: string): void {
 	const gameInfo = _gameStore.get(gameId);
 	if (gameInfo === undefined) {
 		window.showErrorMessage(`Tried to open a non-existent game with ID ${gameId}`);
@@ -148,6 +148,6 @@ export function openGameInBrowser(gameId: string) {
 }
 
 
-export function closeGame(gameId: string) {
+export function closeGame(gameId: string): void {
 	_gameStore.delete(gameId);
 }

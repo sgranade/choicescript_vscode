@@ -26,8 +26,7 @@
             "tab",
             {
                 "SwitchCase": 1
-            },
-            4
+            }
         ],
         "no-constant-condition": [
             "error",
@@ -35,6 +34,7 @@
                 "checkLoops": false
             }
         ],
+        "no-inner-declarations": "off",
         "prefer-const": "warn",
         "semi": [
             "error",

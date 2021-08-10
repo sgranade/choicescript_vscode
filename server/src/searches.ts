@@ -386,13 +386,13 @@ function findAchievementReferences(definition: SymbolInformation, projectIndex: 
 	// Add variable-based references, if any
 	information.push(...projectIndex.getVariableReferences(
 		convertAchievementToVariable(definition.symbol)).map(reference => {
-			return {
-				symbol: definition.symbol,
-				location: reference,
-				type: SymbolType.LocalVariable,
-				isDefinition: false
-			};
-		})
+		return {
+			symbol: definition.symbol,
+			location: reference,
+			type: SymbolType.LocalVariable,
+			isDefinition: false
+		};
+	})
 	);
 
 	return information;

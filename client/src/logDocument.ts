@@ -18,15 +18,15 @@ export default class LogDocument {
 		}
 	}
 
-	get uri() {
+	get uri(): vscode.Uri {
 		return this._uri;
 	}
 
-	get value() {
+	get value(): string {
 		return this._lines.join('\n');
 	}
 
-	get length() {
+	get length(): number {
 		return this._lines.length;
 	}
 
@@ -40,26 +40,26 @@ export default class LogDocument {
 	}
 
 	// Implement OutputChannel methods so csTests can call them
-	public appendLines(lines: string) {
+	public appendLines(lines: string): void {
 		this._append(lines.split('\n'));
 	}
 	
-	public appendLine(line: string) {
+	public appendLine(line: string): void {
 		this._append(line.split('\n'));
 	}
 
-	public append(line: string) {
+	public append(line: string): void {
 		this._append(line.split('\n'));
 	}
 
-	public clear() {
+	public clear(): void {
 		while (this._lines.length) {
 			this._lines.pop();
 		}
 		this._emitter.fire(this._uri);
 	}
 
-	public show() {
+	public show(): void {
 		// noop
 	}
 }

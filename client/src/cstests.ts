@@ -33,10 +33,8 @@ interface randomtestSettings {
  * 
  * @param localWorkspaceStorage Local storage object with workspace scope.
  */
-export function initializeTestProvider() {
-	const localWSStorage = getWorkspaceStorageService();
+export function initializeTestProvider(): void {
 	// If we've already got previous randomtest settings, pull them in
-	const tempy = getPreviousRandomtestSettings();
 	if (getPreviousRandomtestSettings()) {
 		vscode.commands.executeCommand('setContext', CustomContext.PreviousRandomtestSettingsExist, true);
 	}
@@ -66,9 +64,11 @@ function updatePreviousRandomtestSettings(newSettings: randomtestSettings) {
 }
 
 
-
-
-
+/**
+ * Show a log document in a new window.
+ * 
+ * @param document Document to show.
+ */
 async function showLogDocument(document: LogDocument) {
 	if (document.length > 300000) {
 		// Document is too long to be shown as a virtual document, so save to disk and show it that way
@@ -83,7 +83,7 @@ async function showLogDocument(document: LogDocument) {
 		}
 		else {
 			vscode.window.setStatusBarMessage(`Too much test output; saving results to ${filename}`, 5000);
-			let fileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, filename);
+			const fileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, filename);
 			const stream = fs.createWriteStream(fileUri.fsPath);
 			let error = false;
 
@@ -92,7 +92,7 @@ async function showLogDocument(document: LogDocument) {
 			stream.on('close', () => {
 				if (!error) {
 					// VS Code won't let us open files if they are too chumby
-					let fileSize = fs.statSync(fileUri.fsPath).size;
+					const fileSize = fs.statSync(fileUri.fsPath).size;
 					if (fileSize > FILE_SIZE_LIMIT) {
 						vscode.window.showInformationMessage(
 							`Test results saved to ${filename} but the file is too large to automatically open`, 'OK'
@@ -101,7 +101,7 @@ async function showLogDocument(document: LogDocument) {
 					else {
 						vscode.workspace.openTextDocument(fileUri).then(
 							doc => vscode.window.showTextDocument(
-								doc, vscode.window.activeTextEditor.viewColumn! + 1
+								doc, (vscode.window.activeTextEditor.viewColumn ?? 0) + 1
 							),
 							reason => {
 								vscode.window.showErrorMessage(
@@ -124,7 +124,7 @@ async function showLogDocument(document: LogDocument) {
 	else {
 		vscode.workspace.openTextDocument(document.uri).then(
 			doc => vscode.window.showTextDocument(
-				doc, vscode.window.activeTextEditor.viewColumn! + 1
+				doc, (vscode.window.activeTextEditor?.viewColumn ?? 0) + 1
 			)
 		);
 	}
@@ -148,7 +148,7 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
 		showCoverage: config.get(Configuration.RandomtestShowLineCoverageStatistics),
 		putResultsInUniqueDocument: config.get(Configuration.RandomtestPutResultsInUniqueDocument),
 		putResultsInDocument: false  // placeholder -- will be updated at end
-	}
+	};
 
 	if (source == RandomtestSettingsSource.LastTestRun) {
 		const previousRandomtestSettings = getPreviousRandomtestSettings();
@@ -259,6 +259,7 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
 
 		function shouldResume() {
 			// Could show a notification with the option to resume.
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			return new Promise<boolean>((resolve, reject) => {
 				// noop
 			});
@@ -266,7 +267,7 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
 
 		async function validateInt(entry: string) {
 			await new Promise(resolve => setTimeout(resolve, 100));
-			let n = Math.floor(Number(entry));
+			const n = Math.floor(Number(entry));
 			return (n !== Infinity && String(n) === entry && n >= 0) ? undefined : 'Not an integer';
 		}
 
@@ -298,8 +299,7 @@ export function runQuicktest(
 	scenePath: string, 
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void
-
-) {
+): void {
 	runTest('Quicktest', testScriptPath, [csPath, scenePath], outputChannel, csErrorHandler, statusCallback);
 }
 
@@ -323,7 +323,7 @@ export async function runRandomtest(
 	provider: Provider,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void
-) {
+): Promise<void> {
 	const settings = await getRandomtestSettings(source);
 	const args = [
 		`cs=${csPath}`,
@@ -335,7 +335,7 @@ export async function runRandomtest(
 		`showChoices=${settings.showChoices}`,
 		`showCoverage=${settings.showCoverage}`
 	];
-	let output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest", settings.putResultsInUniqueDocument)) : outputChannel;
+	const output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest", settings.putResultsInUniqueDocument)) : outputChannel;
 
 	function onSuccess(success: boolean) {
 		if (success) {
@@ -412,6 +412,7 @@ function runTest(
 		runningProcess = undefined;
 		vscode.commands.executeCommand('setContext', CustomContext.TestRunning, false);
 		if (statusCallback !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			statusCallback!(false);
 		}
 		if (output instanceof LogDocument) {
@@ -429,7 +430,7 @@ function runTest(
 				if (csErrorHandler !== undefined) {
 					// ChoiceScript error messages are in the format
 					//   "[scene] line [#]: [message]" ...sometimes
-					let results = /(\S+) line (\d+): (.+)/.exec(lastLine);
+					const results = /(\S+) line (\d+): (.+)/.exec(lastLine);
 					if (results !== null) {
 						csErrorHandler(results[1], parseInt(results[2]), results[3]);
 					}
@@ -445,6 +446,7 @@ function runTest(
 			vscode.window.showInformationMessage(`${testName} received unexpected signal: ${signal}`, 'OK');
 		}
 		if (successCallback !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			successCallback!(success);
 		}
 	});
@@ -454,7 +456,7 @@ function runTest(
 /**
  * Cancel a test run.
  */
-export function cancelTest() {
+export function cancelTest(): void {
 	if (runningProcess !== undefined) {
 		runningProcess.kill();
 	}

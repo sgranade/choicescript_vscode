@@ -25,14 +25,14 @@ export class LineAnnotationController implements Disposable {
 	private _docUriString: string | undefined;
 	private _line: number | undefined;
 
-	dispose() {
+	dispose(): void {
 		this.clearAnnotations();
 	}
 
 	/**
 	 * Clear annotations on a specific editor.
 	 */
-	clear(editor: TextEditor) {
+	clear(editor: TextEditor): void {
 		if (editor == this._editor) {
 			this.clearAnnotations();
 		}
@@ -41,7 +41,7 @@ export class LineAnnotationController implements Disposable {
 	/**
 	 * Clear all annotations.
 	 */
-	clearAll() {
+	clearAll(): void {
 		this.clearAnnotations();
 	}
 
@@ -49,6 +49,7 @@ export class LineAnnotationController implements Disposable {
 	 * Clear annotation on the editor we annotated.
 	 */
 	private clearAnnotations() {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		if (this._editor === undefined || (this._editor as any)._disposed === true) return;
 
 		this._editor.setDecorations(annotationDecoration, []);
@@ -67,7 +68,7 @@ export class LineAnnotationController implements Disposable {
 	 * @param line 0-based line to add the trailing annotation.
 	 * @param message Annotation message.
 	 */
-	addTrailingAnnotation(editor: TextEditor, line: number, message: string) {
+	addTrailingAnnotation(editor: TextEditor, line: number, message: string): void {
 		this.clearAnnotations();
 		if (editor.document === null) {
 			return;
@@ -91,7 +92,7 @@ export class LineAnnotationController implements Disposable {
 		editor.setDecorations(annotationDecoration, decorations);
 	}
 
-	onTextDocumentChanged(e: TextDocumentChangeEvent) {
+	onTextDocumentChanged(e: TextDocumentChangeEvent): void {
 		if (e.document.uri.toString() == this._docUriString) {
 			this.clearAll();
 		}

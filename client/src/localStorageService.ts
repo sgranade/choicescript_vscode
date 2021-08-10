@@ -10,7 +10,7 @@ export class LocalStorageService {
 		return this.storage.get<T>(key, null);
 	}
 
-	public setValue<T>(key: string, value: T) {
+	public setValue<T>(key: string, value: T): void {
 		this.storage.update(key, value);
 	}
 }
@@ -24,7 +24,7 @@ let _workspaceStorageService, _globalStorageService: LocalStorageService;
  * @param workspaceState Memento for workspace state.
  * @param globalState Memento for the global state.
  */
-export function setupLocalStorages(workspaceState: Memento, globalState: Memento) {
+export function setupLocalStorages(workspaceState: Memento, globalState: Memento): void {
 	_workspaceStorageService = new LocalStorageService(workspaceState);
 	_globalStorageService = new LocalStorageService(globalState);
 }

@@ -155,7 +155,7 @@ class StatusBarController {
 			gameRunning: false,
 			loaded: false,
 			testRunning: false
-		}
+		};
 
 		// Subscribe to selection change & editor activation
 		const disposables: vscode.Disposable[] = [];
@@ -306,10 +306,10 @@ class GameRunner {
 					gameserver.updateGameFileMap(this._gameId, projectFiles);
 					statusBarController.projectLoaded();
 					vscode.commands.executeCommand('setContext', CustomContext.ProjectLoaded, true);
-			}));
+				}));
 			this._disposable = vscode.Disposable.from(...disposables);
 			gameserver.startServer();
-		})
+		});
 	}
 
 	public async _init() {
@@ -439,15 +439,15 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerTextEditorCommand(
 			CustomCommands.Italicize, (editor) => {
 				bbcodeDelimit(editor, "i");
-		}),
+			}),
 		vscode.commands.registerTextEditorCommand(
 			CustomCommands.Bold, (editor) => {
 				bbcodeDelimit(editor, "b");
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.OpenGame, async () => {
 				await gameRunner.run();
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RunQuicktest, () => {
 				annotationController.clearAll();
@@ -462,7 +462,7 @@ export function activate(context: vscode.ExtensionContext): void {
 						)
 					);
 				}
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RunRandomtestDefault, () => {
 				annotationController.clearAll();
@@ -479,7 +479,7 @@ export function activate(context: vscode.ExtensionContext): void {
 						)
 					);
 				}
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RunRandomtestInteractive, () => {
 				if (projectFiles !== undefined && projectFiles.size > 0) {
@@ -496,7 +496,7 @@ export function activate(context: vscode.ExtensionContext): void {
 						)
 					);
 				}
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RerunRandomTest, () => {
 				if (projectFiles !== undefined && projectFiles.size > 0) {
@@ -513,11 +513,11 @@ export function activate(context: vscode.ExtensionContext): void {
 						)
 					);
 				}
-		}),
+			}),
 		vscode.commands.registerCommand(
 			CustomCommands.CancelTest, () => {
 				cancelTest();
-		}),
+			}),
 	];
 
 	context.subscriptions.push(...csCommands);

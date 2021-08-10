@@ -81,7 +81,7 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 			const relatedInformation: DiagnosticRelatedInformation = {
 				location: locations[0],
 				message: `First creation of "${variable}"`
-			}
+			};
 			for (const location of locations.slice(1)) {
 				const diagnostic = createDiagnosticFromLocation(
 					DiagnosticSeverity.Information, location,
@@ -96,7 +96,7 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 			const relatedInformation: DiagnosticRelatedInformation = {
 				location: globalLocation,
 				message: `First creation of "${variable}"`
-			}
+			};
 			for (const location of locations) {
 				const diagnostic = createDiagnosticFromLocation(
 					DiagnosticSeverity.Information, location,
@@ -238,7 +238,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
  */
 function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
-	const projectIsIndexed = state.projectIndex.projectIsIndexed()
+	const projectIsIndexed = state.projectIndex.projectIsIndexed();
 
 	for (const event of state.projectIndex.getFlowControlEvents(state.textDocument.uri)) {
 		if (event.scene != "" && event.sceneLocation !== undefined) {

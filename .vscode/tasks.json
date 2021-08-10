@@ -28,6 +28,13 @@
 			"problemMatcher": [
 				"$tsc-watch"
 			]
+		},
+		{
+			"type": "npm",
+			"script": "lint",
+			"problemMatcher": ["$eslint-stylish"],
+			"label": "npm: lint",
+			"detail": "eslint -c .eslintrc.js --ext .ts ./client/src && eslint -c .eslintrc.js --ext .ts ./server/src"
 		}
 	]
 }

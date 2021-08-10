@@ -18,7 +18,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import fs = require('fs');
 import path = require('path');
-import url = require('url');
+import { fileURLToPath, pathToFileURL } from 'url';
 import globby = require('globby');
 
 import { ProjectIndex, Index } from "./index";
@@ -91,7 +91,7 @@ connection.onInitialized(() => {
 
 function findStartupFiles(workspaces: WorkspaceFolder[]): void {
 	workspaces.forEach((workspace) => {
-		const rootPath = url.fileURLToPath(workspace.uri);
+		const rootPath = fileURLToPath(workspace.uri);
 		globby('**/startup.txt', {
 			cwd: rootPath
 		}).then(paths => indexProject(rootPath, paths));
@@ -153,7 +153,7 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
  * @returns True if the file indexed properly.
  */
 async function indexFile(path: string): Promise<boolean> {
-	const fileUri = url.pathToFileURL(path).toString();
+	const fileUri = pathToFileURL(path).toString();
 
 	try {
 		const data = await fs.promises.readFile(path, 'utf8');

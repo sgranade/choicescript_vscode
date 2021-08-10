@@ -60,4 +60,4 @@ export const RelativePaths = {
 	Quicktest: path.join('choicescript', 'out', 'autotest.js'),
 	Randomtest: path.join('choicescript', 'out', 'randomtest.js'),
 	VSCodeExtensionServer: path.join('server', 'out', 'server.js')
-}
+};

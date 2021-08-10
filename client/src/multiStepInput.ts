@@ -38,7 +38,7 @@ interface InputBoxParameters {
 }
 
 export class MultiStepInput {
-	static async run<T>(start: InputStep) {
+	static async run(start: InputStep): Promise<void> {
 		const input = new MultiStepInput();
 		return input.stepThrough(start);
 	}
@@ -46,7 +46,7 @@ export class MultiStepInput {
 	private current?: QuickInput;
 	private steps: InputStep[] = [];
 
-	private async stepThrough<T>(start: InputStep) {
+	private async stepThrough(start: InputStep) {
 		let step: InputStep | void = start;
 		while (step) {
 			this.steps.push(step);
@@ -74,7 +74,7 @@ export class MultiStepInput {
 		}
 	}
 
-	async showQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, buttons, shouldResume }: P) {
+	async showQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, buttons, shouldResume }: P): Promise<T | (P extends { buttons: (infer I)[] } ? I : never)> {
 		const disposables: Disposable[] = [];
 		try {
 			return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
@@ -96,6 +96,7 @@ export class MultiStepInput {
 						if (item === QuickInputButtons.Back) {
 							reject(InputFlowAction.back);
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							resolve(<any>item);
 						}
 					}),
@@ -118,7 +119,7 @@ export class MultiStepInput {
 		}
 	}
 
-	async showInputBox<P extends InputBoxParameters>({ title, step, totalSteps, value, prompt, validate, buttons, shouldResume }: P) {
+	async showInputBox<P extends InputBoxParameters>({ title, step, totalSteps, value, prompt, validate, buttons, shouldResume }: P): Promise<string | (P extends { buttons: (infer I)[] } ? I : never)> {
 		const disposables: Disposable[] = [];
 		try {
 			return await new Promise<string | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
@@ -138,6 +139,7 @@ export class MultiStepInput {
 						if (item === QuickInputButtons.Back) {
 							reject(InputFlowAction.back);
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							resolve(<any>item);
 						}
 					}),

@@ -17,12 +17,12 @@ export class Provider implements vscode.TextDocumentContentProvider {
 		);
 	}
 
-	dispose() {
+	dispose(): void {
 		this._disposable.dispose();
 		this._documents.clear();
 	}
 
-	get onDidChange() {
+	get onDidChange(): vscode.Event<vscode.Uri> {
 		return this._onDidChange.event;
 	}
 
@@ -94,5 +94,5 @@ export function logUriToFilename(uri: vscode.Uri): string | undefined {
 		const id = uri.query.replace('id=','');
 		return `${resultsName}-${id}.txt`;
 	}
-	return `${resultsName}.txt`
+	return `${resultsName}.txt`;
 }

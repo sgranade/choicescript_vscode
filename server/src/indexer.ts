@@ -1,5 +1,5 @@
 import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument'
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
 import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';

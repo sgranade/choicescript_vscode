@@ -84,6 +84,20 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Release Notes
 
+## [2.3.0]
+
+- You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
+- By default, each Randomtest run that captures output saves it to a unique document. A new setting lets you save results to the same document so it's easier to make changes to your game, re-run Randomtest, and immediately see the results.
+- Improved quicktest error message handling to properly identify what file the error occurred in.
+- Several fixes to syntax highlighting and parsing `#options` and their associated `*if`s.
+
+
+## [2.2.0]
+
+- To support [workspace trust](https://code.visualstudio.com/docs/editor/workspace-trust), the extension disables running, quicktesting, or randomtesting games in workspaces you haven't marked as trusted.
+- No longer incorrectly flags multireplaces like `@{var dashed-word adjective|}` as potentially missing parentheses.
+
+
 ## [2.1.0]
 
 - When running quicktest or randomtest, all open files are saved so that your latest code is used.

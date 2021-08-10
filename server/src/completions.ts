@@ -6,7 +6,7 @@ import {
 	CompletionItem,
 	CompletionItemKind
 } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument'
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';

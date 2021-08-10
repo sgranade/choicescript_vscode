@@ -1011,7 +1011,7 @@ export function tokenizeMultireplace(
 				workingText[testEndLocalIndex] == "(" && 
 				functionsLookup.has(workingText.slice(testStartLocalIndex, testEndLocalIndex))
 			) {
-				let functionContents = extractToMatchingDelimiter(
+				const functionContents = extractToMatchingDelimiter(
 					workingText, "(", ")", testEndLocalIndex + 1
 				);
 				if (functionContents === undefined) {
@@ -1025,7 +1025,7 @@ export function tokenizeMultireplace(
 		bareTest = {
 			text: workingText.slice(testStartLocalIndex, testEndLocalIndex),
 			localIndex: testStartLocalIndex
-		}
+		};
 		test = new Expression(bareTest.text, testStartLocalIndex + contentsGlobalIndex, textDocument);
 	}
 	else {
@@ -1037,7 +1037,7 @@ export function tokenizeMultireplace(
 			bareTest = {
 				text: "(" + testContents + ")",
 				localIndex: contentsLocalIndex
-			}
+			};
 		}
 		test = new Expression(testContents, contentsGlobalIndex + 1, textDocument);
 		testEndLocalIndex = testContents.length + 2;
