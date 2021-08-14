@@ -2578,6 +2578,22 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(34);
 			});
 
+			it("should flag a multireplace with no space after its variable", () => {
+				let fakeDocument = createDocument("multireplace @{var\"one and\"|\"two\"}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Multireplace must have a space after its variable");
+				expect(received[0].range.start.line).to.equal(15);
+				expect(received[0].range.end.line).to.equal(22);
+			});
+
 			it("should flag a multireplace with no space after its parentheses", () => {
 				let fakeDocument = createDocument("multireplace @{(var)true|false}");
 				let received: Array<Diagnostic> = [];
@@ -2681,10 +2697,10 @@ describe("Parser", () => {
 
 				parse(fakeDocument, fakeCallbacks);
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Potentially missing parentheses");
-				expect(received[0].range.start.line).to.equal(2);
-				expect(received[0].range.end.line).to.equal(7);
+				expect(received.length).to.equal(2);
+				expect(received[1].message).to.include("Potentially missing parentheses");
+				expect(received[1].range.start.line).to.equal(2);
+				expect(received[1].range.end.line).to.equal(7);
 			});
 
 			it("should flag an operator in a bare multireplace inside a block", () => {

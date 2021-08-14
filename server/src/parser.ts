@@ -473,14 +473,24 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			else {
 				if (
 					tokens.bareTest !== undefined &&
-					tokens.bareTest.text.endsWith(")") &&
 					tokens.body[0].text.trim() !== "" &&
 					tokens.bareTest.localIndex + tokens.bareTest.text.length == tokens.body[0].localIndex
 				) {
+					let errorStart, errorEnd, errorTypeMsg;
+					if (tokens.bareTest.text.endsWith(")")) {
+						errorStart = tokens.body[0].localIndex - 1 + textToSectionDelta;
+						errorEnd = tokens.body[0].localIndex + textToSectionDelta;
+						errorTypeMsg = "parentheses";
+					}
+					else {
+						errorStart = localIndex + textToSectionDelta;
+						errorEnd = tokens.body[0].localIndex + tokens.body[0].text.split(' ')[0].length + textToSectionDelta;
+						errorTypeMsg = "its variable";
+					}
 					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						tokens.body[0].localIndex - 1 + textToSectionDelta,
-						tokens.body[0].localIndex + textToSectionDelta,
-						"Multireplace must have a space after parentheses",
+						errorStart,
+						errorEnd,
+						`Multireplace must have a space after ${errorTypeMsg}`,
 						state);
 					state.callbacks.onParseError(diagnostic);
 				}

@@ -1024,7 +1024,7 @@ export function tokenizeMultireplace(
 		}
 		bareTest = {
 			text: workingText.slice(testStartLocalIndex, testEndLocalIndex),
-			localIndex: testStartLocalIndex
+			localIndex: testStartLocalIndex + contentsLocalIndex
 		};
 		test = new Expression(bareTest.text, testStartLocalIndex + contentsGlobalIndex, textDocument);
 	}
