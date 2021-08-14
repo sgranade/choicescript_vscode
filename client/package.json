@@ -3,7 +3,7 @@
 	"description": "ChoiceScript language client",
 	"author": "Stephen Granade",
 	"license": "MIT",
-	"version": "2.2.0",
+	"version": "2.3.0",
 	"publisher": "StephenGranade",
 	"repository": {
 		"type": "git",
