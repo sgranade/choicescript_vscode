@@ -88,7 +88,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 - You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
 - By default, each Randomtest run that captures output saves it to a unique document. A new setting lets you save results to the same document so it's easier to make changes to your game, re-run Randomtest, and immediately see the results.
-- Improved quicktest error message handling to properly identify what file the error occurred in.
+- Improved Quicktest error message handling to properly identify what file the error occurred in.
 - Several fixes to syntax highlighting and parsing `#options` and their associated `*if`s.
 
 
@@ -100,7 +100,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## [2.1.0]
 
-- When running quicktest or randomtest, all open files are saved so that your latest code is used.
+- When running Quicktest or Randomtest, all open files are saved so that your latest code is used.
 - Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
 
 ## [2.0.0]

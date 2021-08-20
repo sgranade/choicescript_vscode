@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Minor fix to word counting in options with a multireplace.
+
 ## [2.3.0] - 2021-08-14
 
 ### Added
@@ -16,7 +22,7 @@ Changes to the plugin.
 - A plain `*if` with no condition in front of a `#option` no longer causes an unhandled parsing error.
 - Multireplaces that lack a space between variable and the first option like `@{var"one"|"two"}` are now reported as an error.
 - Fixed syntax highlighting to properly color comments, commands, and other similar items inside italic or bold markup.
-- Improved quicktest error message handling to properly identify what file the error occurred in.
+- Improved Quicktest error message handling to properly identify what file the error occurred in.
 
 ## [2.2.0] - 2021-06-12
 
@@ -32,14 +38,14 @@ Changes to the plugin.
 
 ### Changed
 
-- When running quicktest or randomtest, all open files are saved so that your latest code is used.
+- When running Quicktest or Randomtest, all open files are saved so that your latest code is used.
 - Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
 
 ### Fixed
 
 - Operators no longer get syntax highlighting in non-code lines. (courtesy Dan Spinola)
 - Variables that don't start with a letter, like `_var`, are now reported as an error.
-- Error annotations are now removed when a new quicktest or randomtest is run.
+- Error annotations are now removed when a new Quicktest or Randomtest is run.
 - Error annotations are now removed when the document with the error is edited.
 - Missing parentheses in multireplace tests without spaces, like `@{var=2 yes|no}`, are now reported properly.
 - Randomtest full-text output no longer loses the occasional blank line.

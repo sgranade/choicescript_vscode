@@ -348,8 +348,8 @@ const mulitStartRegex = RegExp(multiStartPattern);
 /**
  * Validate a choice option.
  * 
- * @param option Text of the option.
- * @param index Location of the option, starting at its leading "#".
+ * @param option Text of the option right after the starting "#".
+ * @param index Location of the option right after its leading "#".
  * @param state Validation state.
  * @returns Diagnostic message, if any.
  */
@@ -418,7 +418,7 @@ function validateOption(option: string, index: number, state: ValidationState): 
 
 	if (overLimitLocalIndex === undefined && remainingOption.trim() != "") {
 		const m = remainingOption.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-		if (m != null && m[0].length < remainingOption.length) {
+		if (m != null && m[0].length + (m.index ?? 0) < remainingOption.length) {
 			overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
 		}
 	}
@@ -511,8 +511,8 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 				diagnostics.push(diagnostic);
 		}
 		else if (m.groups.option !== undefined) {
-			// The option match captures the entire line including the "#"
-			const diagnostic = validateOption(m.groups.option, m.index + m[0].length - m.groups.option.length, state);
+			// The option match captures the entire line including the "#", so throw that away
+			const diagnostic = validateOption(m.groups.option.slice(1), m.index + m[0].length - m.groups.option.length + 1, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);
 		}

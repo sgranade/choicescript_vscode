@@ -160,6 +160,15 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 
+		it("should not count the # in an option as a word", () => {
+			let fakeDocument = createDocument("*choice\n\t# This option has four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.");
+			let fakeIndex = createIndex({});
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should take multireplaces into account when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten | eleven twelve thirteen fourteen fifteen} words.");
 			let fakeIndex = createIndex({});
@@ -209,6 +218,15 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.contain("more than 15");
 			expect(diagnostics[0].range.start.line).to.equal(148);
 			expect(diagnostics[0].range.end.line).to.equal(219);
+		});
+
+		it("should properly deal with a multireplace at the start of the line and a space at the end", () => {
+			let fakeDocument = createDocument("*choice\n\t#@{var It goes against Practicum rules, but |}I talk to Kayla. I wonder if she'll believe in ");
+			let fakeIndex = createIndex({});
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
 		});
 
 		it("should handle two multireplaces when counting words", () => {
