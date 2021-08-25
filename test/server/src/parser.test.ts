@@ -2466,6 +2466,19 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(25);
 			});
 
+			it("should not flag a terminated multireplace with a backslash at the end", () => {
+				let fakeDocument = createDocument("multireplace @{var this|is okay\\}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
 			it("should flag an empty multireplace", () => {
 				let fakeDocument = createDocument("multireplace @{} with errors");
 				let received: Array<Diagnostic> = [];

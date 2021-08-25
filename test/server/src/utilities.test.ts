@@ -33,44 +33,12 @@ describe("Utilities", () => {
 			expect(extract).to.equal("out (in) out");
 		});
 
-		it("should handle escaped open parens in parentheses", () => {
-			let text = "out \\(in out) and so on";
-
-			let extract = extractToMatchingDelimiter(text, '(', ')');
-
-			expect(extract).to.equal("out \\(in out");
-		});
-
-		it("should handle escaped close parens in parentheses", () => {
-			let text = "out in\\) out) and so on";
-
-			let extract = extractToMatchingDelimiter(text, '(', ')');
-
-			expect(extract).to.equal("out in\\) out");
-		});
-
 		it("should handle braces in braces", () => {
 			let text = "out {in} out} and so on";
 
 			let extract = extractToMatchingDelimiter(text, '{', '}');
 
 			expect(extract).to.equal("out {in} out");
-		});
-
-		it("should handle escaped open braces in braces", () => {
-			let text = "out \\{in out} and so on";
-
-			let extract = extractToMatchingDelimiter(text, '{', '}');
-
-			expect(extract).to.equal("out \\{in out");
-		});
-
-		it("should handle escaped close braces in braces", () => {
-			let text = "out in\\} out} and so on";
-
-			let extract = extractToMatchingDelimiter(text, '{', '}');
-
-			expect(extract).to.equal("out in\\} out");
 		});
 
 		it("should only match starting at a pased index", () => {

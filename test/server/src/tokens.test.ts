@@ -956,6 +956,20 @@ describe("Tokenizing", () => {
 			expect(tokens.body[2].localIndex).to.equal(20);
 		});
 
+		it("should include a terminating backslash in the body", () => {
+			let text = "variable yes | no\\} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.unterminated).to.be.false;
+			expect(tokens.body.length).to.equal(2);
+			expect(tokens.body[0].text).to.equal("yes");
+			expect(tokens.body[0].localIndex).to.equal(9);
+			expect(tokens.body[1].text).to.equal("no\\");
+			expect(tokens.body[1].localIndex).to.equal(15);
+		});
+
 		it("should find the end index", () => {
 			let text = "variable yes | no} extra content";
 			let fakeDocument = createDocument(text);

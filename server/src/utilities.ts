@@ -184,8 +184,8 @@ export function readLine(text: string, lineStart: number): NewLine | undefined {
 // extractToMatchingDelimiter is called a _lot_, so caching the regexes we commonly use speeds
 // everything up lots
 const quoteSearch = /(?<!\\)"/g;
-const bracketSearch = /(?<!\\)[{}]/g;
-const parensSearch = /(?<!\\)[()]/g;
+const bracketSearch = /[{}]/g;
+const parensSearch = /[()]/g;
 
 /**
  * Scan text to find a matching delimiter, skipping escaped delimiters.
