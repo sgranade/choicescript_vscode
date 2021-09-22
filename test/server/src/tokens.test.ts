@@ -910,6 +910,17 @@ describe("Tokenizing", () => {
 			expect(tokens.test.globalIndex).to.equal(3);
 		});
 
+		it("should extract a reference in a test", () => {
+			let text = "{var1} yes | no} extra content";
+			let fakeDocument = createDocument(text);
+
+			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
+
+			expect(tokens.unterminated).to.be.false;
+			expect(tokens.test.bareExpression).to.equal("var1");
+			expect(tokens.test.globalIndex).to.equal(3);
+		});
+
 		it("should save a test's parentheses in bareTest", () => {
 			let text = "(var1 + var2) yes | no} extra content";
 			let fakeDocument = createDocument(text);

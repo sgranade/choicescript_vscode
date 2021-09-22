@@ -8,6 +8,7 @@ Changes to the plugin.
 
 - Minor fix to word counting in options with a multireplace.
 - Backslashes in parenthesized expressions or multireplaces no longer cause the extension to flag them incorrectly as an error.
+- References in a multireplace test are now handled correctly. (reported by nocturno)
 
 ## [2.3.0] - 2021-08-14
 

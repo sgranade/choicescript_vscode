@@ -983,7 +983,27 @@ export function tokenizeMultireplace(
 	const multireplaceEndLocalIndex = workingText.length + 1;
 	let testEndLocalIndex = 0;
 
-	if (workingText[0] != '(') {
+	if (workingText[0] == '(' || workingText[0] == '{')
+	{
+		const openDelimiter = workingText[0];
+		const closeDelimiter = (openDelimiter == '(') ? ')' : '}';
+		let testContents = extractToMatchingDelimiter(
+			workingText.slice(1),
+			openDelimiter,
+			closeDelimiter);
+		if (testContents === undefined) {
+			testContents = "";
+		}
+		else {
+			bareTest = {
+				text: openDelimiter + testContents + closeDelimiter,
+				localIndex: contentsLocalIndex
+			};
+		}
+		test = new Expression(testContents, contentsGlobalIndex + 1, textDocument);
+		testEndLocalIndex = testContents.length + 2;
+	}
+	else {
 		// The multireplace only has a bare symbol or a function as its test
 		// Skip over any leading whitespace
 		let testStartLocalIndex = 0;
@@ -1027,20 +1047,6 @@ export function tokenizeMultireplace(
 			localIndex: testStartLocalIndex + contentsLocalIndex
 		};
 		test = new Expression(bareTest.text, testStartLocalIndex + contentsGlobalIndex, textDocument);
-	}
-	else {
-		let testContents = extractToMatchingDelimiter(workingText.slice(1), "(", ")");
-		if (testContents === undefined) {
-			testContents = "";
-		}
-		else {
-			bareTest = {
-				text: "(" + testContents + ")",
-				localIndex: contentsLocalIndex
-			};
-		}
-		test = new Expression(testContents, contentsGlobalIndex + 1, textDocument);
-		testEndLocalIndex = testContents.length + 2;
 	}
 
 	workingText = workingText.slice(testEndLocalIndex);
