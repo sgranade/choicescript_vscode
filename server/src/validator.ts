@@ -123,7 +123,7 @@ function validateLabelReference(
 ): Diagnostic | undefined {
 	let diagnostic: Diagnostic | undefined = undefined;
 
-	if (!(label !== undefined && label[0] == '{')) {
+	if (!(label !== undefined && label[0] == '{') && (scene === undefined || scene[0] != '{')) {
 		const labelLocation = findLabelLocation(label, scene, state.textDocument, state.projectIndex);
 
 		if (labelLocation === undefined) {

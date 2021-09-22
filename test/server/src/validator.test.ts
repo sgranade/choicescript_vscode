@@ -701,6 +701,23 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 
+		it("should not flag labels if the scene name contains a reference", () => {
+			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let events: FlowControlEvent[] = [{
+				command: "goto_scene",
+				commandLocation: Substitute.for<Location>(),
+				label: "",
+				scene: "{scene_reference}",
+				sceneLocation: referenceLocation
+			}];
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ flowControlEvents: events });
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should be good with hyphenated scene names", () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
