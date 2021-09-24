@@ -144,62 +144,62 @@
 			]
 		},
 		"multireplace": {
-			"begin": "(@!?!?\\{)",
-			"end": "(\\})",
-			"beginCaptures": {
+			"match": "(@!?!?{)((?<balanced>[^{}]|{\\g<balanced>*})*)(})",
+			"captures": {
 				"1": {
 					"name": "string.interpolated"
-				}
-			},
-			"endCaptures": {
-				"1": {
-					"name": "string.interpolated"
-				}
-			},
-			"patterns": [
-				{
-					"name": "variable.other",
-					"comment": "Bare variable at start of multireplace",
-					"match": "\\G\\s*([A-Za-z]\\w*)"
 				},
-				{
-					"comment": "Expression in parentheses at start of multireplace",
-					"match": "\\G\\s*(\\()((?<balanced>[^()]|\\(\\g<balanced>*\\))*)(\\))",
-					"captures": {
-						"1": {
-							"name": "variable.language.other"
+				"2": {
+					"patterns": [
+						{
+							"name": "variable.other",
+							"comment": "Bare variable at start of multireplace",
+							"match": "(?<={\\s*)([A-Za-z]\\w*)"
 						},
-						"2": {
+						{
+							"comment": "Expression in parentheses at start of multireplace",
+							"match": "(?<={\\s*)(\\()((?<balanced>[^()]|\\(\\g<balanced>*\\))*)(\\))",
+							"name": "constant.language.cs",
+							"captures": {
+								"1": {
+									"name": "variable.language.other"
+								},
+								"2": {
+									"patterns": [
+										{
+											"include": "#expression"
+										}
+									]
+								},
+								"4": {
+									"name": "variable.language.other"
+								}
+							},
 							"patterns": [
 								{
 									"include": "#expression"
 								}
 							]
 						},
-						"4": {
-							"name": "variable.language.other"
-						}
-					},
-					"patterns": [
 						{
-							"include": "#expression"
+							"include": "#variable-substitution"
+						},
+						{
+							"name": "string.interpolated",
+							"match": "\\|"
+						},
+						{
+							"include": "#markup"
+						},
+						{
+							"include": "#todo"
 						}
 					]
 				},
-				{
-					"include": "#variable-display"
-				},
-				{
-					"name": "string.interpolated",
-					"match": "\\|"
-				},
-				{
-					"include": "#markup"
-				},
-				{
-					"include": "#todo"
+				"4": {
+					"name": "string.interpolated"
 				}
-			]
+			}
 		},
 		"expression": {
 			"comment": "Any portion of the file that contains, in effect, code",
