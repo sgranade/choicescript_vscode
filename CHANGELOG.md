@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
+
 ### Fixed
 
 - Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)

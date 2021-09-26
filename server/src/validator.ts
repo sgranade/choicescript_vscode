@@ -24,6 +24,16 @@ const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.m
 const builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 
 /**
+ * Validation settings.
+ */
+export interface ValidationSettings {
+	/**
+	 * Whether to validate against CoG style guides.
+	 */
+	useCoGStyleGuide: boolean;
+}
+
+/**
  * Captures information about the current state of validation
  */
 class ValidationState {
@@ -36,13 +46,18 @@ class ValidationState {
 	 */
 	textDocument: TextDocument;
 	/**
+	 * Validation settings
+	 */
+	validationSettings: ValidationSettings;
+	/**
 	 * Document text as fetched from textDocument
 	 */
 	text = "";
 
-	constructor(projectIndex: ProjectIndex, textDocument: TextDocument) {
+	constructor(projectIndex: ProjectIndex, textDocument: TextDocument, validationSettings: ValidationSettings) {
 		this.projectIndex = projectIndex;
 		this.textDocument = textDocument;
+		this.validationSettings = validationSettings;
 		this.text = textDocument.getText();
 	}
 }
@@ -357,77 +372,79 @@ function validateOption(option: string, index: number, state: ValidationState): 
 	let diagnostic: Diagnostic | undefined = undefined;
 	let overLimitLocalIndex: number | undefined = undefined;
 
-	// Count words while handling multireplaces
-	let runningWordCount = 0;
-	let e: RegExpExecArray | null;
-	let remainingOption = option;
-	let remainingLocalIndex = 0;
-	while ((e = mulitStartRegex.exec(remainingOption))) {
-		const contentsSublocalIndex = e.index + e[0].length;
-		const tokens = tokenizeMultireplace(
-			remainingOption, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
-		);
-		if (tokens === undefined || tokens.unterminated) {
-			// Content-free or unterminated multireplace, so give up
-			break;
-		}
-
-		// See if the bit before the multireplace has too many words already
-		const pretext = remainingOption.slice(0, e.index);
-		// This pattern won't find the last word in the string if it's not followed by a space, but
-		// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
-		const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
-		if (pretextWordCount > 15 - runningWordCount) {
-			const m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-			if (m != null && m[0].length < pretext.length) {
-				overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+	// Count words while handling multireplaces (assuming we're following CoG style guide requirements)
+	if (state.validationSettings.useCoGStyleGuide) {
+		let runningWordCount = 0;
+		let e: RegExpExecArray | null;
+		let remainingOption = option;
+		let remainingLocalIndex = 0;
+		while ((e = mulitStartRegex.exec(remainingOption))) {
+			const contentsSublocalIndex = e.index + e[0].length;
+			const tokens = tokenizeMultireplace(
+				remainingOption, state.textDocument, index + remainingLocalIndex + contentsSublocalIndex, contentsSublocalIndex
+			);
+			if (tokens === undefined || tokens.unterminated) {
+				// Content-free or unterminated multireplace, so give up
 				break;
 			}
-		}
-
-		runningWordCount += pretextWordCount;
-		if (tokens.body.length > 0) {
-			let longestBody = tokens.body[0];
-			let longestWordCount = longestBody.text.split(/\s+/).length;
-			for (const token of tokens.body.slice(1)) {
-				const newWordCount = token.text.split(/\s+/).length;
-				if (newWordCount > longestWordCount) {
-					longestBody = token;
-					longestWordCount = newWordCount;
-				}
-			}
-			if (longestWordCount > 15 - runningWordCount) {
-				const m = longestBody.text.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-				if (m != null && m[0].length < longestBody.text.length) {
-					overLimitLocalIndex = remainingLocalIndex + longestBody.localIndex + (m.index ?? 0) + m[0].length;
+	
+			// See if the bit before the multireplace has too many words already
+			const pretext = remainingOption.slice(0, e.index);
+			// This pattern won't find the last word in the string if it's not followed by a space, but
+			// that's what we want b/c it would be followed by the multireplace, which won't introduce a space
+			const pretextWordCount = (pretext.match(/\S+?\s+?/g) || []).length;
+			if (pretextWordCount > 15 - runningWordCount) {
+				const m = pretext.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+				if (m != null && m[0].length < pretext.length) {
+					overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
 					break;
 				}
 			}
-			runningWordCount += longestWordCount;
+	
+			runningWordCount += pretextWordCount;
+			if (tokens.body.length > 0) {
+				let longestBody = tokens.body[0];
+				let longestWordCount = longestBody.text.split(/\s+/).length;
+				for (const token of tokens.body.slice(1)) {
+					const newWordCount = token.text.split(/\s+/).length;
+					if (newWordCount > longestWordCount) {
+						longestBody = token;
+						longestWordCount = newWordCount;
+					}
+				}
+				if (longestWordCount > 15 - runningWordCount) {
+					const m = longestBody.text.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+					if (m != null && m[0].length < longestBody.text.length) {
+						overLimitLocalIndex = remainingLocalIndex + longestBody.localIndex + (m.index ?? 0) + m[0].length;
+						break;
+					}
+				}
+				runningWordCount += longestWordCount;
+			}
+	
+			let endIndex = tokens.endIndex;
+			// Any characters after the multireplace are part of its word count; don't double-count them
+			while (endIndex < remainingOption.length && remainingOption[endIndex] != ' ' && remainingOption[endIndex] != '\t') {
+				endIndex++;
+			}
+	
+			remainingOption = remainingOption.slice(endIndex);
+			remainingLocalIndex += endIndex;
 		}
-
-		let endIndex = tokens.endIndex;
-		// Any characters after the multireplace are part of its word count; don't double-count them
-		while (endIndex < remainingOption.length && remainingOption[endIndex] != ' ' && remainingOption[endIndex] != '\t') {
-			endIndex++;
+	
+		if (overLimitLocalIndex === undefined && remainingOption.trim() != "") {
+			const m = remainingOption.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
+			if (m != null && m[0].length + (m.index ?? 0) < remainingOption.length) {
+				overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+			}
 		}
-
-		remainingOption = remainingOption.slice(endIndex);
-		remainingLocalIndex += endIndex;
-	}
-
-	if (overLimitLocalIndex === undefined && remainingOption.trim() != "") {
-		const m = remainingOption.match(`(\\S+?\\s+?){${15 - runningWordCount}}`);
-		if (m != null && m[0].length + (m.index ?? 0) < remainingOption.length) {
-			overLimitLocalIndex = remainingLocalIndex + (m.index ?? 0) + m[0].length;
+	
+		// See if we've got more than 15 words
+		if (overLimitLocalIndex !== undefined) {
+			diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
+				index + overLimitLocalIndex, index + option.length,
+				"Option is more than 15 words long");
 		}
-	}
-
-	// See if we've got more than 15 words
-	if (overLimitLocalIndex !== undefined) {
-		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-			index + overLimitLocalIndex, index + option.length,
-			"Option is more than 15 words long");
 	}
 
 	return diagnostic;
@@ -472,8 +489,8 @@ function validateIndents(state: ValidationState): Diagnostic[] {
  * @param projectIndex Index of the ChoiceScript project
  * @returns List of diagnostic messages.
  */
-export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex): Diagnostic[] {
-	const state = new ValidationState(projectIndex, textDocument);
+export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex, validationSettings: ValidationSettings): Diagnostic[] {
+	const state = new ValidationState(projectIndex, textDocument, validationSettings);
 
 	// Start with parse errors
 	const diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
@@ -498,7 +515,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 		if (m.groups === undefined)
 			continue;
 
-		if (m.groups.styleGuide !== undefined) {  // Items against CoG styleguide
+		if (m.groups.styleGuide !== undefined && state.validationSettings.useCoGStyleGuide) {  // Items against CoG styleguide
 			const diagnostic = validateStyle(m.groups.styleGuide, m.index, state);
 			if (diagnostic !== undefined)
 				diagnostics.push(diagnostic);

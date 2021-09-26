@@ -220,6 +220,11 @@
 		"configuration": {
 			"title": "ChoiceScript",
 			"properties": {
+				"choicescript.useChoiceOfGamesStyleGuide": {
+					"type": "boolean",
+					"default": true,
+					"description": "Whether to check your game's text and length of options against Choice of Games's in-house style guide."
+				},
 				"choicescript.randomtest.putResultsInDocument": {
 					"type": "string",
 					"default": "fulltext",

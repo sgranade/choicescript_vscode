@@ -21,9 +21,10 @@ import path = require('path');
 import { fileURLToPath, pathToFileURL } from 'url';
 import globby = require('globby');
 
+import { CustomMessages } from "./constants";
 import { ProjectIndex, Index } from "./index";
 import { updateProjectIndex } from './indexer';
-import { generateDiagnostics } from './validator';
+import { generateDiagnostics, ValidationSettings } from './validator';
 import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
 import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
@@ -53,6 +54,10 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 // TODO handle multiple directories with startup.txt
 const projectIndex = new Index();
+
+const validationSettings: ValidationSettings = {
+	useCoGStyleGuide: true
+};
 
 connection.onInitialize((params: InitializeParams) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 	const syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full;
@@ -84,9 +89,10 @@ connection.onInitialized(() => {
 			findStartupFiles(workspaces);
 	});
 	
-	// Handle custom requests from the client
-	connection.onRequest("choicescript/wordcount", onWordCount);
-	connection.onRequest("choicescript/selectionwordcount", onSelectionWordCount);
+	// Handle custom requests from the 
+	connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
+	connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
+	connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
 });
 
 function findStartupFiles(workspaces: WorkspaceFolder[]): void {
@@ -139,7 +145,7 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		projectIndex.setProjectIsIndexed(true);
 
 		// Let the client know we have updated project files
-		connection.sendNotification("choicescript/projectfiles", projectFiles);
+		connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles);
 
 		// Revalidate all open text documents
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
@@ -164,7 +170,7 @@ async function indexFile(path: string): Promise<boolean> {
 		return true;
 	}
 	catch (err) {
-		connection.console.error(`Could not read file ${path} (${err.name}: ${err.message} ${err.filename} ${err.lineNumber})`);
+		connection.console.error(`Could not read file ${path} (${err})`);
 		return false;
 	}
 }
@@ -209,11 +215,11 @@ function notifyChangedWordCount(document: TextDocument): void {
 		count: projectIndex.getWordCount(document.uri)
 	};
 
-	connection.sendNotification("choicescript/updatedwordcount", e);
+	connection.sendNotification(CustomMessages.UpdatedWordCount, e);
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
-	const diagnostics = generateDiagnostics(textDocument, projectIndex);
+	const diagnostics = generateDiagnostics(textDocument, projectIndex, validationSettings);
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
@@ -270,6 +276,11 @@ connection.onDocumentSymbol(
 		return generateSymbols(document, projectIndex);
 	}
 );
+
+function onCoGStyleGuide(useCoGStyleGuide: boolean) {
+	validationSettings.useCoGStyleGuide = useCoGStyleGuide;
+	documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+}
 
 function onWordCount(uri: string): number | undefined {
 	return projectIndex.getWordCount(uri);

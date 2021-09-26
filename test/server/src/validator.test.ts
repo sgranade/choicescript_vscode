@@ -7,7 +7,7 @@ import { Location, Range, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label } from '../../../server/src/index';
-import { generateDiagnostics } from '../../../server/src/validator';
+import { generateDiagnostics, ValidationSettings } from '../../../server/src/validator';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
@@ -108,13 +108,20 @@ function createIndex({
 	return fakeIndex;
 }
 
+function createValidationSettings(useCoGStyleGuide: boolean=true): SubstituteOf<ValidationSettings> {
+	let fakeSettings = Substitute.for<ValidationSettings>();
+	fakeSettings.useCoGStyleGuide = useCoGStyleGuide;
+	return fakeSettings;
+}
+
 describe("Validator", () => {
 	describe("Style Validation", () => {
 		it("should flag ellipses", () => {
 			let fakeDocument = createDocument("Ellipses...");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("ellipsis");
@@ -123,8 +130,9 @@ describe("Validator", () => {
 		it("should flag dashes", () => {
 			let fakeDocument = createDocument("Dashes--");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("em-dash");
@@ -133,8 +141,9 @@ describe("Validator", () => {
 		it("shouldn't flag dashes in a comment", () => {
 			let fakeDocument = createDocument("*comment Dashes--");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -142,8 +151,9 @@ describe("Validator", () => {
 		it("should flag too-long options", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has too many words seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -154,8 +164,9 @@ describe("Validator", () => {
 		it("should not flag shorter options", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has just enough words seven eight nine ten eleven twelve thirteen fourteen fifteen.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -163,8 +174,9 @@ describe("Validator", () => {
 		it("should not count the # in an option as a word", () => {
 			let fakeDocument = createDocument("*choice\n\t# This option has four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -172,8 +184,9 @@ describe("Validator", () => {
 		it("should take multireplaces into account when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten | eleven twelve thirteen fourteen fifteen} words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -181,8 +194,9 @@ describe("Validator", () => {
 		it("should take the max words in the multireplaces into account when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten eleven twelve thirteen fourteen | six} fifteen words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -193,8 +207,9 @@ describe("Validator", () => {
 		it("should properly deal with no spaces before a multireplaces when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six} words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -202,8 +217,9 @@ describe("Validator", () => {
 		it("should properly deal with no spaces after a multireplaces when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six}, words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -211,8 +227,9 @@ describe("Validator", () => {
 		it("should properly deal with a multireplace at the start of the line", () => {
 			let fakeDocument = createDocument("*choice\n\t#@{romance_expressed_hartmann Even though I like Hartmann, I make ${hartmann_him}|I make Hartmann} look better to Auguste, saying how well ${hartmann_he} @{hartmann_singular upholds|uphold} Gallatin traditions.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -223,8 +240,9 @@ describe("Validator", () => {
 		it("should properly deal with a multireplace at the start of the line and a space at the end", () => {
 			let fakeDocument = createDocument("*choice\n\t#@{var It goes against Practicum rules, but |}I talk to Kayla. I wonder if she'll believe in ");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -232,8 +250,9 @@ describe("Validator", () => {
 		it("should handle two multireplaces when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight | six} and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -244,8 +263,9 @@ describe("Validator", () => {
 		it("should ignore multireplaces with no body when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has @{true} four five six seven eight nine ten eleven twelve thirteen fourteen words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -253,8 +273,9 @@ describe("Validator", () => {
 		it("should include a multireplace in the error if it makes the option too long", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have six seven eight nine ten eleven twelve thirteen fourteen @{true fifteen sixteen | fifteen} words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -265,8 +286,9 @@ describe("Validator", () => {
 		it("should handle two multireplaces, one with no body, when counting words", () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true} six seven eight and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -281,8 +303,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"unknown" not defined');
@@ -293,8 +316,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIsIndexed: false });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -306,8 +330,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -319,8 +344,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
@@ -334,8 +360,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["local_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			// We do get a warning for the variable re-creation though
 			expect(diagnostics.length).to.equal(1);
@@ -356,8 +383,9 @@ describe("Validator", () => {
 				globalVariables: globalVariables,
 				variableReferences: variableReferences
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			// We'll get a warning about a local var having the same name as a global var, but no error
 			expect(diagnostics.length).to.equal(1);
@@ -375,8 +403,9 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({
 				localVariables: localVariables, variableReferences: variableReferences, subroutineVariables: subroutineVariables
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -388,8 +417,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -401,8 +431,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["global_var", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder", startupUri);
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"global_var" used before it was created');
@@ -412,8 +443,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["choice_randomtest", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -424,8 +456,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_codename" not defined');
@@ -442,8 +475,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements, scopes: scopes });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -460,8 +494,9 @@ describe("Validator", () => {
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements, scopes: scopes });
 
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_othername" not defined');
@@ -477,8 +512,9 @@ describe("Validator", () => {
 			let variableReferences: IdentifierMultiIndex = new Map([["param_1", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, scopes: scopes });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -488,8 +524,9 @@ describe("Validator", () => {
 		it("should flag commands with text in front of them", () => {
 			let fakeDocument = createDocument("Leading text *if This is illegal!");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
@@ -498,8 +535,9 @@ describe("Validator", () => {
 		it("should not flag a command with *hide_reuse or similar before it", () => {
 			let fakeDocument = createDocument("*hide_reuse *if var");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -512,8 +550,9 @@ describe("Validator", () => {
 			let localVariables = new Map([["global_var", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables, localVariables: localVariables });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
@@ -523,8 +562,9 @@ describe("Validator", () => {
 			let localVariables = new Map([["local_var", [Substitute.for<Location>(), Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
@@ -535,8 +575,9 @@ describe("Validator", () => {
 
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
@@ -547,8 +588,9 @@ describe("Validator", () => {
 
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
@@ -567,8 +609,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
@@ -585,8 +628,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -602,8 +646,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
@@ -623,8 +668,9 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({
 				labels: localLabels, labelsUri: fakeDocumentUri, flowControlEvents: events
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -642,8 +688,9 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({
 				sceneList: ['scene_name'], flowControlEvents: events
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -659,8 +706,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
@@ -677,8 +725,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
@@ -695,8 +744,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events, projectIsIndexed: false });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -712,8 +762,9 @@ describe("Validator", () => {
 			}];
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ flowControlEvents: events });
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -730,8 +781,9 @@ describe("Validator", () => {
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({
 				sceneList: ['scene-name'], flowControlEvents: events
-			});
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			});			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -753,8 +805,9 @@ describe("Validator", () => {
 				labels: sceneLabels, labelsUri: fakeSceneUri,
 				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -776,8 +829,9 @@ describe("Validator", () => {
 				labels: sceneLabels, labelsUri: fakeSceneUri,
 				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
@@ -801,8 +855,9 @@ describe("Validator", () => {
 				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri,
 				projectIsIndexed: false
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -824,8 +879,9 @@ describe("Validator", () => {
 				labels: sceneLabels, labelsUri: fakeSceneUri,
 				sceneList: ['other-scene'], sceneFileUri: fakeSceneUri
 			});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -835,8 +891,9 @@ describe("Validator", () => {
 		it("should flag a switch from spaces to tabs", () => {
 			let fakeDocument = createDocument("*if true\n  indent\n*if false\n\tindent");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from spaces to tabs');
@@ -847,8 +904,9 @@ describe("Validator", () => {
 		it("should flag a switch from tabs to spaces", () => {
 			let fakeDocument = createDocument("*if true\n\tindent\n*if false\n  indent");
 			let fakeIndex = createIndex({});
+			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex);
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from tabs to spaces');

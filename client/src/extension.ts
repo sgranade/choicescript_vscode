@@ -11,7 +11,7 @@ import {
 	integer
 } from 'vscode-languageclient/node';
 import { LineAnnotationController } from './annotations';
-import { CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
+import { Configuration, CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
 import { cancelTest, initializeTestProvider, runQuicktest, runRandomtest } from './csTests';
 import * as gameserver from './gameserver';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
@@ -420,6 +420,16 @@ export function activate(context: vscode.ExtensionContext): void {
 		annotationController,
 		annotationsTextDocumentChangedSubscription
 	);
+
+	const configurationChangedSubscription = vscode.workspace.onDidChangeConfiguration(
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		(e: vscode.ConfigurationChangeEvent) => {
+			client.sendNotification(
+				CustomMessages.CoGStyleGuide, vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.UseCOGStyleGuide)
+			);
+		}
+	);
+	context.subscriptions.push(configurationChangedSubscription);
 
 	// Set up storage services
 	setupLocalStorageManagers(context.workspaceState, context.globalState);

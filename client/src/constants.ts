@@ -8,6 +8,7 @@ export enum RandomtestPutResultsInDocumentOptions {
 
 export enum Configuration {
 	BaseSection = 'choicescript',
+	UseCOGStyleGuide = 'useChoiceOfGamesStyleGuide',
 	RandomtestIterations = 'randomtest.iterations',
 	RandomtestSeed = 'randomtest.randomSeed',
 	RandomtestPutResultsInDocument = 'randomtest.putResultsInDocument',
@@ -37,6 +38,7 @@ export enum CustomContext {
 }
 
 export enum CustomMessages {
+	CoGStyleGuide = 'choicescript/cogstyleguide',
 	SelectionWordCountRequest = 'choicescript/selectionwordcount',
 	UpdatedProjectFiles = 'choicescript/projectfiles',
 	UpdatedWordCount = 'choicescript/updatedwordcount',
