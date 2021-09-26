@@ -15,16 +15,16 @@ const otherSceneUri = "file:///other-scene.txt";
 describe("Project Index", () => {
 	describe("Index", () => {
 		it("should combine variable references with differing capitalizations", () => {
-			let referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
-			let referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			let originalReferences: IdentifierMultiIndex = new Map([
+			const referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
+			const referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+			const originalReferences: IdentifierMultiIndex = new Map([
 				["variable", [referenceLocation1]],
 				["vArIaBlE", [referenceLocation2]]
 			]);
-			let index = new Index();
+			const index = new Index();
 			index.setVariableReferences(documentUri, originalReferences);
 
-			let references = index.getVariableReferences("variable");
+			const references = index.getVariableReferences("variable");
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 1, character: 0});
@@ -34,16 +34,16 @@ describe("Project Index", () => {
 		});
 
 		it("should return choicescript_stats in the scene list if present in the index", () => {
-			let index = new Index();
+			const index = new Index();
 			index.setHasChoicescriptStats(true);
 
-			let scenes = index.getSceneList();
+			const scenes = index.getSceneList();
 
 			expect(scenes).to.eql(["choicescript_stats"]);
 		});
 
 		it("should find label references in a scene", () => {
-			let events: FlowControlEvent[] = [
+			const events: FlowControlEvent[] = [
 				{
 					command: "goto",
 					commandLocation: Substitute.for<Location>(),
@@ -59,10 +59,10 @@ describe("Project Index", () => {
 					scene: ""
 				}
 			];
-			let index = new Index();
+			const index = new Index();
 			index.setFlowControlEvents(documentUri, events);
 
-			let references = index.getLabelReferences("local_label");
+			const references = index.getLabelReferences("local_label");
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 2, character: 0});
@@ -72,7 +72,7 @@ describe("Project Index", () => {
 		});
 
 		it("should find label references across all scenes", () => {
-			let localEvents: FlowControlEvent[] = [
+			const localEvents: FlowControlEvent[] = [
 				{
 					command: "goto",
 					commandLocation: Substitute.for<Location>(),
@@ -81,7 +81,7 @@ describe("Project Index", () => {
 					scene: ""
 				}
 			];
-			let otherSceneEvents: FlowControlEvent[] = [
+			const otherSceneEvents: FlowControlEvent[] = [
 				{
 					command: "gosub-scene",
 					commandLocation: Substitute.for<Location>(),
@@ -91,11 +91,11 @@ describe("Project Index", () => {
 					sceneLocation: Location.create(otherSceneUri, Range.create(8, 0, 8, 8))
 				}
 			];
-			let index = new Index();
+			const index = new Index();
 			index.setFlowControlEvents(documentUri, localEvents);
 			index.setFlowControlEvents(otherSceneUri, otherSceneEvents);
 
-			let references = index.getLabelReferences('local_label');
+			const references = index.getLabelReferences('local_label');
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 2, character: 0});
@@ -105,13 +105,13 @@ describe("Project Index", () => {
 		});
 
 		it("should find achievement references in a scene", () => {
-			let referenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
-			let achievementReferences = new Map([["achieve", [referenceLocation]]]);
-			let index = new Index();
+			const referenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
+			const achievementReferences = new Map([["achieve", [referenceLocation]]]);
+			const index = new Index();
 			index.setAchievementReferences(documentUri, achievementReferences);
 
-			let references = index.getDocumentAchievementReferences(documentUri);
-			let achieveReferences = references.get('achieve');
+			const references = index.getDocumentAchievementReferences(documentUri);
+			const achieveReferences = references.get('achieve');
 
 			expect(Array.from(references.keys())).to.eql(["achieve"]);
 			expect(achieveReferences.length).to.equal(1);
@@ -120,15 +120,15 @@ describe("Project Index", () => {
 		});
 
 		it("should find achievement references across all scenes", () => {
-			let localReferenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
-			let localAchievementReferences = new Map([["achieve", [localReferenceLocation]]]);
-			let otherReferenceLocation = Location.create(otherSceneUri, Range.create(9, 1, 9, 7));
-			let otherAchievementReferences = new Map([["achieve", [otherReferenceLocation]]]);
-			let index = new Index();
+			const localReferenceLocation = Location.create(documentUri, Range.create(1, 1, 1, 7));
+			const localAchievementReferences = new Map([["achieve", [localReferenceLocation]]]);
+			const otherReferenceLocation = Location.create(otherSceneUri, Range.create(9, 1, 9, 7));
+			const otherAchievementReferences = new Map([["achieve", [otherReferenceLocation]]]);
+			const index = new Index();
 			index.setAchievementReferences(documentUri, localAchievementReferences);
 			index.setAchievementReferences(otherSceneUri, otherAchievementReferences);
 
-			let references = index.getAchievementReferences("achieve");
+			const references = index.getAchievementReferences("achieve");
 
 			expect(references.length).to.equal(2);
 			expect(references[0].range.start).to.eql({line: 1, character: 1});

@@ -89,7 +89,7 @@ connection.onInitialized(() => {
 			findStartupFiles(workspaces);
 	});
 	
-	// Handle custom requests from the 
+	// Handle custom requests from the client
 	connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
 	connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
 	connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
@@ -114,38 +114,25 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		const projectPath = path.dirname(filePath);
 		// Filenames from globby are posix paths regardless of platform
 		const platformFullProjectPath = path.join(workspacePath, ...projectPath.split('/'));
+		projectIndex.setPlatformProjectPath(platformFullProjectPath);
 		
-		const projectFiles: string[] = [];
-
 		// Index the startup.txt file
-		if (await indexFile(filePath)) {
-			projectFiles.push(
-				path.join(platformFullProjectPath, path.basename(filePath))
-			);
-		}
+		await indexFile(filePath);
 
 		// Try to index the stats page (which might not exist)
-		if (await indexFile(projectPath+"/choicescript_stats.txt")) {
-			projectFiles.push(path.join(platformFullProjectPath, "choicescript_stats.txt"));
-		}
+		await indexFile(projectPath+"/choicescript_stats.txt");
 
 		const scenes = projectIndex.getSceneList();
 		if (scenes !== undefined) {
 			// Try to index all of the scene files
 			const scenePaths = projectIndex.getSceneList().map(name => projectPath+"/"+name+".txt");
-			projectFiles.push(
-				...scenes.map(
-					name => path.join(platformFullProjectPath, name+".txt")
-				)
-			);
 			const promises = scenePaths.map(x => indexFile(x));
-	
 			await Promise.all(promises);
 		}
+
 		projectIndex.setProjectIsIndexed(true);
 
-		// Let the client know we have updated project files
-		connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles);
+		notifyUpdatedProjectFiles();
 
 		// Revalidate all open text documents
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
@@ -181,10 +168,16 @@ connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescr
 });
 
 documents.onDidOpen(e => {
+	const isStartupFile = uriIsStartupFile(e.document.uri);
+
 	updateProjectIndex(
-		e.document, uriIsStartupFile(e.document.uri), uriIsChoicescriptStatsFile(e.document.uri), projectIndex
+		e.document, isStartupFile, uriIsChoicescriptStatsFile(e.document.uri), projectIndex
 	);
+	
 	notifyChangedWordCount(e.document);
+	if (isStartupFile) {
+		notifyUpdatedProjectFiles();
+	}
 });
 
 // A document has been opened or its content has been changed.
@@ -194,10 +187,11 @@ documents.onDidChangeContent(change => {
 	updateProjectIndex(
 		change.document, isStartupFile, uriIsChoicescriptStatsFile(change.document.uri), projectIndex
 	);
-	notifyChangedWordCount(change.document);
 
+	notifyChangedWordCount(change.document);
 	if (isStartupFile) {
-		// Since the startup file defines global variables, if it changes, re-validate all other files
+		// Since the startup file defines global variables, if it changes, re-validate all other files & notify that scene files may have changed
+		notifyUpdatedProjectFiles();
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	}
 	else {
@@ -216,6 +210,17 @@ function notifyChangedWordCount(document: TextDocument): void {
 	};
 
 	connection.sendNotification(CustomMessages.UpdatedWordCount, e);
+}
+
+/**
+ * Notify the client about the project's files.
+ */
+function notifyUpdatedProjectFiles(): void {
+	const platformProjectPath = projectIndex.getPlatformProjectPath();
+	const projectFiles = projectIndex.getSceneList().map(
+		name => path.join(platformProjectPath, name+".txt")
+	);
+	connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles);
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {

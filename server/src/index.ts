@@ -82,6 +82,11 @@ export interface DocumentScopes {
  */
 export interface ProjectIndex {
 	/**
+	 * Set the platform (as opposed to workspace) path to the project.
+	 * @param path Path to the project.
+	 */
+	setPlatformProjectPath(path: string): void;
+	/**
 	 * Set the number of words in a scene.
 	 * @param textDocumentUri URI to document whose word count is to be updated.
 	 * @param count New wordcount.
@@ -180,6 +185,10 @@ export interface ProjectIndex {
 	 */
 	projectIsIndexed(): boolean;
 	/**
+	 * Get the platform (as opposed to workspace) path to the project.
+	 */
+	getPlatformProjectPath(): string;
+	/**
 	 * Get the URI to a scene file.
 	 * @param scene Scene name.
 	 */
@@ -273,6 +282,7 @@ export interface ProjectIndex {
  */
 export class Index implements ProjectIndex {
 	private _projectIsIndexed: boolean;
+	private _platformProjectPath: string;
 	private _startupFileUri: string;
 	private _hasChoicescriptStats: boolean;
 	private _wordCounts: Map<string, number>;
@@ -289,6 +299,7 @@ export class Index implements ProjectIndex {
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
+		this._platformProjectPath = "";
 		this._startupFileUri = "";
 		this._hasChoicescriptStats = false;
 		this._wordCounts = new Map();
@@ -303,6 +314,9 @@ export class Index implements ProjectIndex {
 		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
+	}
+	setPlatformProjectPath(path: string): void {
+		this._platformProjectPath = path;
 	}
 	setWordCount(textDocumentUri: string, count: number): void {
 		this._wordCounts.set(normalizeUri(textDocumentUri), count);
@@ -352,6 +366,9 @@ export class Index implements ProjectIndex {
 	}
 	projectIsIndexed(): boolean {
 		return this._projectIsIndexed;
+	}
+	getPlatformProjectPath(): string {
+		return this._platformProjectPath;
 	}
 	getSceneUri(scene: string): string | undefined {
 		if (this._startupFileUri == "") {

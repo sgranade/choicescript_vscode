@@ -10,6 +10,7 @@ Changes to the plugin.
 
 ### Fixed
 
+- When you update the scenes in a `*scene_list`, refreshing a running game in the browser will pick up those changed scenes properly.
 - Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)
 - Backslashes in parenthesized expressions or multireplaces no longer cause the extension to flag them incorrectly as an error.
 - References in a multireplace test are now handled correctly. (reported by nocturno)
