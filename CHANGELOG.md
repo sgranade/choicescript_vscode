@@ -6,11 +6,12 @@ Changes to the plugin.
 
 ### Fixed
 
-- Minor fix to word counting in options with a multireplace.
+- Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)
 - Backslashes in parenthesized expressions or multireplaces no longer cause the extension to flag them incorrectly as an error.
 - References in a multireplace test are now handled correctly. (reported by nocturno)
 - Multireplaces with references now have proper syntax highlighting.
 - A `*goto_scene` statement with a variable reference for the scene is no longer flagged as an error. (reported by nocturno)
+- Minor fix to word counting in options with a multireplace.
 
 ## [2.3.0] - 2021-08-14
 

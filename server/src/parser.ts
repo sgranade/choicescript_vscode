@@ -755,13 +755,14 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
  * @param text Document text.
  * @param optionLine Line containing the titular option.
  * @param commandIndent Spacing in front of the *choice command.
- * @param optionIndent Number of whitespace characters in front of the #option.
+ * @param optionIndents Number of allowable whitespace characters in front of the #option.
+ * @param currentOptionIndentx Current
  * @param isTabs True if whitespace in front of lines should be tabs.
  * @param state Parsing state.
  * @returns Text of the option, index of the line containing the option's contents, and the number of whitespace characters for the block.
  */
 function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number,
-	optionIndent: number, isTabs: boolean, state: ParsingState): { optionText: string; optionContentsIndex: number; blockIndent: number } | undefined {
+	optionIndents: number[], isTabs: boolean, state: ParsingState): { optionText: string; optionContentsIndex: number; blockIndent: number } | undefined {
 	if (optionLine.splitLine === undefined) {  // We gotta have some indent
 		return undefined;
 	}
@@ -786,18 +787,30 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 		return undefined;
 	}
 
+	let currentOptionIndent: number = padding.length;
 	// Flag problems with indents
-	if (padding.length < optionIndent) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			optionLine.index, optionLine.index + padding.length,
-			"Line is not indented far enough", state);
-		state.callbacks.onParseError(diagnostic);
-	}
-	else if (padding.length > optionIndent) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			optionLine.index, optionLine.index + padding.length,
-			"Line is indented too far", state);
-		state.callbacks.onParseError(diagnostic);
+	if (optionIndents.length > 0) {
+		if (padding.length < optionIndents[0]) {
+			currentOptionIndent = optionIndents[0];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				optionLine.index, optionLine.index + padding.length,
+				"Line is not indented far enough", state);
+			state.callbacks.onParseError(diagnostic);
+		}
+		else if (padding.length > optionIndents[-1]) {
+			currentOptionIndent = optionIndents[-1];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				optionLine.index, optionLine.index + padding.length,
+				"Line is indented too far", state);
+			state.callbacks.onParseError(diagnostic);
+		}
+		else if (optionIndents.indexOf(padding.length) == -1) {
+			currentOptionIndent = optionIndents[-1];
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				optionLine.index, optionLine.index + padding.length,
+				"Line is improperly indented", state);
+			state.callbacks.onParseError(diagnostic);
+		}
 	}
 
 	// The line should either contain an #option or a bare *if statement
@@ -814,17 +827,21 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 				return undefined;
 			}
 
-			if (nextOptionLine.splitLine.padding.length <= optionIndent) {
+			if (nextOptionLine.splitLine.padding.length <= currentOptionIndent) {
 				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 					nextOptionLine.index, nextOptionLine.index + nextOptionLine.splitLine.padding.length,
 					"Line is not indented far enough", state);
 				state.callbacks.onParseError(diagnostic);
-				return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+				return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
 			}
 			else {
+				const tempOptionIndents = optionIndents;
+				if (tempOptionIndents.indexOf(nextOptionLine.splitLine.padding.length) == -1) {
+					tempOptionIndents.push(nextOptionLine.splitLine.padding.length);
+				}
 				return parseSingleOptionLine(
 					text, nextOptionLine, commandIndent,
-					nextOptionLine.splitLine.padding.length,
+					tempOptionIndents,
 					isTabs, state
 				);
 			}
@@ -836,7 +853,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 				startIndex, endIndex,
 				"Must be either an #option or an *if", state);
 			state.callbacks.onParseError(diagnostic);
-			return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+			return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
 		}
 	}
 	else {
@@ -850,7 +867,7 @@ function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent:
 		// Parse the option as if it were a string, since it can have ${references}
 		parseBareString(optionText, optionLine.index + optionLine.splitLine.padding.length + hashIndex, optionText.length, state);
 
-		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: optionIndent };
+		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
 	}
 }
 
@@ -951,7 +968,8 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	const commandIndent = commandPadding.replace("\n", "").length;
 	let setPaddingType = false;
 	let isTabs = /\t/.test(commandPadding);
-	let optionIndent = -1;
+	// Allowable option indents (can be several due to nested *if blocks)
+	let optionIndents: number[] = [];
 	let contentsEndIndex: number | undefined = undefined;
 	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
 	let endGlobalPosition: Position;
@@ -985,7 +1003,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 			return optionsSectionIndex;
 		}
 	}
-	optionIndent = nextLine.splitLine.padding.length;
+	optionIndents.push(nextLine.splitLine.padding.length);
 
 	// Loop over each option until there are no more options
 	while (true) {
@@ -995,11 +1013,13 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 
 		const endOptionIndex = nextLine.index + nextLine.line.trimRight().length;
 		const parseOptionResults = parseSingleOptionLine(
-			text, nextLine, commandIndent, optionIndent, isTabs, state
+			text, nextLine, commandIndent, optionIndents, isTabs, state
 		);
 		if (parseOptionResults === undefined) {  // Something went wrong
 			break;
 		}
+		optionIndents = optionIndents.filter(elem => elem < parseOptionResults.blockIndent);
+		optionIndents.push(parseOptionResults.blockIndent);
 
 		const optionStartGlobalPosition = parsingPositionAt(nextLine.index, state);
 		contentsEndIndex = nextLine.index + nextLine.line.trimRight().length;

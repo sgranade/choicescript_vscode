@@ -2318,6 +2318,64 @@ describe("Parser", () => {
 				expect(received.length).to.equal(0);
 			});
 
+			it("should be okay with multiple indented options after an if command", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t#Three\n\t\t\tText3\n\t#Four\n\t\tText4\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should be okay with indented options after an *if command inside another indented option", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t*if (true)\n\t\t\t#Three\n\t\t\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag a too-indented option after an if command and indented block", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t#Three\n\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An #option must only appear inside a *choice");
+				expect(received[0].range.start.line).to.equal(76);
+				expect(received[0].range.end.line).to.equal(77);
+			});
+
+			it("should flag inconsistently-indented multiple options after an if command", () => {
+				let fakeDocument = createDocument("Line 0\n*choice\n *if (1 < 2)\n  #One\n   Text1\n   #Two\n   Text2\n #Three\n  Text3\nEnd");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An #option must only appear inside a *choice");
+				expect(received[0].range.start.line).to.equal(47);
+				expect(received[0].range.end.line).to.equal(48);
+			});
+
 			it("should flag not-enough-indented choice", () => {
 				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\n        Text\nEnd");
 				let received: Array<Diagnostic> = [];
