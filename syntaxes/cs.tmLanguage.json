@@ -182,6 +182,9 @@
 							]
 						},
 						{
+							"include": "#variable-display"
+						},
+						{
 							"include": "#variable-substitution"
 						},
 						{
