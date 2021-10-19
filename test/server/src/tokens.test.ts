@@ -603,6 +603,16 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.NumberChange);
 				});
 
+				it("should be good with a string operator and a string", () => {
+					let text = "& \"yep\"";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument, true);
+
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.StringChange);
+				});
+
 				it("should flag extra values", () => {
 					let text = "+ 2 + 3";
 					let fakeDocument = createDocument(text);
@@ -652,7 +662,7 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
-				it("should flag a not-number second value", () => {
+				it("should flag a not-number second value after a number operator", () => {
 					let text = "+ true";
 					let fakeDocument = createDocument(text);
 
@@ -660,6 +670,19 @@ describe("Tokenizing", () => {
 
 					expect(expression.validateErrors.length).to.equal(1);
 					expect(expression.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(expression.validateErrors[0].range.start.line).to.equal(4);
+					expect(expression.validateErrors[0].range.end.line).to.equal(8);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+				});
+
+				it("should flag a not-string second value after a string operator", () => {
+					let text = "& true";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument, true);
+
+					expect(expression.validateErrors.length).to.equal(1);
+					expect(expression.validateErrors[0].message).to.include("Must be a string or a variable")
 					expect(expression.validateErrors[0].range.start.line).to.equal(4);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);

@@ -55,6 +55,7 @@ export enum ExpressionEvalType {
 	Boolean,
 	String,
 	NumberChange,	// The expression's changing a variable's value through an expression like "+2"
+	StringChange,	// The expression's changing a variable's value through an expression like "&'string'"
 	Unknowable,	// Variable or parentheses or other non-eval'able value
 	Error,
 	Unprocessed
@@ -660,7 +661,8 @@ export class Expression {
 			return this.validateSingleTokenExpression(this.combinedTokens[0]);
 		}
 
-		if (this.combinedTokens[0].type == ExpressionTokenType.MathOperator && this.isValueSetting) {
+		if ((this.combinedTokens[0].type == ExpressionTokenType.MathOperator || this.combinedTokens[0].type == ExpressionTokenType.StringOperator) && this.isValueSetting) {
+			const isNumberOperation = (this.combinedTokens[0].type == ExpressionTokenType.MathOperator);
 			if (this.combinedTokens.length > 2) {
 				const diagnostic = createDiagnostic(DiagnosticSeverity.Error, this.textDocument,
 					this.globalIndex + this.combinedTokens[2].index,
@@ -669,13 +671,20 @@ export class Expression {
 				this.validateErrors.push(diagnostic);
 			}
 
-			if (!isNumberCompatible(this.combinedTokens[1])) {
+			if (isNumberOperation && !isNumberCompatible(this.combinedTokens[1])) {
 				this.validateErrors.push(this.createTokenError(
 					this.combinedTokens[1], "Must be a number or a variable"
 				));
 				return ExpressionEvalType.Error;
 			}
-			return ExpressionEvalType.NumberChange;
+			if (!isNumberOperation && !isStringCompatible(this.combinedTokens[1])) {
+				this.validateErrors.push(this.createTokenError(
+					this.combinedTokens[1], "Must be a string or a variable"
+				));
+				return ExpressionEvalType.Error;
+			}
+
+			return isNumberOperation ? ExpressionEvalType.NumberChange : ExpressionEvalType.StringChange;
 		}
 
 		if (this.combinedTokens.length == 2) {
