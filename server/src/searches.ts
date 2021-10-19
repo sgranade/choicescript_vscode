@@ -37,7 +37,7 @@ export interface SymbolInformation {
 /**
  * Find the location or locations where a variable was created.
  * @param variable Variable to get.
- * @param returnEffectiveLocations Whether to return effective creation locations or not. 
+ * @param considerEffectiveLocations Whether to consider effective creation locations or not. 
  * @param document Document in which to look for local variables.
  * @param index Project index.
  */

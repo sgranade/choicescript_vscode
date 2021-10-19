@@ -62,19 +62,28 @@ function generateScopes(state: IndexingState): DocumentScopes {
 }
 
 /**
- * Generate identifiers that lie between two positions.
+ * Generate identifiers whose first location lies between two positions.
  * @param identifiers Index of identifiers.
  * @param start Start position.
  * @param end End position.
  */
-function* identifiersBetweenLocations(
+function* identifiersFirstLocationBetweenLocations(
 	identifiers: ReadonlyIdentifierMultiIndex, start: Position, end: Position): IterableIterator<string> {
 	for (const [identifier, locations] of identifiers.entries()) {
+		let foundInRange = false;
+
 		for (const location of locations) {
-			if (comparePositions(location.range.start, start) >= 0 &&
-				comparePositions(location.range.start, end) <= 0) {
-				yield identifier;
+			// If we find one location that's before the range, we don't return this identifier
+			if (comparePositions(location.range.start, start) < 0) {
+				foundInRange = false;
+				break;
 			}
+			if (comparePositions(location.range.start, end) <= 0) {
+				foundInRange = true;
+			}
+		}
+		if (foundInRange) {
+			yield identifier;
 		}
 	}
 }
@@ -95,9 +104,14 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
 			continue;
 		}
 		// If a temp variable is defined in a gosubbed label, it's as if it's created
-		// at the location of the *gosub
+		// at the location of the *gosub _assuming the *gosub location is earlier_
+		// (That last bit isn't strictly true, but it's a good enough hack w/o
+		// me figuring out the full execution flow of CS)
 		const labelLocation = labels.get(event.label);
 		if (labelLocation === undefined || labelLocation === null) {
+			continue;
+		}
+		if (comparePositions(labelLocation.location.range.end, event.commandLocation.range.start) < 0) {
 			continue;
 		}
 		// Find the return that's after that label
@@ -108,7 +122,7 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
 		if (firstReturn === undefined) {
 			continue;
 		}
-		for (const variable of identifiersBetweenLocations(localVariables, labelLocation.location.range.end, firstReturn.commandLocation.range.start)) {
+		for (const variable of identifiersFirstLocationBetweenLocations(localVariables, labelLocation.location.range.end, firstReturn.commandLocation.range.start)) {
 			if (!subroutineVariables.has(variable)) {
 				subroutineVariables.set(variable, event.commandLocation);
 			}

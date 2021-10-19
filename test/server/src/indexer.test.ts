@@ -85,6 +85,29 @@ describe("Indexer", () => {
 			expect(received[0].get('variable').range.end.line).to.equal(6);
 		});
 
+		it("should not index effective locations of local variables created in a subroutine at a gosub that's after the subroutine", () => {
+			let fakeDocument = createDocument("*label s\n*params v1\n*set {v1} 2\n*return\n\n*gosub s 1");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			// If things worked as expected, we won't get v1 as a subroutine-local var
+			expect([...received[0].keys()]).to.eql([]);
+		});
+
+		it("should not re-index effective locations of local variables redefined in a subroutine called by a previous subroutine", () => {
+			let fakeDocument = createDocument("*label sub1\n*temp s1 1\n*set s1 2\n*gosub sub2\n*return\n*label sub2\n*temp s1 3\n*return");
+			let received: Array<IdentifierIndex> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			// If things worked as expected, we won't get s1 as a subroutine-local var
+			expect([...received[0].keys()]).to.eql([]);
+		});
 	});
 
 	describe("Symbol Command Indexing", () => {
