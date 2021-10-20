@@ -311,7 +311,7 @@ if (typeof importScripts != "undefined") {
 }
 
 printImage = function printImage(source, alignment, alt, invert) {
-	console.log('[IMAGE: ' + (alt || source) + ']');
+  //console.log('[IMAGE: ' + (alt || source) + ']');
 }
 
 clearScreen = function clearScreen(code) {
@@ -394,26 +394,15 @@ function configureShowText() {
 			println(msg);
 			console.log("");
 		};
+    printImage = function printImage(source, alignment, alt, invert) {
+      console.log('[IMAGE: ' + (alt || source) + ']');
+    }
 	} else {
 		oldPrintLine = Scene.prototype.printLine;
 		Scene.prototype.printLine = function randomtest_printLine(line) {
 			if (!line) return null;
 			line = this.replaceVariables(line);
 		}
-	}
-}
-
-var oldGoto = Scene.prototype["goto"];
-Scene.prototype["goto"] = function scene_goto(data) {
-	oldGoto.call(this, data);
-	if (!this.localCoverage) this.localCoverage = {};
-	if (this.localCoverage[this.lineNum]) {
-		this.localCoverage[this.lineNum]++;
-		if (this.looplimit_count && this.localCoverage[this.lineNum] > this.looplimit_count) {
-			throw new Error(this.lineMsg() + "visited this line too many times (" + this.looplimit_count + ")");
-		}
-	} else {
-		this.localCoverage[this.lineNum] = 1;
 	}
 }
 
