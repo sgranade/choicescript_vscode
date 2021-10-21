@@ -14,14 +14,14 @@
 	},
 	"dependencies": {
 		"get-port": "^5.1.1",
-		"koa": "^2.13.1",
+		"koa": "^2.13.3",
 		"koa-bodyparser": "^4.3.0",
 		"urijs": "^1.19.7",
 		"vscode-languageclient": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/koa": "^2.13.4",
-		"@types/koa-bodyparser": "^4.3.2",
-		"@types/vscode": "^1.58.1"
+		"@types/koa-bodyparser": "^4.3.3",
+		"@types/vscode": "^1.60.0"
 	}
 }

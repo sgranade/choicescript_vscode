@@ -534,6 +534,41 @@ describe("Parser", () => {
 			expect(received[4].range.end.line).to.equal(54);
 		});
 
+		it("should include subgroup options", () => {
+			let fakeDocument = createDocument("Line 0\n*fake_choice a b c\n\t#One\n\t\t#SubOne\n\t\t\t#SubSubOne\n\t\t#SubTwo\n\t\t\t#SubSubOne\n\t#Two\n\t\t#SubOne\n\t\t\t#SubSubOne\n\t\t#SubTwo\n\t\t\t#SubSubOne\nEnd");
+			let received: Array<SummaryScope> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onChoiceScope(Arg.all()).mimicks((scope: SummaryScope, state: ParsingState) => {
+				received.push(scope);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(11);
+			expect(received[0].range.start.line).to.equal(8); // full choice
+			expect(received[0].range.end.line).to.equal(133);
+			expect(received[1].range.start.line).to.equal(42);  // #SubSubOne (SubOne)
+			expect(received[1].range.end.line).to.equal(55);
+			expect(received[2].range.start.line).to.equal(32);  // #SubOne
+			expect(received[2].range.end.line).to.equal(55);
+			expect(received[3].range.start.line).to.equal(66);  // #SubSubOne (SubTwo)
+			expect(received[3].range.end.line).to.equal(79);
+			expect(received[4].range.start.line).to.equal(56);  // #SubTwo
+			expect(received[4].range.end.line).to.equal(79);
+			expect(received[5].range.start.line).to.equal(26);  // #One + contents
+			expect(received[5].range.end.line).to.equal(79);
+			expect(received[6].range.start.line).to.equal(96);  // #SubSubOne (SubOne)
+			expect(received[6].range.end.line).to.equal(109);
+			expect(received[7].range.start.line).to.equal(86);  // #SubOne
+			expect(received[7].range.end.line).to.equal(109);
+			expect(received[8].range.start.line).to.equal(120);  // #SubSubOne (SubTwo)
+			expect(received[8].range.end.line).to.equal(133);
+			expect(received[9].range.start.line).to.equal(110);  // #SubTwo
+			expect(received[9].range.end.line).to.equal(133);
+			expect(received[10].range.start.line).to.equal(80);  // #Two
+			expect(received[10].range.end.line).to.equal(133);
+		});
+
 		it("should parse the line right after a choice block", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\n*comment parsed");
 			let received: Array<string> = [];
@@ -1948,7 +1983,7 @@ describe("Parser", () => {
 			});
 
 			it("should warn commands with arguments that silently ignore them", () => {
-				let fakeDocument = createDocument("*choice ignored");
+				let fakeDocument = createDocument("*return ignored");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -2112,332 +2147,551 @@ describe("Parser", () => {
 		});
 
 		describe("Choice Command", () => {
-			it("should flag text in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+			describe("Simple Choices", () => {
+				it("should flag text in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    nope #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
+					expect(received[0].range.start.line).to.equal(19);
+					expect(received[0].range.end.line).to.equal(23);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should be okay with a reuse command in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
-				expect(received[0].range.start.line).to.equal(19);
-				expect(received[0].range.end.line).to.equal(23);
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should flag text after a reuse command and in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse bad #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Nothing except an *if or *selectable_if is allowed between *hide_reuse and the #option");
+					expect(received[0].range.start.line).to.equal(31);
+					expect(received[0].range.end.line).to.equal(34);
+				});
+
+				it("should be okay with an if command in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should flag an if command in front of an option that has no parentheses", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Arguments to an *if before an #option must be in parentheses");
+					expect(received[0].range.start.line).to.equal(23);
+					expect(received[0].range.end.line).to.equal(28);
+				});
+
+				it("should be okay with a selectable_if command in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should flag a selectable_if command in front of an option that needs parentheses", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if 1 < 2 #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Arguments to a *selectable_if before an #option must be in parentheses");
+					expect(received[0].range.start.line).to.equal(34);
+					expect(received[0].range.end.line).to.equal(39);
+				});
+
+				it("should be okay with a *_reuse followed by a *selectable_if in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should flag a *selectable_if followed by a *_reuse in front of an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (false) *disable_reuse #One\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("*disable_reuse must be before *selectable_if");
+					expect(received[0].range.start.line).to.equal(42);
+					expect(received[0].range.end.line).to.equal(56);
+				});
+
+				it("should flag a non-choice non-*if line", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    Nope\n        Text\n    #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Must be either an #option or an *if");
+					expect(received[0].range.start.line).to.equal(19);
+					expect(received[0].range.end.line).to.equal(24);
+				});
+
+				it("should flag another option in a choice with no contents", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    #Option one\n    #Option 2\n        Contents\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("An option in a *choice must have contents");
+					expect(received[0].range.start.line).to.equal(30);
+					expect(received[0].range.end.line).to.equal(31);
+				});
+
+				it("should flag an option in a choice with no contents", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t#Totally Empty\n\t#Two\n\t\tContents\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("An option in a *choice must have contents");
+					expect(received[0].range.start.line).to.equal(30);
+					expect(received[0].range.end.line).to.equal(31);
+				});
+
+				it("should not flag an option in a fake choice with no contents", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice\n\t#Empty\n\t#Two\n\t\tContentsEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should be okay with an if command on the line before an option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should be okay with multiple indented options after an if command", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t#Three\n\t\t\tText3\n\t#Four\n\t\tText4\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should be okay with indented options after an *if command inside another indented option", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t*if (true)\n\t\t\t#Three\n\t\t\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
+				it("should flag a too-indented option after an if command and indented block", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t#Three\n\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].range.start.line).to.equal(74);
+					expect(received[0].range.end.line).to.equal(76);
+				});
+
+				it("should flag inconsistently-indented multiple options after an if command", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n *if (1 < 2)\n  #One\n   Text1\n   #Two\n   Text2\n #Three\n  Text3\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].range.start.line).to.equal(44);
+					expect(received[0].range.end.line).to.equal(47);
+				});
+
+				it("should flag a not-enough-indented choice", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\n        Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Line is not indented far enough");
+					expect(received[0].range.start.line).to.equal(37);
+					expect(received[0].range.end.line).to.equal(40);
+				});
+
+				it("should flag mixed tabs and spaces", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t #One\n\t    Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Spaces used instead of tabs");
+					expect(received[0].range.start.line).to.equal(15);
+					expect(received[0].range.end.line).to.equal(17);
+				});
+
+				it("should flag a switch from tabs to spaces", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n  Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Spaces used instead of tabs");
+					expect(received[0].range.start.line).to.equal(21);
+					expect(received[0].range.end.line).to.equal(23);
+				});
+
+				it("should flag a switch from spaces to tabs", () => {
+					let fakeDocument = createDocument("Line 0\n*choice\n  #One\n\t\tText\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Tabs used instead of spaces");
+					expect(received[0].range.start.line).to.equal(22);
+					expect(received[0].range.end.line).to.equal(24);
+				});
 			});
 
-			it("should be okay with a reuse command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+			describe("Choice Groups", () => {
+				it("should flag bad choice group names", () => {
+					let fakeDocument = createDocument("Line 0\n*choice nope's\n\t#One\n\t\tText\n\t#Two\n\t\tText\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[0].range.start.line).to.equal(15);
+					expect(received[0].range.end.line).to.equal(21);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag repeated bad choice group names", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice nope's  nope's\n\t#One\n\t\t#SubOne\n\t#Two\n\t\t#SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(0);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag text after a reuse command and in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse bad #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(2);
+					expect(received[0].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[0].range.start.line).to.equal(20);
+					expect(received[0].range.end.line).to.equal(26);
+					expect(received[1].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[1].range.start.line).to.equal(28);
+					expect(received[1].range.end.line).to.equal(34);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag missing group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t#Two\n\t\t#SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Nothing except an *if or *selectable_if is allowed between *hide_reuse and the #option");
-				expect(received[0].range.start.line).to.equal(31);
-				expect(received[0].range.end.line).to.equal(34);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should be okay with an if command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Missing options for group b");
+					expect(received[0].range.start.line).to.equal(29);
+					expect(received[0].range.end.line).to.equal(30);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag missing group sub-options at the end of the choice block without running over", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b c\n\t#One\n\t\t#subone\n\t\t\t#subsubone\n\t#Two\n\t\t#subone\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(0);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag an if command in front of an option that has no parentheses", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Missing options for group c");
+					expect(received[0].range.start.line).to.equal(71);
+					expect(received[0].range.end.line).to.equal(72);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag too-intented sub-options in the same subgroup", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t#SubOne\n\t\t\t#SubTwo\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Arguments to an *if before an #option must be in parentheses");
-				expect(received[0].range.start.line).to.equal(23);
-				expect(received[0].range.end.line).to.equal(28);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should be okay with a selectable_if command in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].range.start.line).to.equal(40);
+					expect(received[0].range.end.line).to.equal(43);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should be okay with different indented sub-options in different subgroups", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t#SubOne\n\t\t#SubTwo\n\t#Two\n\t\t\t#SubOne\n\t\t\t#SubTwo\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(0);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag a selectable_if command in front of an option that needs parentheses", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if 1 < 2 #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(0);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag group sub-options with different text", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t#SubOne\n\t#Two\n\t\t#SubOn\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Arguments to a *selectable_if before an #option must be in parentheses");
-				expect(received[0].range.start.line).to.equal(34);
-				expect(received[0].range.end.line).to.equal(39);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should be okay with a *_reuse followed by a *selectable_if in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *hide_reuse *if (1 < 2) #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Group sub-options must be exactly the same");
+					expect(received[0].range.start.line).to.equal(49);
+					expect(received[0].range.end.line).to.equal(54);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag text before group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\tbad #SubOne\n\t\t#SubTwo\n\t#Two\n\t\t#SubOne\n\t\t#SubTwo\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(0);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag a *selectable_if followed by a *_reuse in front of an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    *selectable_if (false) *disable_reuse #One\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
+					expect(received[0].range.start.line).to.equal(32);
+					expect(received[0].range.end.line).to.equal(35);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should flag text in between group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b c\n\t#One\n\t\tText\n\t\t#SubOne\n\t\t\t#SubSubOne\n\t#Two\n\t\t#SubOne\n\t\t\tText\n\t\t\t#SubSubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*disable_reuse must be before *selectable_if");
-				expect(received[0].range.start.line).to.equal(42);
-				expect(received[0].range.end.line).to.equal(56);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag a non-choice non-*if line", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    Nope\n        Text\n    #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(2);
+					expect(received[0].message).to.include("Nothing is allowed between group sub-options");
+					expect(received[0].range.start.line).to.equal(32);
+					expect(received[0].range.end.line).to.equal(38);
+					expect(received[1].message).to.include("Nothing is allowed between group sub-options");
+					expect(received[1].range.start.line).to.equal(79);
+					expect(received[1].range.end.line).to.equal(86);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should warn on missing inline *if statements in front of group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t*if (true) #SubOne\n\t#Two\n\t\t#SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be either an #option or an *if");
-				expect(received[0].range.start.line).to.equal(19);
-				expect(received[0].range.end.line).to.equal(24);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag another option in a choice with no contents", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    #Option one\n    #Option 2\n        Contents\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
+					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].range.start.line).to.equal(59);
+					expect(received[0].range.end.line).to.equal(60);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should warn on missing *if statements in front of group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t*if (true)\n\t\t\t#SubOne\n\t#Two\n\t\t#SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An option in a *choice must have contents");
-				expect(received[0].range.start.line).to.equal(30);
-				expect(received[0].range.end.line).to.equal(31);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should flag an option in a choice with no contents", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t#Totally Empty\n\t#Two\n\t\tContents\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
+					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].range.start.line).to.equal(62);
+					expect(received[0].range.end.line).to.equal(63);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should warn on mis-matched inline *if statements in front of group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t*if (var1) #SubOne\n\t#Two\n\t\t*if (var2) #SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An option in a *choice must have contents");
-				expect(received[0].range.start.line).to.equal(30);
-				expect(received[0].range.end.line).to.equal(31);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should not flag an option in a fake choice with no contents", () => {
-				let fakeDocument = createDocument("Line 0\n*fake_choice\n\t#Empty\n\t#Two\n\t\tContentsEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
+					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].range.start.line).to.equal(63);
+					expect(received[0].range.end.line).to.equal(69);
 				});
 
-				parse(fakeDocument, fakeCallbacks);
+				it("should warn on mis-matched *if statements in front of group sub-options", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t*if (var1)\n\t\t\t#SubOne\n\t#Two\n\t\t*if (var2)\n\t\t\t#SubOne\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
 
-				expect(received.length).to.equal(0);
-			});
+					parse(fakeDocument, fakeCallbacks);
 
-			it("should be okay with an if command on the line before an option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n  *if (1 < 2)\n    #One\n      Text\n  #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
+					expect(received.length).to.equal(1);
+					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
+					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].range.start.line).to.equal(66);
+					expect(received[0].range.end.line).to.equal(72);
 				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(0);
-			});
-
-			it("should be okay with multiple indented options after an if command", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t#Three\n\t\t\tText3\n\t#Four\n\t\tText4\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(0);
-			});
-
-			it("should be okay with indented options after an *if command inside another indented option", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t\t*if (true)\n\t\t\t#Three\n\t\t\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(0);
-			});
-
-			it("should flag a too-indented option after an if command and indented block", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n\t\tText1\n\t*if (1 < 2)\n\t\t#Two\n\t\t\tText2\n\t#Three\n\t\tText3\n\t\t#Four\n\t\t\tText4\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An #option must only appear inside a *choice");
-				expect(received[0].range.start.line).to.equal(76);
-				expect(received[0].range.end.line).to.equal(77);
-			});
-
-			it("should flag inconsistently-indented multiple options after an if command", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n *if (1 < 2)\n  #One\n   Text1\n   #Two\n   Text2\n #Three\n  Text3\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An #option must only appear inside a *choice");
-				expect(received[0].range.start.line).to.equal(47);
-				expect(received[0].range.end.line).to.equal(48);
-			});
-
-			it("should flag not-enough-indented choice", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n   #Two\n        Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Line is not indented far enough");
-				expect(received[0].range.start.line).to.equal(37);
-				expect(received[0].range.end.line).to.equal(40);
-			});
-
-			it("should flag mixed tabs and spaces", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t #One\n\t    Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Tabs and spaces can't be mixed");
-				expect(received[0].range.start.line).to.equal(15);
-				expect(received[0].range.end.line).to.equal(17);
-			});
-
-			it("should flag a switch from tabs to spaces", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n\t#One\n  Text\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Spaces used instead of tabs");
-				expect(received[0].range.start.line).to.equal(21);
-				expect(received[0].range.end.line).to.equal(23);
-			});
-
-			it("should flag a switch from spaces to tabs", () => {
-				let fakeDocument = createDocument("Line 0\n*choice\n  #One\n\t\tText\nEnd");
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Tabs used instead of spaces");
-				expect(received[0].range.start.line).to.equal(22);
-				expect(received[0].range.end.line).to.equal(24);
 			});
 		});
 
@@ -3412,7 +3666,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice (check that indention is correct)");
+				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice");
 				expect(received[0].range.start.line).to.equal(0);
 				expect(received[0].range.end.line).to.equal(1);
 			});
@@ -3428,7 +3682,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice (check that indention is correct)");
+				expect(received[0].message).to.include("An #option must only appear inside a *choice or *fake_choice");
 				expect(received[0].range.start.line).to.equal(10);
 				expect(received[0].range.end.line).to.equal(11);
 			});

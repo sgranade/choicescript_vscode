@@ -48,7 +48,7 @@ export const argumentDisallowedCommands: ReadonlyArray<string> = [
  * Commands that silently ignore any arguments.
  */
 export const argumentIgnoredCommands: ReadonlyArray<string> = [
-	"choice", "fake_choice", "line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
+	"line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
 	"restart", "scene_list", "check_achievements"
 ];
 
@@ -224,7 +224,7 @@ export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
  * Pattern to find a choice option line, along with allowed commands.
  */
-export const optionPattern = "(\\n|^)[ \t]*?(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?(?<option>#(?<optionContents>.*))";
+export const optionPattern = "(\\n|^)(?<optionPrefix>[ \t]*?)(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?(?<option>#(?<optionContents>.*))";
 /**
  * Pattern to find a markup element like bold or italic.
  */

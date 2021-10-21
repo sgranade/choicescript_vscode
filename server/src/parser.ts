@@ -104,12 +104,71 @@ export class ParsingState {
 	 */
 	enclosingBlock: string | undefined;
 
+	_enclosingBlockStack: string[];
+
+
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
 		this.sectionGlobalIndex = 0;
 		this.callbacks = callbacks;
 		this.createdTempVariables = false;
+		this._enclosingBlockStack = [];
 	}
+
+	/**
+	 * Called when entering a new block.
+	 */
+	enterBlock(block: string): void {
+		if (this.enclosingBlock !== undefined) {
+			this._enclosingBlockStack.push(this.enclosingBlock);
+		}
+		this.enclosingBlock = block;
+	}
+
+	/**
+	 * Called when exiting a block.
+	 * 
+	 * @returns The new enclosing block, if any.
+	 */
+	exitBlock(): string | undefined {
+		this.enclosingBlock = this._enclosingBlockStack.pop();
+		return this.enclosingBlock;
+	}
+}
+
+/**
+ * Information about a group of #options.
+ */
+interface OptionGroupInfo {
+	name: string  // Group's name
+	ifText: (string | undefined)[]  // Text of any *if/*selectable_if statements
+	optionText: string[]  // Text of each option
+	complete: boolean  // Whether we've got a complete group yet or not
+}
+
+/**
+ * Information about an #option line (including any associated *if statements on their own line)
+ */
+interface OptionLineInfo {
+	lineIndex: number  // Index of the whole option line relative to the parsing state
+	optionIndex: number  // Index of the option text, including "#", relative to the parsing state
+	optionIndent: number  // Count of whitespace in front of the option
+	optionText: string  // Text of the option, not including "#"
+	ifIndents: number[]  // Count of whitespace in front of *if statements that are on their own line
+	ifText: string | undefined  // Text of *if statements (not including `*if`)
+	ifTextStartIndex: number  // Index of the start of *if statements' text relative to the parsing state
+	nextLineIndex: number  // Index to the next line after the option
+}
+
+/**
+ * Information about a choice block.
+ */
+interface ChoiceInfo {
+	commandIndent: number  // How far the *choice/*fake_choice command is indented
+	isFakeChoice: boolean  // Whether this is a *fake_choice or not
+	isTabs: boolean  // Whether indented using tabs or spaces
+	groupInfo: OptionGroupInfo[]  // Information about the choice's option groups
+	choiceScopes: SummaryScope[]  // Scopes of choices contained in the block
 }
 
 /**
@@ -148,6 +207,40 @@ function createParsingLocation(start: number, end: number, state: ParsingState):
 		parsingPositionAt(start, state), parsingPositionAt(end, state)
 	));
 }
+
+/**
+ * Verify that a whitespace string has only tabs (or spaces).
+ * 
+ * @param index Index to the start of the whitespace.
+ * @param padding Whitespace.
+ * @param isTabs Whether the whitespace should be tabs or spaces.
+ * @param state Parsing state.
+ * @returns True if no whitespace error was encountered, false otherwise.
+ */
+function validIndentWhitespace(index: number, padding: string, isTabs: boolean, state: ParsingState): boolean {
+	let diagnostic: Diagnostic | undefined;
+
+	if (isTabs && / /.test(padding)) {
+		diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			index, index + padding.length,
+			"Spaces used instead of tabs", state);
+		
+	}
+	else if (!isTabs && /\t/.test(padding)) {
+		diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			index, index + padding.length,
+			"Tabs used instead of spaces", state);
+	}
+
+	if (diagnostic !== undefined) {
+		state.callbacks.onParseError(diagnostic);
+		return false;
+	}
+
+	return true;
+}
+
+
 
 const stringDelimiterGlobalRegex = RegExp(`${replacementStartPattern}|${multiStartPattern}|(?<!\\\\)\\"`, 'g');
 
@@ -692,10 +785,14 @@ const commandRegex = RegExp(commandPattern);
 /**
  * Parse text before an #option.
  * @param preText Text before the #option.
- * @param preTextIndex Index of that text in the global document.
+ * @param preTextIndex Index of that text in the current parsing state.
  * @param state Parsing state.
+ * @returns The contents of any inline *if statement in the text, or undefined if none.
  */
-function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): void {
+function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: ParsingState): { ifText: string | undefined, ifTextRelativeIndex: number } {
+	let ifText: string | undefined = undefined;
+	let ifTextRelativeIndex = -1;
+
 	// Text before an #option must be either a single allowed command or a *_reuse *if set of commands (in that order)
 	const m = commandRegex.exec(preText);
 	if (!m || m.groups === undefined || !optionAllowedCommandsLookup.has(m.groups.command)) {
@@ -720,12 +817,15 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 				+ " ".repeat(m[0].length)
 				+ preText.slice(commandLineIndex + mReuse.index + mReuse[0].length);
 		}
+		// Save off our *if contents to return
+		ifText = preText.slice(m.groups.command.length+1).trim();
+		ifTextRelativeIndex = preText.indexOf(ifText);
+
 		// No other commands can come after an "if", so parse it as a single line. Add in a "#"
 		// so that the parsing knows it's an *if before an #option
-		const oldEnclosingBlock = state.enclosingBlock;
-		state.enclosingBlock = "option";
+		state.enterBlock("option");
 		parseSection(preText + "#fake", state.sectionGlobalIndex + preTextIndex, state);
-		state.enclosingBlock = oldEnclosingBlock;
+		state.exitBlock();
 	}
 	else {  // *hide_reuse and similar
 		// There should be no other text after the *_reuse command other than an *if/*selectable_if
@@ -734,10 +834,9 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0;
 
 			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
-				const oldEnclosingBlock = state.enclosingBlock;
-				state.enclosingBlock = "option";
+				state.enterBlock("option");
 				parseSection(m.groups.commandLine + "#fake", state.sectionGlobalIndex + preTextIndex + commandLineIndex, state);
-				state.enclosingBlock = oldEnclosingBlock;
+				state.exitBlock();
 			}
 			else {
 				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
@@ -748,127 +847,486 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 			}
 		}
 	}
+
+	return { ifText, ifTextRelativeIndex };
 }
 
 /**
- * Parse a single line containing an #option.
+ * Parse a single #option line, including any associated *if statements on their own line.
+ * 
  * @param text Document text.
- * @param optionLine Line containing the titular option.
- * @param commandIndent Spacing in front of the *choice command.
- * @param optionIndents Number of allowable whitespace characters in front of the #option.
- * @param currentOptionIndentx Current
- * @param isTabs True if whitespace in front of lines should be tabs.
- * @param state Parsing state.
- * @returns Text of the option, index of the line containing the option's contents, and the number of whitespace characters for the block.
+ * @param choiceInfo Information about the choice block.
+ * @param optionLine Line containing the titular opton.
+ * @param state Parsing state
+ * @returns Information about the option line.
  */
-function parseSingleOptionLine(text: string, optionLine: NewLine, commandIndent: number,
-	optionIndents: number[], isTabs: boolean, state: ParsingState): { optionText: string; optionContentsIndex: number; blockIndent: number } | undefined {
+function parseSingleOptionLine(
+	text: string, choiceInfo: ChoiceInfo, optionLine: NewLine, state: ParsingState
+): OptionLineInfo | undefined {
 	if (optionLine.splitLine === undefined) {  // We gotta have some indent
 		return undefined;
 	}
-	const padding = optionLine.splitLine.padding;
 	// Bomb out on mixed tabs and spaces
-	if (isTabs && / /.test(padding)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			optionLine.index, optionLine.index + padding.length,
-			"Spaces used instead of tabs", state);
-		state.callbacks.onParseError(diagnostic);
-		return undefined;
-	}
-	else if (!isTabs && /\t/.test(padding)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			optionLine.index, optionLine.index + padding.length,
-			"Tabs used instead of spaces", state);
-		state.callbacks.onParseError(diagnostic);
+	if (!validIndentWhitespace(optionLine.index, optionLine.splitLine.padding, choiceInfo.isTabs, state)) {
 		return undefined;
 	}
 	// Bomb out if our indent level is at or smaller than the *choice command itself
-	if (padding.length <= commandIndent) {
+	if (optionLine.splitLine.padding.length <= choiceInfo.commandIndent) {
 		return undefined;
 	}
 
-	let currentOptionIndent: number = padding.length;
-	// Flag problems with indents
-	if (optionIndents.length > 0) {
-		if (padding.length < optionIndents[0]) {
-			currentOptionIndent = optionIndents[0];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				optionLine.index, optionLine.index + padding.length,
-				"Line is not indented far enough", state);
-			state.callbacks.onParseError(diagnostic);
-		}
-		else if (padding.length > optionIndents[-1]) {
-			currentOptionIndent = optionIndents[-1];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				optionLine.index, optionLine.index + padding.length,
-				"Line is indented too far", state);
-			state.callbacks.onParseError(diagnostic);
-		}
-		else if (optionIndents.indexOf(padding.length) == -1) {
-			currentOptionIndent = optionIndents[-1];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				optionLine.index, optionLine.index + padding.length,
-				"Line is improperly indented", state);
-			state.callbacks.onParseError(diagnostic);
-		}
-	}
+	const optionLineStartIndex = optionLine.index;
+	const ifIndents: number[] = [];
+	let ifText: string | undefined;
+	let ifTextStartIndex = -1;
 
-	// The line should either contain an #option or a bare *if statement
-	const hashIndex = optionLine.splitLine.contents.indexOf("#");
-	if (hashIndex == -1) {
+	// Line should either contain an #option or a bare *if statement
+	let hashIndex = optionLine.splitLine.contents.indexOf("#");
+	while (hashIndex == -1) {
 		// This better be an *if statement
 		if (optionLine.splitLine.contents.startsWith("*if ")) {
-			const oldEnclosingBlock = state.enclosingBlock;
-			state.enclosingBlock = "option";
-			parseSection(optionLine.line, state.sectionGlobalIndex + optionLine.index, state);
-			state.enclosingBlock = oldEnclosingBlock;
-			const nextOptionLine = readLine(text, optionLine.index + optionLine.line.length);
-			if (nextOptionLine === undefined || nextOptionLine.splitLine === undefined) {
-				return undefined;
-			}
-
-			if (nextOptionLine.splitLine.padding.length <= currentOptionIndent) {
+			// If there are multiple *if statements, each needs to be indented from the previous
+			if ((ifIndents.length > 0) && (optionLine.splitLine.padding.length <= ifIndents[ifIndents.length-1])) {
 				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					nextOptionLine.index, nextOptionLine.index + nextOptionLine.splitLine.padding.length,
+					optionLine.index, optionLine.index + optionLine.splitLine.padding.length,
 					"Line is not indented far enough", state);
 				state.callbacks.onParseError(diagnostic);
-				return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
 			}
 			else {
-				const tempOptionIndents = optionIndents;
-				if (tempOptionIndents.indexOf(nextOptionLine.splitLine.padding.length) == -1) {
-					tempOptionIndents.push(nextOptionLine.splitLine.padding.length);
-				}
-				return parseSingleOptionLine(
-					text, nextOptionLine, commandIndent,
-					tempOptionIndents,
-					isTabs, state
-				);
+				ifIndents.push(optionLine.splitLine.padding.length);
 			}
+
+			const currentIfText = optionLine.splitLine.contents.replace(/\*if\s+/, '').trim();
+			if (ifText === undefined) {
+				ifText = currentIfText;
+				ifTextStartIndex = optionLine.index + optionLine.splitLine.padding.length + optionLine.splitLine.contents.indexOf(currentIfText);
+			}
+			else {
+				// A hacky for-now way to handle multiple nested if statements
+				ifText += "~" + currentIfText;
+			}
+
+			state.enterBlock("option");
+			parseSection(optionLine.line, state.sectionGlobalIndex + optionLine.index, state);
+			state.exitBlock();
+
+			const nextOptionLine = readLine(text, optionLine.index + optionLine.line.length);
+			if (nextOptionLine === undefined) {
+				return undefined;
+			}
+			optionLine = nextOptionLine;
+			if (optionLine.splitLine === undefined) {  // This works as a type guard, so don't combine w/the above nextOptionLine check
+				return undefined;
+			}
+			hashIndex = optionLine.splitLine.contents.indexOf("#");
 		}
 		else {
-			const startIndex = optionLine.index + (optionLine.splitLine?.padding.length ?? 0);
+			const startIndex = optionLine.index + optionLine.splitLine.padding.length;
 			const endIndex = optionLine.index + optionLine.line.length;
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				startIndex, endIndex,
 				"Must be either an #option or an *if", state);
 			state.callbacks.onParseError(diagnostic);
-			return { optionText: "", optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
+			return {
+				lineIndex: optionLineStartIndex,
+				optionIndex: startIndex,
+				optionIndent: optionLine.splitLine.padding.length,
+				optionText: "",
+				ifIndents: ifIndents,
+				ifText: ifText,
+				ifTextStartIndex: ifTextStartIndex,
+				nextLineIndex: optionLine.index + optionLine.line.length
+			};
 		}
+	}
+
+	const optionText = optionLine.splitLine.contents.slice(hashIndex).trim();
+	if (hashIndex > 0) {
+		// There's text in front of the option. Check it.
+		const preText = optionLine.splitLine.contents.slice(0, hashIndex);
+		const preTextIndex = optionLine.index + optionLine.splitLine.padding.length;
+		const preTextIfInformation = parseTextBeforeAnOption(preText, preTextIndex, state);
+		if (preTextIfInformation.ifText !== undefined) {
+			if (ifText === undefined) {
+				ifText = preTextIfInformation.ifText;
+				ifTextStartIndex = optionLine.index + optionLine.splitLine.padding.length + preTextIfInformation.ifTextRelativeIndex;
+			}
+			else {
+				// A hacky for-now way to handle multiple nested if statements
+				ifText += "~" + preTextIfInformation;
+			}
+		}
+	}
+	// Parse the option as if it were a string, since it can have ${references}
+	parseBareString(optionText, optionLine.index + optionLine.splitLine.padding.length + hashIndex, optionText.length, state);
+
+	return {
+		lineIndex: optionLineStartIndex,
+		optionIndex: optionLine.index + optionLine.splitLine.padding.length,
+		optionIndent: optionLine.splitLine.padding.length,
+		optionText: optionText,
+		ifIndents: ifIndents,
+		ifText: ifText,
+		ifTextStartIndex: ifTextStartIndex,
+		nextLineIndex: optionLine.index + optionLine.line.length
+	};
+}
+
+/**
+ * Skip contents of a subgroup that isn't the innermost subgroup.
+ * 
+ * Any content is flagged as an error, since subgroups can't have any contents.
+ * 
+ * @param text Document text.
+ * @param choiceInfo Information about the current choice block.
+ * @param parsedOption Information about the option.
+ * @param state Parsing state.
+ * @returns The next line after any option contents and its start index.
+ */
+function skipOptionContents(text: string, choiceInfo: ChoiceInfo, parsedOption: OptionLineInfo, state: ParsingState): {
+	nextLine: NewLine | undefined, nextLineStartIndex: number
+} {
+	let nextLine: NewLine | undefined;
+	let nextLineStartIndex = parsedOption.nextLineIndex;
+	let contentsStart = -1;
+
+	while (true) {
+		nextLine = readNextNonblankLine(text, nextLineStartIndex);
+		if (nextLine === undefined) {
+			break;
+		}
+
+		const lineContents = nextLine.splitLine !== undefined ? nextLine.splitLine.contents : nextLine.line;
+		if (
+			lineContents.includes('#') || 
+			lineContents.startsWith('*if ') || 
+			nextLine.splitLine === undefined || 
+			nextLine.splitLine.padding.length <= choiceInfo.commandIndent
+		) {
+			break;
+		}
+		if (contentsStart == -1) {
+			contentsStart = nextLine.index;
+		}
+		nextLineStartIndex += nextLine.line.length;
+	}
+	if (contentsStart != -1) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			contentsStart, nextLineStartIndex - 1,
+			"Nothing is allowed between group sub-options", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+
+	return { nextLine, nextLineStartIndex };
+}
+
+/**
+ * Verify an option's indent.
+ * 
+ * @param choiceInfo Information about the current choice block.
+ * @param parsedOption Information about the option.
+ * @param allowableIndents Allowable indents in the current subgroup.
+ * @param state Parsing state.
+ * @returns True if the option is contained within the current subgroup; false otherwise.
+ */
+function verifyOptionIndent(choiceInfo: ChoiceInfo, parsedOption: OptionLineInfo, allowableIndents: number[], state: ParsingState): boolean {
+	const leftmostIndent = parsedOption.ifIndents.length > 0 ? parsedOption.ifIndents[0] : parsedOption.optionIndent;
+	if (allowableIndents.indexOf(leftmostIndent) == -1) {
+		let errorMessage: string;
+		if (leftmostIndent < allowableIndents[0]) {
+			// If we're part of multiple subgroups, shorter indent means leaving the group
+			if (choiceInfo.groupInfo.length > 1) {
+				return false;
+			}
+			errorMessage = "Line is not indented far enough";
+		}
+		else if (leftmostIndent > allowableIndents[allowableIndents.length-1]) {
+			errorMessage = "Line is indented too far";
+		}
+		else {
+			errorMessage = "Line indent doesn't match earlier indents";
+		}
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			parsedOption.lineIndex,
+			parsedOption.lineIndex + leftmostIndent,
+			errorMessage, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+
+	return true;
+}
+
+/**
+ * 
+ * @param choiceInfo Information about the current choice block.
+ * @param parsedOption Information about the option.
+ * @param allowableIndents Allowable indents in the current subgroup.
+ * @param isFirstGroupOption If true, this is the first option in a subgroup.
+ * @param state Parsing state.
+ * @returns True if the indents indicate that the option is contained within the current subgroup; false otherwise.
+ */
+function processOptionIndents(choiceInfo: ChoiceInfo, parsedOption: OptionLineInfo, allowableIndents: number[], isFirstGroupOption: boolean, state: ParsingState): {
+	allowableIndents: number[], isPartOfSubgroup: boolean
+} {
+	let isPartOfSubgroup = true;
+
+	if (isFirstGroupOption) {
+		// First option sets the allowable indent for the group
+		if (parsedOption.ifIndents.length > 0) {
+			allowableIndents = allowableIndents.concat(parsedOption.ifIndents);
+		}
+		allowableIndents.push(parsedOption.optionIndent);
 	}
 	else {
-		const optionText = optionLine.splitLine.contents.slice(hashIndex).trim();
-		if (hashIndex > 0) {
-			// There's text in front of the option. Check it.
-			const preText = optionLine.splitLine.contents.slice(0, hashIndex);
-			const preTextIndex = optionLine.index + padding.length;
-			parseTextBeforeAnOption(preText, preTextIndex, state);
+		if (!verifyOptionIndent(choiceInfo, parsedOption, allowableIndents, state)) {
+			isPartOfSubgroup = false;
 		}
-		// Parse the option as if it were a string, since it can have ${references}
-		parseBareString(optionText, optionLine.index + optionLine.splitLine.padding.length + hashIndex, optionText.length, state);
-
-		return { optionText: optionText, optionContentsIndex: optionLine.index + optionLine.line.length, blockIndent: currentOptionIndent };
+		else {
+			// Store additional indent values
+			if (parsedOption.ifIndents.length > 0) {
+				allowableIndents = allowableIndents.concat(parsedOption.ifIndents);
+			}
+			allowableIndents.push(parsedOption.optionIndent);
+		}
 	}
+	// Sort results and get rid of any indents less than the option indent while also
+	// removing any duplicates
+	allowableIndents = allowableIndents.sort().filter((x, i, a) => (!i || x != a[i-1]) && x <= parsedOption.optionIndent);
+
+	return { allowableIndents, isPartOfSubgroup };
+}
+
+/**
+ * Recursively parse a subgroup of options.
+ * 
+ * @param text Document text.
+ * @param choiceInfo Information about the current choice block.
+ * @param currentLine Current line containing the first option in the subgroup.
+ * @param currentGroupNum Current subgroup number.
+ * @param state Parsing state.
+ * @returns The next line after the subgroup and the index at the end of the subgroup.
+ */
+function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: NewLine, currentGroupNum: number, state: ParsingState): { 
+		nextLine: NewLine | undefined, endIndex: number 
+} {
+	const currentGroupInfo = choiceInfo.groupInfo[currentGroupNum];
+	let nextLine: NewLine | undefined;
+	let allowableIndents: number[] = [];
+	let memberCount = 0;
+	let groupContentsEndIndex = currentLine.index + currentLine.line.trimRight().length;
+
+	while (true) {
+		// parse the line: should be an option
+		const parsedOption = parseSingleOptionLine(text, choiceInfo, currentLine, state);
+		if (parsedOption === undefined) {
+			return { nextLine: undefined, endIndex: groupContentsEndIndex };
+		}
+
+		let isPartOfSubgroup = true;
+		({allowableIndents, isPartOfSubgroup} = processOptionIndents(choiceInfo, parsedOption, allowableIndents, memberCount == 0, state));
+		if (!isPartOfSubgroup) {
+			break;
+		}
+
+		// if not complete, stash the option and if text in the group info
+		// else, compare if and option text
+		if (!currentGroupInfo.complete) {
+			currentGroupInfo.optionText.push(parsedOption.optionText);
+			currentGroupInfo.ifText.push(parsedOption.ifText);
+		}
+		else {
+			if (parsedOption.ifText != currentGroupInfo.ifText[memberCount]) {
+				const errorStartIndex = (parsedOption.ifText !== undefined) ? parsedOption.ifTextStartIndex : (currentLine.index + ((parsedOption.ifIndents.length > 0) ? parsedOption.ifIndents[0] : parsedOption.optionIndent));
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+					errorStartIndex,
+					errorStartIndex + (parsedOption.ifText?.length ?? 1),
+					"*if statements in front of group sub-options must all evaluate to the same true or false value",
+					state);
+				state.callbacks.onParseError(diagnostic);
+			}
+			if (parsedOption.optionText != currentGroupInfo.optionText[memberCount]) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					parsedOption.optionIndex + 1, parsedOption.optionIndex + parsedOption.optionText.length,
+					"Group sub-options must be exactly the same", state);
+				state.callbacks.onParseError(diagnostic);
+			}
+		}
+
+		const optionStartGlobalPosition = parsingPositionAt(currentLine.index, state);
+		let optionContentsEndIndex = parsedOption.nextLineIndex;
+		if (currentLine.line.endsWith("\n")) {  // If there's a CR, move back one
+			optionContentsEndIndex -= 1;
+		}
+		if (currentGroupNum + 1 == choiceInfo.groupInfo.length) {
+			// We're in the inner-most group, which should have actual content
+			let lastContentLine: NewLine | undefined;
+			[lastContentLine, nextLine] = parseSingleOptionContents(text, parsedOption.nextLineIndex, allowableIndents[allowableIndents.length-1], choiceInfo.isTabs, state);
+
+			if (lastContentLine === undefined) {
+				// If this is a choice, it has to have contents
+				if (!choiceInfo.isFakeChoice) {
+					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+						optionContentsEndIndex, optionContentsEndIndex + 1,
+						"An option in a *choice must have contents", state);
+					state.callbacks.onParseError(diagnostic);
+				}
+				if (nextLine !== undefined) {
+					optionContentsEndIndex = nextLine.index - 1;
+				}
+			}
+			else {
+				optionContentsEndIndex = lastContentLine.index + lastContentLine.line.trimRight().length;
+			}
+			groupContentsEndIndex = optionContentsEndIndex;
+		}
+		else {
+			// Non-terminating subgroups should have no contents
+			let nextLineStartIndex: number;
+
+			({ nextLine, nextLineStartIndex } = skipOptionContents(text, choiceInfo, parsedOption, state));
+
+			optionContentsEndIndex = nextLineStartIndex - 1;
+			groupContentsEndIndex = optionContentsEndIndex;
+
+			if ((nextLine === undefined) || ((nextLine.splitLine?.padding.length ?? 0) <= allowableIndents[allowableIndents.length-1])) {
+				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					parsedOption.nextLineIndex - 1, nextLineStartIndex,
+					`Missing options for group ${choiceInfo.groupInfo.slice(currentGroupNum+1).map(gi => gi.name).join(', ')}`, state);
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				// Parse the next-level-down subgroup
+				const subgroupParseResults = parseOptionSubgroup(text, choiceInfo, nextLine, currentGroupNum + 1, state);
+				nextLine = subgroupParseResults.nextLine;
+				optionContentsEndIndex = subgroupParseResults.endIndex;
+				groupContentsEndIndex = optionContentsEndIndex;
+			}
+		}
+
+		choiceInfo.choiceScopes.push({
+			summary: summarize(parsedOption.optionText, 35),
+			range: Range.create(optionStartGlobalPosition, parsingPositionAt(optionContentsEndIndex, state))
+		});
+
+		// Should we continue y/n?
+		if (nextLine === undefined) {
+			break;
+		}
+		if (currentGroupInfo.complete && (memberCount + 1 == currentGroupInfo.optionText.length)) {
+			break;
+		}
+		if ((nextLine.splitLine?.padding.length ?? 0) < choiceInfo.commandIndent) {
+			break;
+		}
+
+		memberCount += 1;
+		currentLine = nextLine;
+	}
+
+	currentGroupInfo.complete = true;
+	if (memberCount + 1 < currentGroupInfo.optionText.length) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			currentLine.index - 1, currentLine.index,
+			`Group ${currentGroupInfo.name} is missing ${currentGroupInfo.optionText.length - memberCount - 1} options`, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+
+	return { nextLine: nextLine, endIndex: groupContentsEndIndex };
+}
+
+/**
+ * Parse the options defined by a *choice or *fake_choice command.
+ * @param text Document text to scan.
+ * @param command Command that is being parsed.
+ * @param commandPadding Spacing before the *choice command.
+ * @param commandSectionIndex Index at the start of the *choice command.
+ * @param line The rest of the line following the *if command
+ * @param lineSectionIndex Index to the rest of the line
+ * @param optionsSectionIndex Index at the start of the options.
+ * @param state Parsing state.
+ * @returns Index at the end of the choice block.
+ */
+function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, line: string, lineSectionIndex: number, optionsSectionIndex: number, state: ParsingState): number {
+	const isFakeChoice = (command == "fake_choice");
+	// commandPadding can include a leading \n, so don't count that
+	const commandIndent = commandPadding.replace("\n", "").length;
+	let paddingTypeIsKnown = false;
+	let isTabs = /\t/.test(commandPadding);
+	let groupNames: string[] = line.trim().split(/\s+/);
+	const groupInfo: OptionGroupInfo[] = [];
+	const choiceScopes: SummaryScope[] = [];
+	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
+	let contentsEndIndex: number | undefined = undefined;
+
+	// Get the padding type if we can
+	if (commandIndent) {
+		paddingTypeIsKnown = true;
+		if (isTabs && / /.test(commandPadding)) {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				commandSectionIndex, commandSectionIndex + commandPadding.length,
+				"Tabs and spaces can't be mixed", state);
+			state.callbacks.onParseError(diagnostic);
+			return optionsSectionIndex;
+		}
+	}
+
+	// See if we have any choice group names and if they're okay
+	groupNames = groupNames.filter(elem => elem.trim() !== "");
+	let badGroupNameIndex = -1;
+	for (let i = 0; i < groupNames.length; i++) {
+		if (!/^\w$/.test(groupNames[i])) {
+			badGroupNameIndex += 1;
+			badGroupNameIndex += line.substr(badGroupNameIndex).search(groupNames[i]);
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				lineSectionIndex + badGroupNameIndex,
+				lineSectionIndex + badGroupNameIndex + groupNames[i].length,
+				"Choice group names can only have letters, numbers, or _",
+				state);
+			state.callbacks.onParseError(diagnostic);
+		}
+	}
+	// Plain *choices have no group names, so fake the funk and add one in
+	if (groupNames.length == 0) {
+		groupNames.push("");
+	}
+
+	// Get the first option and its indent
+	let nextLine = readNextNonblankLine(text, optionsSectionIndex);
+	if (nextLine === undefined || nextLine.splitLine === undefined || nextLine.splitLine.padding.length <= commandIndent) {
+		return optionsSectionIndex;
+	}
+	if (!paddingTypeIsKnown) {
+		isTabs = /\t/.test(nextLine.splitLine.padding);
+		paddingTypeIsKnown = true;
+		if (!validIndentWhitespace(nextLine.index, nextLine.splitLine.padding, isTabs, state)) {
+			return optionsSectionIndex;
+		}
+	}
+
+	// Recursively parse the options subgroup by subgroup
+	for (let i = 0; i < groupNames.length; i++) {
+		groupInfo.push({
+			name: groupNames[i],
+			ifText: [],
+			optionText: [],
+			complete: false
+		});
+	}
+	const choiceInfo: ChoiceInfo = {
+		commandIndent, isFakeChoice, isTabs, groupInfo, choiceScopes
+	};
+	({ nextLine: nextLine, endIndex: contentsEndIndex } = parseOptionSubgroup(
+		text, choiceInfo, nextLine, 0, state
+	));
+
+	const range = Range.create(startGlobalPosition, parsingPositionAt(contentsEndIndex, state));
+	const scope: SummaryScope = { summary: command, range: range };
+	state.callbacks.onChoiceScope(scope, state);
+
+	// Add the option scopes
+	choiceScopes.forEach(scope => { state.callbacks.onChoiceScope(scope, state); });
+
+	return contentsEndIndex;
 }
 
 /**
@@ -904,21 +1362,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 			}
 			const padding = nextLine.splitLine.padding;
 			// Bomb out on a switch from tabs to spaces or vice versa
-			if (isTabs && / /.test(padding)) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					nextLine.index, nextLine.index + padding.length,
-					"Spaces used instead of tabs", state);
-				state.callbacks.onParseError(diagnostic);
-				// Treat the line as content so we don't try to re-parse
-				lastContentLine = nextLine;
-				nextLine = undefined;
-				break;
-			}
-			else if (!isTabs && /\t/.test(padding)) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					nextLine.index, nextLine.index + padding.length,
-					"Tabs used instead of spaces", state);
-				state.callbacks.onParseError(diagnostic);
+			if (!validIndentWhitespace(nextLine.index, padding, isTabs, state)) {
 				// Treat the line as content so we don't try to re-parse
 				lastContentLine = nextLine;
 				nextLine = undefined;
@@ -946,127 +1390,12 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 	}
 
 	if (optionContents != "") {
+		state.enterBlock("option");
 		parseSection(optionContents, state.sectionGlobalIndex + optionContentsIndex, state);
+		state.exitBlock();
 	}
 
 	return [lastContentLine, nextLine];
-}
-
-/**
- * Parse the options defined by a *choice or *fake_choice command.
- * @param text Document text to scan.
- * @param command Command that is being parsed.
- * @param commandPadding Spacing before the *choice command.
- * @param commandSectionIndex Index at the start of the *choice command.
- * @param optionsSectionIndex Index at the start of the options.
- * @param state Parsing state.
- * @returns Index at the end of the choice block.
- */
-function parseChoice(text: string, command: string, commandPadding: string, commandSectionIndex: number, optionsSectionIndex: number, state: ParsingState): number {
-	const isFakeChoice = (command == "fake_choice");
-	// commandPadding can include a leading \n, so don't count that
-	const commandIndent = commandPadding.replace("\n", "").length;
-	let setPaddingType = false;
-	let isTabs = /\t/.test(commandPadding);
-	// Allowable option indents (can be several due to nested *if blocks)
-	let optionIndents: number[] = [];
-	let contentsEndIndex: number | undefined = undefined;
-	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
-	let endGlobalPosition: Position;
-	const choiceScopes: SummaryScope[] = [];
-
-	// Get the padding type if we can
-	if (commandIndent) {
-		setPaddingType = true;
-		if (isTabs && / /.test(commandPadding)) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				commandSectionIndex, commandSectionIndex + commandPadding.length,
-				"Tabs and spaces can't be mixed", state);
-			state.callbacks.onParseError(diagnostic);
-			return optionsSectionIndex;
-		}
-	}
-
-	// Get the first option and its indent
-	let nextLine = readNextNonblankLine(text, optionsSectionIndex);
-	if (nextLine === undefined || nextLine.splitLine === undefined || nextLine.splitLine.padding.length <= commandIndent) {
-		return optionsSectionIndex;
-	}
-	if (!setPaddingType) {
-		isTabs = /\t/.test(nextLine.splitLine.padding);
-		setPaddingType = true;
-		if ((isTabs && / /.test(nextLine.splitLine.padding)) || (!isTabs && /\t/.test(nextLine.splitLine.padding))) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				nextLine.index, nextLine.index + nextLine.splitLine.padding.length,
-				"Tabs and spaces can't be mixed", state);
-			state.callbacks.onParseError(diagnostic);
-			return optionsSectionIndex;
-		}
-	}
-	optionIndents.push(nextLine.splitLine.padding.length);
-
-	// Loop over each option until there are no more options
-	while (true) {
-		if (nextLine === undefined) {
-			break;
-		}
-
-		const endOptionIndex = nextLine.index + nextLine.line.trimRight().length;
-		const parseOptionResults = parseSingleOptionLine(
-			text, nextLine, commandIndent, optionIndents, isTabs, state
-		);
-		if (parseOptionResults === undefined) {  // Something went wrong
-			break;
-		}
-		optionIndents = optionIndents.filter(elem => elem < parseOptionResults.blockIndent);
-		optionIndents.push(parseOptionResults.blockIndent);
-
-		const optionStartGlobalPosition = parsingPositionAt(nextLine.index, state);
-		contentsEndIndex = nextLine.index + nextLine.line.trimRight().length;
-		let lastContentLine: NewLine | undefined;
-		[lastContentLine, nextLine] = parseSingleOptionContents(text, parseOptionResults.optionContentsIndex, parseOptionResults.blockIndent, isTabs, state);
-		if (lastContentLine == undefined) {
-			const contentsEndGlobalPosition = parsingPositionAt(endOptionIndex, state);
-			// Add this option to the list of scopes, trimming the description if necessary
-			choiceScopes.push({
-				summary: summarize(parseOptionResults.optionText, 35),
-				range: Range.create(optionStartGlobalPosition, contentsEndGlobalPosition)
-			});
-			// If this is a choice, it has to have contents
-			if (!isFakeChoice) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					endOptionIndex, endOptionIndex + 1,
-					"An option in a *choice must have contents", state);
-				state.callbacks.onParseError(diagnostic);
-			}
-		}
-		else {
-			contentsEndIndex = lastContentLine.index + lastContentLine.line.trimRight().length;
-			const contentsEndGlobalPosition = parsingPositionAt(contentsEndIndex, state);
-			// Add this option to the list of scopes, trimming the description if necessary
-			choiceScopes.push({
-				summary: summarize(parseOptionResults.optionText, 35),
-				range: Range.create(optionStartGlobalPosition, contentsEndGlobalPosition)
-			});
-		}
-	}
-
-	if (contentsEndIndex === undefined) {
-		contentsEndIndex = optionsSectionIndex;
-		endGlobalPosition = parsingPositionAt(commandSectionIndex, state);
-	}
-	else {
-		endGlobalPosition = parsingPositionAt(contentsEndIndex, state);
-	}
-
-	const range = Range.create(startGlobalPosition, endGlobalPosition);
-	const scope: SummaryScope = { summary: command, range: range };
-	state.callbacks.onChoiceScope(scope, state);
-
-	// Add the option scopes
-	choiceScopes.forEach(scope => { state.callbacks.onChoiceScope(scope, state); });
-
-	return contentsEndIndex;
 }
 
 /**
@@ -1318,7 +1647,7 @@ function parseIfBlock(text: string, command: string, commandPadding: string, com
 
 	// Parse the block's contents
 	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
-	if (blockContents.trim() == "" && state.enclosingBlock != "option") {
+	if (blockContents.trim() == "" && !(state.enclosingBlock?.startsWith("option"))) {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			lineSectionIndex + line.length, lineSectionIndex + line.length,
 			`*${command} must have an indented line with contents after it.`, state);
@@ -1576,8 +1905,8 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	}
 
 	if (insideBlockCommandsLookup.has(command)) {
-		if ((command == "selectable_if" && state.enclosingBlock !== "option") ||
-			(command != "selectable_if" && state.enclosingBlock !== "if")) {
+		if ((command == "selectable_if" && !(state.enclosingBlock?.startsWith("option"))) ||
+			(command != "selectable_if" && state.enclosingBlock != "if")) {
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				commandSectionIndex, commandSectionIndex + command.length,
 				`Command *${command} must be ${(command == "selectable_if" ? "in front of an #option" : "part of an *if command block")}.`,
@@ -1602,7 +1931,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	else if (command == "choice" || command == "fake_choice") {
 		const nextLineIndex = findLineEnd(document, commandSectionIndex);
 		if (nextLineIndex !== undefined) {
-			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, nextLineIndex, state);
+			endParseIndex = parseChoice(document, command, prefix, commandSectionIndex, line, lineSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "bug" || command == "page_break") {
@@ -1688,11 +2017,23 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 		}
 		else if (m.groups.option) {
 			// An option outside a *choice isn't allowed, so mark it as an error
+			let errorMessage: string;
+			let errorStartIndex: number;
+			let errorEndIndex: number;
 			const optionIndex = m.index + m[0].length - m.groups.option.length;
+			if (state.enclosingBlock?.startsWith("option")) {
+				errorMessage = "This #option is too indented";
+				errorStartIndex = optionIndex - m.groups.optionPrefix.length;
+				errorEndIndex = optionIndex;
+			}
+			else {
+				errorMessage = "An #option must only appear inside a *choice or *fake_choice";
+				errorStartIndex = optionIndex;
+				errorEndIndex = errorStartIndex + 1;
+			}
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				optionIndex, optionIndex + 1,
-				"An #option must only appear inside a *choice or *fake_choice (check that indention is correct)",
-				state);
+				errorStartIndex, errorEndIndex,
+				errorMessage, state);
 			state.callbacks.onParseError(diagnostic);
 			// The match consumes the entire line, so back up the index to just after the "#"
 			sectionParsingGlobalRegex.lastIndex = optionIndex + 1;
