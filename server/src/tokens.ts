@@ -82,7 +82,7 @@ export interface ExpressionToken {
 function functionArgumentType(token: ExpressionToken): ExpressionEvalType {
 	let type: ExpressionEvalType;
 
-	const functionName = token.text.split('(')[0];
+	const functionName = token.text.split('(')[0].trimRight();
 	if (numberFunctionsLookup.has(functionName)) {
 		// Special case length(), which takes a string
 		if (functionName.includes("length")) {
@@ -173,7 +173,7 @@ export function tokenEffectiveType(token: ExpressionToken): ExpressionTokenType 
 	// If we've got a function, find out what its effective type is
 	if (effectiveType == ExpressionTokenType.FunctionAndContents ||
 		effectiveType == ExpressionTokenType.Function) {
-		const functionName = token.text.split('(')[0];
+		const functionName = token.text.split('(')[0].trimRight();
 		if (numberFunctionsLookup.has(functionName)) {
 			effectiveType = ExpressionTokenType.Number;
 		}
@@ -836,7 +836,7 @@ export class Expression {
 		const returnValue = determineEvalType(token);
 
 		// Operators have a valid eval type, but aren't allowed as a single token
-		if (returnValue == ExpressionEvalType.Error || isAnyOperator(token) || !this.validateSingleToken(token)) {
+		if (returnValue == ExpressionEvalType.Error || isAnyOperator(token)) {
 			this.validateErrors.push(this.createTokenError(
 				token, "Not a valid value"
 			));

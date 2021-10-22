@@ -15,6 +15,7 @@ Changes to the plugin.
 - Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)
 - Fixed numerous problems with variables defined in subroutines being flagged as used before they were defined.
 - `*set var &"string"` is no longer flagged as an error. (reported by nocturno)
+- Spaces between a function and its parentheses, such as `not  (var)`, are no longer flagged as an error. (reported by nocturno)
 - Backslashes in parenthesized expressions or multireplaces no longer cause the extension to flag them incorrectly as an error.
 - References in a multireplace test are now handled correctly. (reported by nocturno)
 - Multireplaces with references now have proper syntax highlighting.

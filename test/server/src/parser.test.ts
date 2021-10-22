@@ -2642,7 +2642,7 @@ describe("Parser", () => {
 					expect(received[0].range.end.line).to.equal(60);
 				});
 
-				it("should warn on missing *if statements in front of group sub-options", () => {
+				it("should warn on missing *if statements on a separate line in front of group sub-options", () => {
 					let fakeDocument = createDocument("Line 0\n*fake_choice a b\n\t#One\n\t\t*if (true)\n\t\t\t#SubOne\n\t#Two\n\t\t#SubOne\nEnd");
 					let received: Array<Diagnostic> = [];
 					let fakeCallbacks = Substitute.for<ParserCallbacks>();

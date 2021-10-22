@@ -97,6 +97,16 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
 				});
 
+				it("should be okay with a number function with spaces before its parentheses", () => {
+					let text = "round  (1.2)";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Number);
+				});
+
 				it("should be okay with a boolean", () => {
 					let text = "true";
 					let fakeDocument = createDocument(text);
@@ -109,6 +119,16 @@ describe("Tokenizing", () => {
 
 				it("should be okay with a boolean function", () => {
 					let text = "not(true)";
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.Boolean);
+				});
+
+				it("should be okay with a boolean function with spaces before its parentheses", () => {
+					let text = "not  (true)";
 					let fakeDocument = createDocument(text);
 
 					let expression = new Expression(text, 2, fakeDocument);
