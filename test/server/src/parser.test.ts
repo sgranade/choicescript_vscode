@@ -2478,6 +2478,19 @@ describe("Parser", () => {
 			});
 
 			describe("Choice Groups", () => {
+				it("should not flag allowable choice group names", () => {
+					let fakeDocument = createDocument("Line 0\n*fake_choice g1 g2\n\t#One\n\t\t#Subone\n\t#Two\n\t\t#Subone\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
 				it("should flag bad choice group names", () => {
 					let fakeDocument = createDocument("Line 0\n*choice nope's\n\t#One\n\t\tText\n\t#Two\n\t\tText\nEnd");
 					let received: Array<Diagnostic> = [];

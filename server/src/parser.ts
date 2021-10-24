@@ -1280,7 +1280,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	groupNames = groupNames.filter(elem => elem.trim() !== "");
 	let badGroupNameIndex = -1;
 	for (let i = 0; i < groupNames.length; i++) {
-		if (!/^\w$/.test(groupNames[i])) {
+		if ((/\W/.test(groupNames[i]))) {
 			badGroupNameIndex += 1;
 			badGroupNameIndex += line.substr(badGroupNameIndex).search(groupNames[i]);
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
