@@ -319,41 +319,41 @@ export class Index implements ProjectIndex {
 		this._platformProjectPath = path;
 	}
 	setWordCount(textDocumentUri: string, count: number): void {
-		this._wordCounts.set(normalizeUri(textDocumentUri), count);
+		this._wordCounts.set(textDocumentUri, count);
 	}
 	setGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
-		this._startupFileUri = normalizeUri(textDocumentUri);
+		this._startupFileUri = textDocumentUri;
 		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
 	setLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
-		this._localVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+		this._localVariables.set(textDocumentUri, new CaseInsensitiveMap(newIndex));
 	}
 	setSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
-		this._subroutineLocalVariables.set(normalizeUri(textDocumentUri), new CaseInsensitiveMap(newIndex));
+		this._subroutineLocalVariables.set(textDocumentUri, new CaseInsensitiveMap(newIndex));
 	}
 	setVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
-		this._variableReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
+		this._variableReferences.set(textDocumentUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setSceneList(scenes: Array<string>): void {
 		this._scenes = scenes;
 	}
 	setLabels(textDocumentUri: string, newIndex: LabelIndex): void {
-		this._localLabels.set(normalizeUri(textDocumentUri), new Map(newIndex));
+		this._localLabels.set(textDocumentUri, new Map(newIndex));
 	}
 	setFlowControlEvents(textDocumentUri: string, newIndex: FlowControlEvent[]): void {
-		this._flowControlEvents.set(normalizeUri(textDocumentUri), [...newIndex]);
+		this._flowControlEvents.set(textDocumentUri, [...newIndex]);
 	}
 	setAchievements(newIndex: IdentifierIndex): void {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
 	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
-		this._achievementReferences.set(normalizeUri(textDocumentUri), mapToUnionedCaseInsensitiveMap(newIndex));
+		this._achievementReferences.set(textDocumentUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void {
-		this._documentScopes.set(normalizeUri(textDocumentUri), newScopes);
+		this._documentScopes.set(textDocumentUri, newScopes);
 	}
 	setParseErrors(textDocumentUri: string, errors: Diagnostic[]): void {
-		this._parseErrors.set(normalizeUri(textDocumentUri), [...errors]);
+		this._parseErrors.set(textDocumentUri, [...errors]);
 	}
 	setProjectIsIndexed(isIndexed: boolean): void {
 		this._projectIsIndexed = isIndexed;
@@ -384,37 +384,29 @@ export class Index implements ProjectIndex {
 		return scenes;
 	}
 	getWordCount(sceneUri: string): number | undefined {
+		// Since this is often called as a one-off, leave the normalizeUri() call here.
 		return this._wordCounts.get(normalizeUri(sceneUri));
 	}
 	getGlobalVariables(): ReadonlyIdentifierIndex {
 		return this._globalVariables;
 	}
 	getLocalVariables(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		let index = this._localVariables.get(normalizeUri(sceneUri));
-		if (index === undefined)
-			index = new Map();
+		const index = this._localVariables.get(sceneUri) ?? new Map();
 		return index;
 	}
 	getSubroutineLocalVariables(sceneUri: string): ReadonlyIdentifierIndex {
-		let index = this._subroutineLocalVariables.get(normalizeUri(sceneUri));
-		if (index === undefined)
-			index = new Map();
+		const index = this._subroutineLocalVariables.get(sceneUri) ?? new Map();
 		return index;
 	}
 	getLabels(sceneUri: string): ReadonlyLabelIndex {
-		let index = this._localLabels.get(normalizeUri(sceneUri));
-		if (index === undefined)
-			index = new Map();
+		const index = this._localLabels.get(sceneUri) ?? new Map();
 		return index;
 	}
 	getAchievements(): ReadonlyIdentifierIndex {
 		return this._achievements;
 	}
 	getDocumentAchievementReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		let index = this._achievementReferences.get(normalizeUri(sceneUri));
-		if (index === undefined) {
-			index = new Map();
-		}
+		const index = this._achievementReferences.get(sceneUri) ?? new Map();
 		return index;
 	}
 	getAchievementReferences(achievement: string): ReadonlyArray<Location> {
@@ -427,10 +419,7 @@ export class Index implements ProjectIndex {
 		return locations;
 	}
 	getDocumentVariableReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		let index = this._variableReferences.get(normalizeUri(sceneUri));
-		if (index === undefined) {
-			index = new Map();
-		}
+		const index = this._variableReferences.get(sceneUri) ?? new Map();
 		return index;
 	}
 	getVariableReferences(variable: string): ReadonlyArray<Location> {
@@ -443,10 +432,7 @@ export class Index implements ProjectIndex {
 		return locations;
 	}
 	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent> {
-		let index = this._flowControlEvents.get(normalizeUri(sceneUri));
-		if (index === undefined) {
-			index = [];
-		}
+		const index = this._flowControlEvents.get(sceneUri) ?? [];
 		return index;
 	}
 	getLabelReferences(label: string): ReadonlyArray<Location> {
@@ -465,7 +451,7 @@ export class Index implements ProjectIndex {
 		return locations;
 	}
 	getDocumentScopes(textDocumentUri: string): DocumentScopes {
-		let scopes = this._documentScopes.get(normalizeUri(textDocumentUri));
+		let scopes = this._documentScopes.get(textDocumentUri);
 		if (scopes === undefined) {
 			scopes = {
 				achievementVarScopes: [],
@@ -476,9 +462,7 @@ export class Index implements ProjectIndex {
 		return scopes;
 	}
 	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic> {
-		let errors = this._parseErrors.get(normalizeUri(textDocumentUri));
-		if (errors === undefined)
-			errors = [];
+		const errors = this._parseErrors.get(textDocumentUri) ?? [];
 		return errors;
 	}
 	removeDocument(textDocumentUri: string): void {

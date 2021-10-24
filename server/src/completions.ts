@@ -10,7 +10,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
-import { extractToMatchingDelimiter, comparePositions, positionInRange, iteratorMap, iteratorFilter } from './utilities';
+import { extractToMatchingDelimiter, comparePositions, normalizeUri, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
 function generateCompletionsFromArray(array: ReadonlyArray<string>,
 	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
@@ -31,10 +31,17 @@ function generateCompletionsFromIndex(
 	})));
 }
 
-function generateVariableCompletions(document: TextDocument, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
+/**
+ * Generate completions for variables.
+ * @param documentUri Document URI. (Normalize before calling!)
+ * @param position Cursor position in the document.
+ * @param projectIndex Index of project contents.
+ * @returns Completion items.
+ */
+function generateVariableCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	// Only offer local variables that have been created, taking into account subroutine-defined variables
-	const localVariables = new Map(projectIndex.getLocalVariables(document.uri));
-	for (const [variable, location] of projectIndex.getSubroutineLocalVariables(document.uri).entries()) {
+	const localVariables = new Map(projectIndex.getLocalVariables(documentUri));
+	for (const [variable, location] of projectIndex.getSubroutineLocalVariables(documentUri).entries()) {
 		const existingLocations = Array.from(localVariables.get(variable) ?? []);
 		existingLocations.push(location);
 		localVariables.set(variable, existingLocations);
@@ -61,7 +68,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 	}))));
 
 	let includeAchievements = false;
-	for (const scope of projectIndex.getDocumentScopes(document.uri).achievementVarScopes) {
+	for (const scope of projectIndex.getDocumentScopes(documentUri).achievementVarScopes) {
 		if (positionInRange(position, scope)) {
 			includeAchievements = true;
 			break;
@@ -80,6 +87,7 @@ function generateVariableCompletions(document: TextDocument, position: Position,
 }
 
 export function generateInitialCompletions(document: TextDocument, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
+	const documentUri = normalizeUri(document.uri);
 	let completions: CompletionItem[] = [];
 
 	// Find out what trigger character started this by loading the document and scanning backwards
@@ -106,7 +114,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			if (tokens.length == 1) {
 				completions = [...validCommandsCompletions];  // makin' copies
 				// Add in startup-only commands if valid
-				if (uriIsStartupFile(document.uri)) {
+				if (uriIsStartupFile(documentUri)) {
 					completions.push(...startupCommandsCompletions);
 				}
 			}
@@ -115,20 +123,20 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "gosub":
 						// Complete variables
 						if (tokens.length > 2) {
-							completions = generateVariableCompletions(document, position, projectIndex);
+							completions = generateVariableCompletions(documentUri, position, projectIndex);
 							break;
 						}
 						// Fall through to the goto
 					case "goto":
 						if (tokens.length == 2) {
-							completions = generateCompletionsFromIndex(projectIndex.getLabels(document.uri), CompletionItemKind.Reference, "labels-local");
+							completions = generateCompletionsFromIndex(projectIndex.getLabels(documentUri), CompletionItemKind.Reference, "labels-local");
 						}
 						break;
 
 					case "gosub_scene":
 						// Complete variables
 						if (tokens.length > 3) {
-							completions = generateVariableCompletions(document, position, projectIndex);
+							completions = generateVariableCompletions(documentUri, position, projectIndex);
 							break;
 						}
 						// Fall through to the goto_scene
@@ -158,13 +166,13 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 					case "elseif":
 					case "elsif":
 					case "rand":
-						completions = generateVariableCompletions(document, position, projectIndex);
+						completions = generateVariableCompletions(documentUri, position, projectIndex);
 						break;
 
 					case "create":
 					case "temp":
 						if (tokens.length > 2) {
-							completions = generateVariableCompletions(document, position, projectIndex);
+							completions = generateVariableCompletions(documentUri, position, projectIndex);
 						}
 						break;
 
@@ -210,7 +218,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			}
 
 			if (returnVariableCompletions)
-				completions = generateVariableCompletions(document, position, projectIndex);
+				completions = generateVariableCompletions(documentUri, position, projectIndex);
 		}
 	}
 	return completions;

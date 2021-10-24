@@ -3,11 +3,14 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from './index';
 import { uriIsStartupFile } from './language';
+import { normalizeUri } from './utilities';
 
 
 export function generateSymbols(textDocument: TextDocument, projectIndex: ProjectIndex): SymbolInformation[] {
+	const uri = normalizeUri(textDocument.uri);
+
 	// Generate label locations
-	const info = Array.from(projectIndex.getLabels(textDocument.uri).values()).map((label): SymbolInformation => {
+	const info = Array.from(projectIndex.getLabels(uri).values()).map((label): SymbolInformation => {
 		if (label.scope !== undefined) {
 			return {
 				name: label.label,
@@ -27,7 +30,7 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 		}
 	});
 
-	info.push(...projectIndex.getDocumentScopes(textDocument.uri).choiceScopes.map((scope): SymbolInformation => {
+	info.push(...projectIndex.getDocumentScopes(uri).choiceScopes.map((scope): SymbolInformation => {
 		return {
 			name: `${scope.summary}`,
 			kind: SymbolKind.Function,
@@ -38,7 +41,7 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 		};
 	}));
 
-	for (const [variable, locations] of projectIndex.getLocalVariables(textDocument.uri)) {
+	for (const [variable, locations] of projectIndex.getLocalVariables(uri)) {
 		for (const location of locations) {
 			info.push({
 				name: variable,
@@ -48,7 +51,7 @@ export function generateSymbols(textDocument: TextDocument, projectIndex: Projec
 		}
 	}
 
-	if (uriIsStartupFile(textDocument.uri)) {
+	if (uriIsStartupFile(uri)) {
 		info.push(...Array.from(projectIndex.getGlobalVariables()).map(([variable, location]): SymbolInformation => {
 			return {
 				name: variable,

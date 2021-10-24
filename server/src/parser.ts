@@ -41,7 +41,8 @@ import {
 	readNextNonblankLine,
 	NewLine,
 	summarize,
-	extractToMatchingIndent
+	extractToMatchingIndent,
+	normalizeUri
 } from './utilities';
 import { SummaryScope } from '.';
 
@@ -87,6 +88,10 @@ export class ParsingState {
 	 */
 	textDocument: TextDocument;
 	/**
+	 * Document's normalized URI.
+	 */
+	textDocumentUri: string;
+	/**
 	 * Global offset into textDocument of the section being parsed
 	 */
 	sectionGlobalIndex: number;
@@ -109,6 +114,7 @@ export class ParsingState {
 
 	constructor(textDocument: TextDocument, callbacks: ParserCallbacks) {
 		this.textDocument = textDocument;
+		this.textDocumentUri = normalizeUri(textDocument.uri);
 		this.sectionGlobalIndex = 0;
 		this.callbacks = callbacks;
 		this.createdTempVariables = false;
@@ -203,7 +209,7 @@ function createParsingDiagnostic(severity: DiagnosticSeverity, start: number, en
  * @param state Parsing state.
  */
 function createParsingLocation(start: number, end: number, state: ParsingState): Location {
-	return Location.create(state.textDocument.uri, Range.create(
+	return Location.create(state.textDocumentUri, Range.create(
 		parsingPositionAt(start, state), parsingPositionAt(end, state)
 	));
 }
@@ -732,7 +738,7 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				// *create instantiates global variables
 				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
 				// Warn about using *create after *temp in startup.txt
-				if (state.createdTempVariables && uriIsStartupFile(state.textDocument.uri)) {
+				if (state.createdTempVariables && uriIsStartupFile(state.textDocumentUri)) {
 					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 						commandSectionIndex, commandSectionIndex + command.length,
 						"Must come before any *temp commands", state);
@@ -1445,7 +1451,7 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
 	const range = Range.create(
 		startPosition, endPosition
 	);
-	const location = Location.create(state.textDocument.uri, range);
+	const location = Location.create(state.textDocumentUri, range);
 	state.callbacks.onSceneDefinition(sceneList, location, state);
 }
 
@@ -1893,7 +1899,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		return endParseIndex;  // Short-circuit: Nothing more to be done
 	}
 
-	if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocument.uri)) {
+	if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocumentUri)) {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			commandSectionIndex, commandSectionIndex + command.length,
 			`Command *${command} can only be used in startup.txt.`, state);

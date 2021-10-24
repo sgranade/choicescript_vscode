@@ -16,7 +16,7 @@ import {
 	optionPattern,
 	multiStartPattern
 } from './language';
-import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange } from './utilities';
+import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange, normalizeUri } from './utilities';
 import { tokenizeMultireplace } from './tokens';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
@@ -46,6 +46,10 @@ class ValidationState {
 	 */
 	textDocument: TextDocument;
 	/**
+	 * Normalized URI for the document.
+	 */
+	textDocumentUri: string;
+	/**
 	 * Validation settings
 	 */
 	validationSettings: ValidationSettings;
@@ -57,6 +61,7 @@ class ValidationState {
 	constructor(projectIndex: ProjectIndex, textDocument: TextDocument, validationSettings: ValidationSettings) {
 		this.projectIndex = projectIndex;
 		this.textDocument = textDocument;
+		this.textDocumentUri = normalizeUri(textDocument.uri);
 		this.validationSettings = validationSettings;
 		this.text = textDocument.getText();
 	}
@@ -83,7 +88,7 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 		}
 	}
 	// Check variable names and make sure no local variables have the same name as global ones or are repeated
-	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocument.uri).entries()) {
+	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocumentUri).entries()) {
 		if (!startsWithLetterRegex.test(variable)) {
 			for (const location of locations) {
 				diagnostics.push(createDiagnosticFromLocation(
@@ -139,7 +144,7 @@ function validateLabelReference(
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (!(label !== undefined && label[0] == '{') && (scene === undefined || scene[0] != '{')) {
-		const labelLocation = findLabelLocation(label, scene, state.textDocument, state.projectIndex);
+		const labelLocation = findLabelLocation(label, scene, state.textDocumentUri, state.projectIndex);
 
 		if (labelLocation === undefined) {
 			diagnostic = createDiagnosticFromLocation(
@@ -182,14 +187,14 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 	const projectIsIndexed = state.projectIndex.projectIsIndexed();
 
 	// Validate references
-	const references = state.projectIndex.getDocumentVariableReferences(state.textDocument.uri);
+	const references = state.projectIndex.getDocumentVariableReferences(state.textDocumentUri);
 	let whereDefined = "in this file";
-	if (!uriIsStartupFile(state.textDocument.uri)) {
+	if (!uriIsStartupFile(state.textDocumentUri)) {
 		whereDefined += " or startup.txt";
 	}
 	for (const [variable, locations] of references.entries()) {
 		// Effective creation locations take precedence
-		const creationLocations = findVariableCreationLocations(variable, true, state.textDocument, state.projectIndex);
+		const creationLocations = findVariableCreationLocations(variable, true, state.textDocumentUri, state.projectIndex);
 
 		if (creationLocations !== undefined && creationLocations !== null) {
 			// Make sure we don't reference variables before they're created
@@ -205,7 +210,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			if (badLocations.length > 0) {
 				// Handle the edge case where a local variable is referenced before it's created,
 				// but there's a global variable with the same name
-				if (uriIsStartupFile(state.textDocument.uri) || !state.projectIndex.getGlobalVariables().has(variable)) {
+				if (uriIsStartupFile(state.textDocumentUri) || !state.projectIndex.getGlobalVariables().has(variable)) {
 					const newDiagnostics = badLocations.map((location: Location): Diagnostic => {
 						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
 							`Variable "${variable}" used before it was created`);
@@ -215,7 +220,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 			}
 		}
 		else if (!builtinVariablesLookup.has(variable) && projectIsIndexed) {
-			const scopes = state.projectIndex.getDocumentScopes(state.textDocument.uri);
+			const scopes = state.projectIndex.getDocumentScopes(state.textDocumentUri);
 			let trimmedLocations = locations;
 
 			// Get rid of any variables that are legal achievement variables
@@ -255,7 +260,7 @@ function validateFlowControlEvents(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 	const projectIsIndexed = state.projectIndex.projectIsIndexed();
 
-	for (const event of state.projectIndex.getFlowControlEvents(state.textDocument.uri)) {
+	for (const event of state.projectIndex.getFlowControlEvents(state.textDocumentUri)) {
 		if (event.scene != "" && event.sceneLocation !== undefined) {
 			// We can only validate flow control events that reference another scene once the full project's been indexed
 			if (projectIsIndexed) {
@@ -482,6 +487,8 @@ function validateIndents(state: ValidationState): Diagnostic[] {
 	return diagnostics;
 }
 
+const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');
+
 /**
  * Validate a text file and generate diagnostics against it.
  * 
@@ -493,7 +500,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	const state = new ValidationState(projectIndex, textDocument, validationSettings);
 
 	// Start with parse errors
-	const diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(textDocument.uri)];
+	const diagnostics: Diagnostic[] = [...projectIndex.getParseErrors(state.textDocumentUri)];
 
 	// Validate variable creations
 	diagnostics.push(...validateVariables(state));
@@ -508,7 +515,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateIndents(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
-	const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');
+	matchPattern.lastIndex = 0;
 	let m: RegExpExecArray | null;
 
 	while ((m = matchPattern.exec(state.text))) {

@@ -3,7 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
 import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
-import { createDiagnosticFromLocation, comparePositions } from './utilities';
+import { createDiagnosticFromLocation, comparePositions, normalizeUri } from './utilities';
 
 /**
  * Captures information about the current state of indexing
@@ -191,10 +191,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onVariableReference: (symbol: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-			// My kingdom for the nullish coalescing operator
-			let referenceArray: Array<Location> | undefined = indexingState.variableReferences.get(symbol);
-			if (referenceArray === undefined)
-				referenceArray = [];
+			const referenceArray: Array<Location> = indexingState.variableReferences.get(symbol) ?? [];
 			referenceArray.push(location);
 			indexingState.variableReferences.set(symbol, referenceArray);
 		},
@@ -257,21 +254,22 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	const scopes = generateScopes(indexingState);
 	const subroutineVariables = findSubroutineVariables(indexingState);
 
+	const uri = normalizeUri(textDocument.uri);
 	if (isStartupFile) {
-		index.setGlobalVariables(textDocument.uri, indexingState.globalVariables);
+		index.setGlobalVariables(uri, indexingState.globalVariables);
 		index.setSceneList(indexingState.scenes);
 		index.setAchievements(indexingState.achievements);
 	}
 	if (isChoicescriptStatsFile) {
 		index.setHasChoicescriptStats(true);
 	}
-	index.setWordCount(textDocument.uri, wordCount);
-	index.setLocalVariables(textDocument.uri, indexingState.localVariables);
-	index.setSubroutineLocalVariables(textDocument.uri, subroutineVariables);
-	index.setVariableReferences(textDocument.uri, indexingState.variableReferences);
-	index.setLabels(textDocument.uri, indexingState.labels);
-	index.setAchievementReferences(textDocument.uri, indexingState.achievementReferences);
-	index.setDocumentScopes(textDocument.uri, scopes);
-	index.setFlowControlEvents(textDocument.uri, indexingState.flowControlEvents);
-	index.setParseErrors(textDocument.uri, indexingState.parseErrors);
+	index.setWordCount(uri, wordCount);
+	index.setLocalVariables(uri, indexingState.localVariables);
+	index.setSubroutineLocalVariables(uri, subroutineVariables);
+	index.setVariableReferences(uri, indexingState.variableReferences);
+	index.setLabels(uri, indexingState.labels);
+	index.setAchievementReferences(uri, indexingState.achievementReferences);
+	index.setDocumentScopes(uri, scopes);
+	index.setFlowControlEvents(uri, indexingState.flowControlEvents);
+	index.setParseErrors(uri, indexingState.parseErrors);
 }

@@ -30,6 +30,7 @@ import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { countWords } from './parser';
 import { generateSymbols } from './structure';
+import { normalizeUri } from './utilities';
 
 /**
  * Server event arguments about an updated word count in a document.
@@ -242,7 +243,7 @@ connection.onDefinition(
 	(textDocumentPosition: TextDocumentPositionParams): Definition | undefined => {
 		const document = documents.get(textDocumentPosition.textDocument.uri);
 		if (document !== undefined) {
-			const definitionAndLocations = findDefinitions(document, textDocumentPosition.position, projectIndex);
+			const definitionAndLocations = findDefinitions(normalizeUri(document.uri), textDocumentPosition.position, projectIndex);
 			if (definitionAndLocations !== undefined) {
 				return definitionAndLocations[0].location;
 			}
@@ -257,7 +258,7 @@ connection.onReferences(
 		if (document === undefined) {
 			return undefined;
 		}
-		const references = findReferences(document, referencesParams.position, referencesParams.context, projectIndex);
+		const references = findReferences(normalizeUri(document.uri), referencesParams.position, referencesParams.context, projectIndex);
 		return references?.map(reference => { return reference.location; });
 	}
 );
@@ -268,7 +269,7 @@ connection.onRenameRequest(
 		if (document === undefined) {
 			return null;
 		}
-		return generateRenames(document, renameParams.position, renameParams.newName, projectIndex);
+		return generateRenames(normalizeUri(document.uri), renameParams.position, renameParams.newName, projectIndex);
 	}
 );
 
