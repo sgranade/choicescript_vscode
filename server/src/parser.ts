@@ -1786,7 +1786,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 			if (secondToken != "") {
 				// Parse the second token if necessary
 				if (secondToken[0] == '{') {
-					parseExpression(secondToken.slice(1, -1), lineSectionIndex + secondTokenLocalIndex + 1, state);
+					parseExpression(secondToken.slice(1, -1), state.sectionGlobalIndex + lineSectionIndex + secondTokenLocalIndex + 1, state);
 				}
 				label = secondToken;
 				const labelIndex = lineSectionIndex + secondTokenLocalIndex;
