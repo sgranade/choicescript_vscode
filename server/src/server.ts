@@ -60,6 +60,17 @@ const validationSettings: ValidationSettings = {
 	useCoGStyleGuide: true
 };
 
+// Queue of documents whose content has changed and who need to be updated
+const changedDocuments: Map<string, TextDocument> = new Map();
+// Heartbeat ID
+let heartbeatId: NodeJS.Timer | undefined = undefined;
+// How often to update the documents in the queue, in ms
+const heartbeatDelay = 200;
+// Minimum heartbeat delay, in ms
+const minHeartbeatDelay = 50;
+// Last queue update time
+let lastHeartbeatTime = -1;
+
 connection.onInitialize((params: InitializeParams) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 	const syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full;
 	return {
@@ -94,6 +105,14 @@ connection.onInitialized(() => {
 	connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
 	connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
 	connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
+
+	heartbeatId = setInterval(processQueue, heartbeatDelay);
+});
+
+connection.onShutdown(() => {
+	if (heartbeatId !== undefined) {
+		clearInterval(heartbeatId);
+	}
 });
 
 function findStartupFiles(workspaces: WorkspaceFolder[]): void {
@@ -183,22 +202,58 @@ documents.onDidOpen(e => {
 
 // A document has been opened or its content has been changed.
 documents.onDidChangeContent(change => {
-	const isStartupFile = uriIsStartupFile(change.document.uri);
+	// Put the document on the queue for later processing (so we don't DDOS via updates)
+	changedDocuments.set(normalizeUri(change.document.uri), change.document);
+});
+
+// Process the queue of documents that have changed
+function processQueue() {
+	if (Date.now() - lastHeartbeatTime < minHeartbeatDelay) {
+		return;
+	}
+
+	try {
+		const processingQueue = new Map(changedDocuments);
+		changedDocuments.clear();
+		let processedStartupFile = false;
+	
+		for (const [uri, document] of processingQueue) {
+			processChangedDocument(document);
+			if (uriIsStartupFile(uri)) {
+				processedStartupFile = true;
+			}
+		}
+	
+		// If we processed a startup file, which defines global variables,
+		// re-validate all files & notify that scene files may have changed
+		if (processedStartupFile) {
+			// Since the startup file defines global variables, if it changes, re-validate all other files & notify that scene files may have changed
+			notifyUpdatedProjectFiles();
+			documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+		}
+		else {
+			for (const document of processingQueue.values()) {
+				validateTextDocument(document, projectIndex);
+			}
+		}
+	}
+	finally {
+		lastHeartbeatTime = Date.now();
+	}
+}
+
+/**
+ * Process a document whose content has changed.
+ */
+function processChangedDocument(document: TextDocument) {
+	const isStartupFile = uriIsStartupFile(document.uri);
 
 	updateProjectIndex(
-		change.document, isStartupFile, uriIsChoicescriptStatsFile(change.document.uri), projectIndex
+		document, isStartupFile, uriIsChoicescriptStatsFile(document.uri), projectIndex
 	);
 
-	notifyChangedWordCount(change.document);
-	if (isStartupFile) {
-		// Since the startup file defines global variables, if it changes, re-validate all other files & notify that scene files may have changed
-		notifyUpdatedProjectFiles();
-		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
-	}
-	else {
-		validateTextDocument(change.document, projectIndex);
-	}
-});
+	notifyChangedWordCount(document);
+}
 
 /**
  * Notify the client about a document's word count.
