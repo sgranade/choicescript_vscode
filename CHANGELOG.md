@@ -8,6 +8,7 @@ Changes to the plugin.
 
 - A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
 - Added support for [nested choices](https://choicescriptdev.fandom.com/wiki/Choice#Nested_choices).
+- The extension doesn't get behind like it used to on 30k+ word chapters.
 
 ### Fixed
 

@@ -170,9 +170,9 @@ export interface ProjectIndex {
 	 */
 	setProjectIsIndexed(isIndexed: boolean): void;
 	/**
-	 * Set whether or not the project has a choicescript_stats.txt scene.
+	 * Set whether or not the project has a choicescript_stats.txt file.
 	 * 
-	 * This is needed because that file isn't listed in the startup.txt scene list.
+	 * This is needed because that file isn't necessarily listed in the startup.txt scene list.
 	 * @param hasChoicescriptStats True if project has a choicescript_stats.txt scene.
 	 */
 	setHasChoicescriptStats(hasChoicescriptStats: boolean): void;
@@ -184,6 +184,10 @@ export interface ProjectIndex {
 	 * Get whether or not the project has been fully indexed.
 	 */
 	projectIsIndexed(): boolean;
+	/**
+	 * Get whether or not the project has a choicescripts_stats.txt file.
+	 */
+	hasChoicescriptStats(): boolean;
 	/**
 	 * Get the platform (as opposed to workspace) path to the project.
 	 */
@@ -366,6 +370,9 @@ export class Index implements ProjectIndex {
 	}
 	projectIsIndexed(): boolean {
 		return this._projectIsIndexed;
+	}
+	hasChoicescriptStats(): boolean {
+		return this._hasChoicescriptStats;
 	}
 	getPlatformProjectPath(): string {
 		return this._platformProjectPath;

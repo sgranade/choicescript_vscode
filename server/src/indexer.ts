@@ -256,12 +256,27 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	const uri = normalizeUri(textDocument.uri);
 	if (isStartupFile) {
+		// If the startup scene isn't in the scenes list, force add it
+		// (This seems hinky, but if the file is a startup file, it ergo exists. CS is
+		// quite happy to let you omit startup from the list of scenes and still run).
+		// Same with the stats
+		if (!indexingState.scenes.includes('startup')) {
+			indexingState.scenes.push('startup');
+		}
+		if (index.hasChoicescriptStats() && !indexingState.scenes.includes('choicescript_stats')) {
+			indexingState.scenes.push('choicescript_stats');
+		}
 		index.setGlobalVariables(uri, indexingState.globalVariables);
 		index.setSceneList(indexingState.scenes);
 		index.setAchievements(indexingState.achievements);
 	}
 	if (isChoicescriptStatsFile) {
 		index.setHasChoicescriptStats(true);
+		const sceneList = [...index.getSceneList()];
+		if (!sceneList.includes('choicescript_stats')) {
+			sceneList.push('choicescript_stats');
+			index.setSceneList(sceneList);
+		}
 	}
 	index.setWordCount(uri, wordCount);
 	index.setLocalVariables(uri, indexingState.localVariables);

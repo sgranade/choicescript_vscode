@@ -265,14 +265,73 @@ describe("Indexer", () => {
 
 	describe("Scene Indexing", () => {
 		it("should index scenes in startup files", () => {
+			let fakeDocument = createDocument("*scene_list\n\tstartup\n\tscene-1\n\tscene-2\n");
+			let receivedScenes: Array<Array<string>> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.hasChoicescriptStats().returns(false);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(receivedScenes).to.eql([['startup', 'scene-1', 'scene-2']]);
+		});
+
+		it("should include the startup scene even if it's not listed in the startup file", () => {
 			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
 			let receivedScenes: Array<Array<string>> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.hasChoicescriptStats().returns(false);
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
-			expect(receivedScenes).to.eql([['scene-1', 'scene-2']]);
+			expect(receivedScenes).to.eql([['scene-1', 'scene-2', 'startup']]);
+		});
+
+		it("should include the choicescript_stats scene even if it's not listed in the startup file", () => {
+			let fakeDocument = createDocument("*scene_list\n\tscene-1\n\tscene-2\n");
+			let receivedScenes: Array<Array<string>> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.hasChoicescriptStats().returns(true);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(receivedScenes).to.eql([['scene-1', 'scene-2', 'startup', 'choicescript_stats']]);
+		});
+
+		it("should set the hasChoicescriptStats flag if it indexes a choicescript_stats scene", () => {
+			let fakeDocument = createDocument("*comment\n");
+			let receivedScenes: Array<Array<string>> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.getSceneList().returns([]);
+
+			updateProjectIndex(fakeDocument, false, true, fakeIndex);
+
+			fakeIndex.received(1).setHasChoicescriptStats(true);
+		});
+
+		it("should add the choicescript_stats scene to the scene list even if it's not listed in the startup file", () => {
+			let fakeDocument = createDocument("*comment\n");
+			let receivedScenes: Array<Array<string>> = [];
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.setSceneList(Arg.any()).mimicks((scenes: string[]) => { receivedScenes.push(scenes); });
+			fakeIndex.getSceneList().returns(['old_scene']);
+
+			updateProjectIndex(fakeDocument, false, true, fakeIndex);
+
+			expect(receivedScenes).to.eql([['old_scene', 'choicescript_stats']]);
+		});
+
+		it("should not add the choicescript_stats scene to the scene list if it's already listed in the startup file", () => {
+			let fakeDocument = createDocument("*comment\n");
+			let fakeIndex = Substitute.for<ProjectIndex>();
+			fakeIndex.getSceneList().returns(['choicescript_stats', 'old_scene']);
+
+			updateProjectIndex(fakeDocument, false, true, fakeIndex);
+
+			fakeIndex.didNotReceive().setSceneList;
 		});
 	});
 
@@ -282,6 +341,7 @@ describe("Indexer", () => {
 			let receivedCalls: Array<boolean> = [];
 			let fakeIndex = Substitute.for<ProjectIndex>();
 			fakeIndex.setHasChoicescriptStats(Arg.any()).mimicks((canHas: boolean) => { receivedCalls.push(canHas); })
+			fakeIndex.getSceneList().returns([]);
 
 			updateProjectIndex(fakeDocument, false, true, fakeIndex);
 
