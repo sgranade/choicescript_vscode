@@ -62,6 +62,10 @@ const validationSettings: ValidationSettings = {
 
 // Queue of documents whose content has changed and who need to be updated
 const changedDocuments: Map<string, TextDocument> = new Map();
+// Queue of possibly new scenes that need to be indexed
+const newScenes: Set<string> = new Set();
+// Have we changed documents and need to notify and re-validate during our heartbeat routine?
+let documentsHaveChanged = false;
 // Heartbeat ID
 let heartbeatId: NodeJS.Timer | undefined = undefined;
 // How often to update the documents in the queue, in ms
@@ -140,23 +144,28 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		await indexFile(filePath);
 
 		// Try to index the stats page (which might not exist)
-		await indexFile(projectPath+"/choicescript_stats.txt");
+		await indexFile(path.join(projectPath, "/choicescript_stats.txt"));
 
-		const scenes = projectIndex.getSceneList();
+		const scenes = projectIndex.getAllReferencedScenes();
 		if (scenes !== undefined) {
 			// Try to index all of the scene files
-			const scenePaths = projectIndex.getSceneList().map(name => projectPath+"/"+name+".txt");
-			const promises = scenePaths.map(x => indexFile(x));
-			await Promise.all(promises);
+			await indexScenes(scenes);
 		}
 
 		projectIndex.setProjectIsIndexed(true);
-
-		notifyUpdatedProjectFiles();
-
-		// Revalidate all open text documents
-		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+		documentsHaveChanged = true;
 	});
+}
+
+/**
+ * Index a list of scenes by name.
+ * @param sceneNames List of scene names to index.
+ */
+async function indexScenes(sceneNames: readonly string[]) {
+	const platformProjectPath = projectIndex.getPlatformProjectPath();
+	const scenePaths = sceneNames.map(name => path.join(platformProjectPath, name+".txt"));
+	const promises = scenePaths.map(x => indexFile(x));
+	await Promise.all(promises);
 }
 
 /**
@@ -173,7 +182,9 @@ async function indexFile(path: string): Promise<boolean> {
 		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
 		updateProjectIndex(
 			textDocument, uriIsStartupFile(fileUri), uriIsChoicescriptStatsFile(fileUri), projectIndex
-		);
+		).forEach(newScene => {
+			newScenes.add(newScene);
+		});
 		return true;
 	}
 	catch (err) {
@@ -192,7 +203,9 @@ documents.onDidOpen(e => {
 
 	updateProjectIndex(
 		e.document, isStartupFile, uriIsChoicescriptStatsFile(e.document.uri), projectIndex
-	);
+	).forEach(newScene => {
+		newScenes.add(newScene);
+	});
 	
 	notifyChangedWordCount(e.document);
 	if (isStartupFile) {
@@ -206,13 +219,17 @@ documents.onDidChangeContent(change => {
 	changedDocuments.set(normalizeUri(change.document.uri), change.document);
 });
 
-// Process the queue of documents that have changed
-function processQueue() {
+/**
+ * Process the queue of documents that have changed, new-to-us scenes, 
+ * and any required re-validation.
+ */
+async function processQueue() {
 	if (Date.now() - lastHeartbeatTime < minHeartbeatDelay) {
 		return;
 	}
 
 	try {
+		// Process changed documents
 		const processingQueue = new Map(changedDocuments);
 		changedDocuments.clear();
 		let processedStartupFile = false;
@@ -228,13 +245,25 @@ function processQueue() {
 		// re-validate all files & notify that scene files may have changed
 		if (processedStartupFile) {
 			// Since the startup file defines global variables, if it changes, re-validate all other files & notify that scene files may have changed
-			notifyUpdatedProjectFiles();
-			documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+			documentsHaveChanged = true;
 		}
 		else {
 			for (const document of processingQueue.values()) {
 				validateTextDocument(document, projectIndex);
 			}
+		}
+
+		// Index new scenes
+		if (newScenes.size > 0) {
+			const scenes = [...newScenes.keys()];
+			newScenes.clear();
+			await indexScenes(scenes);
+		}
+
+		if (documentsHaveChanged) {
+			documentsHaveChanged = false;
+			notifyUpdatedProjectFiles();
+			documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 		}
 	}
 	finally {
@@ -246,11 +275,11 @@ function processQueue() {
  * Process a document whose content has changed.
  */
 function processChangedDocument(document: TextDocument) {
-	const isStartupFile = uriIsStartupFile(document.uri);
-
 	updateProjectIndex(
-		document, isStartupFile, uriIsChoicescriptStatsFile(document.uri), projectIndex
-	);
+		document, uriIsStartupFile(document.uri), uriIsChoicescriptStatsFile(document.uri), projectIndex
+	).forEach(newScene => {
+		newScenes.add(newScene);
+	});
 
 	notifyChangedWordCount(document);
 }
@@ -273,7 +302,7 @@ function notifyChangedWordCount(document: TextDocument): void {
  */
 function notifyUpdatedProjectFiles(): void {
 	const platformProjectPath = projectIndex.getPlatformProjectPath();
-	const projectFiles = projectIndex.getSceneList().map(
+	const projectFiles = projectIndex.getIndexedScenes().map(
 		name => path.join(platformProjectPath, name+".txt")
 	);
 	connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles);

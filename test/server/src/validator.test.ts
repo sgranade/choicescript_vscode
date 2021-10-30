@@ -92,6 +92,7 @@ function createIndex({
 	});
 	fakeIndex.getSceneUri(Arg.any()).returns(sceneFileUri);
 	fakeIndex.getSceneList().returns(sceneList);
+	fakeIndex.getIndexedScenes().returns(sceneList);
 	if (labelsUri === undefined) {
 		fakeIndex.getLabels(Arg.any()).returns(labels);
 	}

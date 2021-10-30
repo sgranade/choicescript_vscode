@@ -142,7 +142,7 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 						// Fall through to the goto_scene
 					case "goto_scene":
 						if (tokens.length == 2) {
-							completions = generateCompletionsFromArray(projectIndex.getSceneList(), CompletionItemKind.Reference, "scenes");
+							completions = generateCompletionsFromArray(projectIndex.getIndexedScenes(), CompletionItemKind.Reference, "scenes");
 							// Scene names can contain "-", which messes up autocomplete because a dash isn't a word character
 							// Get around that by specifying the replacement range if needed
 							if (tokens[1].includes("-")) {

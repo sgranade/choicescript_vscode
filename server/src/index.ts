@@ -1,3 +1,4 @@
+import path = require('path');
 import { Location, Range, Diagnostic } from 'vscode-languageserver/node';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
@@ -185,6 +186,10 @@ export interface ProjectIndex {
 	 */
 	projectIsIndexed(): boolean;
 	/**
+	 * Get all indexed scene names.
+	 */
+	getIndexedScenes(): ReadonlyArray<string>;
+	/**
 	 * Get whether or not the project has a choicescripts_stats.txt file.
 	 */
 	hasChoicescriptStats(): boolean;
@@ -198,7 +203,7 @@ export interface ProjectIndex {
 	 */
 	getSceneUri(scene: string): string | undefined;
 	/**
-	 * Get list of scenes in the project.
+	 * Get list of scenes in the startup file.
 	 */
 	getSceneList(): ReadonlyArray<string>;
 	/**
@@ -259,6 +264,10 @@ export interface ProjectIndex {
 	 * @param sceneUri Scene document URI.
 	 */
 	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent>;
+	/**
+	 * Get all scenes listed in the scene list or referenced by flow control events project-wide.
+	 */
+	getAllReferencedScenes(): ReadonlyArray<string>;
 	/**
 	 * Get all references to a label.
 	 * @param label Label.
@@ -371,6 +380,20 @@ export class Index implements ProjectIndex {
 	projectIsIndexed(): boolean {
 		return this._projectIsIndexed;
 	}
+	getIndexedScenes(): ReadonlyArray<string> {
+		const sceneUris = [...new Set([
+			...this._wordCounts.keys(),
+			...this._localVariables.keys(),
+			...this._subroutineLocalVariables.keys(),
+			...this._variableReferences.keys(),
+			...this._localLabels.keys(),
+			...this._achievementReferences.keys(),
+			...this._documentScopes.keys(),
+			...this._flowControlEvents.keys(),
+			...this._parseErrors.keys(),
+		])];
+		return sceneUris.map(uri => { return path.basename(uri, '.txt'); });
+	}
 	hasChoicescriptStats(): boolean {
 		return this._hasChoicescriptStats;
 	}
@@ -384,11 +407,7 @@ export class Index implements ProjectIndex {
 		return this._startupFileUri.replace('startup', scene);
 	}
 	getSceneList(): ReadonlyArray<string> {
-		const scenes = Array.from(this._scenes);
-		if (this._hasChoicescriptStats) {
-			scenes.push("choicescript_stats");
-		}
-		return scenes;
+		return Array.from(this._scenes);
 	}
 	getWordCount(sceneUri: string): number | undefined {
 		// Since this is often called as a one-off, leave the normalizeUri() call here.
@@ -441,6 +460,17 @@ export class Index implements ProjectIndex {
 	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent> {
 		const index = this._flowControlEvents.get(sceneUri) ?? [];
 		return index;
+	}
+	getAllReferencedScenes(): ReadonlyArray<string> {
+		const scenes: string[] = [...this.getSceneList()];
+
+		for (const events of this._flowControlEvents.values()) {
+			scenes.push(...events.filter(event => {
+				return event.command.endsWith("_scene") && event.scene != "" && !event.scene.startsWith("{");
+			}).map(event => event.scene));
+		}
+
+		return [...new Set(scenes)];
 	}
 	getLabelReferences(label: string): ReadonlyArray<Location> {
 		const locations: Location[] = [];

@@ -22,6 +22,7 @@ class IndexingState {
 	achievements: IdentifierIndex = new Map();
 	achievementReferences: IdentifierMultiIndex = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
+	referencedScenes: Array<string> = [];
 	parseErrors: Array<Diagnostic> = [];
 
 	checkAchievementLocation: Location | undefined = undefined;
@@ -139,8 +140,9 @@ function findSubroutineVariables(state: IndexingState): IdentifierIndex {
  * @param isStartupFile True if the document is the ChoiceScript startup file.
  * @param isChoicescriptStatsFile True if the document is the ChoiceScript stats file.
  * @param index Project index to update.
+ * @returns A list of scenes that are referenced but not yet indexed.
  */
-export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, isChoicescriptStatsFile: boolean, index: ProjectIndex): void {
+export function updateProjectIndex(textDocument: TextDocument, isStartupFile: boolean, isChoicescriptStatsFile: boolean, index: ProjectIndex): string[] {
 	const indexingState = new IndexingState(textDocument);
 
 	const callbacks: ParserCallbacks = {
@@ -256,13 +258,6 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 
 	const uri = normalizeUri(textDocument.uri);
 	if (isStartupFile) {
-		// If the startup scene isn't in the scenes list, force add it
-		// (This seems hinky, but if the file is a startup file, it ergo exists. CS is
-		// quite happy to let you omit startup from the list of scenes and still run).
-		// Same with the stats
-		if (!indexingState.scenes.includes('startup')) {
-			indexingState.scenes.push('startup');
-		}
 		if (index.hasChoicescriptStats() && !indexingState.scenes.includes('choicescript_stats')) {
 			indexingState.scenes.push('choicescript_stats');
 		}
@@ -272,11 +267,6 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	}
 	if (isChoicescriptStatsFile) {
 		index.setHasChoicescriptStats(true);
-		const sceneList = [...index.getSceneList()];
-		if (!sceneList.includes('choicescript_stats')) {
-			sceneList.push('choicescript_stats');
-			index.setSceneList(sceneList);
-		}
 	}
 	index.setWordCount(uri, wordCount);
 	index.setLocalVariables(uri, indexingState.localVariables);
@@ -287,4 +277,14 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.setDocumentScopes(uri, scopes);
 	index.setFlowControlEvents(uri, indexingState.flowControlEvents);
 	index.setParseErrors(uri, indexingState.parseErrors);
+
+	const newScenes: string[] = [];
+	const indexedScenes = new Set(index.getIndexedScenes());
+	index.getAllReferencedScenes().forEach(scene => {
+		if (!indexedScenes.has(scene)) {
+			newScenes.push(scene);
+		}
+	});
+
+	return newScenes;
 }

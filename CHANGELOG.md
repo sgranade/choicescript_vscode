@@ -12,7 +12,7 @@ Changes to the plugin.
 
 ### Fixed
 
-- When you update the scenes in a `*scene_list`, refreshing a running game in the browser will pick up those changed scenes properly.
+- The extension now indexes all scenes referenced anywhere in the game, not just scenes listed in the `*scene_list`.
 - Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)
 - Fixed numerous problems with variables defined in subroutines being flagged as used before they were defined.
 - `*set var &"string"` is no longer flagged as an error. (reported by nocturno)

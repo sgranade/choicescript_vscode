@@ -167,10 +167,10 @@ function validateSceneReference(
 	let diagnostic: Diagnostic | undefined = undefined;
 
 	if (!(scene !== undefined && scene[0] == '{')) {
-		if (!state.projectIndex.getSceneList().includes(scene)) {
+		if (!state.projectIndex.getIndexedScenes().includes(scene)) {
 			diagnostic = createDiagnosticFromLocation(
 				DiagnosticSeverity.Warning, location,
-				`Scene "${scene}" wasn't found in startup.txt`
+				`Scene "${scene}" wasn't found in startup.txt or in the game's folder`
 			);
 		}
 	}
