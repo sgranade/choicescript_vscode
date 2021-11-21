@@ -2,6 +2,9 @@
 
 - A way to highlight variables or labels you aren't using
 - A way to find variables hiding in "strings".
+- Autocomplete is being weird about variables with caps in them like "DEBUG_".
+- Add Toggle Block Comment support (right now I only do Toggle Line Comment)
+- Rename "Rerun randomtest..." to "Run randomtest again..."
 - `*if (var = 1)) #choice` (note the extra end parens) produce, like, three errors (Unknown operator, Incomplete expression, Arguments to an *if before an #option must be in parentheses). Those aren't really correct.
 - `[i]Italics or @{true [/i]not.|more italics[/i]}` gives borked italicizing in VS Code.
 - Capture warnings that quicktest or randomtest output? (Like defining a `*temp` variable w/the same name as a global.)

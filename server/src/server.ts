@@ -64,8 +64,11 @@ const validationSettings: ValidationSettings = {
 const changedDocuments: Map<string, TextDocument> = new Map();
 // Queue of possibly new scenes that need to be indexed
 const newScenes: Set<string> = new Set();
-// Have we changed documents and need to notify and re-validate during our heartbeat routine?
-let documentsHaveChanged = false;
+// Have the files in the index changed or something happened where re-validation is required?
+// (Strictly speaking, those two events don't have to be coupled -- changing startup.txt requires
+// revalidation but doesn't indicate that the project files have actually changed) but for simplicity
+// I'm combining the concepts into a single "project files have changed" variable
+let projectFilesHaveChanged = false;
 // Heartbeat ID
 let heartbeatId: NodeJS.Timer | undefined = undefined;
 // How often to update the documents in the queue, in ms
@@ -110,7 +113,7 @@ connection.onInitialized(() => {
 	connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
 	connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
 
-	heartbeatId = setInterval(processQueue, heartbeatDelay);
+	heartbeatId = setInterval(heartbeat, heartbeatDelay);
 });
 
 connection.onShutdown(() => {
@@ -153,7 +156,6 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		}
 
 		projectIndex.setProjectIsIndexed(true);
-		documentsHaveChanged = true;
 	});
 }
 
@@ -180,11 +182,15 @@ async function indexFile(path: string): Promise<boolean> {
 	try {
 		const data = await fs.promises.readFile(path, 'utf8');
 		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
+		const newFile = !projectIndex.hasUri(normalizeUri(textDocument.uri));
 		updateProjectIndex(
 			textDocument, uriIsStartupFile(fileUri), uriIsChoicescriptStatsFile(fileUri), projectIndex
 		).forEach(newScene => {
 			newScenes.add(newScene);
 		});
+		if (newFile) {
+			projectFilesHaveChanged = true;
+		}
 		return true;
 	}
 	catch (err) {
@@ -209,7 +215,7 @@ documents.onDidOpen(e => {
 	
 	notifyChangedWordCount(e.document);
 	if (isStartupFile) {
-		notifyUpdatedProjectFiles();
+		projectFilesHaveChanged = true;
 	}
 });
 
@@ -221,9 +227,9 @@ documents.onDidChangeContent(change => {
 
 /**
  * Process the queue of documents that have changed, new-to-us scenes, 
- * and any required re-validation.
+ * and any required re-validation or changed-index notification.
  */
-async function processQueue() {
+async function heartbeat() {
 	if (Date.now() - lastHeartbeatTime < minHeartbeatDelay) {
 		return;
 	}
@@ -244,8 +250,9 @@ async function processQueue() {
 		// If we processed a startup file, which defines global variables,
 		// re-validate all files & notify that scene files may have changed
 		if (processedStartupFile) {
-			// Since the startup file defines global variables, if it changes, re-validate all other files & notify that scene files may have changed
-			documentsHaveChanged = true;
+			// Since the startup file defines global variables, if it changes, 
+			// re-validate all other files
+			projectFilesHaveChanged = true;
 		}
 		else {
 			for (const document of processingQueue.values()) {
@@ -260,8 +267,8 @@ async function processQueue() {
 			await indexScenes(scenes);
 		}
 
-		if (documentsHaveChanged) {
-			documentsHaveChanged = false;
+		if (projectFilesHaveChanged) {
+			projectFilesHaveChanged = false;
 			notifyUpdatedProjectFiles();
 			documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 		}

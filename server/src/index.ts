@@ -186,6 +186,10 @@ export interface ProjectIndex {
 	 */
 	projectIsIndexed(): boolean;
 	/**
+	 * Whether the project has a given scene file URI in its index.
+	 */
+	hasUri(sceneUri: string): boolean;
+	/**
 	 * Get all indexed scene names.
 	 */
 	getIndexedScenes(): ReadonlyArray<string>;
@@ -379,6 +383,17 @@ export class Index implements ProjectIndex {
 	}
 	projectIsIndexed(): boolean {
 		return this._projectIsIndexed;
+	}
+	hasUri(sceneUri: string): boolean {
+		return this._wordCounts.has(sceneUri) ||
+			this._localVariables.has(sceneUri) ||
+			this._subroutineLocalVariables.has(sceneUri) ||
+			this._variableReferences.has(sceneUri) ||
+			this._localLabels.has(sceneUri) ||
+			this._achievementReferences.has(sceneUri) ||
+			this._documentScopes.has(sceneUri) ||
+			this._flowControlEvents.has(sceneUri) ||
+			this._parseErrors.has(sceneUri);
 	}
 	getIndexedScenes(): ReadonlyArray<string> {
 		const sceneUris = [...new Set([

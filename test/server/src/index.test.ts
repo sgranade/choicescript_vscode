@@ -323,5 +323,89 @@ describe("Project Index", () => {
 				expect(scenes).to.eql(["faker", "other-scene"]);
 			});
 		});
+
+		describe("URIs in the Project", () => {
+			// Since URIs come from so many sources, group them
+			it("should include word count URIs in captured URIs", () => {
+				const index = new Index();
+				index.setWordCount(documentUri, 0);
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include local variable URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setLocalVariables(documentUri, new Map());
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include subroutine local varable URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setSubroutineLocalVariables(documentUri, new Map());
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include variable reference URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setVariableReferences(documentUri, new Map());
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include label URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setLabels(documentUri, new Map());
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include achievement reference URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setAchievementReferences(documentUri, new Map());
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include document scope URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setDocumentScopes(documentUri, { achievementVarScopes: [], choiceScopes: [], paramScopes: []});
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include flow control event URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setFlowControlEvents(documentUri, []);
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+
+			it("should include parse error URIs in indexed scenes", () => {
+				const index = new Index();
+				index.setParseErrors(documentUri, []);
+
+				const result = index.hasUri(documentUri);
+
+				expect(result).to.be.true;
+			});
+		});
 	});
 });
