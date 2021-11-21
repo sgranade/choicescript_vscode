@@ -163,18 +163,18 @@
 					"group": "ChoiceScript@3"
 				},
 				{
-					"command": "choicescript.rerunRandomtest",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
-					"group": "ChoiceScript@4"
-				},
-				{
 					"command": "choicescript.runRandomtestInteractive",
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
-					"group": "ChoiceScript@5"
+					"group": "ChoiceScript@4"
 				},
 				{
 					"command": "choicescript.runRandomtestDefault",
 					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"group": "ChoiceScript@5"
+				},
+				{
+					"command": "choicescript.rerunRandomtest",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
 					"group": "ChoiceScript@6"
 				},
 				{
