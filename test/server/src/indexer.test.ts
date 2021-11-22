@@ -3,13 +3,11 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Position, Diagnostic } from 'vscode-languageserver/node';
+import { Location, Position, Diagnostic } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
 	ProjectIndex,
-	IdentifierIndex,
-	IdentifierMultiIndex,
 	LabelIndex,
 	FlowControlEvent,
 	DocumentScopes
@@ -38,9 +36,9 @@ describe("Indexer", () => {
 	describe("Symbol Creation Indexing", () => {
 		it("should index locations of created global variables", () => {
 			let fakeDocument = createDocument("*create variable 3");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<Map<string, Location>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setGlobalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setGlobalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -51,9 +49,9 @@ describe("Indexer", () => {
 
 		it("should index locations of created local variables", () => {
 			let fakeDocument = createDocument("*temp variable 3");
-			let received: Array<IdentifierMultiIndex> = [];
+			let received: Array<Map<string, Location[]>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
+			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -65,9 +63,9 @@ describe("Indexer", () => {
 
 		it("should index all created locations local variables", () => {
 			let fakeDocument = createDocument("*temp variable 3\n*temp variable 1");
-			let received: Array<IdentifierMultiIndex> = [];
+			let received: Array<Map<string, Location[]>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { received.push(index); });
+			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -81,9 +79,9 @@ describe("Indexer", () => {
 
 		it("should index effective locations of local variables created in a subroutine", () => {
 			let fakeDocument = createDocument("*gosub subroutine\n*finish\n*label subroutine\n*temp variable 3\n*return\n");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<Map<string, Location>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -94,9 +92,9 @@ describe("Indexer", () => {
 
 		it("should not index effective locations of local variables created in a subroutine at a gosub that's after the subroutine", () => {
 			let fakeDocument = createDocument("*label s\n*params v1\n*set {v1} 2\n*return\n\n*gosub s 1");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<Map<string, Location>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -106,9 +104,9 @@ describe("Indexer", () => {
 
 		it("should not re-index effective locations of local variables redefined in a subroutine called by a previous subroutine", () => {
 			let fakeDocument = createDocument("*label sub1\n*temp s1 1\n*set s1 2\n*gosub sub2\n*return\n*label sub2\n*temp s1 3\n*return");
-			let received: Array<IdentifierIndex> = [];
+			let received: Array<Map<string, Location>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: IdentifierIndex) => { received.push(index); });
+			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -120,9 +118,9 @@ describe("Indexer", () => {
 	describe("Symbol Command Indexing", () => {
 		it("should index bare variables in the command", () => {
 			let fakeDocument = createDocument("*set variable 3");
-			let receivedReferences: Array<IdentifierMultiIndex> = [];
+			let receivedReferences: Array<Map<string, Location[]>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -134,9 +132,9 @@ describe("Indexer", () => {
 	describe("Multireplace Indexing", () => {
 		it("should index variables in the test", () => {
 			let fakeDocument = createDocument("@{variable this | that}");
-			let receivedReferences: Array<IdentifierMultiIndex> = [];
+			let receivedReferences: Array<Map<string, Location[]>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -148,9 +146,9 @@ describe("Indexer", () => {
 	describe("Variable Reference Command Indexing", () => {
 		it("should index local variables directly after a reference command", () => {
 			let fakeDocument = createDocument("*if variable > 1");
-			let receivedReferences: Array<IdentifierMultiIndex> = [];
+			let receivedReferences: Array<Map<string, Location[]>> = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: IdentifierMultiIndex) => { receivedReferences.push(index); });
+			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -334,9 +332,9 @@ describe("Indexer", () => {
 	describe("Achievement Indexing", () => {
 		it("should index an achievement", () => {
 			let fakeDocument = createDocument("*achievement code_name");
-			let receivedAchievements: IdentifierIndex[] = [];
+			let receivedAchievements: Map<string, Location>[] = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setAchievements(Arg.any()).mimicks((index: IdentifierIndex) => { receivedAchievements.push(index); });
+			fakeIndex.setAchievements(Arg.any()).mimicks((index: Map<string, Location>) => { receivedAchievements.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -346,7 +344,7 @@ describe("Indexer", () => {
 
 		it("should index a reference to an achievement", () => {
 			let fakeDocument = createDocument("*achieve code_name");
-			let receivedAchievementReferences: IdentifierMultiIndex[] = [];
+			let receivedAchievementReferences: Map<string, Location[]>[] = [];
 			let fakeIndex = createIndex();
 			fakeIndex.setAchievementReferences(Arg.any(), Arg.any()).mimicks(
 				(uri, index) => {

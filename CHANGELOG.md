@@ -20,6 +20,7 @@ Changes to the plugin.
 - Backslashes in parenthesized expressions or multireplaces no longer cause the extension to flag them incorrectly as an error.
 - References in a multireplace test are now handled correctly. (reported by nocturno)
 - Multireplaces with references now have proper syntax highlighting.
+- Variable completions now properly reflect the variable's capitalization.
 - A `*goto_scene` statement with a variable reference for the scene is no longer flagged as an error. (reported by nocturno)
 - A `*goto_scene` statement with a variable reference for the label now correctly indexes the reference's location. (reported by nocturno)
 - Minor fix to word counting in options with a multireplace.

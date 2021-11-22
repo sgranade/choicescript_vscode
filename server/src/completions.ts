@@ -40,14 +40,20 @@ function generateCompletionsFromIndex(
  */
 function generateVariableCompletions(documentUri: string, position: Position, projectIndex: ProjectIndex): CompletionItem[] {
 	// Only offer local variables that have been created, taking into account subroutine-defined variables
-	const localVariables = new Map(projectIndex.getLocalVariables(documentUri));
+	const origLocalVariables = projectIndex.getLocalVariables(documentUri);
+	const localVariables = new Map(origLocalVariables);
 	for (const [variable, location] of projectIndex.getSubroutineLocalVariables(documentUri).entries()) {
 		const existingLocations = Array.from(localVariables.get(variable) ?? []);
 		existingLocations.push(location);
 		localVariables.set(variable, existingLocations);
 	}
+	const keysToKeys = origLocalVariables.caseInsensitiveKeysToKeys();
+	const finalLocalVariables = new Map();
+	for (const [key, value] of localVariables) {
+		finalLocalVariables.set(keysToKeys.get(key) ?? key, value);
+	}
 
-	const availableVariablesGenerator = iteratorFilter(localVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
+	const availableVariablesGenerator = iteratorFilter(finalLocalVariables.entries(), ([variable, locations]: [string, readonly Location[]]) => {  // eslint-disable-line @typescript-eslint/no-unused-vars
 		for (const location of locations) {
 			if (comparePositions(location.range.end, position) <= 0)
 				return true;
@@ -61,7 +67,7 @@ function generateVariableCompletions(documentUri: string, position: Position, pr
 		data: "variable-local"
 	})));
 
-	completions.push(...Array.from(iteratorMap(projectIndex.getGlobalVariables().keys(), (x: string) => ({
+	completions.push(...Array.from(iteratorMap(projectIndex.getGlobalVariables().caseInsensitiveKeysToKeys().values(), (x: string) => ({
 		label: x,
 		kind: CompletionItemKind.Variable,
 		data: "variable-global"

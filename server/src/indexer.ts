@@ -2,7 +2,7 @@ import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscod
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { IdentifierIndex, IdentifierMultiIndex, FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, ReadonlyIdentifierMultiIndex } from './index';
+import { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label } from './index';
 import { createDiagnosticFromLocation, comparePositions, normalizeUri } from './utilities';
 
 /**
@@ -14,13 +14,13 @@ class IndexingState {
 	 */
 	textDocument: TextDocument;
 
-	globalVariables: IdentifierIndex = new Map();
-	localVariables: IdentifierMultiIndex = new Map();
-	variableReferences: IdentifierMultiIndex = new Map();
+	globalVariables: Map<string, Location> = new Map();
+	localVariables: Map<string, Location[]> = new Map();
+	variableReferences: Map<string, Location[]> = new Map();
 	scenes: Array<string> = [];
 	labels: LabelIndex = new Map();
-	achievements: IdentifierIndex = new Map();
-	achievementReferences: IdentifierMultiIndex = new Map();
+	achievements: Map<string, Location> = new Map();
+	achievementReferences: Map<string, Location[]> = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
 	referencedScenes: Array<string> = [];
 	parseErrors: Array<Diagnostic> = [];
@@ -69,7 +69,7 @@ function generateScopes(state: IndexingState): DocumentScopes {
  * @param end End position.
  */
 function* identifiersFirstLocationBetweenLocations(
-	identifiers: ReadonlyIdentifierMultiIndex, start: Position, end: Position): IterableIterator<string> {
+	identifiers: ReadonlyMap<string, Location[]>, start: Position, end: Position): IterableIterator<string> {
 	for (const [identifier, locations] of identifiers.entries()) {
 		let foundInRange = false;
 
@@ -93,12 +93,12 @@ function* identifiersFirstLocationBetweenLocations(
  * Find the effective creation location of local variables defined in subroutines.
  * @param state Indexing state.
  */
-function findSubroutineVariables(state: IndexingState): IdentifierIndex {
+function findSubroutineVariables(state: IndexingState): Map<string, Location> {
 	const events = state.flowControlEvents;
 	const returnEvents = events.filter((event: FlowControlEvent) => { return event.command == "return"; });
 	const labels = state.labels;
 	const localVariables = state.localVariables;
-	const subroutineVariables: IdentifierIndex = new Map();
+	const subroutineVariables: Map<string, Location> = new Map();
 
 	for (const event of events) {
 		if (event.command != "gosub") {
@@ -236,9 +236,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onAchievementReference: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-			let referenceArray: Array<Location> | undefined = indexingState.achievementReferences.get(codename);
-			if (referenceArray === undefined)
-				referenceArray = [];
+			const referenceArray: Array<Location> = indexingState.achievementReferences.get(codename) ?? [];
 			referenceArray.push(location);
 			indexingState.achievementReferences.set(codename, referenceArray);
 		},

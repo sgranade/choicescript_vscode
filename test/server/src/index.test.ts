@@ -5,8 +5,7 @@ import { Location, Range } from 'vscode-languageserver/node';
 
 import { 
 	Index,
-	FlowControlEvent,
-	IdentifierMultiIndex,
+	FlowControlEvent
 } from '../../../server/src/index';
 
 const documentUri = "file:///faker.txt";
@@ -14,24 +13,111 @@ const otherSceneUri = "file:///other-scene.txt";
 
 describe("Project Index", () => {
 	describe("Index", () => {
-		it("should combine variable references with differing capitalizations", () => {
-			const referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
-			const referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
-			const originalReferences: IdentifierMultiIndex = new Map([
-				["variable", [referenceLocation1]],
-				["vArIaBlE", [referenceLocation2]]
-			]);
-			const index = new Index();
-			index.setVariableReferences(documentUri, originalReferences);
+		describe("Case-Insensitive Tokens", () => {
+			it("should store global variables with case insensitivity", () => {
+				const creationLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", creationLocation]
+				]);
+				const index = new Index();
+				index.setGlobalVariables(documentUri, variableCreation);
+	
+				const globalVars = index.getGlobalVariables();
+				
+				expect(Array.from(globalVars.entries())).to.eql([["variable", creationLocation]]);
+			});
+	
+			it("should allow access to global variables' original capitalization", () => {
+				const creationLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", creationLocation]
+				]);
+				const index = new Index();
+				index.setGlobalVariables(documentUri, variableCreation);
+	
+				const globalVars = index.getGlobalVariables();
+				const results = Array.from(globalVars.caseInsensitiveKeysToKeys().entries());
+				
+				expect(results).to.eql([["variable", "vArIaBlE"]]);
+			});
+	
+			it("should store local variables with case insensitivity", () => {
+				const creationLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const creationLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", [creationLocation1]],
+					["VarIabLE", [creationLocation2]]
+				]);
+				const index = new Index();
+				index.setLocalVariables(documentUri, variableCreation);
+	
+				const localVars = index.getLocalVariables(documentUri);
+				
+				expect(Array.from(localVars.entries())).to.eql([["variable", [creationLocation1, creationLocation2]]]);
+			});
+	
+			it("should allow access to local variables' original capitalization, with the first capitalization winning", () => {
+				const creationLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const creationLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", [creationLocation1]],
+					["VarIabLE", [creationLocation2]]
+				]);
+				const index = new Index();
+				index.setLocalVariables(documentUri, variableCreation);
+	
+				const localVars = index.getLocalVariables(documentUri);
+				const results = Array.from(localVars.caseInsensitiveKeysToKeys().entries());
+				
+				expect(results).to.eql([["variable", "vArIaBlE"]]);
+			});
+	
+			it("should store subroutine local variables with case insensitivity", () => {
+				const creationLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", creationLocation]
+				]);
+				const index = new Index();
+				index.setSubroutineLocalVariables(documentUri, variableCreation);
+	
+				const subroutineVars = index.getSubroutineLocalVariables(documentUri);
+				
+				expect(Array.from(subroutineVars.entries())).to.eql([["variable", creationLocation]]);
+			});
+	
+			it("should allow access to subroutine local variables' original capitalization", () => {
+				const creationLocation = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const variableCreation = new Map([
+					["vArIaBlE", creationLocation]
+				]);
+				const index = new Index();
+				index.setSubroutineLocalVariables(documentUri, variableCreation);
+	
+				const globalVars = index.getSubroutineLocalVariables(documentUri);
+				const results = Array.from(globalVars.caseInsensitiveKeysToKeys().entries());
+				
+				expect(results).to.eql([["variable", "vArIaBlE"]]);
+			});
+	
+			it("should store variable references with case insensitivity", () => {
+				const referenceLocation1 = Location.create(documentUri, Range.create(1, 0, 1, 5));
+				const referenceLocation2 = Location.create(documentUri, Range.create(2, 0, 2, 5));
+				const originalReferences = new Map([
+					["variable", [referenceLocation1]],
+					["vArIaBlE", [referenceLocation2]]
+				]);
+				const index = new Index();
+				index.setVariableReferences(documentUri, originalReferences);
+	
+				const references = index.getVariableReferences("variable");
 
-			const references = index.getVariableReferences("variable");
-
-			expect(references.length).to.equal(2);
-			expect(references[0].range.start).to.eql({line: 1, character: 0});
-			expect(references[0].range.end).to.eql({line: 1, character: 5});
-			expect(references[1].range.start).to.eql({line: 2, character: 0});
-			expect(references[1].range.end).to.eql({line: 2, character: 5});
-		});
+				expect(references.length).to.equal(2);
+				expect(references[0].range.start).to.eql({line: 1, character: 0});
+				expect(references[0].range.end).to.eql({line: 1, character: 5});
+				expect(references[1].range.start).to.eql({line: 2, character: 0});
+				expect(references[1].range.end).to.eql({line: 2, character: 5});
+			});
+		}),
 
 		it("should only return choicescript_stats once in the scene list if present in the index", () => {
 			const index = new Index();

@@ -5,22 +5,37 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 /**
  * Map that stores and accesses string keys without regard to case.
  */
-export class CaseInsensitiveMap<T, U> extends Map<T, U> {
-	set(key: T, value: U): this {
+export class CaseInsensitiveMap<K, V> extends Map<K, V> {
+	shadowMap: Map<K, K>;
+	constructor(entries?: Iterable<readonly [K, V]> | null) {
+		super();
+		this.shadowMap = new Map();
+		if (entries !== null && entries !== undefined) {
+			for (const [key, val] of entries) {
+				this.set(key, val);
+			}
+		}
+	}
+	set(key: K, value: V): this {
 		if (typeof key === 'string') {
-			key = key.toLowerCase() as unknown as T;
+			const newKey = key.toLowerCase() as unknown as K;
+			this.shadowMap.set(newKey, key);
+			key = newKey;
 		}
 		return super.set(key, value);
 	}
-	get(key: T): U | undefined {
+	get(key: K): V | undefined {
 		if (typeof key === 'string') {
-			key = key.toLowerCase() as unknown as T;
+			key = key.toLowerCase() as unknown as K;
 		}
 		return super.get(key);
 	}
-	has(key: T): boolean {
+	caseInsensitiveKeysToKeys(): Map<K, K> {
+		return new Map(this.shadowMap.entries());
+	}
+	has(key: K): boolean {
 		if (typeof key === 'string') {
-			key = key.toLowerCase() as unknown as T;
+			key = key.toLowerCase() as unknown as K;
 		}
 		return super.has(key);
 	}
@@ -45,7 +60,25 @@ export function mapToUnionedCaseInsensitiveMap<K, V extends Array<unknown>>(map:
 	return newMap;
 }
 
-export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
+/**
+ * Convert a case-insensitive map to a regular map, using the original case-sensitive keys.
+ * @param map Original case-insensitive map.
+ */
+export function caseInsensitiveMapToMap<K, V>(map: ReadonlyCaseInsensitiveMap<K, V>): Map<K, V> {
+	const keysToKeys = map.caseInsensitiveKeysToKeys();
+	const newMap = new Map<K, V>();
+	for (const [key, value] of map) {
+		newMap.set(keysToKeys.get(key) ?? key, value);
+	}
+
+	return newMap;
+}
+
+export interface ReadonlyCaseInsensitiveMap<K, V> extends ReadonlyMap<K, V> {
+	caseInsensitiveKeysToKeys(): Map<K, K>;
+}
+
+// export type ReadonlyCaseInsensitiveMap<K, V> = ReadonlyMap<K, V>;
 
 /**
  * Generator for mapping a function over an iterable.

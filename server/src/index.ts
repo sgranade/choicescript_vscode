@@ -96,32 +96,32 @@ export interface ProjectIndex {
 	/**
 	 * Set the index of global variable definitions from the startup scene.
 	 * @param textDocumentUri URI to startup.txt document.
-	 * @param newIndex New index of global variables.
+	 * @param newIndex New index of global variables. Keys should _not_ be case insensitive.
 	 */
-	setGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
+	setGlobalVariables(textDocumentUri: string, newIndex: Map<string, Location>): void;
 	/**
 	 * Set the index of variable definitions local to a scene.
 	 *
 	 * Note that local variables can be defined multiple times in a scene.
 	 * @param textDocumentUri URI to document whose index is to be updated.
-	 * @param newIndex New index of local variables.
+	 * @param newIndex New index of local variables. Keys should _not_ be case insensitive.
 	 */
-	setLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
+	setLocalVariables(textDocumentUri: string, newIndex: Map<string, Location[]>): void;
 	/**
 	 * Set the index of variables defined in subroutines.
 	 * 
 	 * These locations are the location of the first *gosub that calls those
 	 * subroutines.
 	 * @param textDocumentUri URI to document whose index is to be updated.
-	 * @param newIndex New index of subroutine-local variables.
+	 * @param newIndex New index of subroutine-local variables. Keys should _not_ be case insensitive.
 	 */
-	setSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void;
+	setSubroutineLocalVariables(textDocumentUri: string, newIndex: Map<string, Location>): void;
 	/**
 	 * Set the index of references to variables.
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to variables.
 	 */
-	setVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
+	setVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void;
 	/**
 	 * Set the list of scene names in the project.
 	 * @param scenes New list of scene names.
@@ -141,9 +141,9 @@ export interface ProjectIndex {
 	setFlowControlEvents(textDocumentUri: string, newEvents: FlowControlEvent[]): void;
 	/**
 	 * Set the index of achievement codenames in the project.
-	 * @param newIndex New index of achievement codenames.
+	 * @param newIndex New index of achievement codenames. Keys should _not_ be case insensitive.
 	 */
-	setAchievements(newIndex: IdentifierIndex): void;
+	setAchievements(newIndex: Map<string, Location>): void;
 	/**
 	 * Set the index of references to achivements.
 	 * 
@@ -152,7 +152,7 @@ export interface ProjectIndex {
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New index of references to achievements.
 	 */
-	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void;
+	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void;
 	/**
 	 * Set the index of scopes.
 	 * @param textDocumentUri URI to document whose index is to be updated.
@@ -320,14 +320,14 @@ export class Index implements ProjectIndex {
 		this._startupFileUri = "";
 		this._hasChoicescriptStats = false;
 		this._wordCounts = new Map();
-		this._globalVariables = new Map();
+		this._globalVariables = new CaseInsensitiveMap();
 		this._localVariables = new Map();
 		this._subroutineLocalVariables = new Map();
 		this._variableReferences = new Map();
 		this._scenes = [];
 		this._localLabels = new Map();
 		this._flowControlEvents = new Map();
-		this._achievements = new Map();
+		this._achievements = new CaseInsensitiveMap();
 		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
 		this._parseErrors = new Map();
@@ -338,17 +338,17 @@ export class Index implements ProjectIndex {
 	setWordCount(textDocumentUri: string, count: number): void {
 		this._wordCounts.set(textDocumentUri, count);
 	}
-	setGlobalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
+	setGlobalVariables(textDocumentUri: string, newIndex: Map<string, Location>): void {
 		this._startupFileUri = textDocumentUri;
 		this._globalVariables = new CaseInsensitiveMap(newIndex);
 	}
-	setLocalVariables(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
-		this._localVariables.set(textDocumentUri, new CaseInsensitiveMap(newIndex));
+	setLocalVariables(textDocumentUri: string, newIndex: Map<string, Location[]>): void {
+		this._localVariables.set(textDocumentUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
-	setSubroutineLocalVariables(textDocumentUri: string, newIndex: IdentifierIndex): void {
+	setSubroutineLocalVariables(textDocumentUri: string, newIndex: Map<string, Location>): void {
 		this._subroutineLocalVariables.set(textDocumentUri, new CaseInsensitiveMap(newIndex));
 	}
-	setVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
+	setVariableReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
 		this._variableReferences.set(textDocumentUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setSceneList(scenes: Array<string>): void {
@@ -360,10 +360,10 @@ export class Index implements ProjectIndex {
 	setFlowControlEvents(textDocumentUri: string, newIndex: FlowControlEvent[]): void {
 		this._flowControlEvents.set(textDocumentUri, [...newIndex]);
 	}
-	setAchievements(newIndex: IdentifierIndex): void {
+	setAchievements(newIndex: Map<string, Location>): void {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
-	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex): void {
+	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
 		this._achievementReferences.set(textDocumentUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void {
@@ -432,11 +432,11 @@ export class Index implements ProjectIndex {
 		return this._globalVariables;
 	}
 	getLocalVariables(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		const index = this._localVariables.get(sceneUri) ?? new Map();
+		const index = this._localVariables.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
 	getSubroutineLocalVariables(sceneUri: string): ReadonlyIdentifierIndex {
-		const index = this._subroutineLocalVariables.get(sceneUri) ?? new Map();
+		const index = this._subroutineLocalVariables.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
 	getLabels(sceneUri: string): ReadonlyLabelIndex {
@@ -447,7 +447,7 @@ export class Index implements ProjectIndex {
 		return this._achievements;
 	}
 	getDocumentAchievementReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		const index = this._achievementReferences.get(sceneUri) ?? new Map();
+		const index = this._achievementReferences.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
 	getAchievementReferences(achievement: string): ReadonlyArray<Location> {
@@ -460,7 +460,7 @@ export class Index implements ProjectIndex {
 		return locations;
 	}
 	getDocumentVariableReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {
-		const index = this._variableReferences.get(sceneUri) ?? new Map();
+		const index = this._variableReferences.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
 	getVariableReferences(variable: string): ReadonlyArray<Location> {
@@ -521,9 +521,9 @@ export class Index implements ProjectIndex {
 		const uri = normalizeUri(textDocumentUri);
 
 		if (uriIsStartupFile(uri)) {
-			this._globalVariables = new Map();
+			this._globalVariables = new CaseInsensitiveMap();
 			this._scenes = [];
-			this._achievements = new Map();
+			this._achievements = new CaseInsensitiveMap();
 		}
 
 		this._localVariables.delete(uri);

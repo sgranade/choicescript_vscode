@@ -1,19 +1,67 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, readLine, extractToMatchingIndent, readNextNonblankLine } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, caseInsensitiveMapToMap, readLine, extractToMatchingIndent, readNextNonblankLine, CaseInsensitiveMap } from '../../../server/src/utilities';
 
 /* eslint-disable */
 
 describe("Utilities", () => {
 	describe("Case-Insensitive Map", () => {
+		it("should get values based on case-insensitive keys", () => {
+			let uut = new CaseInsensitiveMap();
+
+			uut.set('keY', 1);
+			let results = uut.get('KEy');
+			
+			expect(results).to.eql(1);
+		});
+
+		it("should keep track of the case-sensitive keys", () => {
+			let uut = new CaseInsensitiveMap();
+
+			uut.set('keY', 1);
+			uut.set('oTheR', 2);
+			let results = Array.from(uut.caseInsensitiveKeysToKeys().entries());
+			
+			expect(results).to.eql([['key', 'keY'], ['other', 'oTheR']]);
+		});
+
+		it("should overwrite values based on case-insensitive keys", () => {
+			let uut = new CaseInsensitiveMap();
+
+			uut.set('keY', 1);
+			uut.set('KEy', 2);
+			let results = uut.get('key');
+			
+			expect(results).to.eql(2);
+		});
+
+		it("should keep track of the last-entered case-sensitive key", () => {
+			let uut = new CaseInsensitiveMap();
+
+			uut.set('keY', 1);
+			uut.set('KEy', 2);
+			let results = Array.from(uut.caseInsensitiveKeysToKeys().entries());
+			
+			expect(results).to.eql([['key', 'KEy']]);
+		});
+
 		it("should create unions from keys that are arrays", () => {
 			let map = new Map([['key', [1, 2]], ['kEY', [3, 4]]]);
 
 			let caseInsensitiveMap = mapToUnionedCaseInsensitiveMap(map);
 
-			expect(map.get("key")).to.eql([1, 2, 3, 4]);
-		})
+			expect(caseInsensitiveMap.get("key")).to.eql([1, 2, 3, 4]);
+		});
+
+		it("should create case-sensitive maps", () => {
+			const origMap = new CaseInsensitiveMap([["vaR", 1], ["oTheR", 2]]);
+
+			const newMap = caseInsensitiveMapToMap(origMap);
+
+			expect(Array.from(origMap.entries())).to.eql([["var", 1], ["other", 2]]);
+			expect(Array.from(newMap.entries())).to.eql([["vaR", 1], ["oTheR", 2]]);
+		});
 	});
 
 	describe("Delimiter Extraction", () => {
