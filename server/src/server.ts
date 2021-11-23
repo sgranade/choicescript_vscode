@@ -30,7 +30,7 @@ import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { countWords } from './parser';
 import { generateSymbols } from './structure';
-import { normalizeUri } from './utilities';
+import { iteratorFilter, normalizeUri } from './utilities';
 
 /**
  * Server event arguments about an updated word count in a document.
@@ -305,14 +305,19 @@ function notifyChangedWordCount(document: TextDocument): void {
 }
 
 /**
- * Notify the client about the project's files.
+ * Notify the client about the project's files, both scene and image.
  */
 function notifyUpdatedProjectFiles(): void {
 	const platformProjectPath = projectIndex.getPlatformProjectPath();
+	const localImages = [...iteratorFilter(projectIndex.getProjectImages(), (image: string) => {
+		const lcImage = image.toLowerCase();
+		return !(lcImage.startsWith('http://') || lcImage.startsWith('https://'));
+	})];
+	const localImageFiles = localImages.map(image => path.join(platformProjectPath, image));
 	const projectFiles = projectIndex.getIndexedScenes().map(
 		name => path.join(platformProjectPath, name+".txt")
 	);
-	connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles);
+	connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles.concat(localImageFiles));
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {

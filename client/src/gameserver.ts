@@ -37,10 +37,7 @@ app.use(async function(ctx, next) {
 		}
 		if (_gameInfo !== undefined) {
 			let filepath = path.resolve(_gameInfo.rootPath, ctx.URL.pathname.replace(/^\//, ''));
-			const altFilepath = _gameInfo.fileMap.get(path.basename(filepath));
-			if (altFilepath !== undefined) {
-				filepath = altFilepath;
-			}
+			filepath = _gameInfo.fileMap.get(path.basename(filepath)) ?? filepath;
 			let fstat = await fs.promises.stat(filepath);
 			if (fstat.isDirectory()) {
 				filepath = path.join(filepath, 'index.html');

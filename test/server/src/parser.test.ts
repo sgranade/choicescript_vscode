@@ -417,6 +417,40 @@ describe("Parser", () => {
 		});
 	});
 
+	describe("Image Parsing", () => {
+		it("should callback on a local image", () => {
+			let fakeDocument = createDocument("Line 0\n*image local.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("local.png");
+			expect(received[0][1].range.start.line).to.equal(14);
+			expect(received[0][1].range.end.line).to.equal(23);
+		});
+
+		it("should callback on a remote image", () => {
+			let fakeDocument = createDocument("Line 0\n*image http://faker.com/img.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("http://faker.com/img.png");
+			expect(received[0][1].range.start.line).to.equal(14);
+			expect(received[0][1].range.end.line).to.equal(38);
+		});
+	});
+
 	describe("Choice Command Parsing", () => {
 		it("should callback on a choice with spaces", () => {
 			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\n    #Two\nEnd");
@@ -3680,6 +3714,24 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(25);
+			});
+		});
+
+		describe("Images", () => {
+			it("should raise an error for an incorrect alignment", () => {
+				let fakeDocument = createDocument("*image cover.png flooble");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].range.start.line).to.equal(17);
+				expect(received[0].range.end.line).to.equal(24);
 			});
 		});
 

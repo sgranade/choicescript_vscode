@@ -8,10 +8,15 @@ Changes to the plugin.
 
 - A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
 - Added support for [nested choices](https://choicescriptdev.fandom.com/wiki/Choice#Nested_choices).
+- Added support for showing local images when running your game.
+
+### Changed
+
+- Re-ordered randomtest options in the context menu.
+- The extension doesn't get bogged down like it used to on 30k+ word chapters.
 
 ### Fixed
 
-- The extension doesn't get bogged down like it used to on 30k+ word chapters.
 - The extension now indexes all scenes referenced anywhere in the game, not just scenes listed in the `*scene_list`.
 - Multiple indented `#option`s below an `*if` are no longer flagged as an error. (Fixes #17)
 - Fixed numerous problems with variables defined in subroutines being flagged as used before they were defined.

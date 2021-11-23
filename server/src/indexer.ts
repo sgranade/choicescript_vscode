@@ -23,6 +23,7 @@ class IndexingState {
 	achievementReferences: Map<string, Location[]> = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
 	referencedScenes: Array<string> = [];
+	images: Map<string, Location[]> = new Map();
 	parseErrors: Array<Diagnostic> = [];
 
 	checkAchievementLocation: Location | undefined = undefined;
@@ -245,6 +246,12 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.choiceScopes.push(scope);
 		},
 
+		onImage: (symbol: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+			const locations: Location[] = indexingState.achievementReferences.get(symbol) ?? [];
+			locations.push(location);
+			indexingState.images.set(symbol, locations);
+		},
+
 		onParseError: (error: Diagnostic) => {
 			indexingState.parseErrors.push(error);
 		}
@@ -274,6 +281,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.setAchievementReferences(uri, indexingState.achievementReferences);
 	index.setDocumentScopes(uri, scopes);
 	index.setFlowControlEvents(uri, indexingState.flowControlEvents);
+	index.setImages(uri, indexingState.images);
 	index.setParseErrors(uri, indexingState.parseErrors);
 
 	const newScenes: string[] = [];

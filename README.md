@@ -1,10 +1,11 @@
 # ChoiceScript VS Code
 
 ![Build Status](https://github.com/sgranade/choicescript_vscode/workflows/build/badge.svg)
-[![Coverage](https://codecov.io/gh/sgranade/choicescript_vscode/branch/master/graph/badge.svg)](https://codecov.io/gh/sgranade/choicescript_vscode)
+[![Coverage](https://codecov.io/gh/sgranade/choicescript_vscode/branch/main/graph/badge.svg)](https://codecov.io/gh/sgranade/choicescript_vscode)
 
 
 A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/), a language for writing choose-your-own-path text games.
+
 
 ## Features
 
@@ -21,9 +22,11 @@ A VS Code plugin for [ChoiceScript](https://github.com/dfabulich/choicescript/),
 - Italicizing and bolding text
 - Word count that counts only what the player will see
 
+
 ## Installation
 
 [Install from the VSCode extension marketplace](https://marketplace.visualstudio.com/items?itemName=StephenGranade.choicescript-vscode).
+
 
 ## Getting Started
 
@@ -31,13 +34,15 @@ Open your ChoiceScript folder, often named `mygame`, and the language server wil
 
 Note that, since ChoiceScript files are just text files, the extension treats all `.txt` files as ChoiceScript files. To avoid that, only enable the extension for workspaces that contain your ChoiceScript game.
 
-## Running and Testing Your Game
+
+## Running Your Game
 
 To run the game, press the Open button on the left side of the bottom status bar.
 
-![Open Game in Browser Button](https://raw.github.com/sgranade/choicescript_vscode/blob/master/images/cs-open-game-button.png)
+![Open Game in Browser Button](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/cs-open-game-button.png)
 
 The game will open in your default browser. To restart the game, reload the browser window. The game will update with any changes you've made to your files.
+
 
 ## Testing Your Game
 
@@ -45,11 +50,11 @@ You can test your game using ChoiceScript's [Randomtest and Quicktest](https://w
 
 To run the tests, right-click on one of your game files and select the test you want from the context menu.
 
-![Run Tests from Context Menu](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/run-cs-tests-context-menu.png)
+![Run Tests from Context Menu](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/run-cs-tests-context-menu.png)
 
 Quicktest results will appear in the Output window at the bottom of VS Code. If Quicktest finds an error, the extension will add an annotation to the line with the error.
 
-![Test with an Error](https://raw.githubusercontent.com/sgranade/choicescript_vscode/master/images/cs-test-error.png)
+![Test with an Error](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/cs-test-error.png)
 
 Randomtest requires more steps. When you run Randomtest, the extension will prompt you for how many times to run randomtest, whether to show the game's text, and more. To skip that step, you can set default Randomtest settings in the [extension's settings](https://code.visualstudio.com/docs/getstarted/settings).
 
@@ -78,9 +83,16 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 }
 ```
 
+
+## Showing Images When Running Your Game
+
+The ChoiceScript [`*image`](https://choicescriptdev.fandom.com/wiki/Image) command displays remote and local image. For the extension to show your local images when you run your game, put those image files in the same directory as your scene files such as `startup.txt`.
+
+
 ## Currently Unsupported Features
 
 - [Array notation](https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423). Right now it ignores arrays entirely.
+
 
 ## Release Notes
 

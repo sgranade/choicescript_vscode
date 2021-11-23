@@ -76,6 +76,7 @@ export interface ParserCallbacks {
 	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
 	onAchievementReference(codename: string, location: Location, state: ParsingState): void;
 	onChoiceScope(scope: SummaryScope, state: ParsingState): void;
+	onImage(symbol: string, location: Location, state: ParsingState): void;
 	onParseError(error: Diagnostic): void;
 }
 
@@ -1826,13 +1827,33 @@ function parseAchievement(codename: string, startSectionIndex: number, state: Pa
 
 /**
  * Parse an achievement reference.
- * @param codename Achievement's codename
+ * @param codename Achievement's codename.
  * @param startSectionIndex Index at the start of the codename.
  * @param state Parsing state.
  */
 function parseAchievementReference(codename: string, startSectionIndex: number, state: ParsingState): void {
 	const location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
 	state.callbacks.onAchievementReference(codename, location, state);
+}
+
+/**
+ * Parse an image.
+ * @param image Image.
+ * @param remainingLine Remaining line after the image, if any.
+ * @param startSectionIndex Index at the start of the image.
+ * @param state Parsing state.
+ */
+function parseImage(image: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
+	const alignmentMatch = remainingLine.match(/^(\s+)(((left|right|center)\s|$)|(?<error>\S+))?/);
+	if (alignmentMatch?.groups?.error !== undefined) {
+		const startIndex = startSectionIndex + image.length + alignmentMatch[1].length;
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			startIndex, startIndex + alignmentMatch.groups.error.length,
+			`Must be one of left, right, or center.`, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	const location = createParsingLocation(startSectionIndex, startSectionIndex + image.length, state);
+	state.callbacks.onImage(image, location, state);
 }
 
 /**
@@ -1968,6 +1989,13 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		if (codenameMatch) {
 			const codename = codenameMatch[0];
 			parseAchievementReference(codename, lineSectionIndex, state);
+		}
+	}
+	else if (command == "image") {
+		const imageMatch = line.match(/^\S+/);
+		if (imageMatch) {
+			const image = imageMatch[0];
+			parseImage(image, line.slice(image.length), lineSectionIndex, state);
 		}
 	}
 

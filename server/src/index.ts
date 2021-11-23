@@ -160,6 +160,12 @@ export interface ProjectIndex {
 	 */
 	setDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void;
 	/**
+	 * Set the index of references to images.
+	 * @param textDocumentUri URI to document whose index is to be updated.
+	 * @param newIndex New index of references to image files or URLs.
+	 */
+	setImages(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void;
+	/**
 	 * Set the list of errors that occured during parsing.
 	 * @param textDocumentUri URI to document whose index is to be updated.
 	 * @param newIndex New list of errors.
@@ -283,6 +289,10 @@ export interface ProjectIndex {
 	 */
 	getDocumentScopes(sceneUri: string): DocumentScopes;
 	/**
+	 * Get list of all images referenced in the project.
+	 */
+	getProjectImages(): ReadonlyArray<string>;
+	/**
 	 * Get the parse errors.
 	 * @param sceneUri Scene document URI.
 	 */
@@ -313,6 +323,7 @@ export class Index implements ProjectIndex {
 	private _achievements: IdentifierIndex;
 	private _achievementReferences: Map<string, IdentifierMultiIndex>;
 	private _documentScopes: Map<string, DocumentScopes>;
+	private _images: Map<string, Map<string, Location[]>>;
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
@@ -330,6 +341,7 @@ export class Index implements ProjectIndex {
 		this._achievements = new CaseInsensitiveMap();
 		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
+		this._images = new Map();
 		this._parseErrors = new Map();
 	}
 	setPlatformProjectPath(path: string): void {
@@ -368,6 +380,9 @@ export class Index implements ProjectIndex {
 	}
 	setDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void {
 		this._documentScopes.set(textDocumentUri, newScopes);
+	}
+	setImages(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
+		this._images.set(textDocumentUri, newIndex);
 	}
 	setParseErrors(textDocumentUri: string, errors: Diagnostic[]): void {
 		this._parseErrors.set(textDocumentUri, [...errors]);
@@ -512,6 +527,16 @@ export class Index implements ProjectIndex {
 			};
 		}
 		return scopes;
+	}
+	getProjectImages(): ReadonlyArray<string> {
+		const images: string[] = [];
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		for (const [documentUri, imageInfo] of this._images) {
+			images.push(...imageInfo.keys());
+		}
+
+		return [...new Set(images)];
 	}
 	getParseErrors(textDocumentUri: string): ReadonlyArray<Diagnostic> {
 		const errors = this._parseErrors.get(textDocumentUri) ?? [];

@@ -518,6 +518,28 @@ describe("Indexer", () => {
 		});
 	});
 
+	describe("Images", () => {
+		it("should capture referenced images", () => {
+			let fakeDocument = createDocument("*image cover.jpg\n*image http://faker.com/img.png");
+			let received: Map<string, Location[]>[] = [];
+			let fakeIndex = createIndex();
+			fakeIndex.setImages(Arg.all()).mimicks(
+				(uri: string, index: Map<string, Location[]>) => { received.push(index); }
+			);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(received.length).to.eql(1);
+			expect(Array.from(received[0].keys())).to.eql(["cover.jpg", "http://faker.com/img.png"]);
+			expect(received[0].get("cover.jpg").length).to.eql(1);
+			expect(received[0].get("cover.jpg")[0].range.start.line).to.eql(7);
+			expect(received[0].get("cover.jpg")[0].range.end.line).to.eql(16);
+			expect(received[0].get("http://faker.com/img.png").length).to.eql(1);
+			expect(received[0].get("http://faker.com/img.png")[0].range.start.line).to.eql(24);
+			expect(received[0].get("http://faker.com/img.png")[0].range.end.line).to.eql(48);
+		});
+	});
+
 	describe("Parse Errors", () => {
 		it("should flag attempts to re-create already-created global variables", () => {
 			let fakeDocument = createDocument("*create variable 3\n*create variable 9");
