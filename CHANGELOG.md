@@ -6,9 +6,9 @@ Changes to the plugin.
 
 ### Added
 
-- A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
-- Added support for [nested choices](https://choicescriptdev.fandom.com/wiki/Choice#Nested_choices).
 - Added support for showing local images when running your game.
+- Added support for [nested choices](https://choicescriptdev.fandom.com/wiki/Choice#Nested_choices).
+- A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
 
 ### Changed
 

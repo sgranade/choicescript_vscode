@@ -1,7 +1,8 @@
 export enum CustomMessages {
 	CoGStyleGuide = 'choicescript/cogstyleguide',
+	ProjectIndexed = 'choicescript/projectindexed',
 	SelectionWordCountRequest = 'choicescript/selectionwordcount',
-	UpdatedProjectFiles = 'choicescript/projectfiles',
+	UpdatedSceneFilesPath = 'choicescript/scenefilespath',
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
 }

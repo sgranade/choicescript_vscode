@@ -9,8 +9,8 @@ import { env, Uri, window } from 'vscode';
 
 
 interface GameInfo {
-	rootPath: string
-	fileMap: Map<string, string>
+	csRootPath: string
+	sceneRootPath?: string
 	csErrorCallback: (scene: string, line: number, message: string) => void | undefined;
 }
 
@@ -36,8 +36,15 @@ app.use(async function(ctx, next) {
 			_gameInfo = gameInfo;
 		}
 		if (_gameInfo !== undefined) {
-			let filepath = path.resolve(_gameInfo.rootPath, ctx.URL.pathname.replace(/^\//, ''));
-			filepath = _gameInfo.fileMap.get(path.basename(filepath)) ?? filepath;
+			let filepath = path.resolve(_gameInfo.csRootPath, ctx.URL.pathname.replace(/^\//, ''));
+
+			if (_gameInfo.sceneRootPath !== undefined) {
+				const ext = path.extname(filepath);
+				if ((ctx.URL.pathname.startsWith('/scenes/') && ext == '.txt') || ext == '.jpg' || ext == '.png' || ext == '.gif') {
+					filepath = path.join(_gameInfo.sceneRootPath, path.basename(filepath));
+				}
+			}
+
 			let fstat = await fs.promises.stat(filepath);
 			if (fstat.isDirectory()) {
 				filepath = path.join(filepath, 'index.html');
@@ -105,31 +112,27 @@ export function startServer(): void {
 
 
 export async function createGame(
-	rootPath: string, 
-	fileMap?: Map<string, string>,
+	csRootPath: string,
 	csErrorCallback?: (scene: string, line: number, message: string) => void | undefined
 ): Promise<string> {
 	const gameId = crypto.randomBytes(16).toString('hex');
-	if (fileMap === undefined) {
-		fileMap = new Map();
-	}
 	_gameStore.set(gameId, {
-		rootPath: rootPath,
-		fileMap: new Map(fileMap),
+		csRootPath: csRootPath,
 		csErrorCallback: csErrorCallback
 	});
 	return gameId;
 }
 
 
-export function updateGameFileMap(gameId: string, newMap: Map<string, string>): void {
+export function updateScenePath(gameId: string, scenePath: string): void {
 	const gameInfo = _gameStore.get(gameId);
 	if (gameInfo === undefined) {
 		window.showErrorMessage(`Tried to update a non-existent game with ID ${gameId}`);
 	}
 	else {
-		gameInfo.fileMap = new Map(newMap);
+		gameInfo.sceneRootPath = scenePath;
 	}
+
 }
 
 

@@ -1,4 +1,4 @@
-import path = require('path');
+import { basename } from 'path';
 import { Location, Range, Diagnostic } from 'vscode-languageserver/node';
 
 import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
@@ -422,7 +422,7 @@ export class Index implements ProjectIndex {
 			...this._flowControlEvents.keys(),
 			...this._parseErrors.keys(),
 		])];
-		return sceneUris.map(uri => { return path.basename(uri, '.txt'); });
+		return sceneUris.map(uri => { return basename(uri, '.txt'); });
 	}
 	hasChoicescriptStats(): boolean {
 		return this._hasChoicescriptStats;

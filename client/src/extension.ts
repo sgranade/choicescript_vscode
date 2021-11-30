@@ -1,5 +1,5 @@
-import path = require('path');
-import URI = require('urijs');
+import * as path from 'path';
+import * as URI from 'urijs';
 import * as vscode from 'vscode';
 import {
 	LanguageClient,
@@ -10,6 +10,7 @@ import {
 	TransportKind,
 	integer
 } from 'vscode-languageclient/node';
+
 import { LineAnnotationController } from './annotations';
 import { Configuration, CustomCommands, CustomContext, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
 import { cancelTest, initializeTestProvider, runQuicktest, runRandomtest } from './csTests';
@@ -19,7 +20,7 @@ import { Provider } from './logDocProvider';
 
 
 let client: LanguageClient;
-let projectFiles: Map<string, string>;
+let sceneFilesPath: string;
 let annotationController: LineAnnotationController;
 
 
@@ -167,9 +168,10 @@ class StatusBarController {
 			this._statusBar.showOrHide(vscode.window.activeTextEditor, this._projectStatus);
 		});
 
-		// Subscribe to word count updates from the CS language server
+		// Subscribe to word count updates from the CS language server and when the project has loaded
 		client.onReady().then(() => {
 			disposables.push(client.onNotification(CustomMessages.UpdatedWordCount, this._onUpdatedWordCount));
+			disposables.push(client.onNotification(CustomMessages.ProjectIndexed, this._onProjectIndexed));
 			this._disposable = vscode.Disposable.from(...disposables);
 		});
 	}
@@ -188,7 +190,7 @@ class StatusBarController {
 			this._statusBar.showOrHide(editor, this._projectStatus);
 			this._statusBar.updateWordCount(e.count);
 		}
-	}
+	};
 
 	private _onDidChangeActiveTextEditor(e: vscode.TextEditor): void {
 		this._statusBar.showOrHide(e, this._projectStatus);
@@ -212,15 +214,18 @@ class StatusBarController {
 	}
 
 	/**
-	 * Notify the status bar controller that the project has loaded.
+	 * Notify the status bar controller that the project has loaded and been indexed.
+	 * 
+	 * This is an instance function so we can properly capture "this" b/c of how it's called
 	 */
-	projectLoaded(): void {
+	private _onProjectIndexed = (): void => {
 		this._projectStatus.loaded = true;
 		const editor = vscode.window.activeTextEditor;
 		if (editor !== undefined) {
 			this._statusBar.showOrHide(editor, this._projectStatus);
 		}
-	}
+		vscode.commands.executeCommand('setContext', CustomContext.ProjectLoaded, true);
+	};
 
 	/**
 	 * Notify the status bar controller that the game has been run.
@@ -260,25 +265,22 @@ class StatusBarController {
  * @param message Error message.
  */
 function annotateCSError(scene: string, line: integer, message: string): void {
-	if (projectFiles === undefined) {
+	if (sceneFilesPath === undefined) {
 		return;
 	}
-	scene += ".txt";
-	const scenePath = projectFiles.get(scene);
-	if (scenePath !== undefined) {
-		vscode.workspace.openTextDocument(scenePath).then((document) => {
-			vscode.window.showTextDocument(document).then((editor) => {
-				line -= 1;
-				const range = document.validateRange(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER));
-				editor.revealRange(
-					range,
-					vscode.TextEditorRevealType.InCenterIfOutsideViewport
-				);
-				editor.selection = new vscode.Selection(line, 0, line, 0);
-				annotationController.addTrailingAnnotation(editor, line, `Error: ${message.trim()}`);
-			});
+	const scenePath = path.join(sceneFilesPath, scene + ".txt");
+	vscode.workspace.openTextDocument(scenePath).then((document) => {
+		vscode.window.showTextDocument(document).then((editor) => {
+			line -= 1;
+			const range = document.validateRange(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER));
+			editor.revealRange(
+				range,
+				vscode.TextEditorRevealType.InCenterIfOutsideViewport
+			);
+			editor.selection = new vscode.Selection(line, 0, line, 0);
+			annotationController.addTrailingAnnotation(editor, line, `Error: ${message.trim()}`);
 		});
-	}
+	});
 }
 
 class GameRunner {
@@ -300,12 +302,10 @@ class GameRunner {
 
 		client.onReady().then(() => {
 			disposables.push(
-				client.onNotification(CustomMessages.UpdatedProjectFiles, async (e: string[]) => {
+				client.onNotification(CustomMessages.UpdatedSceneFilesPath, async (e: string) => {
+					sceneFilesPath = e;
 					await this._init();
-					projectFiles = new Map(e.map((file: string) => [path.basename(file), file]));
-					gameserver.updateGameFileMap(this._gameId, projectFiles);
-					statusBarController.projectLoaded();
-					vscode.commands.executeCommand('setContext', CustomContext.ProjectLoaded, true);
+					gameserver.updateScenePath(this._gameId, e);
 				}));
 			this._disposable = vscode.Disposable.from(...disposables);
 			gameserver.startServer();
@@ -314,7 +314,7 @@ class GameRunner {
 
 	public async _init() {
 		if (this._gameId === undefined) {
-			this._gameId = await gameserver.createGame(this._csPath, undefined, this._csErrorHandler);
+			this._gameId = await gameserver.createGame(this._csPath, this._csErrorHandler);
 		}
 	}
 
@@ -461,12 +461,12 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand(
 			CustomCommands.RunQuicktest, () => {
 				annotationController.clearAll();
-				if (projectFiles !== undefined && projectFiles.size > 0) {
+				if (sceneFilesPath !== undefined) {
 					vscode.workspace.saveAll().then(
 						() => runQuicktest(
 							context.asAbsolutePath(RelativePaths.Quicktest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
-							path.dirname(Array.from(projectFiles.values())[0]),
+							sceneFilesPath,
 							annotateCSError,
 							(running) => controller.updateTestStatus(running)
 						)
@@ -476,12 +476,12 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand(
 			CustomCommands.RunRandomtestDefault, () => {
 				annotationController.clearAll();
-				if (projectFiles !== undefined && projectFiles.size > 0) {
+				if (sceneFilesPath !== undefined) {
 					vscode.workspace.saveAll().then(
 						() => runRandomtest(
 							context.asAbsolutePath(RelativePaths.Randomtest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
-							path.dirname(Array.from(projectFiles.values())[0]),
+							sceneFilesPath,
 							RandomtestSettingsSource.VSCodeConfiguration,
 							provider,
 							annotateCSError,
@@ -492,13 +492,13 @@ export function activate(context: vscode.ExtensionContext): void {
 			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RunRandomtestInteractive, () => {
-				if (projectFiles !== undefined && projectFiles.size > 0) {
+				if (sceneFilesPath !== undefined) {
 					annotationController.clearAll();
 					vscode.workspace.saveAll().then(
 						() => runRandomtest(
 							context.asAbsolutePath(RelativePaths.Randomtest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
-							path.dirname(Array.from(projectFiles.values())[0]),
+							sceneFilesPath,
 							RandomtestSettingsSource.Interactive,
 							provider,
 							annotateCSError,
@@ -509,13 +509,13 @@ export function activate(context: vscode.ExtensionContext): void {
 			}),
 		vscode.commands.registerCommand(
 			CustomCommands.RerunRandomTest, () => {
-				if (projectFiles !== undefined && projectFiles.size > 0) {
+				if (sceneFilesPath !== undefined) {
 					annotationController.clearAll();
 					vscode.workspace.saveAll().then(
 						() => runRandomtest(
 							context.asAbsolutePath(RelativePaths.Randomtest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
-							path.dirname(Array.from(projectFiles.values())[0]),
+							sceneFilesPath,
 							RandomtestSettingsSource.LastTestRun,
 							provider,
 							annotateCSError,

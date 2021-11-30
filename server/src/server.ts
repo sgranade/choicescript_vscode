@@ -16,10 +16,10 @@ import {
 	SymbolInformation
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import fs = require('fs');
-import path = require('path');
+import { readFile } from 'fs/promises';
+import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import globby = require('globby');
+import * as globby from 'globby';
 
 import { CustomMessages } from "./constants";
 import { ProjectIndex, Index } from "./index";
@@ -30,7 +30,7 @@ import { generateInitialCompletions } from './completions';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { countWords } from './parser';
 import { generateSymbols } from './structure';
-import { iteratorFilter, normalizeUri } from './utilities';
+import { normalizeUri } from './utilities';
 
 /**
  * Server event arguments about an updated word count in a document.
@@ -107,7 +107,7 @@ connection.onInitialized(() => {
 		if (workspaces && workspaces.length > 0)
 			findStartupFiles(workspaces);
 	});
-	
+
 	// Handle custom requests from the client
 	connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
 	connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
@@ -140,14 +140,15 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 
 		const projectPath = path.dirname(filePath);
 		// Filenames from globby are posix paths regardless of platform
-		const platformFullProjectPath = path.join(workspacePath, ...projectPath.split('/'));
-		projectIndex.setPlatformProjectPath(platformFullProjectPath);
-		
+		const sceneFilesPath = path.join(workspacePath, ...projectPath.split('/'));
+		projectIndex.setPlatformProjectPath(sceneFilesPath);
+		connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
+
 		// Index the startup.txt file
 		await indexFile(filePath);
 
 		// Try to index the stats page (which might not exist)
-		await indexFile(path.join(projectPath, "/choicescript_stats.txt"));
+		await indexFile(path.join(projectPath, "choicescript_stats.txt"));
 
 		const scenes = projectIndex.getAllReferencedScenes();
 		if (scenes !== undefined) {
@@ -156,6 +157,7 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		}
 
 		projectIndex.setProjectIsIndexed(true);
+		connection.sendNotification(CustomMessages.ProjectIndexed);
 	});
 }
 
@@ -172,7 +174,7 @@ async function indexScenes(sceneNames: readonly string[]) {
 
 /**
  * Index a scene file.
- * 
+ *
  * @param path Path to the file to index.
  * @returns True if the file indexed properly.
  */
@@ -180,7 +182,7 @@ async function indexFile(path: string): Promise<boolean> {
 	const fileUri = pathToFileURL(path).toString();
 
 	try {
-		const data = await fs.promises.readFile(path, 'utf8');
+		const data = await readFile(path, 'utf8');
 		const textDocument = TextDocument.create(fileUri, 'ChoiceScript', 0, data);
 		const newFile = !projectIndex.hasUri(normalizeUri(textDocument.uri));
 		updateProjectIndex(
@@ -212,7 +214,7 @@ documents.onDidOpen(e => {
 	).forEach(newScene => {
 		newScenes.add(newScene);
 	});
-	
+
 	notifyChangedWordCount(e.document);
 	if (isStartupFile) {
 		projectFilesHaveChanged = true;
@@ -226,7 +228,7 @@ documents.onDidChangeContent(change => {
 });
 
 /**
- * Process the queue of documents that have changed, new-to-us scenes, 
+ * Process the queue of documents that have changed, new-to-us scenes,
  * and any required re-validation or changed-index notification.
  */
 async function heartbeat() {
@@ -239,18 +241,18 @@ async function heartbeat() {
 		const processingQueue = new Map(changedDocuments);
 		changedDocuments.clear();
 		let processedStartupFile = false;
-	
+
 		for (const [uri, document] of processingQueue) {
 			processChangedDocument(document);
 			if (uriIsStartupFile(uri)) {
 				processedStartupFile = true;
 			}
 		}
-	
+
 		// If we processed a startup file, which defines global variables,
 		// re-validate all files & notify that scene files may have changed
 		if (processedStartupFile) {
-			// Since the startup file defines global variables, if it changes, 
+			// Since the startup file defines global variables, if it changes,
 			// re-validate all other files
 			projectFilesHaveChanged = true;
 		}
@@ -269,7 +271,6 @@ async function heartbeat() {
 
 		if (projectFilesHaveChanged) {
 			projectFilesHaveChanged = false;
-			notifyUpdatedProjectFiles();
 			documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 		}
 	}
@@ -302,22 +303,6 @@ function notifyChangedWordCount(document: TextDocument): void {
 	};
 
 	connection.sendNotification(CustomMessages.UpdatedWordCount, e);
-}
-
-/**
- * Notify the client about the project's files, both scene and image.
- */
-function notifyUpdatedProjectFiles(): void {
-	const platformProjectPath = projectIndex.getPlatformProjectPath();
-	const localImages = [...iteratorFilter(projectIndex.getProjectImages(), (image: string) => {
-		const lcImage = image.toLowerCase();
-		return !(lcImage.startsWith('http://') || lcImage.startsWith('https://'));
-	})];
-	const localImageFiles = localImages.map(image => path.join(platformProjectPath, image));
-	const projectFiles = projectIndex.getIndexedScenes().map(
-		name => path.join(platformProjectPath, name+".txt")
-	);
-	connection.sendNotification(CustomMessages.UpdatedProjectFiles, projectFiles.concat(localImageFiles));
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
@@ -401,7 +386,7 @@ function onSelectionWordCount(location: Location): number | undefined {
 	}
 
 	const section = document.getText().slice(startIndex, endIndex);
-	
+
 	return countWords(section, document);
 }
 

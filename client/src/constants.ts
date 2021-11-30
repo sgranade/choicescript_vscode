@@ -1,4 +1,4 @@
-import path = require('path');
+import { join as joinPath } from 'path';
 
 export enum RandomtestPutResultsInDocumentOptions {
 	Never = 'never',
@@ -39,8 +39,9 @@ export enum CustomContext {
 
 export enum CustomMessages {
 	CoGStyleGuide = 'choicescript/cogstyleguide',
+	ProjectIndexed = 'choicescript/projectindexed',
 	SelectionWordCountRequest = 'choicescript/selectionwordcount',
-	UpdatedProjectFiles = 'choicescript/projectfiles',
+	UpdatedSceneFilesPath = 'choicescript/scenefilespath',
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
 }
@@ -57,9 +58,9 @@ export enum RandomtestSettingsSource {
 
 // Paths relative to the extension
 export const RelativePaths = {
-	Choicescript: path.join('choicescript', 'out'),
-	GameIndex: path.join('choicescript', 'out', 'index.html'),
-	Quicktest: path.join('choicescript', 'out', 'autotest.js'),
-	Randomtest: path.join('choicescript', 'out', 'randomtest.js'),
-	VSCodeExtensionServer: path.join('server', 'out', 'server.js')
+	Choicescript: joinPath('choicescript', 'out'),
+	GameIndex: joinPath('choicescript', 'out', 'index.html'),
+	Quicktest: joinPath('choicescript', 'out', 'autotest.js'),
+	Randomtest: joinPath('choicescript', 'out', 'randomtest.js'),
+	VSCodeExtensionServer: joinPath('server', 'out', 'server.js')
 };
