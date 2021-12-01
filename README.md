@@ -96,6 +96,15 @@ The ChoiceScript [`*image`](https://choicescriptdev.fandom.com/wiki/Image) comma
 
 ## Release Notes
 
+## [2.4.0]
+
+- The extension now shows local images when running a game.
+- [Nested choices](https://choicescriptdev.fandom.com/wiki/Choice#Nested_choices)? No problem! They work now.
+- A new setting allows you to turn off warnings when your game doesn't follow Choice of Games's in-house style guide (like using ellipses and limiting option length to 15 words).
+- Re-ordered randomtest options in the context menu.
+- Fixed numerous syntax highlighting, parsing, and error-marking bugs.
+
+
 ## [2.3.0]
 
 - You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
@@ -138,14 +147,3 @@ This update brings big new features: the ability to run your game in a browser f
 - Multireplace error catching improved.
 - Multireplace syntax highlighting now properly handles nested parentheses thanks to [a timely mailing list email from 2007](https://lists.macromates.com/textmate/2007-September/022055.html).
 - Can you tell I focused on multireplaces this go-round?
-
-### [1.4.2]
-
-- Greatly sped up the extension by refactoring parsing and validation.
-- Expression errors inside `*if` blocks and similar are now marked in the proper location.
-- Multireplace errors inside `*if` blocks and similar are now marked in the proper location.
-
-### [1.4.1]
-
-- Bug fixes to symbol indexing and syntax highlighting.
-- Improved error handling for `*label` and `*if` in front of an `#option`.
