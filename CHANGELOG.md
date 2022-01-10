@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- Quicktest and randomtest record the time when they started and finished.
+
 ### Fixed
 
 - `*image` with a correct alignment type (such as `left`) is no longer incorrectly flagged as an error. (reported by nocturno)

@@ -380,6 +380,8 @@ function runTest(
 	}
 	output.clear();
 	output.show();
+	output.appendLine(`${testName} started on ${Date().toString()}`);
+
 	runningProcess = cp.fork(testScriptPath, testArgs, { stdio: 'pipe' });
 
 	runningProcess.stdout.setEncoding('utf-8');
@@ -410,6 +412,7 @@ function runTest(
 	runningProcess.on('exit', async (code?: number, signal?: string) => {
 		let success = false;
 		runningProcess = undefined;
+		output.appendLine(`\n${testName} finished on ${Date().toString()}`);
 		vscode.commands.executeCommand('setContext', CustomContext.TestRunning, false);
 		if (statusCallback !== undefined) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
