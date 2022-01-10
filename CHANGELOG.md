@@ -8,6 +8,7 @@ Changes to the plugin.
 
 - `*image` with a correct alignment type (such as `left`) is no longer incorrectly flagged as an error. (reported by nocturno)
 - `*image` with no alignment type is no longer incorrectly flagged as an error. (reported by nocturno)
+- `*if var = "#"` is no longer incorrectly flagged as an error. (reported by nocturno)
 
 ## [2.4.0] - 2021-11-30
 

@@ -1581,6 +1581,9 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 	}
 }
 
+
+const balancedString = RegExp(`"(?:[^"\\\\]|\\\\.)*"`, 'g');
+
 /**
  * Parse a command that can reference variables, such as *if.
  * @param command ChoiceScript command, such as "if", that may contain a reference.
@@ -1592,9 +1595,12 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 	let optionOnLineWithIf = false;
 	// The *if and *selectable_if commands can be used with options, so take that into account
 	if (command == "if" || command == "selectable_if") {
-		const choiceSplit = line.split('#');
-		if (choiceSplit.length > 1) {
-			line = choiceSplit[0];
+		// Deal with the case where a hash mark is in a string by blanking out strings, just for now.
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const stringlessLine = line.replace(balancedString, (match: string, ...args: unknown[]) => ' '.repeat(match.length));
+		const choiceIndex = stringlessLine.indexOf('#');
+		if (choiceIndex > 0) {
+			line = line.substring(0, choiceIndex-1);
 			optionOnLineWithIf = true;
 		}
 	}

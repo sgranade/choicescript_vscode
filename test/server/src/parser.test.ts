@@ -2256,6 +2256,19 @@ describe("Parser", () => {
 					expect(received.length).to.equal(0);
 				});
 
+				it("should not mistake a hash mark inside a string as part of an if statement as an option", () => {
+					let fakeDocument = createDocument("Line 0\n*if (v = \"#\")\n    Text\nEnd");
+					let received: Array<Diagnostic> = [];
+					let fakeCallbacks = Substitute.for<ParserCallbacks>();
+					fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+						received.push(e);
+					});
+
+					parse(fakeDocument, fakeCallbacks);
+
+					expect(received.length).to.equal(0);
+				});
+
 				it("should flag an if command in front of an option that has no parentheses", () => {
 					let fakeDocument = createDocument("Line 0\n*choice\n    *if false #One\n        Text\n    #Two\n        Text\nEnd");
 					let received: Array<Diagnostic> = [];
