@@ -4,6 +4,13 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Fixed
+
+- `*image` with a correct alignment type (such as `left`) is no longer incorrectly flagged as an error. (reported by nocturno)
+- `*image` with no alignment type is no longer incorrectly flagged as an error. (reported by nocturno)
+
+## [2.4.0] - 2021-11-30
+
 ### Added
 
 - Added support for showing local images when running your game.

@@ -1844,11 +1844,11 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
  * @param state Parsing state.
  */
 function parseImage(image: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
-	const alignmentMatch = remainingLine.match(/^(\s+)(((left|right|center)\s|$)|(?<error>\S+))?/);
-	if (alignmentMatch?.groups?.error !== undefined) {
-		const startIndex = startSectionIndex + image.length + alignmentMatch[1].length;
+	if (remainingLine.trim() != '' && !/^(\s+)((left|right|center)\s*$)/.test(remainingLine)) {
+		const firstCharacterIndex = remainingLine.search(/\S/);
+		const startIndex = startSectionIndex + image.length + firstCharacterIndex;
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startIndex, startIndex + alignmentMatch.groups.error.length,
+			startIndex, startIndex + remainingLine.length - firstCharacterIndex,
 			`Must be one of left, right, or center.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}

@@ -3718,6 +3718,35 @@ describe("Parser", () => {
 		});
 
 		describe("Images", () => {
+			it("should raise an error on a missing image url", () => {
+				let fakeDocument = createDocument("*image ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *image is missing its arguments");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(6);
+			});
+
+			it("should not raise an error if there is no alignment", () => {
+				let fakeDocument = createDocument("*image cover.png ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
 			it("should raise an error for an incorrect alignment", () => {
 				let fakeDocument = createDocument("*image cover.png flooble");
 				let received: Array<Diagnostic> = [];
@@ -3732,6 +3761,19 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Must be one of left, right, or center");
 				expect(received[0].range.start.line).to.equal(17);
 				expect(received[0].range.end.line).to.equal(24);
+			});
+
+			it("should not raise an error for a correct alignment", () => {
+				let fakeDocument = createDocument("*image cover.png left");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
 			});
 		});
 
