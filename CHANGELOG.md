@@ -2,6 +2,10 @@
 
 Changes to the plugin.
 
+## [2.5.1] - 2022-01-23
+
+Point release to fix an issue with the Visual Studio Marketplace.
+
 ## [2.5.0] - 2022-01-22
 
 ### Added
