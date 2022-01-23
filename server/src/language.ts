@@ -9,7 +9,7 @@ import { ReadonlyIdentifierIndex } from "./index";
 /**
  * Commands that can only be used in startup.txt
  */
-export const startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product"];
+export const startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product", "ifid"];
 
 /**
  * Complete list of valid commands.
@@ -24,7 +24,7 @@ export const validCommands: ReadonlyArray<string> = [
 	"restart", "more_games", "delay_ending", "end_trial", "login", "achieve", "scene_list", "title",
 	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
 	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
-	"timer", "youtube", "product", "text_image", "params", "config"
+	"timer", "youtube", "product", "text_image", "params", "config", "ifid"
 ];
 
 /**
@@ -34,7 +34,7 @@ export const argumentRequiredCommands: ReadonlyArray<string> = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending"
+	"text_image", "config", "delay_ending", "ifid"
 ];
 
 /**

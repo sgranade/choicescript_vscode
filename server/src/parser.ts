@@ -1863,6 +1863,31 @@ function parseImage(image: string, remainingLine: string, startSectionIndex: num
 }
 
 /**
+ * Parse an IFID.
+ * @param ifid IFID value.
+ * @param remainingLine Remaining line after the IFID, if any.
+ * @param startSectionIndex Index at the start of the IFID.
+ * @param state Parsing state.
+ */
+function parseIfid(ifid: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
+	const ifidRegex = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+	if (!ifidRegex.test(ifid)) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			startSectionIndex, startSectionIndex + ifid.length,
+			"An IFID must have only hexidecimal characters (0-9 or a-f) in a 8-4-4-4-12 pattern.", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	if (remainingLine.trim() != '') {
+		const firstCharacterIndex = remainingLine.search(/\S/);
+		const startIndex = startSectionIndex + ifid.length + firstCharacterIndex;
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			startIndex, startIndex + remainingLine.length - firstCharacterIndex,
+			`Nothing can follow an IFID.`, state);
+		state.callbacks.onParseError(diagnostic);
+	}
+}
+
+/**
  * Check a command to see if its arguments are incorrect
  * @param command Command to check.
  * @param commandSectionIndex Location of the command in the document section.
@@ -2002,6 +2027,13 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		if (imageMatch) {
 			const image = imageMatch[0];
 			parseImage(image, line.slice(image.length), lineSectionIndex, state);
+		}
+	}
+	else if (command == "ifid") {
+		const ifidMatch = line.match(/^\S+/);
+		if (ifidMatch) {
+			const ifid = ifidMatch[0];
+			parseIfid(ifid, line.slice(ifid.length), lineSectionIndex, state);
 		}
 	}
 

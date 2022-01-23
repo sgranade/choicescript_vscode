@@ -1982,6 +1982,21 @@ describe("Parser", () => {
 		});
 	});
 
+	describe("IFID Parsing", () => {
+		it("should parse an IFID", () => {
+			let fakeDocument = createDocument("*ifid 12345678-abcd-ef12-3456-7890abcdef01");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(0);
+		});
+	});
+
 	describe("Errors", () => {
 		describe("Commands", () => {
 			it("should flag non-existent commands", () => {
@@ -3787,6 +3802,56 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(0);
+			});
+		});
+
+		describe("IFID", () => {
+			it("should flag an IFID that doesn't follow the proper pattern", () => {
+				let fakeDocument = createDocument("*ifid 1");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An IFID must have only hexidecimal characters (0-9 or a-f) in a 8-4-4-4-12 pattern");
+				expect(received[0].range.start.line).to.equal(6);
+				expect(received[0].range.end.line).to.equal(7);
+			});
+
+			it("should flag an IFID identifier that has non-hexidecimal characters", () => {
+				let fakeDocument = createDocument("*ifid 12345678-abcd-ef12-3456-7890abcdefgh");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("An IFID must have only hexidecimal characters (0-9 or a-f) in a 8-4-4-4-12 pattern");
+				expect(received[0].range.start.line).to.equal(6);
+				expect(received[0].range.end.line).to.equal(42);
+			});
+
+			it("should flag text after an IFID identifier", () => {
+				let fakeDocument = createDocument("*ifid 12345678-abcd-ef12-3456-7890abcdef01 whoops");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Nothing can follow an IFID");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(49);
 			});
 		});
 

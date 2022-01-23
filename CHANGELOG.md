@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Added
 
 - Quicktest and randomtest record the time when they started and finished.
+- `*ifid` command now supported.
 
 ### Changed
 
