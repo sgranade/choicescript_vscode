@@ -63,7 +63,7 @@ class StatusBarItems {
 		this._runningTestItem.tooltip = "Press to stop the running test";
 		this._openGameStatusBarItem = vscode.window.createStatusBarItem("cs_open_game", vscode.StatusBarAlignment.Left, 10);
 		this._openGameStatusBarItem.name = "ChoiceScript: Open Game";
-		this._openGameStatusBarItem.text = "$(open-preview) Open";
+		this._openGameStatusBarItem.text = "$(open-preview) Open in Browser";
 		this._openGameStatusBarItem.tooltip = "Press to open game in browser";
 		this._openGameStatusBarItem.command = CustomCommands.OpenGame;
 		this._wordCountStatusBarItem = vscode.window.createStatusBarItem("cs_word_count", vscode.StatusBarAlignment.Right, 1000);

@@ -8,6 +8,10 @@ Changes to the plugin.
 
 - Quicktest and randomtest record the time when they started and finished.
 
+### Changed
+
+- The game-opening icon now is titled "Open in Browser".
+
 ### Fixed
 
 - `*image` with a correct alignment type (such as `left`) is no longer incorrectly flagged as an error. (reported by nocturno)
