@@ -6,8 +6,9 @@ Changes to the plugin.
 
 ### Added
 
-- Quicktest and randomtest record the time when they started and finished.
 - `*ifid` command now supported.
+- The extension now disables auto-complete for text. To get the old behavior back, uncheck the "Disable Quick Suggestions" option in Settings.
+- Quicktest and randomtest record the time when they started and finished.
 
 ### Changed
 

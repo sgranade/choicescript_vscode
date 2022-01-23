@@ -256,33 +256,6 @@ class StatusBarController {
 	}
 }
 
-
-/**
- * Annotate an error from ChoiceScript in the editor.
- * 
- * @param scene Scene name (without `.txt`) that contains the error.
- * @param line 1-based line number where the error occurred.
- * @param message Error message.
- */
-function annotateCSError(scene: string, line: integer, message: string): void {
-	if (sceneFilesPath === undefined) {
-		return;
-	}
-	const scenePath = path.join(sceneFilesPath, scene + ".txt");
-	vscode.workspace.openTextDocument(scenePath).then((document) => {
-		vscode.window.showTextDocument(document).then((editor) => {
-			line -= 1;
-			const range = document.validateRange(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER));
-			editor.revealRange(
-				range,
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport
-			);
-			editor.selection = new vscode.Selection(line, 0, line, 0);
-			annotationController.addTrailingAnnotation(editor, line, `Error: ${message.trim()}`);
-		});
-	});
-}
-
 class GameRunner {
 	private _gameId: string;
 	private _csPath: string;
@@ -335,6 +308,32 @@ class GameRunner {
 }
 
 /**
+ * Annotate an error from ChoiceScript in the editor.
+ * 
+ * @param scene Scene name (without `.txt`) that contains the error.
+ * @param line 1-based line number where the error occurred.
+ * @param message Error message.
+ */
+function annotateCSError(scene: string, line: integer, message: string): void {
+	if (sceneFilesPath === undefined) {
+		return;
+	}
+	const scenePath = path.join(sceneFilesPath, scene + ".txt");
+	vscode.workspace.openTextDocument(scenePath).then((document) => {
+		vscode.window.showTextDocument(document).then((editor) => {
+			line -= 1;
+			const range = document.validateRange(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER));
+			editor.revealRange(
+				range,
+				vscode.TextEditorRevealType.InCenterIfOutsideViewport
+			);
+			editor.selection = new vscode.Selection(line, 0, line, 0);
+			annotationController.addTrailingAnnotation(editor, line, `Error: ${message.trim()}`);
+		});
+	});
+}
+
+/**
  * Surround the current selection with bbcode delimiters like [i] and [/i].
  * @param editor Current editor.
  * @param delimitCharacters Characters inside the bbcode [], such as "i" or "b"
@@ -372,79 +371,15 @@ function bbcodeDelimit(editor: vscode.TextEditor, delimitCharacters: string): vo
 	}
 }
 
-export function activate(context: vscode.ExtensionContext): void {
-	const serverModule = context.asAbsolutePath(
-		RelativePaths.VSCodeExtensionServer
-	);
-	// The debug options for the server
-	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
-
-	// If the extension is launched in debug mode then the debug server options are used
-	// Otherwise the run options are used
-	const serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
-			options: debugOptions
-		}
-	};
-
-	// Options to control the language client
-	const clientOptions: LanguageClientOptions = {
-		documentSelector: [{ scheme: 'file', language: 'choicescript' }]
-	};
-
-	client = new LanguageClient(
-		'choicescriptVsCode',
-		'ChoiceScript VSCode',
-		serverOptions,
-		clientOptions
-	);
-
-	// Register a new text document provider for log files
-	const provider = new Provider();
-	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(Provider.scheme, provider);
-	context.subscriptions.push(provider, providerRegistration);
-
-	const statusBar = new StatusBarItems();
-	const controller = new StatusBarController(statusBar);
-	context.subscriptions.push(statusBar, controller);
-
-	annotationController = new LineAnnotationController();
-	const annotationsTextDocumentChangedSubscription = vscode.workspace.onDidChangeTextDocument(
-		annotationController.onTextDocumentChanged, annotationController
-	);
-	context.subscriptions.push(
-		annotationController,
-		annotationsTextDocumentChangedSubscription
-	);
-
-	const configurationChangedSubscription = vscode.workspace.onDidChangeConfiguration(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		(e: vscode.ConfigurationChangeEvent) => {
-			client.sendNotification(
-				CustomMessages.CoGStyleGuide, vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.UseCOGStyleGuide)
-			);
-		}
-	);
-	context.subscriptions.push(configurationChangedSubscription);
-
-	// Set up storage services
-	setupLocalStorageManagers(context.workspaceState, context.globalState);
-
-	// Prepare for future ChoiceScript test runs
-	initializeTestProvider();
-
-	const gameRunner = new GameRunner(
-		context,
-		controller,
-		annotateCSError
-	);
-	context.subscriptions.push(gameRunner);
-
-	// Register our commands
+/**
+ * Register the extension's commands.
+ * 
+ * @param context Extension's context.
+ * @param controller Status bar controller.
+ * @param gameRunner The controller for running the game in a browser.
+ * @param provider Text document provider.
+ */
+function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: GameRunner, provider: Provider) {
 	const csCommands = [
 		vscode.commands.registerTextEditorCommand(
 			CustomCommands.Italicize, (editor) => {
@@ -531,6 +466,103 @@ export function activate(context: vscode.ExtensionContext): void {
 	];
 
 	context.subscriptions.push(...csCommands);
+}
+
+/**
+ * Update the workspace editor.quickSuggestions state for ChoiceScript.
+ */
+function updateQuickSuggestions(): void {
+	const quickSuggestionsState = !vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.DisableQuickSuggestions);
+	const quickSuggestionsValue = {
+		comments: quickSuggestionsState,
+		strings: quickSuggestionsState,
+		other: quickSuggestionsState
+	};
+	const config = vscode.workspace.getConfiguration("", { languageId: "choicescript" });
+	config.update("editor.quickSuggestions", quickSuggestionsValue, false, true);
+}
+
+export function activate(context: vscode.ExtensionContext): void {
+	const serverModule = context.asAbsolutePath(
+		RelativePaths.VSCodeExtensionServer
+	);
+	// The debug options for the server
+	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
+	const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+
+	// If the extension is launched in debug mode then the debug server options are used
+	// Otherwise the run options are used
+	const serverOptions: ServerOptions = {
+		run: { module: serverModule, transport: TransportKind.ipc },
+		debug: {
+			module: serverModule,
+			transport: TransportKind.ipc,
+			options: debugOptions
+		}
+	};
+
+	// Options to control the language client
+	const clientOptions: LanguageClientOptions = {
+		documentSelector: [{ scheme: 'file', language: 'choicescript' }]
+	};
+
+	client = new LanguageClient(
+		'choicescriptVsCode',
+		'ChoiceScript VSCode',
+		serverOptions,
+		clientOptions
+	);
+
+	// Register a new text document provider for log files
+	const provider = new Provider();
+	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(Provider.scheme, provider);
+	context.subscriptions.push(provider, providerRegistration);
+
+	// Set up the status bar
+	const statusBar = new StatusBarItems();
+	const controller = new StatusBarController(statusBar);
+	context.subscriptions.push(statusBar, controller);
+
+	// Create a controller for error annotations
+	annotationController = new LineAnnotationController();
+	const annotationsTextDocumentChangedSubscription = vscode.workspace.onDidChangeTextDocument(
+		annotationController.onTextDocumentChanged, annotationController
+	);
+	context.subscriptions.push(
+		annotationController,
+		annotationsTextDocumentChangedSubscription
+	);
+
+	// Deal with configuration changes
+	const configurationChangedSubscription = vscode.workspace.onDidChangeConfiguration(
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		(e: vscode.ConfigurationChangeEvent) => {
+			updateQuickSuggestions();
+			client.sendNotification(
+				CustomMessages.CoGStyleGuide, vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.UseCOGStyleGuide)
+			);
+		}
+	);
+	context.subscriptions.push(configurationChangedSubscription);
+
+	// Set up storage services
+	setupLocalStorageManagers(context.workspaceState, context.globalState);
+
+	// Prepare for future ChoiceScript test runs
+	initializeTestProvider();
+
+	const gameRunner = new GameRunner(
+		context,
+		controller,
+		annotateCSError
+	);
+	context.subscriptions.push(gameRunner);
+
+	// Register our commands
+	registerCommands(context, controller, gameRunner, provider);
+
+	// Adjust the workspace's quick suggestions setting for ChoiceScript
+	updateQuickSuggestions();
 
 	// Start the client & launch the server
 	client.start();

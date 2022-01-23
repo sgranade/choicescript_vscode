@@ -2,7 +2,7 @@
 	"name": "choicescript-vscode",
 	"displayName": "ChoiceScript Language",
 	"description": "ChoiceScript language support for VS Code",
-	"version": "2.5.0",
+	"version": "2.4.0",
 	"author": {
 		"name": "Stephen Granade",
 		"email": "stephen@granades.com",
@@ -224,6 +224,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Whether to check your game's text and length of options against Choice of Games's in-house style guide."
+				},
+				"choicescript.disableQuickSuggestions": {
+					"type": "boolean",
+					"default": true,
+					"description": "Whether to turn off VS Code's automatic suggestions when typing text (as opposed to commands or variables)."
 				},
 				"choicescript.randomtest.putResultsInDocument": {
 					"type": "string",

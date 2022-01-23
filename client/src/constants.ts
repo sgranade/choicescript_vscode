@@ -9,6 +9,7 @@ export enum RandomtestPutResultsInDocumentOptions {
 export enum Configuration {
 	BaseSection = 'choicescript',
 	UseCOGStyleGuide = 'useChoiceOfGamesStyleGuide',
+	DisableQuickSuggestions = 'disableQuickSuggestions',
 	RandomtestIterations = 'randomtest.iterations',
 	RandomtestSeed = 'randomtest.randomSeed',
 	RandomtestPutResultsInDocument = 'randomtest.putResultsInDocument',
