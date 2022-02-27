@@ -33,6 +33,8 @@ var delay = false;
 var showCoverage = true;
 var isTrial = null;
 var showText = false;
+// logText is distinct from showText so I can track when the user *really* doesn't want to see any text
+var logText = true;
 var highlightGenderPronouns = false;
 var showChoices = true;
 var avoidUsedOptions = true;
@@ -378,13 +380,19 @@ function configureShowText() {
 		var lineBuffer = [];
 
 		printx = function printx(msg) {
-			lineBuffer.push(msg);
+			if (logText) {
+				lineBuffer.push(msg);
+			}
 		};
 		println = function println(msg) {
-			lineBuffer.push(msg);
-			var logMsg = lineBuffer.join("");
-			console.log(logMsg);
-			lineBuffer = [];
+			if (logText) {
+				lineBuffer.push(msg);
+			}
+			if (lineBuffer.length > 0) {
+				var logMsg = lineBuffer.join("");
+				console.log(logMsg);
+				lineBuffer = [];
+			}
 		};
 		printParagraph = function printParagraph(msg) {
 			if (msg === null || msg === undefined || msg === "") return;
@@ -392,7 +400,9 @@ function configureShowText() {
 				.replace(/\[n\/\]/g, '\n')
 				.replace(/\[c\/\]/g, '');
 			println(msg);
-			console.log("");
+			if (logText) {
+				console.log("");
+			}
 		};
     printImage = function printImage(source, alignment, alt, invert) {
       console.log('[IMAGE: ' + (alt || source) + ']');
@@ -638,17 +648,19 @@ Scene.prototype.choice = function choice(data) {
 	this.paragraph();
 	if (showChoices) {
 		if (showText) {
-			this.randomLog("*choice " + (choiceLine + 1) + '#' + (index + 1) + ' (line ' + item.ultimateOption.line + ')');
-			// it would be nice to handle choice groups here
-			for (var i = 0; i < flattenedOptions.length; i++) {
-				if (i > 0) {
-					this.printLine("[n/]");
-				} else {
-					this.printLine(" ");
+			if (logText) {
+				this.randomLog("*choice " + (choiceLine + 1) + '#' + (index + 1) + ' (line ' + item.ultimateOption.line + ')');
+				// it would be nice to handle choice groups here
+				for (var i = 0; i < flattenedOptions.length; i++) {
+					if (i > 0) {
+						this.printLine("[n/]");
+					} else {
+						this.printLine(" ");
+					}
+					this.printLine("\u2022 " + (i === index ? "\u2605 " : "") + flattenedOptions[i].ultimateOption.name);
 				}
-				this.printLine("\u2022 " + (i === index ? "\u2605 " : "") + flattenedOptions[i].ultimateOption.name);
+				this.paragraph();
 			}
-			this.paragraph();
 		} else {
 			var optionName = this.replaceVariables(item.ultimateOption.name);
 			this.randomLog("*choice " + (choiceLine + 1) + '#' + (index + 1) + ' (line ' + item.ultimateOption.line + ') #' + optionName);
@@ -704,6 +716,26 @@ Scene.prototype.choice = function choice(data) {
 	}
 
 }
+
+Scene.prototype.comment = function comment(line) {
+	var result = /^(\w*)(.*)/.exec(line);
+	if (!result) {
+	  return;
+	}
+	var command = result[1].toLowerCase();
+	if (command == "text") {
+		var subcommand = /^\s*(\w*)(.*)/.exec(result[2]);
+		if (!subcommand) {
+			return;
+		}
+		if (subcommand[1] == "on") {
+			logText = true;
+		}
+		else if (subcommand[1] == "off") {
+			logText = false;
+		}
+	}
+}  
 
 Scene.prototype.loadScene = function loadScene() {
 	var file = slurpFileCached(path.join(projectPath, this.name + '.txt'));

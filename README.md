@@ -61,6 +61,23 @@ Randomtest requires more steps. When you run Randomtest, the extension will prom
 If you run Randomtest without it printing the game's text, the results will appear in the Output window. If it prints the game's text, the results will open in a separate editor window that you can save. However, Randomtest can produce larger files than VS Code will allow the extension to open. In that case, it will save the results to a text file in your workspace. You can then open the file yourself.
 
 
+## Extensions to ChoiceScript Features
+
+When running RandomTest and printing the text, the resulting file can be very large. The extension allows you to capture the text from just a portion of your game by adding special comments to it. The line
+
+```
+*comment text off
+```
+
+will turn off text printing entirely.
+
+```
+*comment text on
+```
+
+will turn it back on.
+
+
 ## Settings
 
 To use the style snippets that turn `...` into an ellipsis and `--` into an em-dash, [enable snippet tab completion][snippets]. Then type three periods and hit tab to turn them into an ellipsis.

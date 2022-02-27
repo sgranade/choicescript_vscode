@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Added
+
+- Ability to turn on showing text for only parts of a randomtest run using `*comment text off` and `*comment text on`.
+
 ## [2.5.1] - 2022-01-23
 
 Point release to fix an issue with the Visual Studio Marketplace.
@@ -12,7 +18,7 @@ Point release to fix an issue with the Visual Studio Marketplace.
 
 - `*ifid` command now supported.
 - The extension now disables auto-complete for text. To get the old behavior back, uncheck the "Disable Quick Suggestions" option in Settings.
-- Quicktest and randomtest record the time when they started and finished.
+- Quicktest and Randomtest record the time when they started and finished.
 
 ### Changed
 
