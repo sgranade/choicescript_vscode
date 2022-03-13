@@ -7,8 +7,7 @@ import {
 	ServerOptions,
 	Location,
 	Range,
-	TransportKind,
-	integer
+	TransportKind
 } from 'vscode-languageclient/node';
 
 import { LineAnnotationController } from './annotations';
@@ -77,6 +76,8 @@ class StatusBarItems {
 
 	public showOrHide(editor: vscode.TextEditor | undefined, projectStatus: ProjectStatus): void {
 		if (projectStatus.testRunning) {
+			// Reset the test text
+			this._updateTestText();
 			this._runningTestItem.show();
 		}
 		else {
@@ -91,7 +92,7 @@ class StatusBarItems {
 			const doc = editor.document;
 
 			if (doc.languageId === "choicescript") {
-				this._updateText();
+				this._updateWordCountText();
 				if (projectStatus.loaded && vscode.workspace.isTrusted) {
 					this._openGameStatusBarItem.show();
 				}
@@ -107,7 +108,7 @@ class StatusBarItems {
 		}
 	}
 
-	private _updateText(): void {
+	private _updateWordCountText(): void {
 		let text = "$(pencil) ";
 		if (this._wordCount === undefined) {
 			text += "counting words";
@@ -126,14 +127,31 @@ class StatusBarItems {
 		this._wordCountStatusBarItem.text = text;
 	}
 
+	private _updateTestText(count?: number): void {
+		let text = "Running CS Test";
+
+		if (count === undefined) {
+			text = "$(sync~spin) "+text;
+		}
+		else {
+			text += " ("+count+")";
+		}
+
+		this._runningTestItem.text = text;
+	}
+
+	public updateTestCount(count: number): void {
+		this._updateTestText(count);
+	}
+
 	public updateWordCount(wordCount: number | undefined = undefined): void {
 		this._wordCount = wordCount;
-		this._updateText();
+		this._updateWordCountText();
 	}
 
 	public updateSelectionCount(selectionCount: number | undefined = undefined): void {
 		this._selectionCount = selectionCount;
-		this._updateText();
+		this._updateWordCountText();
 	}
 
 	public dispose(): void {
@@ -251,6 +269,10 @@ class StatusBarController {
 		}
 	}
 
+	updateTestCount(count: number) {
+		this._statusBar.updateTestCount(count);
+	}
+
 	public dispose(): void {
 		this._disposable.dispose();
 	}
@@ -259,14 +281,14 @@ class StatusBarController {
 class GameRunner {
 	private _gameId: string;
 	private _csPath: string;
-	private _csErrorHandler: (scene: string, line: integer, message: string) => void | undefined;
+	private _csErrorHandler: (scene: string, line: number, message: string) => void | undefined;
 	private _statusBarController: StatusBarController;
 	private _disposable: vscode.Disposable;
 
 	constructor(
 		context: vscode.ExtensionContext, 
 		statusBarController: StatusBarController, 
-		csErrorHandler?: (scene: string, line: integer, message: string) => void
+		csErrorHandler?: (scene: string, line: number, message: string) => void
 	) {
 		const disposables: vscode.Disposable[] = [];
 		this._csPath = context.asAbsolutePath(RelativePaths.Choicescript);
@@ -314,7 +336,7 @@ class GameRunner {
  * @param line 1-based line number where the error occurred.
  * @param message Error message.
  */
-function annotateCSError(scene: string, line: integer, message: string): void {
+function annotateCSError(scene: string, line: number, message: string): void {
 	if (sceneFilesPath === undefined) {
 		return;
 	}
@@ -420,7 +442,8 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 							RandomtestSettingsSource.VSCodeConfiguration,
 							provider,
 							annotateCSError,
-							(running) => controller.updateTestStatus(running)
+							(running) => controller.updateTestStatus(running),
+							(count) => controller.updateTestCount(count)
 						)
 					);
 				}
@@ -437,7 +460,8 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 							RandomtestSettingsSource.Interactive,
 							provider,
 							annotateCSError,
-							(running) => controller.updateTestStatus(running)
+							(running) => controller.updateTestStatus(running),
+							(count) => controller.updateTestCount(count)
 						)
 					);
 				}
@@ -454,7 +478,8 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 							RandomtestSettingsSource.LastTestRun,
 							provider,
 							annotateCSError,
-							(running) => controller.updateTestStatus(running)
+							(running) => controller.updateTestStatus(running),
+							(count) => controller.updateTestCount(count)
 						)
 					);
 				}

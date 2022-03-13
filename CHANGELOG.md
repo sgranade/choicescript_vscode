@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Added
 
 - Ability to turn on showing text for only parts of a randomtest run using `*comment text off` and `*comment text on`.
+- Count of the Randomtest test now shows on the status bar while the test is running.
 
 ## [2.5.1] - 2022-01-23
 

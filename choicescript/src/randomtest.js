@@ -831,7 +831,7 @@ function randomtestAsync(i, showCoverage) {
 		return;
 	}
 
-	console.log("*****Seed " + (i + randomSeed));
+	console.log("*****Iteration "+(i+1)+" Seed " + (i + randomSeed));
 	timeout = null;
 	nav.resetStats(stats);
 	Math.seedrandom(i + randomSeed);
@@ -854,7 +854,7 @@ function randomtest() {
 		if (typeof process != "undefined")
 			if (typeof process.send != "undefined")
 				process.send({ type: "progress", data: i / percentage });
-		console.log("*****Seed " + (i + randomSeed));
+		console.log("*****Iteration "+(i+1)+" Seed " + (i + randomSeed));
 		nav.resetStats(stats);
 		timeout = null;
 		Math.seedrandom(i + randomSeed);

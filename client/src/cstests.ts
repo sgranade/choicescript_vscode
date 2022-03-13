@@ -12,6 +12,7 @@ import { MultiStepInput } from './multiStepInput';
 // VS Code has a [20 MB limit on file sizes that it'll let extensions open](https://github.com/jjuback/gc-excelviewer/issues/49)
 const FILE_SIZE_LIMIT = 20*1024*1024;
 
+const ITERATION_COUNT_STRING = "*****Iteration ";
 
 const outputChannel = vscode.window.createOutputChannel("ChoiceScript Test");
 let runningProcess: cp.ChildProcess;
@@ -322,7 +323,8 @@ export async function runRandomtest(
 	source: RandomtestSettingsSource,
 	provider: Provider,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
-	statusCallback?: (running: boolean) => void
+	statusCallback?: (running: boolean) => void,
+	testCountCallback?: (count: integer) => void
 ): Promise<void> {
 	const settings = await getRandomtestSettings(source);
 	const args = [
@@ -343,7 +345,7 @@ export async function runRandomtest(
 		}
 	}
 
-	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback, onSuccess);
+	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback, testCountCallback, onSuccess);
 }
 
 
@@ -356,6 +358,7 @@ export async function runRandomtest(
  * @param output Where to send the output from the run.
  * @param csErrorHandler Optional handler for if the test finds an error.
  * @param statusCallback Optional callback for when tests are running or not.
+ * @param testCountCallback Optional callback for the count of random tests.
  * @param successCallback Optional callback after a test for whether it succeeded or not.
  */
 function runTest(
@@ -365,6 +368,7 @@ function runTest(
 	output: vscode.OutputChannel | LogDocument,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void,
+	testCountCallback?: (count: integer) => void,
 	successCallback?: (running: boolean) => void
 ) {
 	let lastLine: string;
@@ -394,6 +398,20 @@ function runTest(
 			lastLine = lastLine.slice(0, -1);
 		}
 		output.append(lastLine);
+
+		// See if there's an iteration count in the output if necessary
+		if (testCountCallback !== undefined) {
+			let ndx = lastLine.indexOf(ITERATION_COUNT_STRING);
+			if (ndx != -1) {
+				ndx += ITERATION_COUNT_STRING.length; 
+				const endNdx = lastLine.indexOf(" ", ndx);
+				if (endNdx > ndx) {
+					const iteration = Number(lastLine.slice(ndx, endNdx));
+					testCountCallback(iteration);
+				}
+			}
+		}
+
 		// Save the last line since it can have error information
 		lastLine = lastLine.trim().split('\n').pop();  // Since I may get multiple lines at once
 	});
