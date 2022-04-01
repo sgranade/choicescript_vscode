@@ -1327,7 +1327,8 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	));
 
 	const range = Range.create(startGlobalPosition, parsingPositionAt(contentsEndIndex, state));
-	const scope: SummaryScope = { summary: command, range: range };
+	const summary = `${command} (${choiceScopes[0]?.summary || 'none'})`;
+	const scope: SummaryScope = { summary: summary, range: range };
 	state.callbacks.onChoiceScope(scope, state);
 
 	// Add the option scopes
