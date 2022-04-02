@@ -161,6 +161,11 @@ export const builtinVariables: ReadonlyArray<string> = [
 ];
 
 /**
+ * ChoiceScript param variables
+ */
+export const paramValues = new RegExp("param_(count|\\d+)");
+
+/**
  * Math operators
  */
 export const mathOperators: ReadonlyArray<string> = [

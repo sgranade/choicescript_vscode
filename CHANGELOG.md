@@ -17,6 +17,7 @@ Changes to the plugin.
 
 - Changed how the extension fails on array variables.
 - The `&` operator combined with non-string values is no longer flagged as an error. (reported by nocturno)
+- Auto-generated `*param`-generated variables like `param_count` and `param_1` are no longer flagged as errors. (reported by nocturno)
 
 ## [2.5.1] - 2022-01-23
 

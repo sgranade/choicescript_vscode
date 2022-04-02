@@ -5,6 +5,7 @@ import { ProjectIndex } from "./index";
 import { findVariableCreationLocations, findLabelLocation } from "./searches";
 import {
 	builtinVariables,
+	paramValues,
 	uriIsStartupFile,
 	stylePattern,
 	variableIsAchievement,
@@ -219,7 +220,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				}
 			}
 		}
-		else if (!builtinVariablesLookup.has(variable) && projectIsIndexed) {
+		else if (!builtinVariablesLookup.has(variable) && !paramValues.test(variable) && projectIsIndexed) {
 			const scopes = state.projectIndex.getDocumentScopes(state.textDocumentUri);
 			let trimmedLocations = locations;
 

@@ -452,6 +452,28 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 
+		it("should not flag param count", () => {
+			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["param_count", [Substitute.for<Location>()]]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should not flag param variables", () => {
+			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["param_2", [Substitute.for<Location>()]]]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
 		it("should flag achievement variables if not instantiated", () => {
 			let achievements: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["codename", Substitute.for<Location>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
