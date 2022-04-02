@@ -16,6 +16,7 @@ Changes to the plugin.
 ### Fixed
 
 - Changed how the extension fails on array variables.
+- The `&` operator combined with non-string values is no longer flagged as an error. (reported by nocturno)
 
 ## [2.5.1] - 2022-01-23
 

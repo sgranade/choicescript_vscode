@@ -627,7 +627,7 @@ describe("Parser", () => {
 
 			parse(fakeDocument, fakeCallbacks);
 
-			expect(received[0].summary).to.equal("choice");
+			expect(received[0].summary).to.equal("choice (#One)");
 		});
 
 		it("should summarize a fake choice with the command's name", () => {
@@ -640,7 +640,7 @@ describe("Parser", () => {
 
 			parse(fakeDocument, fakeCallbacks);
 
-			expect(received[0].summary).to.equal("fake_choice");
+			expect(received[0].summary).to.equal("fake_choice (#One)");
 		});
 
 		it("should summarize an option with its comments", () => {
@@ -3579,22 +3579,6 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Must be a number or a variable");
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(23);
-			});
-
-			it("should flag a not-string value after a string operator", () => {
-				let fakeDocument = createDocument('*set var "yep" & 1');
-				let received: Array<Diagnostic> = [];
-				let fakeCallbacks = Substitute.for<ParserCallbacks>();
-				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
-					received.push(e);
-				});
-
-				parse(fakeDocument, fakeCallbacks);
-
-				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a string");
-				expect(received[0].range.start.line).to.equal(17);
-				expect(received[0].range.end.line).to.equal(18);
 			});
 
 			it("should flag a non-number operator at the start of the expression", () => {

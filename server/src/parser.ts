@@ -1601,7 +1601,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		const stringlessLine = line.replace(balancedString, (match: string, ...args: unknown[]) => ' '.repeat(match.length));
 		const choiceIndex = stringlessLine.indexOf(' #');
 		if (choiceIndex > 0) {
-			line = line.substring(0, choiceIndex-1);
+			line = line.substring(0, choiceIndex);
 			optionOnLineWithIf = true;
 		}
 	}

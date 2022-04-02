@@ -444,17 +444,24 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
-				it("should flag a string with a not-string second value", () => {
+				it("should be okay with string and a not-string second value", () => {
 					let text = '"s1" & 2';
 					let fakeDocument = createDocument(text);
 
 					let expression = new Expression(text, 2, fakeDocument);
 
-					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Must be a string or a variable")
-					expect(expression.validateErrors[0].range.start.line).to.equal(9);
-					expect(expression.validateErrors[0].range.end.line).to.equal(10);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
+				});
+
+				it("should be okay with a not-string and a string second value", () => {
+					let text = '2 & "s1"';
+					let fakeDocument = createDocument(text);
+
+					let expression = new Expression(text, 2, fakeDocument);
+
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
 				});
 
 				it("should be good with a string and index operator with a number second value", () => {
@@ -570,17 +577,14 @@ describe("Tokenizing", () => {
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
-				it("should flag a number with a string operator", () => {
+				it("should be good with a number and a string operator", () => {
 					let text = 'var1 & 3';
 					let fakeDocument = createDocument(text);
 
 					let expression = new Expression(text, 2, fakeDocument);
 
-					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Must be a string or a variable")
-					expect(expression.validateErrors[0].range.start.line).to.equal(9);
-					expect(expression.validateErrors[0].range.end.line).to.equal(10);
-					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
+					expect(expression.validateErrors.length).to.equal(0);
+					expect(expression.evalType).to.equal(ExpressionEvalType.String);
 				});
 
 				it("should flag a variable followed by not-an-operator", () => {

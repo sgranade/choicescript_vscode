@@ -219,29 +219,32 @@ function checkOperatorAgainstToken(
 
 	const effectiveType = tokenEffectiveType(token);
 
-	switch (effectiveType) {
-		case ExpressionTokenType.Number:
-			if (operator.type !== ExpressionTokenType.MathOperator &&
-				operator.type !== ExpressionTokenType.ComparisonOperator &&
-				operator.type !== ExpressionTokenType.NumericNamedOperator) {
-				errorMessage = "Not a numeric operator";
-			}
-			break;
-		case ExpressionTokenType.BooleanNamedValue:
-			if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
-				errorMessage = "Not a boolean operator";
-			}
-			break;
-		case ExpressionTokenType.String:
-			if (operator.type == ExpressionTokenType.ComparisonOperator) {
-				if (operator.text != "!=" && operator.text != "=") {
-					errorMessage = "Not compatible with strings";
+	// The string operator "&" coerces everything to be a string
+	if (operator.text !== "&") {
+		switch (effectiveType) {
+			case ExpressionTokenType.Number:
+				if (operator.type !== ExpressionTokenType.MathOperator &&
+					operator.type !== ExpressionTokenType.ComparisonOperator &&
+					operator.type !== ExpressionTokenType.NumericNamedOperator) {
+					errorMessage = "Not a numeric operator";
 				}
-			}
-			else if (operator.type != ExpressionTokenType.StringOperator) {
-				errorMessage = "Not a string or comparison operator";
-			}
-			break;
+				break;
+			case ExpressionTokenType.BooleanNamedValue:
+				if (operator.type !== ExpressionTokenType.BooleanNamedOperator) {
+					errorMessage = "Not a boolean operator";
+				}
+				break;
+			case ExpressionTokenType.String:
+				if (operator.type == ExpressionTokenType.ComparisonOperator) {
+					if (operator.text != "!=" && operator.text != "=") {
+						errorMessage = "Not compatible with strings";
+					}
+				}
+				else if (operator.type != ExpressionTokenType.StringOperator) {
+					errorMessage = "Not a string or comparison operator";
+				}
+				break;
+		}
 	}
 
 	return errorMessage;
@@ -281,11 +284,8 @@ function checkTokenAgainstOperator(
 					errorMessage = "Must be a number or a variable";
 				}
 			}
-			else {
-				if (!isStringCompatible(token)) {
-					errorMessage = "Must be a string or a variable";
-				}
-			}
+			// and the "&" operator coerces everything to strings
+			// so requires no other checks
 			break;
 		case ExpressionTokenType.BooleanNamedOperator:
 			if (!isBooleanCompatible(token)) {
