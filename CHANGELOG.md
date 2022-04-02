@@ -13,6 +13,10 @@ Changes to the plugin.
 
 - Choices in the outline now include a summary of the first choice.
 
+### Fixed
+
+- Changed how the extension fails on array variables.
+
 ## [2.5.1] - 2022-01-23
 
 Point release to fix an issue with the Visual Studio Marketplace.

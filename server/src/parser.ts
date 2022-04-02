@@ -1599,7 +1599,7 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		// Deal with the case where a hash mark is in a string by blanking out strings, just for now.
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const stringlessLine = line.replace(balancedString, (match: string, ...args: unknown[]) => ' '.repeat(match.length));
-		const choiceIndex = stringlessLine.indexOf('#');
+		const choiceIndex = stringlessLine.indexOf(' #');
 		if (choiceIndex > 0) {
 			line = line.substring(0, choiceIndex-1);
 			optionOnLineWithIf = true;
