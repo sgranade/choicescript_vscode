@@ -339,13 +339,9 @@ export async function runRandomtest(
 	];
 	const output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest", settings.putResultsInUniqueDocument)) : outputChannel;
 
-	function onSuccess(success: boolean) {
-		if (success) {
-			updatePreviousRandomtestSettings(settings);
-		}
-	}
+	updatePreviousRandomtestSettings(settings);
 
-	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback, testCountCallback, onSuccess);
+	runTest('Randomtest', testScriptPath, args, output, csErrorHandler, statusCallback, testCountCallback);
 }
 
 
