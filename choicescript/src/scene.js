@@ -1782,6 +1782,7 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
               selectableIf = ifResult.condition;
               unselectable = unselectable || !ifResult.result;
             } else if ("comment" == command) {
+                this["comment"](data);
                 continue;
             } else if (!command) {
               // command was rewritten by earlier modifier
@@ -3655,6 +3656,7 @@ Scene.prototype.skipTrueBranch = function skipTrueBranch(inElse) {
               this.lineNum = this.lineNum; // code coverage
               this["if"](data);
           } else if ("comment" == command) {
+              this["comment"](data);
               continue;
           } else {
               this.lineNum = this.previousNonBlankLineNum();

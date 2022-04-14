@@ -12,6 +12,7 @@ Changes to the plugin.
 ### Changed
 
 - Choices in the outline now include a summary of the first choice.
+- Randomtest settings are now updated properly, even when a test fails.
 
 ### Fixed
 
