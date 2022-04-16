@@ -113,6 +113,14 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 ## Release Notes
 
+### [2.6.0]
+
+- Ability to turn on showing text for only parts of a randomtest run using `*comment text off` and `*comment text on`.
+- Count of the Randomtest test now shows on the status bar while the test is running.
+- Choices in the outline now include a summary of the first choice.
+- Randomtest settings are now updated properly, even when a test fails.
+- Fixed a handful of bugs around `*param` and array variables.
+
 
 ### [2.5.0]
 
@@ -153,20 +161,6 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
 
-
-### [1.6.0]
-
-- Variables aren't flagged as not existing until the full project has been indexed, getting rid of the flash of errors on startup.
-- choicescript_stats is now recognized as a scene, allowing autocomplete and fixing erroneous warning messages.
-- Empty `*if`/`*elseif`/`*else` errors now don't put the error squigglies on the whole line.
-- Functions in multireplaces, like `@{not(var) one|two}`, are now parsed correctly.
-- Label indexing now properly handles labels with punctuation.
-
-
-### [1.5.0]
-
-- Warn when a `*temp` variable has the same name as an earlier-created one.
-- `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
 
 
 [Array notation]: https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423

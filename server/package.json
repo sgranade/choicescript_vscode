@@ -1,7 +1,7 @@
 {
 	"name": "choicescript-lsp-server",
 	"description": "ChoiceScript language server in node.",
-	"version": "2.4.0",
+	"version": "2.6.0",
 	"author": "Stephen Granade",
 	"license": "MIT",
 	"engines": {
