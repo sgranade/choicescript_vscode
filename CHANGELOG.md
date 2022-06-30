@@ -7,6 +7,7 @@ Changes to the plugin.
 ### Fixed
 
 - Missing choices no longer make document symbols vanish.
+- Variables whose name includes `param_count` (but are _not_ `param_count` itself) are now tracked properly.
 
 ## [2.6] - 2022-04-16
 

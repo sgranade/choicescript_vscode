@@ -463,6 +463,24 @@ describe("Validator", () => {
 			expect(diagnostics.length).to.equal(0);
 		});
 
+		it("should flag a non-param-count variable whose name contains 'param_count'", () => {
+			let location1 = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let location2 = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([
+				["not_actually_param_count", [location1]],
+				["param_counter", [location2]],
+			]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(2);
+			expect(diagnostics[0].message).to.include('"not_actually_param_count" not defined');
+			expect(diagnostics[1].message).to.include('"param_counter" not defined');
+		});
+
 		it("should not flag param variables", () => {
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["param_2", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
@@ -472,6 +490,24 @@ describe("Validator", () => {
 			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should flag a non-param-variable variable whose name contains e.g. 'param_1'", () => {
+			let location1 = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
+			let location2 = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
+			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([
+				["not_param_1", [location1]],
+				["param_2e", [location2]],
+			]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ variableReferences: variableReferences });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(2);
+			expect(diagnostics[0].message).to.include('"not_param_1" not defined');
+			expect(diagnostics[1].message).to.include('"param_2e" not defined');
 		});
 
 		it("should flag achievement variables if not instantiated", () => {
