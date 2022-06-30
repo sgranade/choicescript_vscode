@@ -17,7 +17,7 @@ const startupUri: string = "file:///startup.txt";
 function createDocument(text: string, uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
-	fakeDocument.uri.returns(uri);
+	fakeDocument.uri.returns!(uri);
 	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }

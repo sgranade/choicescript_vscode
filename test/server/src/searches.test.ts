@@ -93,7 +93,7 @@ function createMockIndex({
 	let fakeIndex = Substitute.for<ProjectIndex>();
 	fakeIndex.getGlobalVariables().returns(globalVariables);
 	fakeIndex.getLocalVariables(Arg.any()).mimicks((scene) => {
-		let vars = localVariables.get(scene);
+		let vars = localVariables?.get(scene);
 		if (vars === undefined) {
 			vars = new CaseInsensitiveMap();
 		}
@@ -108,7 +108,7 @@ function createMockIndex({
 	});
 	fakeIndex.getSceneList().returns(sceneList);
 	fakeIndex.getLabels(Arg.any()).mimicks((uri: string) => {
-		let l = labels.get(uri);
+		let l = labels?.get(uri);
 		if (l !== undefined) {
 			return l;
 		}
@@ -116,7 +116,7 @@ function createMockIndex({
 	});
 	fakeIndex.getAchievements().returns(achievements);
 	fakeIndex.getDocumentAchievementReferences(Arg.any()).mimicks(scene => {
-		let index = achievementReferences.get(scene);
+		let index = achievementReferences?.get(scene);
 		if (index === undefined) {
 			index = new CaseInsensitiveMap();
 		}
@@ -124,7 +124,7 @@ function createMockIndex({
 	});
 	fakeIndex.getAchievementReferences(Arg.any()).mimicks(achievement => {
 		let locations: Location[] = [];
-		for (let index of achievementReferences.values()) {
+		for (let index of achievementReferences?.values() ?? []) {
 			let partialLocations = index.get(achievement);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
@@ -132,7 +132,7 @@ function createMockIndex({
 		return locations;
 	});
 	fakeIndex.getDocumentVariableReferences(Arg.all()).mimicks(scene => {
-		let references = variableReferences.get(scene);
+		let references = variableReferences?.get(scene);
 		if (references === undefined) {
 			references = new CaseInsensitiveMap();
 		}
@@ -140,8 +140,8 @@ function createMockIndex({
 	});
 	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getVariableReferences(Arg.all()).mimicks((variable: string) => {
-		let locations = [];
-		for (let index of variableReferences.values()) {
+		let locations: Location[] = [];
+		for (let index of variableReferences?.values() ?? []) {
 			let partialLocations = index.get(variable);
 			if (partialLocations !== undefined)
 				locations.push(...partialLocations);
@@ -182,7 +182,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.LocalVariable);
 			expect(definition.location.range.start).to.eql({ line: 1, character: 0 });
@@ -200,7 +200,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let definitions = findDefinitions(documentUri, position, fakeIndex);
+			let definitions = findDefinitions(documentUri, position, fakeIndex) ?? [];
 
 			expect(definitions.length).to.equal(2);
 			expect(definitions[0].type).to.equal(SymbolType.LocalVariable);
@@ -221,7 +221,7 @@ describe("Definitions", () => {
 			let position = Position.create(1, 2);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.LocalVariable);
 			expect(definition.location.range.start).to.eql({ line: 1, character: 0 });
@@ -238,7 +238,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("local_var");
 		});
@@ -253,7 +253,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.isDefinition).to.be.true;
 		});
@@ -267,7 +267,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.GlobalVariable);
 			expect(definition.location.range.start).to.eql({ line: 1, character: 0 });
@@ -283,7 +283,7 @@ describe("Definitions", () => {
 			let position = Position.create(1, 2);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(globalUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(globalUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.GlobalVariable);
 			expect(definition.location.range.start).to.eql({ line: 1, character: 0 });
@@ -299,7 +299,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("global_var");
 		});
@@ -313,7 +313,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.isDefinition).to.be.true;
 		});
@@ -332,7 +332,7 @@ describe("Definitions", () => {
 				localVariables: localVariables, globalVariables: globalVariables, variableReferences: variableReferences
 			});
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.LocalVariable);
 			expect(definition.location.range.start).to.eql({ line: 1, character: 0 });
@@ -348,7 +348,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.Achievement);
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -363,7 +363,7 @@ describe("Definitions", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("codename");
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -380,7 +380,7 @@ describe("Definitions", () => {
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: references });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("codename");
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -397,7 +397,7 @@ describe("Definitions", () => {
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: references });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("codename");
 			expect(definition.location.uri).to.equal(otherSceneUri);
@@ -415,7 +415,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("codename");
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -440,7 +440,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.Label);
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -462,7 +462,7 @@ describe("Definitions", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.Label);
 			expect(definition.location.range.start).to.eql({ line: 5, character: 0 });
@@ -484,7 +484,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("local_label");
 		});
@@ -504,7 +504,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.isDefinition).to.be.true;
 		});
@@ -524,7 +524,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.type).to.equal(SymbolType.Label);
 			expect(definition.location.uri).to.equal(otherSceneUri);
@@ -547,7 +547,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.symbol).to.equal("other_label");
 		});
@@ -567,7 +567,7 @@ describe("Definitions", () => {
 			let position = Position.create(2, 2);
 			let fakeIndex = createMockIndex({ labels: labels, sceneFileUri: otherSceneUri, flowControlEvents: events });
 
-			let definition = findDefinitions(documentUri, position, fakeIndex)[0];
+			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
 			expect(definition.isDefinition).to.be.true;
 		});
@@ -585,10 +585,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -604,10 +604,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(true);
+			fakeContext.includeDeclaration.returns!(true);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[1].isDefinition).to.be.true;
@@ -625,10 +625,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(true);
+			fakeContext.includeDeclaration.returns!(true);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(3);
 			expect(references[1].isDefinition).to.be.true;
@@ -649,10 +649,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences], [globalUri, globalVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariablesIndex, variableReferences: variableReferences });
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[0].location.uri).to.equal(documentUri);
@@ -673,10 +673,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences], [globalUri, globalVariableReferences]]);
 			let position = Position.create(1, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariablesIndex, variableReferences: variableReferences });
 
-			let references = findReferences(globalUri, position, fakeContext, fakeIndex);
+			let references = findReferences(globalUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[0].location.uri).to.equal(documentUri);
@@ -700,12 +700,12 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences], [globalUri, globalVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 			let fakeIndex = createMockIndex({
 				localVariables: localVariables, globalVariables: globalVariablesIndex, variableReferences: variableReferences
 			});
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 3, character: 0 });
@@ -720,10 +720,10 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(true);
+			fakeContext.includeDeclaration.returns!(true);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[1].isDefinition).to.be.true;
@@ -750,9 +750,9 @@ describe("Symbol References", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -776,9 +776,9 @@ describe("Symbol References", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -802,9 +802,9 @@ describe("Symbol References", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(true);
+			fakeContext.includeDeclaration.returns!(true);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[1].isDefinition).to.be.true;
@@ -832,9 +832,9 @@ describe("Symbol References", () => {
 			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -863,9 +863,9 @@ describe("Symbol References", () => {
 			index.setSceneList([documentUri, otherSceneUri]);
 			let position = Position.create(2, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -892,9 +892,9 @@ describe("Symbol References", () => {
 			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let position = Position.create(5, 1);
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, index);
+			let references = findReferences(documentUri, position, fakeContext, index) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -912,9 +912,9 @@ describe("Symbol References", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 7, character: 0 });
@@ -930,9 +930,9 @@ describe("Symbol References", () => {
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 7, character: 0 });
@@ -948,9 +948,9 @@ describe("Symbol References", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, variableReferences: variableReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.range.start).to.eql({ line: 2, character: 0 });
@@ -966,9 +966,9 @@ describe("Symbol References", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, variableReferences: variableReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references[0].type).to.eql(SymbolType.LocalVariable);
 		});
@@ -987,9 +987,9 @@ describe("Symbol References", () => {
 				achievements: achievementsIndex, achievementReferences: achievementReferences, variableReferences: variableReferences
 			});
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[0].location.range.start).to.eql({ line: 7, character: 0 });
@@ -1007,9 +1007,9 @@ describe("Symbol References", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(false);
+			fakeContext.includeDeclaration.returns!(false);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(1);
 			expect(references[0].location.uri).to.equal(otherSceneUri);
@@ -1026,9 +1026,9 @@ describe("Symbol References", () => {
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
-			fakeContext.includeDeclaration.returns(true);
+			fakeContext.includeDeclaration.returns!(true);
 
-			let references = findReferences(documentUri, position, fakeContext, fakeIndex);
+			let references = findReferences(documentUri, position, fakeContext, fakeIndex) ?? [];
 
 			expect(references.length).to.equal(2);
 			expect(references[1].isDefinition).to.be.true;
@@ -1047,8 +1047,8 @@ describe("Symbol Renames", () => {
 			let position = Position.create(1, 1);
 			let fakeIndex = createMockIndex({ localVariables: localVariables });
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "local_var", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "local_var", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let changes = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1067,8 +1067,8 @@ describe("Symbol Renames", () => {
 			let position = Position.create(3, 1);
 			let fakeIndex = createMockIndex({ localVariables: localVariables, variableReferences: variableReferences });
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_var_name", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_var_name", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let changes = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1088,8 +1088,8 @@ describe("Symbol Renames", () => {
 			let position = Position.create(3, 1);
 			let fakeIndex = createMockIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_var_name", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_var_name", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 			let globalChanges = allChanges[globalUri];
 
@@ -1116,8 +1116,8 @@ describe("Symbol Renames", () => {
 				localVariables: localVariables, globalVariables: globalVariables, variableReferences: variableReferences
 			});
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_var_name", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_var_name", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1155,8 +1155,8 @@ describe("Symbol Renames", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(5, 1);
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_label", index);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_label", index);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1186,8 +1186,8 @@ describe("Symbol Renames", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(2, 1);
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_label", index);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_label", index);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1218,8 +1218,8 @@ describe("Symbol Renames", () => {
 			index.setLabels(otherSceneUri, otherSceneLabelsIndex);
 			let position = Position.create(5, 1);
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_label", index);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_label", index);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1252,8 +1252,8 @@ describe("Symbol Renames", () => {
 			index.setSceneList([documentUri, otherSceneUri]);
 			let position = Position.create(2, 1);
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_label", index);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_label", index);
+			let allChanges = renames?.changes ?? {};
 			let otherChanges = allChanges[otherSceneUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri, otherSceneUri]);
@@ -1279,8 +1279,8 @@ describe("Symbol Renames", () => {
 			index.setLabels(documentUri, documentLabelsIndex);
 			let position = Position.create(5, 1);
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_label", index);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_label", index);
+			let allChanges = renames?.changes ?? {};
 			let otherChanges = allChanges[otherSceneUri];
 
 			expect(Object.keys(allChanges)).to.eql([otherSceneUri, documentUri]);
@@ -1303,8 +1303,8 @@ describe("Symbol Renames", () => {
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_achievement", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1329,8 +1329,8 @@ describe("Symbol Renames", () => {
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_achievement", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1355,8 +1355,8 @@ describe("Symbol Renames", () => {
 				variableReferences: variableReferences
 			});
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_achievement", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);
@@ -1385,8 +1385,8 @@ describe("Symbol Renames", () => {
 				variableReferences: variableReferences
 			});
 
-			let renames: WorkspaceEdit = generateRenames(documentUri, position, "new_achievement", fakeIndex);
-			let allChanges = renames.changes;
+			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
+			let allChanges = renames?.changes ?? {};
 			let localChanges = allChanges[documentUri];
 
 			expect(Object.keys(allChanges)).to.eql([documentUri]);

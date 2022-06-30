@@ -11,7 +11,7 @@ import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionEvalTy
 function createDocument(text: string, uri: string = "file:///scene.txt"): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
-	fakeDocument.uri.returns(uri);
+	fakeDocument.uri.returns!(uri);
 	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }
@@ -36,8 +36,8 @@ describe("Tokenizing", () => {
 				let expression = new Expression(text, 2, fakeDocument);
 
 				expect(expression.tokens.length).to.equal(3);
-				expect(expression.tokens[0].contents.globalIndex).to.equal(3);
-				expect(expression.tokens[2].contents.globalIndex).to.equal(11);
+				expect(expression.tokens[0].contents?.globalIndex).to.equal(3);
+				expect(expression.tokens[2].contents?.globalIndex).to.equal(11);
 			});
 
 			it("should flag functions with no arguments", () => {
@@ -835,8 +835,8 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 					let subexpression = expression.combinedTokens[0].contents;
 
-					expect(subexpression.validateErrors.length).to.equal(0);
-					expect(subexpression.evalType).to.equal(ExpressionEvalType.Number);
+					expect(subexpression?.validateErrors.length).to.equal(0);
+					expect(subexpression?.evalType).to.equal(ExpressionEvalType.Number);
 				});
 
 				it("should be good with parenthesized boolean expressions", () => {
@@ -846,8 +846,8 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 					let subexpression = expression.combinedTokens[0].contents;
 
-					expect(subexpression.validateErrors.length).to.equal(0);
-					expect(subexpression.evalType).to.equal(ExpressionEvalType.Boolean);
+					expect(subexpression?.validateErrors.length).to.equal(0);
+					expect(subexpression?.evalType).to.equal(ExpressionEvalType.Boolean);
 				});
 
 				it("should be good with parenthesized string expressions", () => {
@@ -857,8 +857,8 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 					let subexpression = expression.combinedTokens[0].contents;
 
-					expect(subexpression.validateErrors.length).to.equal(0);
-					expect(subexpression.evalType).to.equal(ExpressionEvalType.String);
+					expect(subexpression?.validateErrors.length).to.equal(0);
+					expect(subexpression?.evalType).to.equal(ExpressionEvalType.String);
 				});
 
 				it("should flag errors in parentheses", () => {
@@ -868,11 +868,11 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 					let subexpression = expression.combinedTokens[2].contents;
 
-					expect(subexpression.validateErrors.length).to.equal(1);
-					expect(subexpression.validateErrors[0].message).to.include("Must be a number or a variable")
-					expect(subexpression.validateErrors[0].range.start.line).to.equal(11);
-					expect(subexpression.validateErrors[0].range.end.line).to.equal(16);
-					expect(subexpression.evalType).to.equal(ExpressionEvalType.Error);
+					expect(subexpression?.validateErrors.length).to.equal(1);
+					expect(subexpression?.validateErrors[0].message).to.include("Must be a number or a variable")
+					expect(subexpression?.validateErrors[0].range.start.line).to.equal(11);
+					expect(subexpression?.validateErrors[0].range.end.line).to.equal(16);
+					expect(subexpression?.evalType).to.equal(ExpressionEvalType.Error);
 				});
 
 				it("should flag parenthesized expressions that don't match a function", () => {
@@ -898,9 +898,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("variable");
-			expect(tokens.body.length).to.equal(0);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("variable");
+			expect(tokens?.body.length).to.equal(0);
 		});
 
 		it("should extract an unterminated multiexpression with just a variable", () => {
@@ -909,9 +909,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.true;
-			expect(tokens.test.bareExpression).to.equal("variable");
-			expect(tokens.body.length).to.equal(0);
+			expect(tokens?.unterminated).to.be.true;
+			expect(tokens?.test.bareExpression).to.equal("variable");
+			expect(tokens?.body.length).to.equal(0);
 		});
 
 		it("should extract a bare variable test", () => {
@@ -920,9 +920,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("variable");
-			expect(tokens.test.globalIndex).to.equal(2);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("variable");
+			expect(tokens?.test.globalIndex).to.equal(2);
 		});
 
 		it("should extract a bare variable test with an extra leading space", () => {
@@ -931,9 +931,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("variable");
-			expect(tokens.test.globalIndex).to.equal(3);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("variable");
+			expect(tokens?.test.globalIndex).to.equal(3);
 		});
 
 		it("should save a bare variable test with an extra leading space in bareTest without that space", () => {
@@ -942,8 +942,8 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.bareTest.text).to.equal("variable")
-			expect(tokens.bareTest.localIndex).to.equal(1);
+			expect(tokens?.bareTest?.text).to.equal("variable")
+			expect(tokens?.bareTest?.localIndex).to.equal(1);
 		});
 
 		it("should extract a parenthesized test", () => {
@@ -952,9 +952,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("var1 + var2");
-			expect(tokens.test.globalIndex).to.equal(3);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("var1 + var2");
+			expect(tokens?.test.globalIndex).to.equal(3);
 		});
 
 		it("should extract a reference in a test", () => {
@@ -963,9 +963,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("var1");
-			expect(tokens.test.globalIndex).to.equal(3);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("var1");
+			expect(tokens?.test.globalIndex).to.equal(3);
 		});
 
 		it("should save a test's parentheses in bareTest", () => {
@@ -974,8 +974,8 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.bareTest.text).to.equal("(var1 + var2)")
-			expect(tokens.bareTest.localIndex).to.equal(0);
+			expect(tokens?.bareTest?.text).to.equal("(var1 + var2)")
+			expect(tokens?.bareTest?.localIndex).to.equal(0);
 		});
 
 		it("should extract a function test", () => {
@@ -984,9 +984,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("not(var1)");
-			expect(tokens.test.globalIndex).to.equal(2);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("not(var1)");
+			expect(tokens?.test.globalIndex).to.equal(2);
 		});
 
 		it("should save a function test in bareTest", () => {
@@ -995,8 +995,8 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.bareTest.text).to.equal("not(var1)")
-			expect(tokens.bareTest.localIndex).to.equal(0);
+			expect(tokens?.bareTest?.text).to.equal("not(var1)")
+			expect(tokens?.bareTest?.localIndex).to.equal(0);
 		});
 
 		it("should extract the bodies", () => {
@@ -1005,13 +1005,13 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.body[0].text).to.equal("yes");
-			expect(tokens.body[0].localIndex).to.equal(9);
-			expect(tokens.body[1].text).to.equal("no");
-			expect(tokens.body[1].localIndex).to.equal(15);
-			expect(tokens.body[2].text).to.equal("maybe");
-			expect(tokens.body[2].localIndex).to.equal(20);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.body[0].text).to.equal("yes");
+			expect(tokens?.body[0].localIndex).to.equal(9);
+			expect(tokens?.body[1].text).to.equal("no");
+			expect(tokens?.body[1].localIndex).to.equal(15);
+			expect(tokens?.body[2].text).to.equal("maybe");
+			expect(tokens?.body[2].localIndex).to.equal(20);
 		});
 
 		it("should include a terminating backslash in the body", () => {
@@ -1020,12 +1020,12 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.body.length).to.equal(2);
-			expect(tokens.body[0].text).to.equal("yes");
-			expect(tokens.body[0].localIndex).to.equal(9);
-			expect(tokens.body[1].text).to.equal("no\\");
-			expect(tokens.body[1].localIndex).to.equal(15);
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.body.length).to.equal(2);
+			expect(tokens?.body[0].text).to.equal("yes");
+			expect(tokens?.body[0].localIndex).to.equal(9);
+			expect(tokens?.body[1].text).to.equal("no\\");
+			expect(tokens?.body[1].localIndex).to.equal(15);
 		});
 
 		it("should find the end index", () => {
@@ -1034,7 +1034,7 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2);
 
-			expect(tokens.endIndex).to.equal(18);
+			expect(tokens?.endIndex).to.equal(18);
 		});
 
 		it("should extract starting at a given index", () => {
@@ -1043,10 +1043,10 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2, 13);
 
-			expect(tokens.unterminated).to.be.false;
-			expect(tokens.test.bareExpression).to.equal("variable");
-			expect(tokens.body[0].text).to.equal("yes");
-			expect(tokens.body[1].text).to.equal("no");
+			expect(tokens?.unterminated).to.be.false;
+			expect(tokens?.test.bareExpression).to.equal("variable");
+			expect(tokens?.body[0].text).to.equal("yes");
+			expect(tokens?.body[1].text).to.equal("no");
 		});
 
 		it("should return indices relative to the global index", () => {
@@ -1055,9 +1055,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 27, 13);
 
-			expect(tokens.test.globalIndex).to.equal(27);
-			expect(tokens.body[0].localIndex).to.equal(22);
-			expect(tokens.body[1].localIndex).to.equal(28);
+			expect(tokens?.test.globalIndex).to.equal(27);
+			expect(tokens?.body[0].localIndex).to.equal(22);
+			expect(tokens?.body[1].localIndex).to.equal(28);
 		});
 
 		it("should return indices relative to the global index for parenthesized tests", () => {
@@ -1066,9 +1066,9 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 27, 13);
 
-			expect(tokens.test.globalIndex).to.equal(28);
-			expect(tokens.body[0].localIndex).to.equal(24);
-			expect(tokens.body[1].localIndex).to.equal(30);
+			expect(tokens?.test.globalIndex).to.equal(28);
+			expect(tokens?.body[0].localIndex).to.equal(24);
+			expect(tokens?.body[1].localIndex).to.equal(30);
 		});
 
 		it("should return the full text inside the multireplace", () => {
@@ -1077,7 +1077,7 @@ describe("Tokenizing", () => {
 
 			let tokens = tokenizeMultireplace(text, fakeDocument, 2, 13);
 
-			expect(tokens.text).to.equal("variable yes | no");
+			expect(tokens?.text).to.equal("variable yes | no");
 		});
 	});
 });

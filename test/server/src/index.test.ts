@@ -289,7 +289,7 @@ describe("Project Index", () => {
 			index.setAchievementReferences(documentUri, achievementReferences);
 
 			const references = index.getDocumentAchievementReferences(documentUri);
-			const achieveReferences = references.get('achieve');
+			const achieveReferences = references.get('achieve') ?? [];
 
 			expect(Array.from(references.keys())).to.eql(["achieve"]);
 			expect(achieveReferences.length).to.equal(1);

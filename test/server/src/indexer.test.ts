@@ -20,7 +20,7 @@ function createDocument(text: string,
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
-	fakeDocument.uri.returns(uri);
+	fakeDocument.uri.returns!(uri);
 	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }
@@ -43,8 +43,8 @@ describe("Indexer", () => {
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').range.start.line).to.equal(8);
-			expect(received[0].get('variable').range.end.line).to.equal(16);
+			expect(received[0].get('variable')?.range.start.line).to.equal(8);
+			expect(received[0].get('variable')?.range.end.line).to.equal(16);
 		});
 
 		it("should index locations of created local variables", () => {
@@ -54,11 +54,12 @@ describe("Indexer", () => {
 			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const received_var = received[0].get('variable') ?? [];
 
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').length).to.eql(1);
-			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
-			expect(received[0].get('variable')[0].range.end.line).to.equal(14);
+			expect(received_var.length).to.eql(1);
+			expect(received_var[0].range.start.line).to.equal(6);
+			expect(received_var[0].range.end.line).to.equal(14);
 		});
 
 		it("should index all created locations local variables", () => {
@@ -68,13 +69,14 @@ describe("Indexer", () => {
 			fakeIndex.setLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const received_var = received[0].get('variable') ?? [];
 
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').length).to.eql(2);
-			expect(received[0].get('variable')[0].range.start.line).to.equal(6);
-			expect(received[0].get('variable')[0].range.end.line).to.equal(14);
-			expect(received[0].get('variable')[1].range.start.line).to.equal(23);
-			expect(received[0].get('variable')[1].range.end.line).to.equal(31);
+			expect(received_var.length).to.eql(2);
+			expect(received_var[0].range.start.line).to.equal(6);
+			expect(received_var[0].range.end.line).to.equal(14);
+			expect(received_var[1].range.start.line).to.equal(23);
+			expect(received_var[1].range.end.line).to.equal(31);
 		});
 
 		it("should index effective locations of local variables created in a subroutine", () => {
@@ -84,10 +86,11 @@ describe("Indexer", () => {
 			fakeIndex.setSubroutineLocalVariables(Arg.all()).mimicks((uri: string, index: Map<string, Location>) => { received.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
-
+			const received_var = received[0].get('variable') ?? [];
+			
 			expect([...received[0].keys()]).to.eql(['variable']);
-			expect(received[0].get('variable').range.start.line).to.equal(1);
-			expect(received[0].get('variable').range.end.line).to.equal(6);
+			expect(received[0].get('variable')?.range.start.line).to.equal(1);
+			expect(received[0].get('variable')?.range.end.line).to.equal(6);
 		});
 
 		it("should not index effective locations of local variables created in a subroutine at a gosub that's after the subroutine", () => {
@@ -123,9 +126,10 @@ describe("Indexer", () => {
 			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const received_var = receivedReferences[0].get('variable') ?? [];
 
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
-			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(5);
+			expect(received_var[0].range.start.line).to.equal(5);
 		});
 	});
 
@@ -137,9 +141,10 @@ describe("Indexer", () => {
 			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const received_var = receivedReferences[0].get('variable') ?? [];
 
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
-			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(2);
+			expect(received_var[0].range.start.line).to.equal(2);
 		});
 	});
 
@@ -151,9 +156,10 @@ describe("Indexer", () => {
 			fakeIndex.setVariableReferences(Arg.all()).mimicks((uri: string, index: Map<string, Location[]>) => { receivedReferences.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const received_var = receivedReferences[0].get('variable') ?? [];
 
 			expect([...receivedReferences[0].keys()]).to.eql(['variable']);
-			expect(receivedReferences[0].get('variable')[0].range.start.line).to.equal(4);
+			expect(received_var[0].range.start.line).to.equal(4);
 		});
 	});
 
@@ -190,8 +196,8 @@ describe("Indexer", () => {
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
-			expect(receivedReferences[0][0].labelLocation.range.start.line).to.equal(7);
-			expect(receivedReferences[0][0].labelLocation.range.end.line).to.equal(12);
+			expect(receivedReferences[0][0].labelLocation?.range.start.line).to.equal(7);
+			expect(receivedReferences[0][0].labelLocation?.range.end.line).to.equal(12);
 		});
 
 		it("should skip the scene when not present", () => {
@@ -225,8 +231,8 @@ describe("Indexer", () => {
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
-			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
-			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
+			expect(receivedReferences[0][0].sceneLocation?.range.start.line).to.eql(13);
+			expect(receivedReferences[0][0].sceneLocation?.range.end.line).to.eql(23);
 		});
 
 		it("should skip the label when not present", () => {
@@ -261,10 +267,10 @@ describe("Indexer", () => {
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
-			expect(receivedReferences[0][0].sceneLocation.range.start.line).to.eql(13);
-			expect(receivedReferences[0][0].sceneLocation.range.end.line).to.eql(23);
-			expect(receivedReferences[0][0].labelLocation.range.start.line).to.eql(24);
-			expect(receivedReferences[0][0].labelLocation.range.end.line).to.eql(35);
+			expect(receivedReferences[0][0].sceneLocation?.range.start.line).to.eql(13);
+			expect(receivedReferences[0][0].sceneLocation?.range.end.line).to.eql(23);
+			expect(receivedReferences[0][0].labelLocation?.range.start.line).to.eql(24);
+			expect(receivedReferences[0][0].labelLocation?.range.end.line).to.eql(35);
 		});
 	});
 
@@ -381,7 +387,7 @@ describe("Indexer", () => {
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
 			expect(receivedLabels[0].size).to.equal(1);
-			expect(receivedLabels[0].get('label_name').scope).to.be.undefined;
+			expect(receivedLabels[0].get('label_name')?.scope).to.be.undefined;
 		});
 
 		it("should add a scope to a label on a *return", () => {
@@ -393,8 +399,8 @@ describe("Indexer", () => {
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
 			expect(receivedLabels[0].size).to.equal(1);
-			expect(receivedLabels[0].get('label_name').scope.start.line).to.equal(7);
-			expect(receivedLabels[0].get('label_name').scope.end.line).to.equal(32);
+			expect(receivedLabels[0].get('label_name')?.scope?.start.line).to.equal(7);
+			expect(receivedLabels[0].get('label_name')?.scope?.end.line).to.equal(32);
 		});
 
 		it("should add a scope to the most recent label on a *return", () => {
@@ -406,9 +412,9 @@ describe("Indexer", () => {
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
 			expect(receivedLabels[0].size).to.equal(2);
-			expect(receivedLabels[0].get('label_one').scope).to.be.undefined;
-			expect(receivedLabels[0].get('label_two').scope.start.line).to.equal(31);
-			expect(receivedLabels[0].get('label_two').scope.end.line).to.equal(55);
+			expect(receivedLabels[0].get('label_one')?.scope).to.be.undefined;
+			expect(receivedLabels[0].get('label_two')?.scope?.start.line).to.equal(31);
+			expect(receivedLabels[0].get('label_two')?.scope?.end.line).to.equal(55);
 		});
 	});
 
@@ -556,15 +562,17 @@ describe("Indexer", () => {
 			);
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			const cover = received[0].get("cover.jpg") ?? [];
+			const img = received[0].get("http://faker.com/img.png") ?? [];
 
 			expect(received.length).to.eql(1);
 			expect(Array.from(received[0].keys())).to.eql(["cover.jpg", "http://faker.com/img.png"]);
-			expect(received[0].get("cover.jpg").length).to.eql(1);
-			expect(received[0].get("cover.jpg")[0].range.start.line).to.eql(7);
-			expect(received[0].get("cover.jpg")[0].range.end.line).to.eql(16);
-			expect(received[0].get("http://faker.com/img.png").length).to.eql(1);
-			expect(received[0].get("http://faker.com/img.png")[0].range.start.line).to.eql(24);
-			expect(received[0].get("http://faker.com/img.png")[0].range.end.line).to.eql(48);
+			expect(cover.length).to.eql(1);
+			expect(cover[0].range.start.line).to.eql(7);
+			expect(cover[0].range.end.line).to.eql(16);
+			expect(img.length).to.eql(1);
+			expect(img[0].range.start.line).to.eql(24);
+			expect(img[0].range.end.line).to.eql(48);
 		});
 	});
 

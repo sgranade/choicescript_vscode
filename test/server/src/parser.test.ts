@@ -15,7 +15,7 @@ function createDocument(text: string,
 	uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
 	fakeDocument.getText(Arg.any()).returns(text);
-	fakeDocument.uri.returns(uri);
+	fakeDocument.uri.returns!(uri);
 	fakeDocument.positionAt(Arg.any()).mimicks((index: number) => { return (Position.create(index, 0)); });
 	return fakeDocument;
 }
@@ -132,8 +132,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("label");
-			expect(received[0].labelLocation.range.start.line).to.equal(6);
-			expect(received[0].labelLocation.range.end.line).to.equal(11);
+			expect(received[0].labelLocation?.range.start.line).to.equal(6);
+			expect(received[0].labelLocation?.range.end.line).to.equal(11);
 		});
 
 		it("should callback on goto with a punctuated label", () => {
@@ -149,8 +149,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("l'abel");
-			expect(received[0].labelLocation.range.start.line).to.equal(6);
-			expect(received[0].labelLocation.range.end.line).to.equal(12);
+			expect(received[0].labelLocation?.range.start.line).to.equal(6);
+			expect(received[0].labelLocation?.range.end.line).to.equal(12);
 		});
 
 		it("should callback on gosub", () => {
@@ -166,8 +166,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("label");
-			expect(received[0].labelLocation.range.start.line).to.equal(7);
-			expect(received[0].labelLocation.range.end.line).to.equal(12);
+			expect(received[0].labelLocation?.range.start.line).to.equal(7);
+			expect(received[0].labelLocation?.range.end.line).to.equal(12);
 		});
 
 		it("should callback on gosub with a punctuated label", () => {
@@ -183,8 +183,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("l'abel");
-			expect(received[0].labelLocation.range.start.line).to.equal(7);
-			expect(received[0].labelLocation.range.end.line).to.equal(13);
+			expect(received[0].labelLocation?.range.start.line).to.equal(7);
+			expect(received[0].labelLocation?.range.end.line).to.equal(13);
 		});
 
 		it("should create a reference on goto with a reference label", () => {
@@ -296,8 +296,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("scenename");
-			expect(received[0].sceneLocation.range.start.line).to.equal(12);
-			expect(received[0].sceneLocation.range.end.line).to.equal(21);
+			expect(received[0].sceneLocation?.range.start.line).to.equal(12);
+			expect(received[0].sceneLocation?.range.end.line).to.equal(21);
 		});
 
 		it("should callback on gosub_scene", () => {
@@ -313,8 +313,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("scenename");
-			expect(received[0].sceneLocation.range.start.line).to.equal(13);
-			expect(received[0].sceneLocation.range.end.line).to.equal(22);
+			expect(received[0].sceneLocation?.range.start.line).to.equal(13);
+			expect(received[0].sceneLocation?.range.end.line).to.equal(22);
 		});
 
 		it("should deal with no label on goto_scene", () => {
@@ -362,8 +362,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].scene).to.equal("1-scenename");
-			expect(received[0].sceneLocation.range.start.line).to.equal(12);
-			expect(received[0].sceneLocation.range.end.line).to.equal(23);
+			expect(received[0].sceneLocation?.range.start.line).to.equal(12);
+			expect(received[0].sceneLocation?.range.end.line).to.equal(23);
 		});
 
 		it("should send scene and label on goto_scene", () => {
@@ -379,8 +379,8 @@ describe("Parser", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].label).to.equal("l'abelname");
-			expect(received[0].labelLocation.range.start.line).to.equal(22);
-			expect(received[0].labelLocation.range.end.line).to.equal(32);
+			expect(received[0].labelLocation?.range.start.line).to.equal(22);
+			expect(received[0].labelLocation?.range.end.line).to.equal(32);
 		});
 
 		it("should create a reference if necessary from a goto_scene label", () => {
