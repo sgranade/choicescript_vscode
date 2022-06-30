@@ -516,6 +516,34 @@ describe("Indexer", () => {
 
 			expect(received.length).to.equal(1);
 		});
+
+		it("should summarize a *choice block", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n    #One\n        Text\nEnd");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = createIndex();
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope); }
+			);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(received[0].choiceScopes[0].summary).to.equal("choice (#One)");
+			expect(received[0].choiceScopes[1].summary).to.equal("#One");
+		});
+
+		it("should add a fake summary for missing options", () => {
+			let fakeDocument = createDocument("Line 0\n*choice\n    *if (true)\n        Text\nEnd");
+			let received: Array<DocumentScopes> = [];
+			let fakeIndex = createIndex();
+			fakeIndex.setDocumentScopes(Arg.all()).mimicks(
+				(uri: string, scope: DocumentScopes) => { received.push(scope); }
+			);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(received[0].choiceScopes[0].summary).to.equal("choice (<missing>)");
+			expect(received[0].choiceScopes[1].summary).to.equal("<missing>");
+		});
 	});
 
 	describe("Images", () => {

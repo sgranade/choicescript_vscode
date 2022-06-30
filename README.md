@@ -77,6 +77,20 @@ will turn off text printing entirely.
 
 will turn it back on.
 
+Because of how ChoiceScript parses text, the comments must be surrounded by blank lines:
+
+```
+This will be shown.
+
+*comment text off
+
+This will be hidden.
+
+*comment text on
+
+This will also be shown.
+```
+
 
 ## Settings
 

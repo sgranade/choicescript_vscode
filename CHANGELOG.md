@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Missing choices no longer make document symbols vanish.
+
 ## [2.6] - 2022-04-16
 
 ### Added

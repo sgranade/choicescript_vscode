@@ -1211,7 +1211,7 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 		}
 
 		choiceInfo.choiceScopes.push({
-			summary: summarize(parsedOption.optionText, 35),
+			summary: summarize(parsedOption.optionText ? parsedOption.optionText : "<missing>", 35),
 			range: Range.create(optionStartGlobalPosition, parsingPositionAt(optionContentsEndIndex, state))
 		});
 
