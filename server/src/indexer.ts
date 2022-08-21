@@ -1,8 +1,8 @@
-import { Location, Range, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
+import { Location, Range, Position, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ParserCallbacks, ParsingState, parse } from './parser';
-import { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label } from './index';
+import { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, AchievementIndex } from './index';
 import { createDiagnosticFromLocation, comparePositions, normalizeUri } from './utilities';
 
 /**
@@ -19,7 +19,7 @@ class IndexingState {
 	variableReferences: Map<string, Location[]> = new Map();
 	scenes: Array<string> = [];
 	labels: LabelIndex = new Map();
-	achievements: Map<string, Location> = new Map();
+	achievements: AchievementIndex = new Map();
 	achievementReferences: Map<string, Location[]> = new Map();
 	flowControlEvents: Array<FlowControlEvent> = [];
 	referencedScenes: Array<string> = [];
@@ -160,11 +160,18 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onGlobalVariableCreate: (symbol: string, location: Location, state: ParsingState) => {
-			if (indexingState.globalVariables.has(symbol)) {
-				state.callbacks.onParseError(createDiagnosticFromLocation(
+			const prevLocation = indexingState.globalVariables.get(symbol);
+			if (prevLocation !== undefined) {
+				const relatedInformation: DiagnosticRelatedInformation = {
+					location: prevLocation,
+					message: "Previously-created variable"
+				};
+				const diagnostic = createDiagnosticFromLocation(
 					DiagnosticSeverity.Error, location,
 					`Variable "${symbol}" was already created`
-				));
+				);
+				diagnostic.relatedInformation = [relatedInformation];
+				state.callbacks.onParseError(diagnostic);
 			}
 			else {
 				indexingState.globalVariables.set(symbol, location);
@@ -178,11 +185,18 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onLabelCreate: (symbol: string, location: Location, state: ParsingState) => {
-			if (indexingState.labels.has(symbol)) {
-				state.callbacks.onParseError(createDiagnosticFromLocation(
+			const prevLabel = indexingState.labels.get(symbol);
+			if (prevLabel !== undefined) {
+				const relatedInformation: DiagnosticRelatedInformation = {
+					location: prevLabel.location,
+					message: "Previously-created label"
+				};
+				const diagnostic = createDiagnosticFromLocation(
 					DiagnosticSeverity.Error, location,
 					`Label "${symbol}" was already created`
-				));
+				);
+				diagnostic.relatedInformation = [relatedInformation];
+				state.callbacks.onParseError(diagnostic);
 			}
 			else {
 				const label: Label = {
@@ -232,8 +246,23 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.scenes = scenes;
 		},
 
-		onAchievementCreate: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-			indexingState.achievements.set(codename, location);
+		onAchievementCreate: (codename: string, location: Location, points: number, title: string, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+			const prevAchievement = indexingState.achievements.get(codename);
+			if (prevAchievement !== undefined) {
+				const relatedInformation: DiagnosticRelatedInformation = {
+					location: prevAchievement[0],
+					message: "Previously-created achievement"
+				};
+				const diagnostic = createDiagnosticFromLocation(
+					DiagnosticSeverity.Error, location,
+					`Achievement "${codename}" was already created`
+				);
+				diagnostic.relatedInformation = [relatedInformation];
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				indexingState.achievements.set(codename, [location, points, title]);
+			}
 		},
 
 		onAchievementReference: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars

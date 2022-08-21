@@ -36,6 +36,14 @@ export type LabelReferenceIndex = Map<string, Array<Location>>;
  * Type for an immutable index of references to labels.
  */
 export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, ReadonlyArray<Location>>;
+/**
+ * Type for a mutable index of achievements.
+ */
+export type AchievementIndex = Map<string, [Location, number, string]>;
+/**
+ * Type for an immutable index of achievements.
+ */
+export type ReadonlyAchievementIndex = ReadonlyMap<string, [Location, number, string]>;
 
 /**
  * *goto, *gosub, *goto_scene, *gosub_scene, and *return events
@@ -143,7 +151,7 @@ export interface ProjectIndex {
 	 * Set the index of achievement codenames in the project.
 	 * @param newIndex New index of achievement codenames. Keys should _not_ be case insensitive.
 	 */
-	setAchievements(newIndex: Map<string, Location>): void;
+	setAchievements(newIndex: AchievementIndex): void;
 	/**
 	 * Set the index of references to achivements.
 	 * 
@@ -242,7 +250,7 @@ export interface ProjectIndex {
 	/**
 	 * Get the achievement codenames.
 	 */
-	getAchievements(): ReadonlyIdentifierIndex;
+	getAchievements(): ReadonlyAchievementIndex;
 	/**
 	 * Get all references to achievements in one scene document.
 	 * 
@@ -320,7 +328,7 @@ export class Index implements ProjectIndex {
 	private _scenes: Array<string>;
 	private _localLabels: Map<string, LabelIndex>;
 	private _flowControlEvents: Map<string, FlowControlEvent[]>;
-	private _achievements: IdentifierIndex;
+	private _achievements: Map<string, [Location, number, string]>;
 	private _achievementReferences: Map<string, IdentifierMultiIndex>;
 	private _documentScopes: Map<string, DocumentScopes>;
 	private _images: Map<string, Map<string, Location[]>>;
@@ -372,7 +380,7 @@ export class Index implements ProjectIndex {
 	setFlowControlEvents(textDocumentUri: string, newIndex: FlowControlEvent[]): void {
 		this._flowControlEvents.set(textDocumentUri, [...newIndex]);
 	}
-	setAchievements(newIndex: Map<string, Location>): void {
+	setAchievements(newIndex: Map<string, [Location, number, string]>): void {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
 	setAchievementReferences(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
@@ -458,7 +466,7 @@ export class Index implements ProjectIndex {
 		const index = this._localLabels.get(sceneUri) ?? new Map();
 		return index;
 	}
-	getAchievements(): ReadonlyIdentifierIndex {
+	getAchievements(): ReadonlyAchievementIndex {
 		return this._achievements;
 	}
 	getDocumentAchievementReferences(sceneUri: string): ReadonlyIdentifierMultiIndex {

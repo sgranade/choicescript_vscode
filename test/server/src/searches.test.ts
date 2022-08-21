@@ -3,8 +3,7 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Position, Location, Range, ReferenceContext, WorkspaceEdit } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Position, Location, Range, ReferenceContext } from 'vscode-languageserver/node';
 
 import {
 	ProjectIndex,
@@ -13,7 +12,8 @@ import {
 	IdentifierMultiIndex,
 	FlowControlEvent,
 	DocumentScopes,
-	LabelIndex
+	LabelIndex,
+	AchievementIndex
 } from '../../../server/src/index';
 import {
 	SymbolType,
@@ -38,7 +38,7 @@ interface IndexArgs {
 	labels?: CaseInsensitiveMap<string, LabelIndex>;
 	sceneList?: string[];
 	sceneFileUri?: string;
-	achievements?: IdentifierIndex;
+	achievements?: CaseInsensitiveMap<string, [Location, number, string]>;
 	achievementReferences?: CaseInsensitiveMap<string, IdentifierMultiIndex>;
 	flowControlEvents?: FlowControlEvent[];
 	flowControlEventsUri?: string;
@@ -344,9 +344,9 @@ describe("Definitions", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
 			let localVariableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
+			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementIndex });
 
 			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
@@ -359,9 +359,9 @@ describe("Definitions", () => {
 	describe("Achievement Definitions", () => {
 		it("should locate an achievement from its definition", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex });
 
 			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
@@ -373,12 +373,12 @@ describe("Definitions", () => {
 
 		it("should locate an achievement from its reference", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let referenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let referencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", referenceLocations]]);
 			let references = new CaseInsensitiveMap([[documentUri, referencesIndex]]);
 			let position = Position.create(7, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: references });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: references });
 
 			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
@@ -390,12 +390,12 @@ describe("Definitions", () => {
 
 		it("should locate an achievement from its reference in another scene", () => {
 			let achievementLocation = Location.create(otherSceneUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let referenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let referencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", referenceLocations]]);
 			let references = new CaseInsensitiveMap([[documentUri, referencesIndex]]);
 			let position = Position.create(7, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: references });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: references });
 
 			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
@@ -411,9 +411,9 @@ describe("Definitions", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
 			let localVariableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let position = Position.create(2, 2);
-			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementsIndex });
+			let fakeIndex = createMockIndex({ variableReferences: variableReferences, achievements: achievementIndex });
 
 			let definition = (findDefinitions(documentUri, position, fakeIndex) ?? [])[0];
 
@@ -905,12 +905,12 @@ describe("Symbol References", () => {
 	describe("Achievement References", () => {
 		it("should find achievement references from the achievement's definition", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
 
@@ -923,12 +923,12 @@ describe("Symbol References", () => {
 
 		it("should find achievement references from an achievement reference", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
 			let position = Position.create(7, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
 
@@ -942,11 +942,11 @@ describe("Symbol References", () => {
 		it("should find achievement reference variables from the achievement's definition", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let localVariableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, variableReferences: variableReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, variableReferences: variableReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
 
@@ -960,11 +960,11 @@ describe("Symbol References", () => {
 		it("should mark achievement reference variables as being local variables", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let localVariableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, variableReferences: variableReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, variableReferences: variableReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
 
@@ -976,7 +976,7 @@ describe("Symbol References", () => {
 		it("should find achievement references from an achievement reference variable", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
@@ -984,7 +984,7 @@ describe("Symbol References", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(7, 2);
 			let fakeIndex = createMockIndex({
-				achievements: achievementsIndex, achievementReferences: achievementReferences, variableReferences: variableReferences
+				achievements: achievementIndex, achievementReferences: achievementReferences, variableReferences: variableReferences
 			});
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
@@ -1000,12 +1000,12 @@ describe("Symbol References", () => {
 
 		it("should find achievement references in another scene from the achievement's definition", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [Location.create(otherSceneUri, Range.create(7, 0, 7, 5))];
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[otherSceneUri, achievementReferencesIndex]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(false);
 
@@ -1019,12 +1019,12 @@ describe("Symbol References", () => {
 
 		it("should include the achievement creation location at the end of the array when requested", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [Location.create(documentUri, Range.create(7, 0, 7, 5))];
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
 			let position = Position.create(7, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 			let fakeContext = Substitute.for<ReferenceContext>();
 			fakeContext.includeDeclaration.returns!(true);
 
@@ -1293,7 +1293,7 @@ describe("Symbol Renames", () => {
 	describe("Achievement Renames", () => {
 		it("should rename all matching achievement references on an achievement definition", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [
 				Location.create(documentUri, Range.create(6, 0, 6, 5)),
 				Location.create(documentUri, Range.create(7, 0, 7, 5))
@@ -1301,7 +1301,7 @@ describe("Symbol Renames", () => {
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
 			let position = Position.create(5, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 
 			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
 			let allChanges = renames?.changes ?? {};
@@ -1319,7 +1319,7 @@ describe("Symbol Renames", () => {
 
 		it("should rename all matching achievement references on an achievement reference", () => {
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [
 				Location.create(documentUri, Range.create(6, 0, 6, 5)),
 				Location.create(documentUri, Range.create(7, 0, 7, 5))
@@ -1327,7 +1327,7 @@ describe("Symbol Renames", () => {
 			let achievementReferencesIndex: IdentifierMultiIndex = new CaseInsensitiveMap([["codename", achievementReferenceLocations]]);
 			let achievementReferences = new CaseInsensitiveMap([[documentUri, achievementReferencesIndex]]);
 			let position = Position.create(7, 2);
-			let fakeIndex = createMockIndex({ achievements: achievementsIndex, achievementReferences: achievementReferences });
+			let fakeIndex = createMockIndex({ achievements: achievementIndex, achievementReferences: achievementReferences });
 
 			let renames = generateRenames(documentUri, position, "new_achievement", fakeIndex);
 			let allChanges = renames?.changes ?? {};
@@ -1346,12 +1346,12 @@ describe("Symbol Renames", () => {
 		it("should rename achievement reference variable on an achievement definition", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let localVariableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({
-				achievements: achievementsIndex,
+				achievements: achievementIndex,
 				variableReferences: variableReferences
 			});
 
@@ -1370,7 +1370,7 @@ describe("Symbol Renames", () => {
 		it("should properly rename an achievement and its references", () => {
 			let referenceLocation = Location.create(documentUri, Range.create(2, 0, 2, 5));
 			let achievementLocation = Location.create(documentUri, Range.create(5, 0, 5, 5));
-			let achievementsIndex: IdentifierIndex = new CaseInsensitiveMap([["codename", achievementLocation]]);
+			let achievementIndex: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [achievementLocation, 0, ""]]]);
 			let achievementReferenceLocations = [
 				Location.create(documentUri, Range.create(6, 0, 6, 5))
 			];
@@ -1380,7 +1380,7 @@ describe("Symbol Renames", () => {
 			let variableReferences = new CaseInsensitiveMap([[documentUri, localVariableReferences]]);
 			let position = Position.create(5, 2);
 			let fakeIndex = createMockIndex({
-				achievements: achievementsIndex,
+				achievements: achievementIndex,
 				achievementReferences: achievementReferences,
 				variableReferences: variableReferences
 			});

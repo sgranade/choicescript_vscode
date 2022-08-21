@@ -338,9 +338,9 @@ describe("Indexer", () => {
 	describe("Achievement Indexing", () => {
 		it("should index an achievement", () => {
 			let fakeDocument = createDocument("*achievement code_name");
-			let receivedAchievements: Map<string, Location>[] = [];
+			let receivedAchievements: Map<string, [Location, number, string]>[] = [];
 			let fakeIndex = createIndex();
-			fakeIndex.setAchievements(Arg.any()).mimicks((index: Map<string, Location>) => { receivedAchievements.push(index); });
+			fakeIndex.setAchievements(Arg.any()).mimicks((index: Map<string, [Location, number, string]>) => { receivedAchievements.push(index); });
 
 			updateProjectIndex(fakeDocument, true, false, fakeIndex);
 
@@ -609,6 +609,23 @@ describe("Indexer", () => {
 			expect(received[0][0].message).to.include('Label "previous_label" was already created');
 			expect(received[0][0].range.start.line).to.equal(29);
 			expect(received[0][0].range.end.line).to.equal(43);
+		});
+
+		it("should flag attempts to re-create already-created achievements", () => {
+			let fakeDocument = createDocument("*achievement name visible 10 Title\n  Desc\n*achievement name visible 10 Title 2\n  Desc");
+			let received: Array<Diagnostic[]> = [];
+			let fakeIndex = createIndex();
+			fakeIndex.setParseErrors(Arg.all()).mimicks(
+				(uri: string, errors: Diagnostic[]) => { received.push(errors); }
+			);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+
+			expect(received.length).to.equal(1);
+			expect(received[0].length).to.equal(1);
+			expect(received[0][0].message).to.include('Achievement "name" was already created');
+			expect(received[0][0].range.start.line).to.equal(55);
+			expect(received[0][0].range.end.line).to.equal(59);
 		});
 
 		it("should flag a *return with no label", () => {

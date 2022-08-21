@@ -6,7 +6,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label } from '../../../server/src/index';
+import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex } from '../../../server/src/index';
 import { CaseInsensitiveMap } from '../../../server/src/utilities';
 import { generateDiagnostics, ValidationSettings } from '../../../server/src/validator';
 
@@ -31,7 +31,7 @@ interface IndexArgs {
 	labelsUri?: string;
 	sceneList?: string[];
 	sceneFileUri?: string;
-	achievements?: IdentifierIndex;
+	achievements?: AchievementIndex;
 	variableReferences?: IdentifierMultiIndex;
 	flowControlEvents?: FlowControlEvent[];
 	scopes?: DocumentScopes;
@@ -511,7 +511,7 @@ describe("Validator", () => {
 		});
 
 		it("should flag achievement variables if not instantiated", () => {
-			let achievements: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["codename", Substitute.for<Location>()]]);
+			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
 			let fakeDocument = createDocument("placeholder");
@@ -525,7 +525,7 @@ describe("Validator", () => {
 		});
 
 		it("should not flag achievement variables after instantiation", () => {
-			let achievements: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["codename", Substitute.for<Location>()]]);
+			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
 				choiceScopes: [],
@@ -543,7 +543,7 @@ describe("Validator", () => {
 		});
 
 		it("should flag incorrect achievement variables", () => {
-			let achievements: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["codename", Substitute.for<Location>()]]);
+			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
 				choiceScopes: [],
@@ -972,6 +972,76 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.contain('Switched from tabs to spaces');
 			expect(diagnostics[0].range.start.line).to.equal(27);
 			expect(diagnostics[0].range.end.line).to.equal(29);
+		});
+	});
+
+	describe("Achievement Validation", () => {
+		it("should flag achievements with a repeated title", () => {
+			let achievements = new CaseInsensitiveMap([
+				["ach1", [Substitute.for<Location>(), 1, "Repeated title"]],
+				["ach2", [Location.create(fakeDocumentUri, Range.create(2, 0, 3, 5)), 1, "Repeated title"]]
+			]) as AchievementIndex;
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ achievements: achievements });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('the same title was defined earlier');
+			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
+			expect(diagnostics[0].range.end).to.eql({ line: 3, character: 5 });
+		})
+
+		it("should flag more than 100 achievements", () => {
+			let achievements = new Map(
+				[...Array(103).keys()].map((v): [string, [Location, number, string]] => 
+					[
+						`a${v}`, [
+							Location.create(fakeDocumentUri, Range.create(v, 0, v, 5)),
+							1, 
+							v.toString()
+						]
+					]
+				)
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ achievements: achievements });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.contain('No more than 100 achievements allowed');
+			expect(diagnostics[0].range.start).to.eql({ line: 100, character: 0 });
+			expect(diagnostics[0].range.end).to.eql({ line: 100, character: 5 });
+		});
+
+		it("should flag more than 1000 points' worth of achievements", () => {
+			let achievements = new Map(
+				[...Array(12).keys()].map((v): [string, [Location, number, string]] => 
+					[
+						`a${v}`, [
+							Location.create(fakeDocumentUri, Range.create(v, 0, v, 5)),
+							100,
+							v.toString()
+						]
+					]
+				)
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({ achievements: achievements });
+			let fakeSettings = createValidationSettings();
+
+			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+
+			expect(diagnostics.length).to.equal(2);
+			expect(diagnostics[0].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1100');
+			expect(diagnostics[0].range.start).to.eql({ line: 10, character: 0 });
+			expect(diagnostics[0].range.end).to.eql({ line: 10, character: 5 });
+			expect(diagnostics[1].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1200');
+			expect(diagnostics[1].range.start).to.eql({ line: 11, character: 0 });
+			expect(diagnostics[1].range.end).to.eql({ line: 11, character: 5 });
 		});
 	});
 });

@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- Achievements are now fully checked for correctness.
+
 ### Fixed
 
 - Missing choices no longer make document symbols vanish.

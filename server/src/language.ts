@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
-import { ReadonlyIdentifierIndex } from "./index";
+import { ReadonlyAchievementIndex } from "./index";
 
 
 /* COMMANDS */
@@ -316,7 +316,7 @@ export function extractTokenAtIndex(
  * @param achievements Index of achievements.
  * @returns The achievement codename, or undefined if it's not an achievement variable.
  */
-export function variableIsAchievement(variable: string, achievements: ReadonlyIdentifierIndex): string | undefined {
+export function variableIsAchievement(variable: string, achievements: ReadonlyAchievementIndex): string | undefined {
 	let codename: string | undefined = undefined;
 
 	const achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;

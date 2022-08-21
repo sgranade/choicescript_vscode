@@ -456,6 +456,10 @@ function validateOption(option: string, index: number, state: ValidationState): 
 	return diagnostic;
 }
 
+/**
+ * Validate there are no swaps between tabs and spaces.
+ * @param state Current parsing state.
+ */
 function validateIndents(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
@@ -488,6 +492,55 @@ function validateIndents(state: ValidationState): Diagnostic[] {
 	return diagnostics;
 }
 
+/**
+ * Validate all achievements.
+ * @param state Current parsing state.
+ */
+function validateAchievements(state: ValidationState): Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+
+	const achievements = state.projectIndex.getAchievements();
+	let count = 0;
+	let totalPoints = 0;
+	const seenTitles: Map<string, Location> = new Map();
+	let prevLocation: Location | undefined;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	for (const [codename, [location, points, title]] of achievements) { 
+		if (count == 100) {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, location,
+				"No more than 100 achievements allowed"
+			));
+		}
+		count++;
+		totalPoints += points;
+		if (totalPoints > 1000) {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, location,
+				`Total achievement points must be 1,000 or less (this makes it ${totalPoints} points)`
+			));
+		}
+		prevLocation = seenTitles.get(title);
+		if (prevLocation !== undefined) {
+			const relatedInformation: DiagnosticRelatedInformation = {
+				location: prevLocation,
+				message: "First achievement with that title"
+			};
+			const diagnostic = createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, location,
+				"An achievement with the same title was defined earlier"
+			);
+			diagnostic.relatedInformation = [relatedInformation];
+			diagnostics.push(diagnostic);
+		}
+		else {
+			seenTitles.set(title, location);
+		}
+	}
+
+	return diagnostics;
+}
+
 const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');
 
 /**
@@ -514,6 +567,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate tabs/spaces
 	diagnostics.push(...validateIndents(state));
+
+	// Validate achievements
+	diagnostics.push(...validateAchievements(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
 	matchPattern.lastIndex = 0;

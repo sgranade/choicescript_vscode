@@ -1,9 +1,8 @@
 import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';
-import { positionInRange, normalizeUri } from './utilities';
+import { positionInRange, CaseInsensitiveMap } from './utilities';
 
 /**
  * Type of a symbol.
@@ -99,7 +98,7 @@ export function findLabelLocation(
  * @param index Project index.
  */
 function findAchievementLocation(codename: string, index: ProjectIndex): Location | undefined {
-	const location = index.getAchievements().get(codename);
+	const location = index.getAchievements().get(codename)?.[0];
 
 	return location;
 }
@@ -229,7 +228,7 @@ export function findDefinitions(
 				const achievements = projectIndex.getAchievements();
 				const codename = variableIsAchievement(variable, achievements);
 				if (codename !== undefined) {
-					const location = achievements.get(codename);
+					const location = achievements.get(codename)?.[0];
 					if (location !== undefined) {
 						definitions = [{
 							symbol: codename,
@@ -280,7 +279,14 @@ export function findDefinitions(
 
 	// See if we have an achievement definition at this location
 	const achievements = projectIndex.getAchievements();
-	symbolLocation = findMatchingSymbol(documentUri, position, achievements);
+	const achievementIndex: ReadonlyIdentifierIndex = new CaseInsensitiveMap(
+		[...achievements].map(([k, v]) => [k, v[0]])
+	);
+	symbolLocation = findMatchingSymbol(
+		documentUri, 
+		position, 
+		achievementIndex
+	);
 	if (symbolLocation !== undefined) {
 		definitions = [{
 			symbol: symbolLocation.symbol,

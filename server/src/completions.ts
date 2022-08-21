@@ -8,7 +8,7 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex } from "./index";
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex, AchievementIndex, ReadonlyAchievementIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 import { extractToMatchingDelimiter, comparePositions, normalizeUri, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
@@ -22,7 +22,7 @@ function generateCompletionsFromArray(array: ReadonlyArray<string>,
 }
 
 function generateCompletionsFromIndex(
-	index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex,
+	index: ReadonlyIdentifierIndex | IdentifierIndex | ReadonlyLabelIndex | LabelIndex | ReadonlyAchievementIndex,
 	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return Array.from(iteratorMap(index.keys(), (x: string) => ({
 		label: x,

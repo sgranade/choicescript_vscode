@@ -73,7 +73,7 @@ export interface ParserCallbacks {
 	onFlowControlEvent(command: string, commandLocation: Location, label: string, scene: string,
 		labelLocation: Location | undefined, sceneLocation: Location | undefined, state: ParsingState): void;
 	onSceneDefinition(scenes: string[], location: Location, state: ParsingState): void;
-	onAchievementCreate(codename: string, location: Location, state: ParsingState): void;
+	onAchievementCreate(codename: string, location: Location, points: number, title: string, state: ParsingState): void;
 	onAchievementReference(codename: string, location: Location, state: ParsingState): void;
 	onChoiceScope(scope: SummaryScope, state: ParsingState): void;
 	onImage(symbol: string, location: Location, state: ParsingState): void;
@@ -1645,14 +1645,13 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
  * @param text Document text to scan.
  * @param command Command that is being parsed.
  * @param commandPadding: Spacing before the *if command.
- * @param commandSectionIndex Index at the start of the *if command.
- * @param line The rest of the line following the *if command
- * @param lineSectionIndex Index to the rest of the line
+ * @param line The rest of the line following the *if command.
+ * @param lineSectionIndex Index at the start of the rest of the line.
  * @param contentsIndex Index at the start of the *if block contents.
  * @param state Parsing state.
  * @returns Index at the end of the choice block.
  */
-function parseIfBlock(text: string, command: string, commandPadding: string, commandSectionIndex: number, line: string, lineSectionIndex: number, contentsIndex: number, state: ParsingState): number {
+function parseIfBlock(text: string, command: string, commandPadding: string, line: string, lineSectionIndex: number, contentsIndex: number, state: ParsingState): number {
 	// commandPadding can include a leading \n, so don't count that
 	const commandIndent = commandPadding.replace("\n", "").length;
 
@@ -1822,14 +1821,249 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 }
 
 /**
- * Parse an achievement.
- * @param codename Achievement's codename
- * @param startSectionIndex Index at the start of the codename.
+ * Check the text in an achievement (such as a title) for illegal characters or length, raising a parse error if found.
+ * 
+ * @param text Text to check.
+ * @param textTypeDesc Type of achievement text, such as "title" or "pre-earned description".
+ * @param maxLen Maximum number of characters in the text.
+ * @param textIndex Index of the text in the document.
  * @param state Parsing state.
  */
-function parseAchievement(codename: string, startSectionIndex: number, state: ParsingState): void {
-	const location = createParsingLocation(startSectionIndex, startSectionIndex + codename.length, state);
-	state.callbacks.onAchievementCreate(codename, location, state);
+function checkAchievementText(text: string, textTypeDesc: string, maxLen: number, textIndex: number, state: ParsingState) {
+	// I really should look for an entire ${} replace &c., but
+	// this is what ChoiceScript does, so
+	let delimIndex = text.indexOf("${");
+	if (delimIndex != -1) {
+		const diagnostic = createParsingDiagnostic(
+			DiagnosticSeverity.Error,
+			textIndex + delimIndex,
+			textIndex + delimIndex + 2,
+			`*achievement ${textTypeDesc} can't include a \${} replace`,
+			state
+		);
+		state.callbacks.onParseError(diagnostic);
+	}
+	delimIndex = text.indexOf("@{");
+	if (delimIndex != -1) {
+		const diagnostic = createParsingDiagnostic(
+			DiagnosticSeverity.Error,
+			textIndex + delimIndex,
+			textIndex + delimIndex + 2,
+			`*achievement ${textTypeDesc} can't include a @{} multireplace`,
+			state
+		);
+		state.callbacks.onParseError(diagnostic);
+	}
+	delimIndex = text.indexOf("[");
+	if (delimIndex != -1) {
+		const diagnostic = createParsingDiagnostic(
+			DiagnosticSeverity.Error,
+			textIndex + delimIndex,
+			textIndex + delimIndex + 1,
+			`*achievement ${textTypeDesc} can't include [] brackets`,
+			state
+		);
+		state.callbacks.onParseError(diagnostic);
+	}
+	if (text.trimStart().length > maxLen) {
+		const startIndex = text.search(/\S/);
+		const diagnostic = createParsingDiagnostic(
+			DiagnosticSeverity.Error,
+			textIndex + startIndex + maxLen,
+			textIndex + text.length,
+			`*achievement ${textTypeDesc} can't be longer than ${maxLen} characters`,
+			state
+		);
+		state.callbacks.onParseError(diagnostic);
+	}
+}
+
+/**
+ * 
+ * @param text Document text to scan.
+ * @param commandPadding Spacing before the *achievement command.
+ * @param line The rest of the line following the command.
+ * @param lineSectionIndex Index at the start of the rest of the line.
+ * @param contentsIndex Index at the start of the line after the command.
+ * @param state Parsing state.
+ * @returns Index at the end of the achievement block.
+ */
+function parseAchievement(text: string, commandPadding: string, line: string, lineSectionIndex: number, contentsIndex: number, state: ParsingState): number {
+	// Chomp the line one element at a time
+	const tokenPattern = /(\s*?)(\S+)/g;
+	let currentTokenIndex = 0;
+	let points = 0;
+	let title = "";
+	let visibility: string | undefined = undefined;
+
+	let m = tokenPattern.exec(line);
+	// If no codename, don't continue
+	if (m === null) {
+		const diagnostic = createParsingDiagnostic(
+			DiagnosticSeverity.Error,
+			lineSectionIndex,
+			lineSectionIndex,
+			"Command *achievement is missing its codename", 
+			state
+		);
+		state.callbacks.onParseError(diagnostic);
+		return contentsIndex;
+	}
+	const codename = m[2];
+	const location = createParsingLocation(
+		lineSectionIndex + currentTokenIndex + m[1].length,
+		lineSectionIndex + tokenPattern.lastIndex,
+		state
+	);
+	currentTokenIndex = tokenPattern.lastIndex;
+
+	do {
+
+		m = tokenPattern.exec(line);
+		if (m === null) {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error,
+				lineSectionIndex + currentTokenIndex,
+				lineSectionIndex + currentTokenIndex,
+				"Command *achievement is missing its visibility", 
+				state
+			);
+			state.callbacks.onParseError(diagnostic);
+			break;
+		}
+		visibility = m[2].toLowerCase();
+		if (visibility !== "visible" && visibility !== "hidden") {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error,
+				lineSectionIndex + currentTokenIndex + m[1].length,
+				lineSectionIndex + tokenPattern.lastIndex,
+				"*achievement visibility must be 'hidden' or 'visible'",
+				state
+			);
+			state.callbacks.onParseError(diagnostic);
+		}
+		currentTokenIndex = tokenPattern.lastIndex;
+
+		m = tokenPattern.exec(line);
+		if (m === null) {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error,
+				lineSectionIndex + currentTokenIndex,
+				lineSectionIndex + currentTokenIndex,
+				"Command *achievement is missing its points value",
+				state
+			);
+			state.callbacks.onParseError(diagnostic);
+			break;
+		}
+		points = Number(m[2]);
+		let pointsError: string | undefined = undefined;
+		if (isNaN(points)) {
+			pointsError = "*achievement points must be a number";
+			points = 0;
+		}
+		else if (points < 1) {
+			pointsError = "*achievement points must be 1 or more";
+		}
+		else if (points > 100) {
+			pointsError = "*achievement points must be 100 or less";
+		}
+		if (pointsError !== undefined) {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error,
+				lineSectionIndex + currentTokenIndex + m[1].length,
+				lineSectionIndex + tokenPattern.lastIndex,
+				pointsError,
+				state
+			);
+			state.callbacks.onParseError(diagnostic);
+		}
+		currentTokenIndex = tokenPattern.lastIndex;
+
+		title = line.slice(tokenPattern.lastIndex);
+		if (title.trim() === "") {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error,
+				lineSectionIndex + currentTokenIndex,
+				lineSectionIndex + currentTokenIndex + title.length,
+				"Command *achievement is missing its title",
+				state
+			);
+			state.callbacks.onParseError(diagnostic);
+		}
+		else {
+			checkAchievementText(title, "title", 50, lineSectionIndex + currentTokenIndex, state);
+			title = title.trimStart();
+		}
+	} while (false);
+
+	state.callbacks.onAchievementCreate(codename, location, points, title, state);
+
+	// Parse the block's contents
+	// commandPadding can include a leading \n, so don't count that
+	const commandIndent = commandPadding.replace("\n", "").length;
+	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
+	let currentIndex = 0;
+	if (blockContents.trim() == "") {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			lineSectionIndex + line.length, lineSectionIndex + line.length,
+			"*achievement is missing its indented pre-earned description", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+	else {
+		let nextLine: NewLine | undefined = readLine(blockContents, currentIndex);
+		if (nextLine !== undefined && nextLine.splitLine !== undefined) {
+			if (visibility === "hidden" && nextLine.splitLine.contents.toLowerCase() !== "hidden") {
+				const diagnostic = createParsingDiagnostic(
+					DiagnosticSeverity.Error,
+					contentsIndex + nextLine.splitLine.padding.length, 
+					contentsIndex + nextLine.line.trimEnd().length,
+					"Hidden *achievement's pre-earned description must be 'hidden'", 
+					state
+				);
+				state.callbacks.onParseError(diagnostic);
+			}
+			else {
+				checkAchievementText(
+					nextLine.splitLine.contents,
+					"pre-earned description",
+					200,
+					contentsIndex + currentIndex + nextLine.splitLine.padding.length,
+					state
+				);
+			}
+			currentIndex += nextLine.line.length;
+			nextLine = readLine(blockContents, currentIndex);
+			if (nextLine === undefined || nextLine.splitLine === undefined) {
+				if (visibility === "hidden") {
+					const diagnostic = createParsingDiagnostic(
+						DiagnosticSeverity.Error,
+						contentsIndex + currentIndex, 
+						contentsIndex + currentIndex,
+						"Hidden *achievement must have a post-earned description (is the indent wrong?)", 
+						state
+					);
+					state.callbacks.onParseError(diagnostic);
+				}
+			}
+			else {
+				checkAchievementText(
+					nextLine.splitLine.contents,
+					"post-earned description",
+					200,
+					contentsIndex + currentIndex + nextLine.splitLine.padding.length,
+					state
+				);
+				currentIndex += nextLine.line.length;
+			}
+			if (blockContents[currentIndex - 1] == "\n") {
+				// The -1 is so we back up to before the \n at the end so the next round of parsing works
+				currentIndex--;
+			}
+		}
+	}
+
+	return contentsIndex + currentIndex;
 }
 
 /**
@@ -1976,7 +2210,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 
 	if (command == "if") {
 		const nextLineIndex = findLineEnd(document, commandSectionIndex);
-		endParseIndex = parseIfBlock(document, command, prefix, commandSectionIndex, line, lineSectionIndex, nextLineIndex, state);
+		endParseIndex = parseIfBlock(document, command, prefix, line, lineSectionIndex, nextLineIndex, state);
 	}
 	else if (symbolManipulationCommandsLookup.has(command)) {
 		parseSymbolManipulationCommand(command, commandSectionIndex, line, lineSectionIndex, state);
@@ -2010,10 +2244,9 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 		}
 	}
 	else if (command == "achievement") {
-		const codenameMatch = line.match(/^\S+/);
-		if (codenameMatch) {
-			const codename = codenameMatch[0];
-			parseAchievement(codename, lineSectionIndex, state);
+		const nextLineIndex = findLineEnd(document, commandSectionIndex);
+		if (nextLineIndex !== undefined) {
+			endParseIndex = parseAchievement(document, prefix, line, lineSectionIndex, nextLineIndex, state);
 		}
 	}
 	else if (command == "achieve") {

@@ -33,6 +33,13 @@ interface Symbol {
 	location: Location;
 }
 
+interface Achievement {
+	text: string;
+	location: Location;
+	points: number;
+	title: string;
+}
+
 describe("Parser", () => {
 	describe("Command Parsing", () => {
 		it("should callback on anything that looks like a command", () => {
@@ -1950,11 +1957,11 @@ describe("Parser", () => {
 
 	describe("Achievement Parsing", () => {
 		it("should callback on an achievement", () => {
-			let fakeDocument = createDocument("*achievement code_name");
-			let received: Array<Symbol> = [];
+			let fakeDocument = createDocument("*achievement code_name visible 12 Display title.");
+			let received: Array<Achievement> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
-			fakeCallbacks.onAchievementCreate(Arg.all()).mimicks((s: string, l: Location, state: ParsingState) => {
-				received.push({ text: s, location: l });
+			fakeCallbacks.onAchievementCreate(Arg.all()).mimicks((s: string, l: Location, p: number, t: string, state: ParsingState) => {
+				received.push({ text: s, location: l, points: p, title: t });
 			});
 
 			parse(fakeDocument, fakeCallbacks);
@@ -1963,6 +1970,8 @@ describe("Parser", () => {
 			expect(received[0].text).to.equal("code_name");
 			expect(received[0].location.range.start.line).to.equal(13);
 			expect(received[0].location.range.end.line).to.equal(22);
+			expect(received[0].points).to.equal(12);
+			expect(received[0].title).to.equal("Display title.");
 		});
 
 		it("should callback on a reference to an achievement", () => {
@@ -3726,6 +3735,405 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(25);
+			});
+		});
+
+		describe("Achievements", () => {
+			it("should raise an error on a missing codename", () => {
+				let fakeDocument = createDocument("*achievement \n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *achievement is missing its arguments");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(12);
+			});
+
+			it("should raise an error on a missing visibility", () => {
+				let fakeDocument = createDocument("*achievement codename \n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *achievement is missing its visibility");
+				expect(received[0].range.start.line).to.equal(21);
+				expect(received[0].range.end.line).to.equal(21);
+			});
+
+			it("should raise an error on missing points", () => {
+				let fakeDocument = createDocument("*achievement codename visible \n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *achievement is missing its points value");
+				expect(received[0].range.start.line).to.equal(29);
+				expect(received[0].range.end.line).to.equal(29);
+			});
+
+			it("should raise an error on a missing title", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 \n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *achievement is missing its title");
+				expect(received[0].range.start.line).to.equal(32);
+				expect(received[0].range.end.line).to.equal(33);
+			});
+			
+			it("should raise an error on an incorrect visibility", () => {
+				let fakeDocument = createDocument("*achievement codename imvisible 20 Title\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement visibility must be 'hidden' or 'visible'");
+				expect(received[0].range.start.line).to.equal(22);
+				expect(received[0].range.end.line).to.equal(31);
+			});
+
+			it("should raise an error on non-integer points", () => {
+				let fakeDocument = createDocument("*achievement codename visible plp Title\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement points must be a number");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(33);
+			});
+
+			it("should raise an error on too many points", () => {
+				let fakeDocument = createDocument("*achievement codename visible 101 Title\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement points must be 100 or less");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(33);
+			});
+
+			it("should raise an error on too few points", () => {
+				let fakeDocument = createDocument("*achievement codename visible 0 Title\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement points must be 1 or more");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(31);
+			});
+
+			it("should raise an error on a title with a replacement", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 A ${replace}\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement title can't include a ${} replace");
+				expect(received[0].range.start.line).to.equal(35);
+				expect(received[0].range.end.line).to.equal(37);
+			});
+			
+			it("should raise an error on a title with a multireplacement", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 A @{multi rep|lace}\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement title can't include a @{} multireplace");
+				expect(received[0].range.start.line).to.equal(35);
+				expect(received[0].range.end.line).to.equal(37);
+			});
+			
+			it("should raise an error on a title with brackets", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 A [bracket]\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement title can't include [] brackets");
+				expect(received[0].range.start.line).to.equal(35);
+				expect(received[0].range.end.line).to.equal(36);
+			});
+			
+			it("should raise an error on too-long titles", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 123456789012345678921234567893123456789412345678951\n  Desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement title can't be longer than 50 characters");
+				expect(received[0].range.start.line).to.equal(33+50);
+				expect(received[0].range.end.line).to.equal(33+51);
+			});
+			
+			it("should raise an error on a missing pre-earned description", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\nNot a desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement is missing its indented pre-earned description");
+				expect(received[0].range.start.line).to.equal(34);
+				expect(received[0].range.end.line).to.equal(34);
+			});
+			
+			it("should raise an error on a pre-earned description with a replace", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A ${replace}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement pre-earned description can't include a ${} replace");
+				expect(received[0].range.start.line).to.equal(39);
+				expect(received[0].range.end.line).to.equal(41);
+			});
+			
+			it("should raise an error on a pre-earned description with a multireplace", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A @{multi re|place}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement pre-earned description can't include a @{} multireplace");
+				expect(received[0].range.start.line).to.equal(39);
+				expect(received[0].range.end.line).to.equal(41);
+			});
+			
+			it("should raise an error on a pre-earned description with brackets", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A [bracket]");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement pre-earned description can't include [] brackets");
+				expect(received[0].range.start.line).to.equal(39);
+				expect(received[0].range.end.line).to.equal(40);
+			});
+			
+			it("should raise an error on a too-long pre-earned description", () => {
+				let fakeDocument = createDocument(`*achievement codename visible 20 T\n  ${"1".repeat(202)}`);
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement pre-earned description can't be longer than 200 characters");
+				expect(received[0].range.start.line).to.equal(37+200);
+				expect(received[0].range.end.line).to.equal(37+202);
+			});
+			
+			it("should not raise an error on a visible achievement with no post-earned description", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A\n");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+			
+			it("should raise an error on a hidden achievement with no post-earned description", () => {
+				let fakeDocument = createDocument("*achievement codename hidden 20 T\n  hIdDeN\n");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Hidden *achievement must have a post-earned description");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(43);
+			});
+			
+			it("should raise an error on a hidden achievement with an improperly-indented post-earned description", () => {
+				let fakeDocument = createDocument("*achievement codename hidden 20 T\n  hIdDeN\nPost-earned desc");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Hidden *achievement must have a post-earned description");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(43);
+			});
+			
+			it("should raise an error on a hidden achievement with a pre-earned description that isn't 'hidden'", () => {
+				let fakeDocument = createDocument("*achievement codename hidden 20 T\n  A\n  B");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Hidden *achievement's pre-earned description must be 'hidden'");
+				expect(received[0].range.start.line).to.equal(36);
+				expect(received[0].range.end.line).to.equal(37);
+			});
+			
+			it("should raise an error on a post-earned description with a replace", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A\n  A ${replace}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement post-earned description can't include a ${} replace");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(45);
+			});
+			
+			it("should raise an error on a post-earned description with a multireplace", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A\n  A @{multi re|place}");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement post-earned description can't include a @{} multireplace");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(45);
+			});
+			
+			it("should raise an error on a post-earned description with brackets", () => {
+				let fakeDocument = createDocument("*achievement codename visible 20 T\n  A\n  A [bracket]");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement post-earned description can't include [] brackets");
+				expect(received[0].range.start.line).to.equal(43);
+				expect(received[0].range.end.line).to.equal(44);
+			});
+			
+			it("should raise an error on a too-long post-earned description", () => {
+				let fakeDocument = createDocument(`*achievement codename visible 20 T\n  A\n  ${"1".repeat(203)}`);
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("*achievement post-earned description can't be longer than 200 characters");
+				expect(received[0].range.start.line).to.equal(41+200);
+				expect(received[0].range.end.line).to.equal(41+203);
 			});
 		});
 
