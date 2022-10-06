@@ -2085,7 +2085,7 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
  * @param state Parsing state.
  */
 function parseImage(image: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
-	if (remainingLine.trim() != '' && !/^(\s+)((left|right|center)\s*$)/.test(remainingLine)) {
+	if (remainingLine.trim() != '' && !/^(\s+)(left|right|center)/.test(remainingLine)) {
 		const firstCharacterIndex = remainingLine.search(/\S/);
 		const startIndex = startSectionIndex + image.length + firstCharacterIndex;
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
@@ -2256,7 +2256,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 			parseAchievementReference(codename, lineSectionIndex, state);
 		}
 	}
-	else if (command == "image") {
+	else if (command == "image" || command == "text_image") {
 		const imageMatch = line.match(/^\S+/);
 		if (imageMatch) {
 			const image = imageMatch[0];

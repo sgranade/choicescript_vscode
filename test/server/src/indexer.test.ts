@@ -554,7 +554,7 @@ describe("Indexer", () => {
 
 	describe("Images", () => {
 		it("should capture referenced images", () => {
-			let fakeDocument = createDocument("*image cover.jpg\n*image http://faker.com/img.png");
+			let fakeDocument = createDocument("*image cover.jpg\n*text_image http://faker.com/img.png");
 			let received: Map<string, Location[]>[] = [];
 			let fakeIndex = createIndex();
 			fakeIndex.setImages(Arg.all()).mimicks(
@@ -571,8 +571,8 @@ describe("Indexer", () => {
 			expect(cover[0].range.start.line).to.eql(7);
 			expect(cover[0].range.end.line).to.eql(16);
 			expect(img.length).to.eql(1);
-			expect(img[0].range.start.line).to.eql(24);
-			expect(img[0].range.end.line).to.eql(48);
+			expect(img[0].range.start.line).to.eql(29);
+			expect(img[0].range.end.line).to.eql(53);
 		});
 	});
 
