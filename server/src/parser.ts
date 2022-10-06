@@ -2085,11 +2085,19 @@ function parseAchievementReference(codename: string, startSectionIndex: number, 
  * @param state Parsing state.
  */
 function parseImage(image: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
-	if (remainingLine.trim() != '' && !/^(\s+)(left|right|center)/.test(remainingLine)) {
+	if (remainingLine.trim() != '' && !/^(\s+?)(left|right|center)(?=\s|$)/.test(remainingLine)) {
 		const firstCharacterIndex = remainingLine.search(/\S/);
 		const startIndex = startSectionIndex + image.length + firstCharacterIndex;
+		let endCharacterIndex = remainingLine.slice(firstCharacterIndex).search(/\s/);
+		if (endCharacterIndex == -1) {
+			endCharacterIndex = remainingLine.length;
+		}
+		else {
+			endCharacterIndex++;
+		}
+		const endIndex = startSectionIndex + image.length + endCharacterIndex;
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startIndex, startIndex + remainingLine.length - firstCharacterIndex,
+			startIndex, endIndex,
 			`Must be one of left, right, or center.`, state);
 		state.callbacks.onParseError(diagnostic);
 	}

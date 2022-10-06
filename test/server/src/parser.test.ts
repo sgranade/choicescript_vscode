@@ -456,6 +456,39 @@ describe("Parser", () => {
 			expect(received[0][1].range.start.line).to.equal(14);
 			expect(received[0][1].range.end.line).to.equal(38);
 		});
+
+		
+		it("should callback on a local text_image", () => {
+			let fakeDocument = createDocument("Line 0\n*text_image local.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("local.png");
+			expect(received[0][1].range.start.line).to.equal(19);
+			expect(received[0][1].range.end.line).to.equal(28);
+		});
+
+		it("should callback on a remote text_image", () => {
+			let fakeDocument = createDocument("Line 0\n*text_image http://faker.com/img.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("http://faker.com/img.png");
+			expect(received[0][1].range.start.line).to.equal(19);
+			expect(received[0][1].range.end.line).to.equal(43);
+		});
 	});
 
 	describe("Choice Command Parsing", () => {
@@ -4168,7 +4201,7 @@ describe("Parser", () => {
 			});
 
 			it("should raise an error for an incorrect alignment", () => {
-				let fakeDocument = createDocument("*image cover.png flooble");
+				let fakeDocument = createDocument("*image cover.png leftttt");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -4185,6 +4218,108 @@ describe("Parser", () => {
 
 			it("should not raise an error for a correct alignment", () => {
 				let fakeDocument = createDocument("*image cover.png left");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should not raise an error for alt text", () => {
+				let fakeDocument = createDocument("*image cover.png left This is alt text.");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should not raise an error for alt text but do so for a bad alignment", () => {
+				let fakeDocument = createDocument("*image cover.png leftt This is alt text.");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].range.start.line).to.equal(17);
+				expect(received[0].range.end.line).to.equal(22);
+			});
+		});
+
+		describe("Text Images", () => {
+			it("should raise an error on a missing image url", () => {
+				let fakeDocument = createDocument("*text_image ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Command *text_image is missing its arguments");
+				expect(received[0].range.start.line).to.equal(1);
+				expect(received[0].range.end.line).to.equal(11);
+			});
+
+			it("should not raise an error if there is no alignment", () => {
+				let fakeDocument = createDocument("*text_image cover.png ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should raise an error for an incorrect alignment", () => {
+				let fakeDocument = createDocument("*text_image cover.png flooble alt text");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].range.start.line).to.equal(22);
+				expect(received[0].range.end.line).to.equal(29);
+			});
+
+			it("should not raise an error for a correct alignment", () => {
+				let fakeDocument = createDocument("*text_image cover.png left");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should not raise an error for alt text", () => {
+				let fakeDocument = createDocument("*text_image cover.png left This is alt text.");
 				let received: Array<Diagnostic> = [];
 				let fakeCallbacks = Substitute.for<ParserCallbacks>();
 				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
