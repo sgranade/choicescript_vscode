@@ -140,9 +140,16 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 
 		const projectPath = path.dirname(filePath);
 		// Filenames from globby are posix paths regardless of platform
-		const sceneFilesPath = path.join(workspacePath, ...projectPath.split('/'));
+		const projectPathComponents = projectPath.split('/');
+		const sceneFilesPath = path.join(workspacePath, ...projectPathComponents);
 		projectIndex.setPlatformProjectPath(sceneFilesPath);
 		connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
+		if (projectPathComponents.length > 0) {
+			connection.sendNotification(
+				CustomMessages.UpdatedMyGamePath,
+				path.join(workspacePath, ...projectPathComponents.slice(0, -1))
+			);
+		}
 
 		// Index the startup.txt file
 		await indexFile(filePath);

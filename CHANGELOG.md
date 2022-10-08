@@ -8,6 +8,10 @@ Changes to the plugin.
 
 - Achievements are now fully checked for correctness.
 
+### Changed
+
+- Images can now either be in the same directory as scene files or one directory up (the `mygame` directory).
+
 ### Fixed
 
 - Missing choices no longer make document symbols vanish.

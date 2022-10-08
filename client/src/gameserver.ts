@@ -11,6 +11,7 @@ import { env, Uri, window } from 'vscode';
 interface GameInfo {
 	csRootPath: string
 	sceneRootPath?: string
+	mygamePath?: string
 	csErrorCallback: (scene: string, line: number, message: string) => void | undefined;
 }
 
@@ -37,12 +38,26 @@ app.use(async function(ctx, next) {
 		}
 		if (_gameInfo !== undefined) {
 			let filepath = path.resolve(_gameInfo.csRootPath, ctx.URL.pathname.replace(/^\//, ''));
+			const ext = path.extname(filepath);
 
-			if (_gameInfo.sceneRootPath !== undefined) {
-				const ext = path.extname(filepath);
-				if ((ctx.URL.pathname.startsWith('/scenes/') && ext == '.txt') || ext == '.jpg' || ext == '.png' || ext == '.gif') {
+			// Images are a special case. Dashingdon has them live in the same directory as scene files,
+			// while official CoG ChoiceScript wants them one directory up from the scene files
+			// (in the `mygame` folder). We'll check both.
+			if (ext == '.jpg' || ext == '.png') {
+				if (_gameInfo.sceneRootPath !== undefined) {
 					filepath = path.join(_gameInfo.sceneRootPath, path.basename(filepath));
 				}
+				if (_gameInfo.mygamePath !== undefined) {
+					try {
+						await fs.promises.access(filepath, fs.constants.F_OK | fs.constants.R_OK);
+					}
+					catch {
+						filepath = path.join(_gameInfo.mygamePath, path.basename(filepath));
+					}
+				}
+			}
+			else if (ctx.URL.pathname.startsWith('/scenes/') && ext == '.txt' && _gameInfo.sceneRootPath !== undefined) {
+				filepath = path.join(_gameInfo.sceneRootPath, path.basename(filepath));
 			}
 
 			let fstat = await fs.promises.stat(filepath);
@@ -131,6 +146,18 @@ export function updateScenePath(gameId: string, scenePath: string): void {
 	}
 	else {
 		gameInfo.sceneRootPath = scenePath;
+	}
+
+}
+
+
+export function updateMyGamePath(gameId: string, mygamePath: string): void {
+	const gameInfo = _gameStore.get(gameId);
+	if (gameInfo === undefined) {
+		window.showErrorMessage(`Tried to update a non-existent game with ID ${gameId}`);
+	}
+	else {
+		gameInfo.mygamePath = mygamePath;
 	}
 
 }

@@ -302,6 +302,11 @@ class GameRunner {
 					await this._init();
 					gameserver.updateScenePath(this._gameId, e);
 				}));
+			disposables.push(
+				client.onNotification(CustomMessages.UpdatedMyGamePath, async (e: string) => {
+					await this._init();
+					gameserver.updateMyGamePath(this._gameId, e);
+				}));
 			this._disposable = vscode.Disposable.from(...disposables);
 			gameserver.startServer();
 		});
