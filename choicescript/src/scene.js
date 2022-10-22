@@ -18,8 +18,7 @@
  */
 function Scene(name, stats, nav, options) {
     if (!name) name = "";
-    if (!stats) stats = {implicit_control_flow:false};
-    if (stats["implicit_control_flow"] === undefined) stats["implicit_control_flow"] = false;
+    if (!stats) stats = {};
     // the name of the scene
     this.name = name;
 
@@ -106,7 +105,7 @@ Scene.prototype.printLoop = function printLoop() {
         }
         // Ability to end a choice #option without goto is guarded by implicit_control_flow variable
         if (this.temps._choiceEnds[this.lineNum] &&
-                (this.stats["implicit_control_flow"] || this.temps._fakeChoiceDepth > 0)) {
+                (this.getVar("implicit_control_flow") || this.temps._fakeChoiceDepth > 0)) {
             // Skip to the end of the choice if we hit the end of an #option
             this.rollbackLineCoverage();
             this.lineNum = this.temps._choiceEnds[this.lineNum];
@@ -143,6 +142,7 @@ Scene.prototype.dedent = function dedent(newDent) {};
 
 Scene.prototype.printLine = function printLine(line) {
     if (!line) return null;
+    this.screenEmpty = false;
     line = this.replaceVariables(line.replace(/^\s*/, ""));
     this.accumulatedParagraph.push(line);
     // insert extra space unless the line ends with hyphen or dash
@@ -876,7 +876,7 @@ Scene.prototype.choice = function choice(data) {
       self.standardResolution(option);
     });
     this.finished = true;
-    if (this.temps._fakeChoiceDepth > 0 || this.stats["implicit_control_flow"]) {
+    if (this.temps._fakeChoiceDepth > 0 || this.getVar("implicit_control_flow")) {
       if (!this.temps._choiceEnds) {
         this.temps._choiceEnds = {};
       }
@@ -1053,7 +1053,7 @@ Scene.prototype.params = function scene_params(data) {
     var nextParamNum = 1;
     this.temps.param_count = this.temps.param.length;
     while (words) {
-        var varName = words[0];
+        var varName = words[0].toLowerCase();
         this.validateVariable(varName);
         if (this.temps.param.length < 1) {
             throw new Error(this.lineMsg() + "No parameter passed for " + varName);
@@ -1134,18 +1134,18 @@ Scene.prototype.finish = function finish(buttonName) {
     var self = this;
     if (this.secondaryMode == "stats") {
       if (typeof window == "undefined") return;
-      if (window.forcedScene == "choicescript_stats") return;
-      if (window.isAndroidApp && window.statsMode.get()) return;
+      // In iPad app, the stats screen is always visible
+      if (window.isIosApp && window.isIPad) return;
 
       if (this.screenEmpty) {
-        clearScreen(loadAndRestoreGame);
+        returnFromStats();
         return;
       }
       if (!buttonName) buttonName = "Next";
       buttonName = this.replaceVariables(buttonName);
       printButton(buttonName, main, false,
         function() {
-          clearScreen(loadAndRestoreGame);
+          returnFromStats();
         }
       );
       return;
@@ -1265,7 +1265,7 @@ Scene.prototype.redirect_scene = function redirectScene(data) {
 };
 
 Scene.prototype.product = function product(productId) {
-  if (!/^[a-z]+$/.test(productId)) throw new Error(this.lineMsg()+"Invalid product id: " +productId);
+  if (!/^[a-z]+$/.test(productId)) throw new Error(this.lineMsg()+"Invalid product id (only lowercase letters, no numbers or punctuation): " +productId);
   if (this.nav) this.nav.products[productId] = {};
 }
 
@@ -1376,11 +1376,15 @@ Scene.prototype.buyButton = function(product, priceGuess, label, title) {
   this.finished = true;
   this.skipFooter = true;
   var self = this;
+  var purchaseFinished = function() {
+    if (label) self["goto"](label);
+    self.finished = false;
+    self.skipFooter = false;
+    self.resetPage();
+  }
   getPrice(product, function (price) {
     if (!price || "free" == price) {
-      self["goto"](label);
-      self.finished = false;
-      self.resetPage();
+      purchaseFinished();
     } else {
       if (price == "guess") price = priceGuess + " USD";
       var prerelease = self.getVar('choice_prerelease');
@@ -1400,11 +1404,7 @@ Scene.prototype.buyButton = function(product, priceGuess, label, title) {
         function() {
           safeCall(self, function() {
               purchase(product, function() {
-                safeCall(self, function() {
-                  self["goto"](label);
-                  self.finished = false;
-                  self.resetPage();
-                });
+                safeCall(self, purchaseFinished);
               });
           });
         }
@@ -1418,9 +1418,7 @@ Scene.prototype.buyButton = function(product, priceGuess, label, title) {
             safeCall(self, function() {
                 restorePurchases(product, function(purchased) {
                   if (purchased) {
-                    self["goto"](label);
-                    self.finished = false;
-                    self.resetPage();
+                    purchaseFinished();
                   } else {
                     // refresh, in case we're on web showing a full-screen login. Not necessary on mobile? But, meh.
                     clearScreen(function() {loadAndRestoreGame("", window.forcedScene);});
@@ -1431,9 +1429,11 @@ Scene.prototype.buyButton = function(product, priceGuess, label, title) {
         );
       }
 
-      self.skipFooter = false;
-      self.finished = false;
-      self.execute();
+      if (label) {
+        self.skipFooter = false;
+        self.finished = false;
+        self.execute();
+      }
     }
   });
 };
@@ -1504,28 +1504,41 @@ Scene.prototype.abort = function() {
 // create a new permanent stat
 Scene.prototype.create = function create(line) {
     var result = /^(\w*)(.*)/.exec(line);
-    if (!result) throw new Error(this.lineMsg()+"Invalid create instruction, no variable specified: " + line);
+    if (!result) throw new Error(this.lineMsg() + "Invalid create instruction, no variable specified: " + line);
     var variable = result[1];
     this.validateVariable(variable);
     variable = variable.toLowerCase();
     var expr = result[2];
     var stack = this.tokenizeExpr(expr);
-    if (stack.length === 0) throw new Error(this.lineMsg()+"Invalid create instruction, no value specified: " + line);
-    var self = this;
-    function complexError() {
-      throw new Error(self.lineMsg()+"Invalid create instruction, value must be a a number, true/false, or a quoted string: " + line);
-    }
-    if (stack.length > 1) complexError();
-    var token = stack[0];
-    if (!/STRING|NUMBER|VAR/.test(token.name)) complexError();
-    if ("VAR" == token.name && !/^true|false$/i.test(token.value)) complexError();
-    if ("STRING" == token.name && /(\$|@)!?!?{/.test(token.value)) throw new Error(this.lineMsg() + "Invalid create instruction, value must be a simple string without ${} or @{}: " + line);
-    var value = this.evaluateExpr(stack);
-    if (!this.created) this.created = {};
-    if (this.created[variable]) throw new Error(this.lineMsg() + "Invalid create. " + variable + " was previously created on line " + this.created[variable]);
-    this.created[variable] = this.lineNum + 1;
-    this.stats[variable] = value;
-    if (this.nav) this.nav.startingStats[variable] = value;
+    if (stack.length > 1) throw new Error(this.lineMsg() + "Invalid create instruction, too many values: " + line);
+    this.createVariable(variable, stack[0], line);
+}
+
+Scene.prototype.createVariable = function createVariable(variable, token, line) {
+  var self = this;
+  if (!token) throw new Error(this.lineMsg() + "Invalid create instruction, no value specified: " + line);
+  function complexError() {
+    throw new Error(self.lineMsg() + "Invalid create instruction, value must be a number, true/false, or a quoted string: " + line);
+  }
+  if (!/STRING|NUMBER|VAR/.test(token.name)) complexError();
+  if ("VAR" == token.name && !/^true|false$/i.test(token.value)) complexError();
+  if ("STRING" == token.name && /(\$|@)!?!?{/.test(token.value)) throw new Error(this.lineMsg() + "Invalid create instruction, value must be a simple string without ${} or @{}: " + line);
+  var value = this.evaluateExpr([token]);
+  if (!this.created) this.created = {};
+  if (this.created[variable]) throw new Error(this.lineMsg() + "Invalid create. " + variable + " was previously created on line " + this.created[variable]);
+  this.created[variable] = this.lineNum + 1;
+  this.stats[variable] = value;
+  if (this.nav) this.nav.startingStats[variable] = value;
+}
+
+// *create_array {name} {length} {value(s)}
+// create an "array" of permanent stats:
+//    myarray_1
+//    myarray_2
+//    ...
+//    myarray_count
+Scene.prototype.create_array = function create(line) {
+  this.defineArray("create", line);
 };
 
 // *temp
@@ -1548,6 +1561,69 @@ Scene.prototype.temp = function temp(line) {
     this.temps[variable.toLowerCase()] = value;
 };
 
+// *temp_array
+// create an "array" of temporary stats for the current scene
+Scene.prototype.temp_array = function temp_array(line) {
+  this.defineArray("temp", line);
+};
+
+Scene.prototype.defineArray = function defineArray(command, line) {
+  var result = /^(\w+)(.*)/.exec(line);
+  if (!result) throw new Error(this.lineMsg() + "Invalid " + command + "_array instruction, no array name specified: " + line);
+  var variable = result[1];
+  this.validateVariable(variable);
+  variable = variable.toLowerCase();
+  var stack = this.tokenizeExpr(result[2].trim());
+  if (!stack.length) {
+    throw new Error(this.lineMsg() + "Invalid " + command + "_array instruction, missing length: " + line);
+  }
+  var length = Number(stack.shift().value);
+  if (length !== Math.floor(length) || length < 1) {
+    throw new Error(this.lineMsg() + "Invalid " + command + "_array instruction, length should be a whole number greater than 0: " + line);
+  }
+
+  var token;
+  var value = null;
+  var self = this;
+  var i;
+  function create(suffix) {
+    if (command === "create") {
+      self.createVariable(variable + "_" + suffix, token, line);
+    } else {
+      self.temps[variable + "_" + suffix] = value;
+    }
+  }
+
+  function next() {
+    token = stack[0];
+    if (!token) throw new Error(self.lineMsg() + "Too few values. Expected 1 default value or " + length + " explicit values, not " + i + ": " + line);
+    value = self.evaluateValueToken(stack.shift(), stack);
+  }
+
+  if (stack.length) next();
+  
+  if (!stack.length) {
+    // Use first default value for all creations
+    for (i = 0; i < length; i++) {
+      create(i+1);
+    }
+  } else {
+    create(1);
+    for (i = 1; i < length; i++) {
+      next();
+      create(i+1);
+    }
+  }
+
+  if (stack.length) {
+    throw new Error(this.lineMsg() + "Too many values. Expected 1 default value or " + length + " explicit values: " + line);
+  }
+
+  token = { name: "NUMBER", value: length };
+  value = length;
+  create("count");
+}
+
 // retrieve the value of the variable, preferring temp scope
 Scene.prototype.getVar = function getVar(variable) {
     var value;
@@ -1561,6 +1637,7 @@ Scene.prototype.getVar = function getVar(variable) {
     if (variable == "choice_is_web") return typeof window != "undefined" && !!window.isWeb;
     if (variable == "choice_is_steam") return typeof window != "undefined" && !!window.isSteamApp;
     if (variable == "choice_is_ios_app") return typeof window != "undefined" && !!window.isIosApp;
+    if (variable == "choice_is_ipad_app") return typeof window != "undefined" && !!window.isIosApp && !!window.isIPad;
     if (variable == "choice_is_android_app") return typeof window != "undefined" && !!window.isAndroidApp;
     if (variable == "choice_is_omnibus_app") return typeof window != "undefined" && !!window.isOmnibusApp;
     if (variable == "choice_is_amazon_app") return typeof window != "undefined" && !!window.isAmazonApp;
@@ -1568,11 +1645,11 @@ Scene.prototype.getVar = function getVar(variable) {
     if (variable == "choice_is_trial") return !!(typeof isTrial != "undefined" && isTrial);
     if (variable == "choice_release_date") {
       if (typeof window != "undefined" && window.releaseDate) {
-        return simpleDateTimeFormat(window.releaseDate);
+        return simpleDateFormat(window.releaseDate);
       }
       return "release day";
     }
-    if (variable == "choice_prerelease") return isPrerelease();
+    if (variable == "choice_prerelease") return typeof isPrerelease != "undefined" && !!isPrerelease();
     if (variable == "choice_kindle") return typeof isKindle !== "undefined" && !!isKindle;
     if (variable == "choice_randomtest") return !!this.randomtest;
     if (variable == "choice_quicktest") return false; // quicktest will explore "false" paths
@@ -1582,8 +1659,14 @@ Scene.prototype.getVar = function getVar(variable) {
     if (variable == "choice_save_allowed") return areSaveSlotsSupported();
     if (variable == "choice_time_stamp") return Math.floor(new Date()/1000);
     if (variable == "choice_nightmode") return typeof isNightMode != "undefined" && isNightMode();
+    if (variable == "choice_title") {
+      if (typeof this.stats.choice_title === "undefined") {
+        throw new Error(this.lineMsg() + "This game is missing a *title command");
+      }
+    }
     if ((!this.temps.hasOwnProperty(variable))) {
         if ((!this.stats.hasOwnProperty(variable))) {
+            if (variable == "implicit_control_flow") return false;
             throw new Error(this.lineMsg() + "Non-existent variable '"+variable+"'");
         }
         value = this.stats[variable];
@@ -1633,6 +1716,26 @@ Scene.prototype["delete"] = function scene_delete(variable) {
     } else {
         delete this.temps[variable];
     }
+};
+
+Scene.prototype["delete_array"] = function scene_delete_array(arrayName) {
+  arrayName = arrayName.toLowerCase();
+  if ("undefined" === typeof this.temps[arrayName + "_count"]) {
+      if ("undefined" === typeof this.stats[arrayName + "_count"]) {
+          throw new Error(this.lineMsg() + "Non-existent array '"+arrayName+"'");
+      }
+      var length = this.stats[arrayName + "_count"];
+      delete this.stats[arrayName + "_count"];
+      for (var i = 1; i <= length; i++) {
+        delete this.stats[arrayName + ("_" + i)];
+      }
+  } else {
+      var length = this.temps[arrayName + "_count"];
+      delete this.temps[arrayName + "_count"];
+      for (var i = 1; i <= length; i++) {
+        delete this.temps[arrayName + ("_" + i)];
+      }
+  }
 };
 
 // during a choice, recursively parse the options
@@ -1772,7 +1875,15 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
                 this["if"](data, true /*inChoice*/);
                 continue;
               }
-            } else if (/^(else|elseif|elsif)$/.test(command)) {
+            } else if ("else" == command) {
+              if (data) throw new Error(this.lineMsg() + "Invalid content after *" + command + "; move the #option to the next line, indented: " + data);
+              this[command](data, true /*inChoice*/);
+              continue;
+            } else if (/^(elseif|elsif)$/.test(command)) {
+              ifResult = this.parseOptionIf(data, command);
+              if (ifResult) {
+                throw new Error(this.lineMsg() + "Invalid content after *" + command + "; move the #option to the next line, indented: " + ifResult.line);
+              }
               this[command](data, true /*inChoice*/);
               continue;
             } else if ("selectable_if" == command) {
@@ -1956,11 +2067,39 @@ Scene.prototype.page_break = function page_break(buttonName) {
     var self = this;
     printButton(buttonName, main, false,
       function() {
+        delayBreakEnd();
         self.finished = false;
         self.resetPage();
       }
     );
     if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
+};
+
+Scene.prototype.page_break_advertisement = function pageBreakAdvertisement(line) {
+  if (line) throw new Error(this.lineMsg() + "*page_break_advertisement doesn't allow you to change the button message. This text will never be shown: " + line);
+  var self = this;
+  this.finished = true;
+  showFullScreenAdvertisementButton("Watch an Ad to Continue", function () {
+    self.page_break("");
+  }, function () {
+    delayBreakEnd();
+    self.finished = false;
+    self.skipFooter = false;
+    self.resetPage();
+  });
+};
+
+Scene.prototype.finish_advertisement = function finishAdvertisement(line) {
+  if (line) throw new Error(this.lineMsg() + "*finish_advertisement doesn't allow you to change the button message. This text will never be shown: " + line);
+  var self = this;
+  this.finished = true;
+  showFullScreenAdvertisementButton("Watch an Ad for the Next Chapter", function () {
+    self.finish("");
+  }, function () {
+    var nextSceneName = self.nav && nav.nextSceneName(self.name);
+    var scene = new Scene(nextSceneName, self.stats, self.nav, { debugMode: self.debugMode, secondaryMode: self.secondaryMode });
+    scene.resetPage();
+  });
 };
 
 // *line_break
@@ -2094,19 +2233,30 @@ Scene.prototype.comment = function comment(line) {
     if (this.debugMode) println("*comment " + line);
 };
 
-Scene.prototype.advertisement = function advertisement() {
-  if (typeof isFullScreenAdvertisingSupported != "undefined" && isFullScreenAdvertisingSupported()) {
-    this.finished = true;
-    this.skipFooter = true;
-
-    var self = this;
-    showFullScreenAdvertisement(function() {
+Scene.prototype.advertisement = function advertisement(durationInSeconds) {
+  if (/^\s*\*delay_break/.test(this.lines[this.lineNum - 1])) {
+    throw new Error(this.lineMsg() + "*advertisement is not allowed immediately after *delay_break (*delay_break includes its own advertisement)");
+  }
+  if (this.getVar("choice_prerelease") || this.getVar("choice_is_steam")) return;
+  var self = this;
+  this.finished = true;
+  this.skipFooter = true;
+  startLoading();
+  checkPurchase("adfree", function(ok, result) {
+    doneLoading();
+    if (result.adfree) {
       self.finished = false;
       self.skipFooter = false;
-      self.resetPage();
-    });
-  }
-
+      self.execute();
+      return;
+    }
+    self.printLine("Come back later to play the next part of [i]${choice_title}[/i]!");
+    self.paragraph();
+    self.printLine("Or you can buy the game now to skip the wait.");
+    self.paragraph();
+    self.buyButton("adfree", "$1.99", null, "It");
+    self.delay_break(durationInSeconds || 300);
+  });
 };
 
 // *looplimit 5
@@ -3478,11 +3628,7 @@ Scene.prototype.delay_break = function(durationInSeconds) {
     window.blockRestart = true;
     var endTimeInSeconds = durationInSeconds * 1 + delayStart * 1;
     showTicker(target, endTimeInSeconds, function() {
-      printButton("Next", target, false, function() {
-        delayBreakEnd();
-        self.finished = false;
-        self.resetPage();
-      });
+      self.page_break_advertisement();
     });
     printFooter();
   });
@@ -3621,6 +3767,7 @@ Scene.prototype["if"] = function scene_if(line) {
 Scene.prototype.skipTrueBranch = function skipTrueBranch(inElse) {
   var startIndent = this.indent;
   var nextIndent = null;
+  var line;
   while (isDefined(line = this.lines[++this.lineNum])) {
       this.rollbackLineCoverage();
       if (!trim(line)) continue;
@@ -3675,9 +3822,9 @@ Scene.prototype.skipTrueBranch = function skipTrueBranch(inElse) {
 };
 
 Scene.prototype["else"] = Scene.prototype.elsif = Scene.prototype.elseif = function scene_else(data, inChoice) {
-    // Authors can avoid using goto to get out of an if branch with:  *set implicit_control_flow true
+    // Authors can avoid using goto to get out of an if branch with:  *create implicit_control_flow true
     // This avoids the error message at the end of the function.
-    if (inChoice || this.stats["implicit_control_flow"]) {
+    if (inChoice || this.getVar("implicit_control_flow")) {
       this.skipTrueBranch(true);
       return;
     }
@@ -4177,6 +4324,8 @@ Scene.prototype.parseSceneList = function parseSceneList() {
 };
 
 Scene.prototype.title = function scene_title(title) {
+  this.stats.choice_title = trim(title);
+  if (this.nav) this.nav.startingStats.choice_title = trim(title);
   if (typeof changeTitle != "undefined") {
     changeTitle(title);
   }
@@ -4574,10 +4723,10 @@ Scene.operators = {
     "modulo": function modulo(v1,v2,line,sceneObj) { var name = null; if (sceneObj) name = sceneObj.name; return num(v1,line,name) % num(v2,line,name); },
 };
 
-Scene.initialCommands = {"create":1,"scene_list":1,"title":1,"author":1,"comment":1,"achievement":1,"product":1,"ifid":1};
+Scene.initialCommands = {"create":1,"create_array":1,"scene_list":1,"title":1,"author":1,"comment":1,"achievement":1,"product":1,"ifid":1};
 
 Scene.validCommands = {"comment":1, "goto":1, "gotoref":1, "label":1, "looplimit":1, "finish":1, "abort":1,
-    "choice":1, "create":1, "temp":1, "delete":1, "set":1, "setref":1, "print":1, "if":1, "rand":1,
+    "choice":1, "create":1, "create_array": 1, "temp":1, "temp_array": 1, "delete":1, "delete_array":1, "set":1, "setref":1, "print":1, "if":1, "rand":1,
     "page_break":1, "line_break":1, "script":1, "else":1, "elseif":1, "elsif":1, "reset":1,
     "goto_scene":1, "fake_choice":1, "input_text":1, "ending":1, "share_this_game":1, "stat_chart":1,
     "subscribe":1, "show_password":1, "gosub":1, "return":1, "hide_reuse":1, "disable_reuse":1, "allow_reuse":1,
@@ -4587,5 +4736,6 @@ Scene.validCommands = {"comment":1, "goto":1, "gotoref":1, "label":1, "looplimit
     "restart":1,"more_games":1,"delay_ending":1,"end_trial":1,"login":1,"achieve":1,"scene_list":1,"title":1,
     "bug":1,"link_button":1,"check_registration":1,"sound":1,"author":1,"gosub_scene":1,"achievement":1,
     "check_achievements":1,"redirect_scene":1,"print_discount":1,"purchase_discount":1,"track_event":1,
-    "timer":1,"youtube":1,"product":1,"text_image":1,"ai":1,"params":1,"config":1,"ifid":1
+    "timer":1,"youtube":1,"product":1,"text_image":1,"ai":1,"params":1,"config":1,"ifid":1,
+    "page_break_advertisement":1, "finish_advertisement":1
     };

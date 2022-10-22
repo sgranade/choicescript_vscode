@@ -39,6 +39,8 @@ var highlightGenderPronouns = false;
 var showChoices = true;
 var avoidUsedOptions = true;
 var recordBalance = false;
+var saveStats = false;
+var outputFile = undefined;
 var slurps = {}
 function parseArgs(args) {
 	for (var i = 0; i < args.length; i++) {
@@ -72,6 +74,10 @@ function parseArgs(args) {
 			showCoverage = (value !== "false");
 		} else if (name === "recordBalance") {
 			recordBalance = (value !== "false");
+		} else if (name === "saveStats") {
+			saveStats = (value !== "false");
+		} else if (name === "outputFile") {
+			outputFile = value;
 		}
 	}
 	if (isTrial === null) {
@@ -83,6 +89,34 @@ function parseArgs(args) {
 		showChoices = false;
 		showCoverage = false;
 		avoidUsedOptions = false;
+	}
+	if (outputFile) {
+		var fs = require('fs');
+		var output = fs.openSync(outputFile, 'w');
+		console.log = function (msg) {
+			countWords(msg);
+			fs.writeSync(output, msg + '\n');
+		}
+		var oldError = console.error;
+		console.error = function (msg) {
+			oldError(msg);
+			fs.writeSync(output, msg + '\n');
+		}
+	}
+}
+function createJSImportPaths() {
+	// If csPath isn't set, assume we're using the CS repo layout and not the one for VS Code
+	if (!csPath) {
+		csPath = "web";
+		myGameJSPath = path.join(csPath, "mygame");
+		headlessJSPath = "";
+		seedrandomJSPath = "";
+		if (!projectPath) projectPath = path.join(myGameJSPath, "scenes");
+	}
+	else {
+		myGameJSPath = csPath;
+		headlessJSPath = csPath;
+		seedrandomJSPath = csPath;
 	}
 }
 
@@ -255,6 +289,9 @@ if (typeof importScripts != "undefined") {
 			return booleanQuestion("After the test, show how many times each line was used?", false);
 		}).then(function (answer) {
 			showCoverage = answer;
+			return booleanQuestion("Save stats to a file (randomtest-stats.csv)?", false);
+		}).then(function (answer) {
+			saveStats = answer;
 			return booleanQuestion("Write output to a file (randomtest-output.txt)?", false);
 		}).then(function (answer) {
 			if (answer) {
@@ -278,6 +315,7 @@ if (typeof importScripts != "undefined") {
 	fs = require('fs');
 	path = require('path');
 	vm = require('vm');
+	createJSImportPaths();
 	if (outFilePath) {
 		if (fs.existsSync(outFilePath)) {
 			throw new Error("Specified output file already exists.");
@@ -292,9 +330,9 @@ if (typeof importScripts != "undefined") {
 	load(path.join(csPath, "scene.js"));
 	load(path.join(csPath, "navigator.js"));
 	load(path.join(csPath, "util.js"));
-	load(path.join(csPath, "mygame.js"));
-	load(path.join(csPath, "headless.js"));
-	load(path.join(csPath, "seedrandom.js"));
+	load(path.join(myGameJSPath, "mygame.js"));
+	load(path.join(headlessJSPath, "headless.js"));
+	load(path.join(seedrandomJSPath, "seedrandom.js"));
 } else if (typeof args == "undefined") {
 	isRhino = true;
 	args = arguments;
@@ -372,6 +410,7 @@ Scene.prototype.page_break = function randomtest_page_break(buttonText) {
 	buttonText = this.replaceVariables(buttonText);
 	println("*page_break " + buttonText);
 	println("");
+  this.finished = false;
 	this.resetCheckedPurchases();
 };
 
@@ -487,6 +526,16 @@ Scene.prototype.restore_game = function (data) {
 		this["goto"](cancel);
 	}
 };
+
+Scene.prototype.advertisement = function randomtest_advertisement(durationInSeconds) {
+  if (this.name === "startup") {
+    throw new Error(this.lineMsg() + "*advertisement is not allowed in startup.txt");
+  }
+  if (/^\s*\*delay_break/.test(this.lines[this.lineNum - 1])) {
+    throw new Error(this.lineMsg() + "*advertisement is not allowed immediately after *delay_break (*delay_break includes its own advertisement)");
+  }
+  if (durationInSeconds) this.delay_break(durationInSeconds);
+}
 
 Scene.prototype.delay_break = function randomtest_delayBreak(durationInSeconds) {
 	if (isNaN(durationInSeconds * 1)) throw new Error(this.lineMsg() + "invalid duration");
@@ -650,16 +699,29 @@ Scene.prototype.choice = function choice(data) {
 		if (showText) {
 			if (logText) {
 				this.randomLog("*choice " + (choiceLine + 1) + '#' + (index + 1) + ' (line ' + item.ultimateOption.line + ')');
-				// it would be nice to handle choice groups here
-				for (var i = 0; i < flattenedOptions.length; i++) {
-					if (i > 0) {
-						this.printLine("[n/]");
-					} else {
-						this.printLine(" ");
+				var currentOptions = options;
+				for (var i = 0; i < groups.length; i++) {
+					if (groups.length > 1) {
+						var article = "a"
+						if (/^[aeiou].*/i.test(groups[i])) article = "an";
+						this.printLine("Select " + article + " " + groups[i] + ":");
+						this.paragraph();
 					}
-					this.printLine("\u2022 " + (i === index ? "\u2605 " : "") + flattenedOptions[i].ultimateOption.name);
+					var index = item[groups[i]];
+					var first = true;
+					for (var j = 0; j < currentOptions.length; j++) {
+						if (currentOptions[j].unselectable) continue;
+						if (first) {
+							first = false;
+							this.printLine(" ");
+						} else {
+							this.printLine("[n/]");
+						}
+						this.printLine("\u2022 " + (j === index ? "\u2605 " : "") + currentOptions[j].name);
+					}
+					this.paragraph();
+					currentOptions = currentOptions[0].suboptions;
 				}
-				this.paragraph();
 			}
 		} else {
 			var optionName = this.replaceVariables(item.ultimateOption.name);
@@ -717,6 +779,8 @@ Scene.prototype.choice = function choice(data) {
 
 }
 
+var saveStatVariableNames = [];
+var savedStatValues = [];
 Scene.prototype.comment = function comment(line) {
 	var result = /^(\w*)(.*)/.exec(line);
 	if (!result) {
@@ -734,6 +798,28 @@ Scene.prototype.comment = function comment(line) {
 		else if (subcommand[1] == "off") {
 			logText = false;
 		}
+	}
+	else if (command == "savestatsetup") {
+		saveStatVariableNames = result[2].trim().split(/\s+/).map(item => item.toLowerCase());
+		saveStatVariableNames.forEach(variable => this.validateVariable(variable));
+	}
+	else if (command == "savestats") {
+		console.log("savestats");
+		var currentValues = saveStatVariableNames.map(variable => {
+			if ((!this.stats.hasOwnProperty(variable))) {
+			throw new Error(this.lineMsg() + "Tried to collect stats on non-existent variable '" + variable + "'");
+			}
+			var value = this.stats[variable];
+			if (value === null || value === undefined) {
+			throw new Error(this.lineMsg() + "Variable '" + variable + "' exists but has no value");
+			}
+			return value;
+		});
+		savedStatValues.push({
+			scene: this.name,
+			line: this.lineNum + 1,
+			values: currentValues
+		});
 	}
 }  
 
@@ -777,6 +863,16 @@ try {
 }
 
 nav.setStartingStatsClone(stats);
+
+function checkSaveStats() {
+	if (saveStats && saveStatVariableNames.length > 0) {
+		var output = require('fs').createWriteStream('randomtest-stats.csv', { encoding: 'utf8' });
+		output.write("scene,line," + saveStatVariableNames.join(",") + "\n", "utf8");
+		savedStatValues.forEach(result => {
+		  output.write(result.scene + "," + result.line + "," + result.values.join(",") + "\n", "utf8");
+		})
+	}
+}
 
 var processExit = false;
 var start;
@@ -827,7 +923,8 @@ function randomtestAsync(i, showCoverage) {
 		console.log("RANDOMTEST PASSED");
 		var end = new Date().getTime();
 		var duration = (end - start) / 1000;
-		console.log("Time: " + duration + "s")
+		console.log("Time: " + duration + "s");
+		checkSaveStats();
 		return;
 	}
 
@@ -894,7 +991,8 @@ function randomtest() {
 		}
 		console.log("RANDOMTEST PASSED");
 		var duration = (new Date().getTime() - start) / 1000;
-		console.log("Time: " + duration + "s")
+		console.log("Time: " + duration + "s");
+		checkSaveStats();
 		if (recordBalance) {
 			(function () {
 				for (var sceneName in balanceValues) {

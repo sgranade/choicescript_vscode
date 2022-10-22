@@ -17,26 +17,42 @@
  * either express or implied.
  */
 
-// autotest.js [path to ChoiceScript files] [path to scene files] [name of game]
+// autotest.js [path to ChoiceScript files] [path to scene files] [name of game] [path to image files]
+fs = require('fs');
+vm = require('vm');
+path = require('path');
 var list = process.argv;
 list.shift();
 list.shift();
 var csPath = list.shift();
 var scenePath = list.shift();
 var gameName = list.shift();
+var imagePath = list.shift();
 if (!gameName) gameName = "mygame";
-fs = require('fs');
-vm = require('vm');
-path = require('path');
+// If csPath isn't passed, assume we're using the CS repo layout and not the one for VS Code
+if (!csPath) {
+	csPath = "web";
+	myGameJSPath = path.join(csPath, "mygame");
+	headlessJSPath = "";
+	embeddableAutotesterJSPath = "editor"
+	if (!scenePath) scenePath = path.join(myGameJSPath, "scenes");
+	if (!imagePath) imagePath = myGameJSPath;
+}
+else {
+	myGameJSPath = csPath;
+	headlessJSPath = csPath;
+	embeddableAutotesterJSPath = csPath;
+	if (!imagePath) imagePath = csPath;
+}
 load = function (file) {
 	vm.runInThisContext(fs.readFileSync(file), file);
 };
 load(path.join(csPath, "scene.js"));
 load(path.join(csPath, "navigator.js"));
 load(path.join(csPath, "util.js"));
-load(path.join(csPath, "mygame.js"));
-load(path.join(csPath, "headless.js"));
-load(path.join(csPath, "embeddable-autotester.js"));
+load(path.join(myGameJSPath, "mygame.js"));
+load(path.join(headlessJSPath, "headless.js"));
+load(path.join(embeddableAutotesterJSPath, "embeddable-autotester.js"));
 print = function print(str) {
 	console.log(str);
 };
@@ -80,7 +96,7 @@ var uncovered;
 var sceneFileSets = {};
 verifyFileName = function verifyFileName(dir, name) {
 	var filePath = path.join(dir, name);
-	if (!fileExists(filePath)) throw new Error("File does not exist: " + name);
+	if (!fileExists(filePath)) throw new Error("File does not exist: " + filePath);
 	var canonicalName, fileName, i;
 	if (isRhino) {
 		var file = new java.io.File(filePath);
@@ -88,22 +104,27 @@ verifyFileName = function verifyFileName(dir, name) {
 		canonicalName = file.getCanonicalFile().getName();
 		if (fileName != canonicalName) throw new Error("Incorrect capitalization/canonicalization; the file is called " + canonicalName + " but you requested " + name);
 	} else {
-		if (!sceneFileSets[dir]) {
-			sceneFileSets[dir] = {};
-			var sceneFiles = fs.readdirSync(scenePath);
-			for (i = sceneFiles.length - 1; i >= 0; i--) {
-				sceneFileSets[dir][sceneFiles[i]] = 1;
-			}
-		}
-		if (!sceneFileSets[dir][name]) {
-			for (var sceneFile in sceneFileSets[dir]) {
-				if (sceneFile.toLowerCase() == name.toLowerCase()) {
-					throw new Error("Incorrect capitalization/canonicalization; the file is called " + sceneFile + " but you requested " + name);
-				}
-			}
-			throw new Error("Incorrect capitalization/canonicalization? you requested " + name + " but that file doesn't exist");
-		}
-	}
+    var match = /(.*)\/([^\/]*)/.exec(name);
+    if (match) {
+      dir += "/" + match[1];
+      name = match[2];
+    }
+        if (!sceneFileSets[dir]) {
+            sceneFileSets[dir] = {};
+            var sceneFiles = fs.readdirSync(dir);
+            for (i = sceneFiles.length - 1; i >= 0; i--) {
+                sceneFileSets[dir][sceneFiles[i]] = 1;
+            }
+        }
+        if (!sceneFileSets[dir][name]) {
+            for (var sceneFile in sceneFileSets[dir]) {
+                if (sceneFile.toLowerCase() == name.toLowerCase()) {
+                    throw new Error("Incorrect capitalization/canonicalization; the file is called " + sceneFile + " but you requested " + name);
+                }
+            }
+            throw new Error("Incorrect capitalization/canonicalization? you requested " + name + " but that file doesn't exist");
+        }
+    }
 };
 
 Scene.prototype.verifySceneFile = function commandLineVerifySceneFile(sceneName) {
@@ -120,7 +141,7 @@ Scene.prototype.verifySceneFile = function commandLineVerifySceneFile(sceneName)
 
 Scene.prototype.verifyImage = function commandLineVerifyImage(name) {
 	try {
-		verifyFileName(".", name);
+		verifyFileName(imagePath, name);
 	} catch (e) {
 		throw new Error(this.lineMsg() + e.message);
 	}

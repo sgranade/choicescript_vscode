@@ -24,7 +24,8 @@ export const validCommands: ReadonlyArray<string> = [
 	"restart", "more_games", "delay_ending", "end_trial", "login", "achieve", "scene_list", "title",
 	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
 	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
-	"timer", "youtube", "product", "text_image", "params", "config", "ifid"
+	"timer", "youtube", "product", "text_image", "params", "config", "ifid",
+	"page_break_advertisement", "finish_advertisement"
 ];
 
 /**
@@ -41,7 +42,7 @@ export const argumentRequiredCommands: ReadonlyArray<string> = [
  * Commands that must not have any arguments.
  */
 export const argumentDisallowedCommands: ReadonlyArray<string> = [
-	"else"
+	"else", "page_break_advertisement", "finish_advertisement"
 ];
 
 /**
@@ -154,10 +155,13 @@ export const booleanFunctions: ReadonlyArray<string> = [
  * ChoiceScript built-in variables
  */
 export const builtinVariables: ReadonlyArray<string> = [
-	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered", "choice_is_web", "choice_is_steam",
-	"choice_is_ios_app", "choice_is_advertising_supported", "choice_is_trial", "choice_release_date", "choice_prerelease",
-	"choice_kindle", "choice_randomtest", "choice_quicktest", "choice_restore_purchases_allowed", "choice_save_allowed",
-	"choice_time_stamp", "choice_nightmode", "choice_purchased_adfree", "choice_purchase_supported"
+	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered",
+	"choice_is_web", "choice_is_steam",	"choice_is_ios_app",
+	"choice_is_advertising_supported", "choice_is_trial", "choice_release_date",
+	"choice_prerelease", "choice_kindle", "choice_randomtest", "choice_quicktest",
+	"choice_restore_purchases_allowed", "choice_save_allowed",
+	"choice_time_stamp", "choice_nightmode", "choice_purchased_adfree",
+	"choice_purchase_supported"
 ];
 
 /**
