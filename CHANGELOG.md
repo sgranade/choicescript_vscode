@@ -17,6 +17,7 @@ Changes to the plugin.
 - Missing choices no longer make document symbols vanish.
 - Variables whose name includes `param_count` (but are _not_ `param_count` itself) are now tracked properly.
 - `*text_image` is now parsed properly.
+- Only the first `startup.txt` file in the project will be indexed. (You shouldn't have multiples of them anyway, but just in case...)
 
 ## [2.6] - 2022-04-16
 

@@ -127,45 +127,43 @@ function findStartupFiles(workspaces: WorkspaceFolder[]): void {
 		const rootPath = fileURLToPath(workspace.uri);
 		globby('**/startup.txt', {
 			cwd: rootPath
-		}).then(paths => indexProject(rootPath, paths));
+		}).then(paths => {
+			if (paths.length > 0) {
+				// TODO handle multiple startup.txt files in multiple directories
+				indexProject(rootPath, paths[0]);
+			}
+		});
 	});
 }
 
-function indexProject(workspacePath: string, pathsToProjectFiles: string[]): void {
-	if (pathsToProjectFiles.length == 0) {
-		projectIndex.setProjectIsIndexed(true); // No startup.txt file to index
+async function indexProject(workspacePath: string, pathToProjectFiles: string): Promise<void> {
+	const projectPath = path.dirname(pathToProjectFiles);
+	// Filenames from globby are posix paths regardless of platform
+	const projectPathComponents = projectPath.split('/');
+	const sceneFilesPath = path.join(workspacePath, ...projectPathComponents);
+	projectIndex.setPlatformScenePath(sceneFilesPath);
+	connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
+	if (projectPathComponents.length > 0) {
+		connection.sendNotification(
+			CustomMessages.UpdatedMyGamePath,
+			path.join(workspacePath, ...projectPathComponents.slice(0, -1))
+		);
 	}
-	pathsToProjectFiles.map(async (filePath) => {
-		// TODO handle multiple startup.txt files in multiple directories
 
-		const projectPath = path.dirname(filePath);
-		// Filenames from globby are posix paths regardless of platform
-		const projectPathComponents = projectPath.split('/');
-		const sceneFilesPath = path.join(workspacePath, ...projectPathComponents);
-		projectIndex.setPlatformScenePath(sceneFilesPath);
-		connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
-		if (projectPathComponents.length > 0) {
-			connection.sendNotification(
-				CustomMessages.UpdatedMyGamePath,
-				path.join(workspacePath, ...projectPathComponents.slice(0, -1))
-			);
-		}
+	// Index the startup.txt file
+	await indexFile(pathToProjectFiles);
 
-		// Index the startup.txt file
-		await indexFile(filePath);
+	// Try to index the stats page (which might not exist)
+	await indexFile(path.join(projectPath, "choicescript_stats.txt"));
 
-		// Try to index the stats page (which might not exist)
-		await indexFile(path.join(projectPath, "choicescript_stats.txt"));
+	const scenes = projectIndex.getAllReferencedScenes();
+	if (scenes !== undefined) {
+		// Try to index all of the scene files
+		await indexScenes(scenes);
+	}
 
-		const scenes = projectIndex.getAllReferencedScenes();
-		if (scenes !== undefined) {
-			// Try to index all of the scene files
-			await indexScenes(scenes);
-		}
-
-		projectIndex.setProjectIsIndexed(true);
-		connection.sendNotification(CustomMessages.ProjectIndexed);
-	});
+	projectIndex.setProjectIsIndexed(true);
+	connection.sendNotification(CustomMessages.ProjectIndexed);
 }
 
 /**
