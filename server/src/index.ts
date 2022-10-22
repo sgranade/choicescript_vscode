@@ -91,10 +91,10 @@ export interface DocumentScopes {
  */
 export interface ProjectIndex {
 	/**
-	 * Set the platform (as opposed to workspace) path to the project.
+	 * Set the platform (as opposed to workspace) path to the project's scenes.
 	 * @param path Path to the project.
 	 */
-	setPlatformProjectPath(path: string): void;
+	setPlatformScenePath(path: string): void;
 	/**
 	 * Set the number of words in a scene.
 	 * @param textDocumentUri URI to document whose word count is to be updated.
@@ -212,9 +212,9 @@ export interface ProjectIndex {
 	 */
 	hasChoicescriptStats(): boolean;
 	/**
-	 * Get the platform (as opposed to workspace) path to the project.
+	 * Get the platform (as opposed to workspace) path to the project's scenes.
 	 */
-	getPlatformProjectPath(): string;
+	getPlatformScenePath(): string;
 	/**
 	 * Get the URI to a scene file.
 	 * @param scene Scene name.
@@ -317,7 +317,7 @@ export interface ProjectIndex {
  */
 export class Index implements ProjectIndex {
 	private _projectIsIndexed: boolean;
-	private _platformProjectPath: string;
+	private _platformScenePath: string;
 	private _startupFileUri: string;
 	private _hasChoicescriptStats: boolean;
 	private _wordCounts: Map<string, number>;
@@ -335,7 +335,7 @@ export class Index implements ProjectIndex {
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
-		this._platformProjectPath = "";
+		this._platformScenePath = "";
 		this._startupFileUri = "";
 		this._hasChoicescriptStats = false;
 		this._wordCounts = new Map();
@@ -352,8 +352,8 @@ export class Index implements ProjectIndex {
 		this._images = new Map();
 		this._parseErrors = new Map();
 	}
-	setPlatformProjectPath(path: string): void {
-		this._platformProjectPath = path;
+	setPlatformScenePath(path: string): void {
+		this._platformScenePath = path;
 	}
 	setWordCount(textDocumentUri: string, count: number): void {
 		this._wordCounts.set(textDocumentUri, count);
@@ -435,8 +435,8 @@ export class Index implements ProjectIndex {
 	hasChoicescriptStats(): boolean {
 		return this._hasChoicescriptStats;
 	}
-	getPlatformProjectPath(): string {
-		return this._platformProjectPath;
+	getPlatformScenePath(): string {
+		return this._platformScenePath;
 	}
 	getSceneUri(scene: string): string | undefined {
 		if (this._startupFileUri == "") {

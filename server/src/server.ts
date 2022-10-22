@@ -142,7 +142,7 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
 		// Filenames from globby are posix paths regardless of platform
 		const projectPathComponents = projectPath.split('/');
 		const sceneFilesPath = path.join(workspacePath, ...projectPathComponents);
-		projectIndex.setPlatformProjectPath(sceneFilesPath);
+		projectIndex.setPlatformScenePath(sceneFilesPath);
 		connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
 		if (projectPathComponents.length > 0) {
 			connection.sendNotification(
@@ -173,8 +173,8 @@ function indexProject(workspacePath: string, pathsToProjectFiles: string[]): voi
  * @param sceneNames List of scene names to index.
  */
 async function indexScenes(sceneNames: readonly string[]) {
-	const platformProjectPath = projectIndex.getPlatformProjectPath();
-	const scenePaths = sceneNames.map(name => path.join(platformProjectPath, name+".txt"));
+	const platformScenePath = projectIndex.getPlatformScenePath();
+	const scenePaths = sceneNames.map(name => path.join(platformScenePath, name+".txt"));
 	const promises = scenePaths.map(x => indexFile(x));
 	await Promise.all(promises);
 }
