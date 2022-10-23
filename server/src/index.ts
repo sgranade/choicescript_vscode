@@ -557,12 +557,15 @@ export class Index implements ProjectIndex {
 			this._achievements = new CaseInsensitiveMap();
 		}
 
+		this._wordCounts.delete(uri);
 		this._localVariables.delete(uri);
 		this._subroutineLocalVariables.delete(uri);
 		this._variableReferences.delete(uri);
 		this._localLabels.delete(uri);
 		this._flowControlEvents.delete(uri);
+		this._achievementReferences.delete(uri);
 		this._documentScopes.delete(uri);
+		this._images.delete(uri);
 		this._parseErrors.delete(uri);
 	}
 }
