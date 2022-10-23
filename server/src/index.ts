@@ -298,8 +298,9 @@ export interface ProjectIndex {
 	getDocumentScopes(sceneUri: string): DocumentScopes;
 	/**
 	 * Get list of all images referenced in the project.
+	 * @param sceneUri Scene document URI.
 	 */
-	getProjectImages(): ReadonlyArray<string>;
+	getImages(sceneUri: string): ReadonlyIdentifierMultiIndex;
 	/**
 	 * Get the parse errors.
 	 * @param sceneUri Scene document URI.
@@ -331,7 +332,7 @@ export class Index implements ProjectIndex {
 	private _achievements: Map<string, [Location, number, string]>;
 	private _achievementReferences: Map<string, IdentifierMultiIndex>;
 	private _documentScopes: Map<string, DocumentScopes>;
-	private _images: Map<string, Map<string, Location[]>>;
+	private _images: Map<string, IdentifierMultiIndex>;
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
@@ -389,8 +390,8 @@ export class Index implements ProjectIndex {
 	setDocumentScopes(textDocumentUri: string, newScopes: DocumentScopes): void {
 		this._documentScopes.set(textDocumentUri, newScopes);
 	}
-	setImages(textDocumentUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
-		this._images.set(textDocumentUri, newIndex);
+	setImages(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
+		this._images.set(sceneUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setParseErrors(textDocumentUri: string, errors: Diagnostic[]): void {
 		this._parseErrors.set(textDocumentUri, [...errors]);
@@ -536,12 +537,9 @@ export class Index implements ProjectIndex {
 		}
 		return scopes;
 	}
-	getProjectImages(): ReadonlyArray<string> {
-		const images: string[] = [];
-
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		for (const [documentUri, imageInfo] of this._images) {
-			images.push(...imageInfo.keys());
+	getImages(sceneUri: string): ReadonlyIdentifierMultiIndex {
+		const index = this._images.get(sceneUri) ?? new CaseInsensitiveMap();
+		return index;
 		}
 
 		return [...new Set(images)];
