@@ -117,7 +117,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 
 ## Showing Images When Running Your Game
 
-The ChoiceScript [`*image`][image] command displays remote and local image. For the extension to show your local images when you run your game, put those image files in the same directory as your scene files such as `startup.txt`.
+The ChoiceScript [`*image`][image] command displays remote and local image. For the extension to show your local images when you run your game, put those image files either in the same directory as your scene files (such as `startup.txt`) or in the directory above it.
 
 
 ## Currently Unsupported Features

@@ -1,3 +1,6 @@
+import { existsSync } from 'fs';
+import * as path from 'path';
+
 import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -457,6 +460,52 @@ function validateOption(option: string, index: number, state: ValidationState): 
 }
 
 /**
+ * Validate whether or not images exist.
+ * @param state Current parsing state.
+ */
+function validateImages(state: ValidationState): Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+	let imagePath = state.projectIndex.getPlatformImagePath();
+
+	for (const [image, locations] of state.projectIndex.getImages(state.textDocumentUri)) {
+		let found = false;
+
+		if (imagePath === undefined) {
+			// Our logic: First look in the scene files' directory.
+			// If the image isn't found, and the scene directory isn't the
+			// workspace directory, check the directory above the scene
+			// directory.
+			imagePath = state.projectIndex.getPlatformScenePath();
+			found = existsSync(path.join(imagePath, image));
+			if (!found && (
+				path.relative(
+					state.projectIndex.getPlatformWorkspacePath(),
+					imagePath
+				) != ""
+			)) {
+				imagePath = path.normalize(path.join(imagePath, '..'));
+				found = existsSync(path.join(imagePath, image));
+			}
+			if (found) {
+				state.projectIndex.setPlatformImagePath(imagePath);
+			}
+		}
+		else {
+			found = existsSync(path.join(imagePath, image));
+		}
+
+		if (!found) {
+			diagnostics.push(...locations.map(l => createDiagnosticFromLocation(
+				DiagnosticSeverity.Warning, l,
+				`Couldn't find the image file`
+			)));
+		}
+	}
+
+	return diagnostics;
+}
+
+/**
  * Validate there are no swaps between tabs and spaces.
  * @param state Current parsing state.
  */
@@ -564,6 +613,9 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 
 	// Validate flow control
 	diagnostics.push(...validateFlowControlEvents(state));
+
+	// Validate image existence
+	diagnostics.push(...validateImages(state));
 
 	// Validate tabs/spaces
 	diagnostics.push(...validateIndents(state));

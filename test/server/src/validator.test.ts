@@ -1,5 +1,8 @@
 /* eslint-disable */
 
+import * as path from 'path';
+
+import * as mock from 'mock-fs';
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
@@ -35,13 +38,14 @@ interface IndexArgs {
 	variableReferences?: IdentifierMultiIndex;
 	flowControlEvents?: FlowControlEvent[];
 	scopes?: DocumentScopes;
+	images?: IdentifierMultiIndex;
 	projectIsIndexed?: boolean;
 }
 
 function createIndex({
 	globalVariables, localVariables, subroutineVariables, startupUri, labels,
 	labelsUri, sceneList, sceneFileUri, achievements,
-	variableReferences, flowControlEvents, scopes, 
+	variableReferences, flowControlEvents, scopes, images,
 	projectIsIndexed }: IndexArgs): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new CaseInsensitiveMap();
@@ -80,6 +84,9 @@ function createIndex({
 			paramScopes: [],
 		};
 	}
+	if (images === undefined) {
+		images = new CaseInsensitiveMap();
+	}
 	if (projectIsIndexed === undefined) {
 		projectIsIndexed = true;
 	}
@@ -105,6 +112,7 @@ function createIndex({
 	fakeIndex.getDocumentScopes(Arg.all()).returns(scopes);
 	fakeIndex.getFlowControlEvents(Arg.all()).returns(flowControlEvents);
 	fakeIndex.getParseErrors(Arg.any()).returns([]);
+	fakeIndex.getImages(Arg.any()).returns(images);
 	fakeIndex.projectIsIndexed().returns(projectIsIndexed);
 
 	return fakeIndex;
@@ -123,7 +131,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("ellipsis");
@@ -134,7 +142,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("em-dash");
@@ -145,7 +153,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -155,7 +163,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -168,7 +176,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -178,7 +186,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -188,7 +196,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -198,7 +206,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -211,7 +219,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -221,7 +229,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -231,7 +239,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -244,7 +252,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -254,7 +262,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -267,7 +275,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -277,7 +285,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -290,7 +298,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -307,7 +315,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"unknown" not defined');
@@ -320,7 +328,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIsIndexed: false });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -334,7 +342,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -348,7 +356,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
@@ -364,7 +372,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			// We do get a warning for the variable re-creation though
 			expect(diagnostics.length).to.equal(1);
@@ -387,7 +395,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			// We'll get a warning about a local var having the same name as a global var, but no error
 			expect(diagnostics.length).to.equal(1);
@@ -407,7 +415,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -421,7 +429,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -435,7 +443,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"global_var" used before it was created');
@@ -447,7 +455,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -458,7 +466,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -474,7 +482,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.include('"not_actually_param_count" not defined');
@@ -487,7 +495,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -503,7 +511,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.include('"not_param_1" not defined');
@@ -518,7 +526,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_codename" not defined');
@@ -537,7 +545,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements, scopes: scopes });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -556,7 +564,7 @@ describe("Validator", () => {
 
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_othername" not defined');
@@ -574,7 +582,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, scopes: scopes });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -586,7 +594,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
@@ -597,7 +605,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -612,7 +620,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
@@ -624,7 +632,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
@@ -637,7 +645,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
@@ -650,7 +658,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
@@ -671,7 +679,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
@@ -690,7 +698,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -708,7 +716,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
@@ -730,7 +738,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -750,7 +758,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -768,7 +776,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
@@ -787,7 +795,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
@@ -806,7 +814,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events, projectIsIndexed: false });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -824,7 +832,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -843,7 +851,7 @@ describe("Validator", () => {
 				sceneList: ['scene-name'], flowControlEvents: events
 			});			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -867,7 +875,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -891,7 +899,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
@@ -917,7 +925,7 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
 		});
@@ -941,9 +949,245 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(0);
+		});
+	});
+
+	describe("Image Validation", () => {
+		it("should flag missing image files", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = {};  // Empty directory
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+		});
+
+		it("should not flag image files in the already-determined image directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
+
+		it("should not flag image files in the scene directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should set the image file directory for images in the scene directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
+
+			mock(fakeDir);
+			generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			fakeIndex.received(1).setPlatformImagePath("/workspace/scenes");
+		});
+
+		it("should not flag image files in the directory above the scene directory if the scene directory isn't the workspace directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			fakeIndex.getPlatformWorkspacePath().returns("/workspace");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = {'/workspace/image.png': 'empty' };
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(0);
+		});
+
+		it("should set the image file directory for images in the directory above the scene directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			fakeIndex.getPlatformWorkspacePath().returns("/workspace");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/workspace/image.png': 'empty' };
+
+			mock(fakeDir);
+			generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			fakeIndex.received(1).setPlatformImagePath(path.sep + "workspace");
+		});
+
+		it("should flag image files in the directory above the scene directory if the scene directory is the workspace directory", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/repo/scenes");
+			fakeIndex.getPlatformWorkspacePath().returns("/repo/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/repo/image.png': 'empty' };
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+		});
+
+		it("should not try to set the image directory if images aren't found", () => {
+			let images = new CaseInsensitiveMap (
+				[["image.png", [Substitute.for<Location>()]]]
+			);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/repo/scenes");
+			fakeIndex.getPlatformWorkspacePath().returns("/repo/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { '/repo/image.png': 'empty' };
+
+			mock(fakeDir);
+			generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			fakeIndex.didNotReceive().setPlatformImagePath(Arg.any());
+		});
+
+		it("should flag images in a different directory than the first image found", () => {
+			let images = new CaseInsensitiveMap([
+				["image1.png", [Substitute.for<Location>()]],
+				["image2.png", [Substitute.for<Location>()]]
+			]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { 
+				'/workspace/scenes/image1.png': 'empty',
+				'/workspace/image2.png': 'empty'
+			};
+
+			mock(fakeDir);
+			const diagnostics = generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+		});
+
+		it("should set the image file directory for the first image found", () => {
+			let images = new CaseInsensitiveMap([
+				["image1.png", [Substitute.for<Location>()]],
+				["image2.png", [Substitute.for<Location>()]]
+			]);
+			let fakeDocument = createDocument("placeholder");
+			let fakeIndex = createIndex({
+				images: images
+			});
+			fakeIndex.getPlatformImagePath().returns(undefined);
+			fakeIndex.getPlatformScenePath().returns("/workspace/scenes");
+			let fakeSettings = createValidationSettings();
+			let fakeDir = { 
+				'/workspace/scenes/image1.png': 'empty',
+				'/workspace/image2.png': 'empty'
+			};
+
+			mock(fakeDir);
+			generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings
+			);
+			mock.restore();
+
+			fakeIndex.received(1).setPlatformImagePath("/workspace/scenes");
 		});
 	});
 
@@ -953,7 +1197,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from spaces to tabs');
@@ -966,7 +1210,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from tabs to spaces');
@@ -985,7 +1229,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('the same title was defined earlier');
@@ -1009,7 +1253,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('No more than 100 achievements allowed');
@@ -1033,7 +1277,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			let diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1100');

@@ -91,10 +91,20 @@ export interface DocumentScopes {
  */
 export interface ProjectIndex {
 	/**
-	 * Set the platform (as opposed to workspace) path to the project's scenes.
+	 * Set the platform path to the VS Code workspace containing the project.
+	 * @param path Path to the VS Code workspace.
+	 */
+	setPlatformWorkspacePath(path: string): void;
+	/**
+	 * Set the platform (as opposed to workspace-relative) path to the project's scenes.
 	 * @param path Path to the project.
 	 */
 	setPlatformScenePath(path: string): void;
+	/**
+	 * Set the platform (as opposed to workspace-relative) path to the project's images.
+	 * @param path Path to the project's images.
+	 */
+	setPlatformImagePath(path: string): void;
 	/**
 	 * Set the number of words in a scene.
 	 * @param sceneUri URI to document whose word count is to be updated.
@@ -176,7 +186,7 @@ export interface ProjectIndex {
 	/**
 	 * Set the list of errors that occured during parsing.
 	 * @param sceneUri URI to document whose index is to be updated.
-	 * @param newIndex New list of errors.
+	 * @param errors New list of errors.
 	 */
 	setParseErrors(sceneUri: string, errors: Diagnostic[]): void;
 	/**
@@ -212,9 +222,20 @@ export interface ProjectIndex {
 	 */
 	hasChoicescriptStats(): boolean;
 	/**
-	 * Get the platform (as opposed to workspace) path to the project's scenes.
+	 * Get the platform path to the VS Code workspace containing the project.
+	 */
+	getPlatformWorkspacePath(): string;
+	/**
+	 * Get the platform (as opposed to workspace-relative) path to the project's scenes.
 	 */
 	getPlatformScenePath(): string;
+	/**
+	 * Get the platform (as opposed to workspace-relative) path to the project's images.
+	 * If the project contains no images or none of the image files are found, then
+	 * returns undefined.
+	 * @returns Path to the images, or undefined if not known.
+	 */
+	getPlatformImagePath(): string | undefined;
 	/**
 	 * Get the URI to a scene file.
 	 * @param scene Scene name.
@@ -318,7 +339,9 @@ export interface ProjectIndex {
  */
 export class Index implements ProjectIndex {
 	private _projectIsIndexed: boolean;
+	private _platformWorkspacePath: string;
 	private _platformScenePath: string;
+	private _platformImagePath: string | undefined;
 	private _startupFileUri: string;
 	private _hasChoicescriptStats: boolean;
 	private _wordCounts: Map<string, number>;
@@ -336,6 +359,7 @@ export class Index implements ProjectIndex {
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
+		this._platformWorkspacePath = "";
 		this._platformScenePath = "";
 		this._startupFileUri = "";
 		this._hasChoicescriptStats = false;
@@ -353,8 +377,14 @@ export class Index implements ProjectIndex {
 		this._images = new Map();
 		this._parseErrors = new Map();
 	}
+	setPlatformWorkspacePath(path: string): void {
+		this._platformWorkspacePath = path;
+	}
 	setPlatformScenePath(path: string): void {
 		this._platformScenePath = path;
+	}
+	setPlatformImagePath(path: string): void {
+		this._platformImagePath = path;
 	}
 	setWordCount(sceneUri: string, count: number): void {
 		this._wordCounts.set(sceneUri, count);
@@ -436,8 +466,14 @@ export class Index implements ProjectIndex {
 	hasChoicescriptStats(): boolean {
 		return this._hasChoicescriptStats;
 	}
+	getPlatformWorkspacePath(): string {
+		return this._platformWorkspacePath;
+	}
 	getPlatformScenePath(): string {
 		return this._platformScenePath;
+	}
+	getPlatformImagePath(): string | undefined {
+		return this._platformImagePath;
 	}
 	getSceneUri(scene: string): string | undefined {
 		if (this._startupFileUri == "") {

@@ -26,5 +26,9 @@
 			"name": "Client + Server",
 			"configurations": ["Launch Client", "Attach to Server"]
 		}
+	],
+	"resolveSourceMapLocations": [
+		"${workspaceFolder}/**",
+		"!**/node_modules/**"
 	]
 }
