@@ -3,7 +3,7 @@ export enum CustomMessages {
 	ProjectIndexed = 'choicescript/projectindexed',
 	SelectionWordCountRequest = 'choicescript/selectionwordcount',
 	UpdatedSceneFilesPath = 'choicescript/scenefilespath',
-	UpdatedMyGamePath = 'choicescript/mygamepath',
+	UpdatedImageFilesPath = 'choicescript/imagefilespath',
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
 }

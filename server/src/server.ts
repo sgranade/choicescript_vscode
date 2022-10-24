@@ -143,12 +143,6 @@ async function indexProject(workspacePath: string, pathToProjectFiles: string): 
 	const sceneFilesPath = path.join(workspacePath, ...projectPathComponents);
 	projectIndex.setPlatformScenePath(sceneFilesPath);
 	connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
-	if (projectPathComponents.length > 0) {
-		connection.sendNotification(
-			CustomMessages.UpdatedMyGamePath,
-			path.join(workspacePath, ...projectPathComponents.slice(0, -1))
-		);
-	}
 
 	// Index the startup.txt file
 	await indexFile(pathToProjectFiles);
@@ -160,6 +154,11 @@ async function indexProject(workspacePath: string, pathToProjectFiles: string): 
 	if (scenes !== undefined) {
 		// Try to index all of the scene files
 		await indexScenes(scenes);
+	}
+
+	const imagePath = projectIndex.getPlatformImagePath();
+	if (imagePath !== undefined) {
+		connection.sendNotification(CustomMessages.UpdatedImageFilesPath, imagePath);
 	}
 
 	projectIndex.setProjectIsIndexed(true);
@@ -311,8 +310,14 @@ function notifyChangedWordCount(document: TextDocument): void {
 }
 
 function validateTextDocument(textDocument: TextDocument, projectIndex: ProjectIndex): void {
+	// In generating diagnostics, the image path may update, so check that
+	const oldImagePath = projectIndex.getPlatformImagePath();
 	const diagnostics = generateDiagnostics(textDocument, projectIndex, validationSettings);
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+	const newImagePath = projectIndex.getPlatformImagePath();
+	if (newImagePath != oldImagePath && newImagePath !== undefined) {
+		connection.sendNotification(CustomMessages.UpdatedImageFilesPath, newImagePath);
+	}
 }
 
 connection.onCompletion(
