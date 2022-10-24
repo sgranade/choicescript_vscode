@@ -335,7 +335,8 @@ export async function runRandomtest(
 		`showText=${settings.showText}`,
 		`avoidUsedOptions=${settings.avoidUsedOptions}`,
 		`showChoices=${settings.showChoices}`,
-		`showCoverage=${settings.showCoverage}`
+		`showCoverage=${settings.showCoverage}`,
+		'saveStats=true'  // Always save the stats
 	];
 	const output = (settings.putResultsInDocument) ? provider.getLogDocument(generateLogUri("Randomtest", settings.putResultsInUniqueDocument)) : outputChannel;
 

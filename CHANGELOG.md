@@ -6,6 +6,7 @@ Changes to the plugin.
 
 ### Added
 
+- Stats can now be generated and saved.
 - Achievements are now fully checked for correctness.
 - `*image` commands that refer to non-existent files are now flagged.
 
