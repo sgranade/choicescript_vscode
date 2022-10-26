@@ -16,6 +16,7 @@ import { cancelTest, initializeTestProvider, runQuicktest, runRandomtest } from 
 import * as gameserver from './gameserver';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
+import * as notifications from './notifications';
 
 
 let client: LanguageClient;
@@ -165,7 +166,6 @@ class StatusBarItems {
 class StatusBarController {
 	private _statusBar: StatusBarItems;
 	private _projectStatus: ProjectStatus;
-	private _disposable: vscode.Disposable;
 
 	constructor(statusBar: StatusBarItems) {
 		this._statusBar = statusBar;
@@ -188,9 +188,14 @@ class StatusBarController {
 
 		// Subscribe to word count updates from the CS language server and when the project has loaded
 		client.onReady().then(() => {
-			disposables.push(client.onNotification(CustomMessages.UpdatedWordCount, this._onUpdatedWordCount));
-			disposables.push(client.onNotification(CustomMessages.ProjectIndexed, this._onProjectIndexed));
-			this._disposable = vscode.Disposable.from(...disposables);
+			notifications.addNotificationHandler(
+				CustomMessages.UpdatedWordCount,
+				e => this._onUpdatedWordCount(e[0])
+			);
+			notifications.addNotificationHandler(
+				CustomMessages.ProjectIndexed,
+				this._onProjectIndexed
+			);
 		});
 	}
 
@@ -272,10 +277,6 @@ class StatusBarController {
 	updateTestCount(count: number) {
 		this._statusBar.updateTestCount(count);
 	}
-
-	public dispose(): void {
-		this._disposable.dispose();
-	}
 }
 
 class GameRunner {
@@ -283,31 +284,32 @@ class GameRunner {
 	private _csPath: string;
 	private _csErrorHandler: (scene: string, line: number, message: string) => void | undefined;
 	private _statusBarController: StatusBarController;
-	private _disposable: vscode.Disposable;
 
 	constructor(
 		context: vscode.ExtensionContext, 
 		statusBarController: StatusBarController, 
 		csErrorHandler?: (scene: string, line: number, message: string) => void
 	) {
-		const disposables: vscode.Disposable[] = [];
 		this._csPath = context.asAbsolutePath(RelativePaths.Choicescript);
 		this._csErrorHandler = csErrorHandler;
 		this._statusBarController = statusBarController;
 
 		client.onReady().then(() => {
-			disposables.push(
-				client.onNotification(CustomMessages.UpdatedSceneFilesPath, async (e: string) => {
-					sceneFilesPath = e;
+			notifications.addNotificationHandler(
+				CustomMessages.UpdatedSceneFilesPath,
+				async (e: string[]) => {
+					sceneFilesPath = e[0];
 					await this._init();
-					gameserver.updateScenePath(this._gameId, e);
-				}));
-			disposables.push(
-				client.onNotification(CustomMessages.UpdatedImageFilesPath, async (e: string) => {
+					gameserver.updateScenePath(this._gameId, sceneFilesPath);
+				}
+			);
+			notifications.addNotificationHandler(
+				CustomMessages.UpdatedImageFilesPath,
+				async (e: string[]) => {
 					await this._init();
-					gameserver.updateImagePath(this._gameId, e);
-				}));
-			this._disposable = vscode.Disposable.from(...disposables);
+					gameserver.updateImagePath(this._gameId, e[0]);
+				}
+			);
 			gameserver.startServer();
 		});
 	}
@@ -327,10 +329,6 @@ class GameRunner {
 		gameserver.openGameInBrowser(this._gameId);
 		vscode.commands.executeCommand('setContext', CustomContext.GameOpened, true);
 		this._statusBarController.gameRun();
-	}
-	
-	public dispose(): void {
-		this._disposable.dispose();
 	}
 }
 
@@ -543,6 +541,9 @@ export function activate(context: vscode.ExtensionContext): void {
 		clientOptions
 	);
 
+	// Be ready to handle notifications
+	context.subscriptions.push(notifications.initNotifications(client));
+
 	// Register a new text document provider for log files
 	const provider = new Provider();
 	const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(Provider.scheme, provider);
@@ -551,7 +552,6 @@ export function activate(context: vscode.ExtensionContext): void {
 	// Set up the status bar
 	const statusBar = new StatusBarItems();
 	const controller = new StatusBarController(statusBar);
-	context.subscriptions.push(statusBar, controller);
 
 	// Create a controller for error annotations
 	annotationController = new LineAnnotationController();
@@ -586,7 +586,6 @@ export function activate(context: vscode.ExtensionContext): void {
 		controller,
 		annotateCSError
 	);
-	context.subscriptions.push(gameRunner);
 
 	// Register our commands
 	registerCommands(context, controller, gameRunner, provider);
