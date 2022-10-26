@@ -45,7 +45,7 @@ app.use(async function(ctx, next) {
 			// (in the `mygame` folder). Luckily we find them when we do document validation.
 			if (ext == '.jpg' || ext == '.png') {
 				if (_gameInfo.imageRootPath !== undefined) {
-					filepath = path.join(_gameInfo.sceneRootPath, path.basename(filepath));
+					filepath = path.join(_gameInfo.imageRootPath, path.basename(filepath));
 				}
 				else if (_gameInfo.sceneRootPath !== undefined) {
 					filepath = path.join(_gameInfo.sceneRootPath, path.basename(filepath));
