@@ -21,6 +21,7 @@ A VS Code plugin for [ChoiceScript], a language for writing choose-your-own-path
 - Snippets to match Choice of Games style rules
 - Italicizing and bolding text
 - Word count that counts only what the player will see
+- Generate stats about your stats
 
 
 ## Installation
@@ -60,6 +61,26 @@ Randomtest requires more steps. When you run Randomtest, the extension will prom
 
 If you run Randomtest without it printing the game's text, the results will appear in the Output window. If it prints the game's text, the results will open in a separate editor window that you can save. However, Randomtest can produce larger files than VS Code will allow the extension to open. In that case, it will save the results to a text file in your workspace. You can then open the file yourself.
 
+
+## Generate Statistics About Your Stats
+
+You can take snapshots of your stats and save them to `.csv` files that Excel and other spreadsheet programs can read. Start by defining what variables to save by putting the following comment in your `startup.txt` file:
+
+```
+*comment savestatsetup [stat1] [stat2] [stat3] ...
+```
+
+Replace `[stat1]` and the rest with a list of the variables you want to save. Put a space between each variable's name.
+
+Then, whenever you want to take a snapshot of the variables' values, add the following comment:
+
+```
+*comment savestats
+```
+
+The results will be saved to a file called `mygame-stats.csv`.
+
+For more information about what you can do with information about your stats, please see [this Choice of Games forum post](https://forum.choiceofgames.com/t/generate-statistics-about-your-stats/76175).
 
 ## Extensions to ChoiceScript Features
 

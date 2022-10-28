@@ -866,7 +866,7 @@ nav.setStartingStatsClone(stats);
 
 function checkSaveStats() {
 	if (saveStats && saveStatVariableNames.length > 0) {
-		var outputFile = 'randomtest-stats.csv';
+		var outputFile = `${gameName}-stats.csv`;
 		if (projectPath) outputFile = path.join(projectPath, outputFile);
 		var output = require('fs').createWriteStream(outputFile, { encoding: 'utf8' });
 		output.write("scene,line," + saveStatVariableNames.join(",") + "\n", "utf8");
