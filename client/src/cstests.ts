@@ -291,17 +291,20 @@ async function getRandomtestSettings(source: RandomtestSettingsSource): Promise<
  * @param testScriptPath Path to the test script.
  * @param csPath Path to the ChoiceScript module.
  * @param scenePath Path to the scene files.
+ * @param imagePath Path to the image files.
  * @param csErrorHandler Optional handler for if the test finds an error.
  * @param statusCallback Optional callback for when tests are running or not.
  */
 export function runQuicktest(
 	testScriptPath: string, 
 	csPath: string,
-	scenePath: string, 
+	scenePath: string,
+	imagePath: string,
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void
 ): void {
-	runTest('Quicktest', testScriptPath, [csPath, scenePath], outputChannel, csErrorHandler, statusCallback);
+	const args = [csPath, scenePath, "", imagePath];
+	runTest('Quicktest', testScriptPath, args, outputChannel, csErrorHandler, statusCallback);
 }
 
 

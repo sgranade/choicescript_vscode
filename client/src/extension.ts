@@ -21,6 +21,7 @@ import * as notifications from './notifications';
 
 let client: LanguageClient;
 let sceneFilesPath: string;
+let imageFilesPath: string;
 let annotationController: LineAnnotationController;
 
 
@@ -306,8 +307,9 @@ class GameRunner {
 			notifications.addNotificationHandler(
 				CustomMessages.UpdatedImageFilesPath,
 				async (e: string[]) => {
+					imageFilesPath = e[0];
 					await this._init();
-					gameserver.updateImagePath(this._gameId, e[0]);
+					gameserver.updateImagePath(this._gameId, imageFilesPath);
 				}
 			);
 			gameserver.startServer();
@@ -427,6 +429,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 							context.asAbsolutePath(RelativePaths.Quicktest),
 							context.asAbsolutePath(RelativePaths.Choicescript),
 							sceneFilesPath,
+							imageFilesPath,
 							annotateCSError,
 							(running) => controller.updateTestStatus(running)
 						)
