@@ -456,7 +456,6 @@ describe("Parser", () => {
 			expect(received[0][1].range.start.line).to.equal(14);
 			expect(received[0][1].range.end.line).to.equal(38);
 		});
-
 		
 		it("should callback on a local text_image", () => {
 			let fakeDocument = createDocument("Line 0\n*text_image local.png");
@@ -488,6 +487,38 @@ describe("Parser", () => {
 			expect(received[0][0]).to.equal("http://faker.com/img.png");
 			expect(received[0][1].range.start.line).to.equal(19);
 			expect(received[0][1].range.end.line).to.equal(43);
+		});
+
+		it("should callback on a local kindle_image", () => {
+			let fakeDocument = createDocument("Line 0\n*kindle_image local.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("local.png");
+			expect(received[0][1].range.start.line).to.equal(21);
+			expect(received[0][1].range.end.line).to.equal(30);
+		});
+
+		it("should callback on a remote kindle_image", () => {
+			let fakeDocument = createDocument("Line 0\n*kindle_image http://faker.com/img.png");
+			let received: [string, Location][] = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onImage(Arg.all()).mimicks((image: string, location: Location, state: ParsingState) => {
+				received.push([image, location]);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(1);
+			expect(received[0][0]).to.equal("http://faker.com/img.png");
+			expect(received[0][1].range.start.line).to.equal(21);
+			expect(received[0][1].range.end.line).to.equal(45);
 		});
 	});
 
@@ -2027,6 +2058,21 @@ describe("Parser", () => {
 	describe("IFID Parsing", () => {
 		it("should parse an IFID", () => {
 			let fakeDocument = createDocument("*ifid 12345678-abcd-ef12-3456-7890abcdef01");
+			let received: Array<Diagnostic> = [];
+			let fakeCallbacks = Substitute.for<ParserCallbacks>();
+			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+				received.push(e);
+			});
+
+			parse(fakeDocument, fakeCallbacks);
+
+			expect(received.length).to.equal(0);
+		});
+	});
+
+	describe("Product Parsing", () => {
+		it("should parse a product", () => {
+			let fakeDocument = createDocument("*product aaaa");
 			let received: Array<Diagnostic> = [];
 			let fakeCallbacks = Substitute.for<ParserCallbacks>();
 			fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
@@ -4379,6 +4425,151 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("Nothing can follow an IFID");
 				expect(received[0].range.start.line).to.equal(43);
 				expect(received[0].range.end.line).to.equal(49);
+			});
+		});
+
+		describe("Kindle Search", () => {
+			it("should not flag kindle searches with a parenthesized search and a button name", () => {
+				let fakeDocument = createDocument("*kindle_search (ok) button name");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
+			it("should flag kindle searches with unparenthesized arguments", () => {
+				let fakeDocument = createDocument("*kindle_search missing parens");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("The first argument to kindle_search must be in parentheses");
+				expect(received[0].range.start.line).to.equal(15);
+				expect(received[0].range.end.line).to.equal(29);
+			});
+
+			it("should flag kindle searches with a missing close parenthesis", () => {
+				let fakeDocument = createDocument("*kindle_search (missing parens");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing close parenthesis");
+				expect(received[0].range.start.line).to.equal(30);
+				expect(received[0].range.end.line).to.equal(31);
+			});
+
+			it("should flag kindle searches with empty searches", () => {
+				let fakeDocument = createDocument("*kindle_search ()");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing search");
+				expect(received[0].range.start.line).to.equal(16);
+				expect(received[0].range.end.line).to.equal(16);
+			});
+
+			it("should flag kindle searches with a missing button name", () => {
+				let fakeDocument = createDocument("*kindle_search (parens) ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing button name");
+				expect(received[0].range.start.line).to.equal(24);
+				expect(received[0].range.end.line).to.equal(24);
+			});
+
+			it("should flag kindle searches with no space before the button name", () => {
+				let fakeDocument = createDocument("*kindle_search (parens)button");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("Missing space before the button name");
+				expect(received[0].range.start.line).to.equal(23);
+				expect(received[0].range.end.line).to.equal(23);
+			});
+		});
+
+		describe("Product", () => {
+			it("should flag a product id with an upper case letter", () => {
+				let fakeDocument = createDocument("*product aAa");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("A product ID can only contain lower-case letters");
+				expect(received[0].range.start.line).to.equal(9);
+				expect(received[0].range.end.line).to.equal(12);
+			});
+
+			it("should flag a product id with a number", () => {
+				let fakeDocument = createDocument("*product a1a");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("A product ID can only contain lower-case letters");
+				expect(received[0].range.start.line).to.equal(9);
+				expect(received[0].range.end.line).to.equal(12);
+			});
+
+			it("should flag a product id with punctuation", () => {
+				let fakeDocument = createDocument("*product a#a");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("A product ID can only contain lower-case letters");
+				expect(received[0].range.start.line).to.equal(9);
+				expect(received[0].range.end.line).to.equal(12);
 			});
 		});
 

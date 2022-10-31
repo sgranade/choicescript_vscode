@@ -2131,6 +2131,74 @@ function parseIfid(ifid: string, remainingLine: string, startSectionIndex: numbe
 }
 
 /**
+ * Parse a kindle_search command.
+ * @param line Line after the command.
+ * @param startSectionIndex Index at the start of the line.
+ * @param state Parsing state.
+ */
+function parseKindleSearch(line: string, startSectionIndex: number, state: ParsingState): void {
+	if (line.search(/^\(.+\) [^)]+/) == -1) {
+		let startIndex = startSectionIndex;
+		let endIndex = -1;
+		let message = "";
+		const parenthesizedSearch = /^\((.*)\)( )?/.exec(line);
+
+		if (parenthesizedSearch) {
+			if (!parenthesizedSearch[1]) {
+				startIndex += 1;
+				endIndex = startIndex;
+				message = "Missing search.";
+	
+			}
+			else if (parenthesizedSearch[2] === undefined) {
+				startIndex += parenthesizedSearch[1].length + 2;
+				endIndex = startIndex;
+				message = "Missing space before the button name.";
+			}
+			else {
+				startIndex += parenthesizedSearch[0].length;
+				endIndex = startIndex;
+				message = "Missing button name.";
+			}
+		}
+		else {
+			const openParensMatch = line.match(/^\((.+)/);
+			if (openParensMatch) {
+				startIndex += openParensMatch[0].length;
+				endIndex = startIndex + 1;
+				message = "Missing close parenthesis.";
+			}
+			else {
+				endIndex = startIndex + line.length;
+				message = "The first argument to kindle_search must be in parentheses.";
+			}
+		}
+
+		if (endIndex != -1) {
+			const diagnostic = createParsingDiagnostic(
+				DiagnosticSeverity.Error, startIndex, endIndex, message, state
+			);
+			state.callbacks.onParseError(diagnostic);
+		}
+	}
+}
+
+/**
+ * Parse a product command.
+ * @param line Line after the command.
+ * @param startSectionIndex Index at the start of line.
+ * @param state Parsing state.
+ */
+function parseProduct(line: string, startSectionIndex: number, state: ParsingState): void {
+	if (!/^[a-z]+$/.test(line)) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			startSectionIndex, startSectionIndex + line.length,
+			"A product ID can only contain lower-case letters.", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+}
+
+/**
  * Check a command to see if its arguments are incorrect
  * @param command Command to check.
  * @param commandSectionIndex Location of the command in the document section.
@@ -2264,7 +2332,7 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 			parseAchievementReference(codename, lineSectionIndex, state);
 		}
 	}
-	else if (command == "image" || command == "text_image") {
+	else if (command == "image" || command == "text_image" || command == "kindle_image") {
 		const imageMatch = line.match(/^\S+/);
 		if (imageMatch) {
 			const image = imageMatch[0];
@@ -2277,6 +2345,14 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 			const ifid = ifidMatch[0];
 			parseIfid(ifid, line.slice(ifid.length), lineSectionIndex, state);
 		}
+	}
+	else if (command == "kindle_search" || command == "kindle_product") {
+		if (line)
+			parseKindleSearch(line, lineSectionIndex, state);
+	}
+	else if (command == "product") {
+		if (line)
+			parseProduct(line, lineSectionIndex, state);
 	}
 
 	return endParseIndex;

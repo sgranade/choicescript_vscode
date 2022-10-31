@@ -9,10 +9,12 @@ Changes to the plugin.
 - Stats can now be generated and saved.
 - Achievements are now fully checked for correctness.
 - `*image` commands that refer to non-existent files are now flagged.
+- `*kindle_search` and `*product` commands are now parsed.
 
 ### Changed
 
 - Images can now either be in the same directory as scene files or one directory up (the `mygame` directory).
+- Updated Choicescript to latest version (d8d1680).
 
 ### Fixed
 

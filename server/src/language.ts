@@ -9,22 +9,25 @@ import { ReadonlyAchievementIndex } from "./index";
 /**
  * Commands that can only be used in startup.txt
  */
-export const startupCommands: ReadonlyArray<string> = ["create", "scene_list", "title", "author", "achievement", "product", "ifid"];
+export const startupCommands: ReadonlyArray<string> = ["create", "create_array", "scene_list", "title", "author", "achievement", "product", "ifid"];
 
 /**
  * Complete list of valid commands.
  */
 export const validCommands: ReadonlyArray<string> = [
-	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort", "choice", "create", "temp",
-	"delete", "set", "setref", "print", "if", "selectable_if", "rand", "page_break", "line_break", "script", "else",
-	"elseif", "elsif", "reset", "goto_scene", "fake_choice", "input_text", "ending", "share_this_game",
-	"stat_chart", "subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
+	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort",
+	"choice", "create",	"create_array", "temp", "temp_array", "delete",
+	"delete_array", "set", "setref", "print", "if", "selectable_if", "rand",
+	"page_break", "line_break", "script", "else", "elseif", "elsif", "reset",
+	"goto_scene", "fake_choice", "input_text", "ending", "share_this_game",	"stat_chart",
+	"subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
 	"check_purchase", "restore_purchases", "purchase", "restore_game", "advertisement",
-	"feedback", "save_game", "delay_break", "image", "link", "input_number", "goto_random_scene",
+	"kindle_search", "kindle_product", "feedback",
+	"save_game", "delay_break", "image", "kindle_image", "link", "input_number", "goto_random_scene",
 	"restart", "more_games", "delay_ending", "end_trial", "login", "achieve", "scene_list", "title",
 	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
 	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
-	"timer", "youtube", "product", "text_image", "params", "config", "ifid",
+	"timer", "youtube", "product", "text_image", "ai", "params", "config", "ifid",
 	"page_break_advertisement", "finish_advertisement"
 ];
 
@@ -35,7 +38,7 @@ export const argumentRequiredCommands: ReadonlyArray<string> = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending", "ifid"
+	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product"
 ];
 
 /**
@@ -157,11 +160,14 @@ export const booleanFunctions: ReadonlyArray<string> = [
 export const builtinVariables: ReadonlyArray<string> = [
 	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered",
 	"choice_is_web", "choice_is_steam",	"choice_is_ios_app",
+	"choice_is_ipad_app", "choice_is_android_app", "choice_is_omnibus_app",
+	"choice_is_amazon_app",
 	"choice_is_advertising_supported", "choice_is_trial", "choice_release_date",
 	"choice_prerelease", "choice_kindle", "choice_randomtest", "choice_quicktest",
+	"choice_linenum", "choice_scene",
 	"choice_restore_purchases_allowed", "choice_save_allowed",
-	"choice_time_stamp", "choice_nightmode", "choice_purchased_adfree",
-	"choice_purchase_supported"
+	"choice_time_stamp", "choice_nightmode", "choice_title",
+	"choice_purchase_supported", "choice_purchased_adfree"
 ];
 
 /**
