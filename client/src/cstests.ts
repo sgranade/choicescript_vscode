@@ -31,8 +31,6 @@ interface randomtestSettings {
 
 /**
  * Initialize ChoiceScript test provider.
- * 
- * @param localWorkspaceStorage Local storage object with workspace scope.
  */
 export function initializeTestProvider(): void {
 	// If we've already got previous randomtest settings, pull them in
@@ -303,6 +301,9 @@ export function runQuicktest(
 	csErrorHandler?: (scene: string, line: integer, message: string) => void,
 	statusCallback?: (running: boolean) => void
 ): void {
+	if (imagePath === undefined) {
+		imagePath = ".";
+	}
 	const args = [csPath, scenePath, "", imagePath];
 	runTest('Quicktest', testScriptPath, args, outputChannel, csErrorHandler, statusCallback);
 }

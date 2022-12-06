@@ -188,16 +188,14 @@ class StatusBarController {
 		});
 
 		// Subscribe to word count updates from the CS language server and when the project has loaded
-		client.onReady().then(() => {
-			notifications.addNotificationHandler(
-				CustomMessages.UpdatedWordCount,
-				e => this._onUpdatedWordCount(e[0])
-			);
-			notifications.addNotificationHandler(
-				CustomMessages.ProjectIndexed,
-				this._onProjectIndexed
-			);
-		});
+		notifications.addNotificationHandler(
+			CustomMessages.UpdatedWordCount,
+			e => this._onUpdatedWordCount(e[0])
+		);
+		notifications.addNotificationHandler(
+			CustomMessages.ProjectIndexed,
+			this._onProjectIndexed
+		);
 	}
 
 	// This is an instance function so we can properly capture "this" b/c of how it's called
@@ -295,25 +293,23 @@ class GameRunner {
 		this._csErrorHandler = csErrorHandler;
 		this._statusBarController = statusBarController;
 
-		client.onReady().then(() => {
-			notifications.addNotificationHandler(
-				CustomMessages.UpdatedSceneFilesPath,
-				async (e: string[]) => {
-					sceneFilesPath = e[0];
-					await this._init();
-					gameserver.updateScenePath(this._gameId, sceneFilesPath);
-				}
-			);
-			notifications.addNotificationHandler(
-				CustomMessages.UpdatedImageFilesPath,
-				async (e: string[]) => {
-					imageFilesPath = e[0];
-					await this._init();
-					gameserver.updateImagePath(this._gameId, imageFilesPath);
-				}
-			);
-			gameserver.startServer();
-		});
+		notifications.addNotificationHandler(
+			CustomMessages.UpdatedSceneFilesPath,
+			async (e: string[]) => {
+				sceneFilesPath = e[0];
+				await this._init();
+				gameserver.updateScenePath(this._gameId, sceneFilesPath);
+			}
+		);
+		notifications.addNotificationHandler(
+			CustomMessages.UpdatedImageFilesPath,
+			async (e: string[]) => {
+				imageFilesPath = e[0];
+				await this._init();
+				gameserver.updateImagePath(this._gameId, imageFilesPath);
+			}
+		);
+		gameserver.startServer();
 	}
 
 	public async _init() {

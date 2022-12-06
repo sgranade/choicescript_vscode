@@ -17,7 +17,7 @@
 		"koa": "^2.13.3",
 		"koa-bodyparser": "^4.3.0",
 		"urijs": "^1.19.11",
-		"vscode-languageclient": "^7.0.0"
+		"vscode-languageclient": "^8.0.2"
 	},
 	"devDependencies": {
 		"@types/koa": "^2.13.4",
