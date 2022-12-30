@@ -30,6 +30,6 @@ jobs:
       if: runner.os != 'Linux'
     - name: Coverage
       run: npm run report-coverage
-    - uses: codecov/codecov-action@v2
+    - uses: codecov/codecov-action@v3
       with:
         files: ./coverage.lcov
