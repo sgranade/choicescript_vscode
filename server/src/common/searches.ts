@@ -1,4 +1,4 @@
-import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver/node';
+import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
 import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';

@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic, readLine } from './utilities';

@@ -9,13 +9,11 @@
 contributing.md
 shared.webpack.config.js
 client/**
-!client/out
-client/out/*
-!client/out/extension.js
+!client/dist
+!client/dist/**/*
 server/**
-!server/out
-server/out/*
-!server/out/server.js
+!server/dist
+!server/dist/**/*
 choicescript/*
 !choicescript/out
 coverage.lcov

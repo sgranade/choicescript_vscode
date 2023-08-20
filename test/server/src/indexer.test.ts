@@ -11,8 +11,8 @@ import {
 	LabelIndex,
 	FlowControlEvent,
 	DocumentScopes
-} from '../../../server/src/index';
-import { updateProjectIndex } from '../../../server/src/indexer';
+} from '../../../server/src/common/index';
+import { updateProjectIndex } from '../../../server/src/common/indexer';
 
 const fakeDocumentUri = "file:///startup.txt";
 

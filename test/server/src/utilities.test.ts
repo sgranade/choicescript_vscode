@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, caseInsensitiveMapToMap, readLine, extractToMatchingIndent, readNextNonblankLine, CaseInsensitiveMap } from '../../../server/src/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, caseInsensitiveMapToMap, readLine, extractToMatchingIndent, readNextNonblankLine, CaseInsensitiveMap } from '../../../server/src/common/utilities';
 
 /* eslint-disable */
 

@@ -5,13 +5,27 @@
 		{
 			"type": "extensionHost",
 			"request": "launch",
-			"name": "Launch Client",
+			"name": "Launch Client (Node)",
 			"runtimeExecutable": "${execPath}",
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"preLaunchTask": {
-				"type": "npm",
-				"script": "watch"
-			}
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceFolder}/client/dist/node/extension.js",
+			],
+		},
+		{
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client (Node, Break on Server Start)",
+			"runtimeExecutable": "${execPath}",
+			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+			"sourceMaps": true,
+			"env": {
+				"DEBUG_WAIT_FOR_SERVER": "1"
+			},
+			"outFiles": [
+				"${workspaceFolder}/client/dist/node/extension.js",
+			],
 		},
 		{
 			"type": "node",
@@ -19,12 +33,31 @@
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
+			"sourceMaps": true
+		},
+		{
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client (Web)",
+			"debugWebWorkerHost": true,
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}",
+				"--extensionDevelopmentKind=web"
+			],
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceFolder}/client/dist/web/extension.js"
+			]
 		}
 	],
 	"compounds": [
 		{
 			"name": "Client + Server",
-			"configurations": ["Launch Client", "Attach to Server"]
+			"configurations": ["Launch Client (Node)", "Attach to Server"]
+		},
+		{
+			"name": "Client + Server (Break on Server Start)",
+			"configurations": ["Launch Client (Node, Break on Server Start)", "Attach to Server"],
 		}
 	],
 	"resolveSourceMapLocations": [

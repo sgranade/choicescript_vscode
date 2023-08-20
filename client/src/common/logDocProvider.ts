@@ -1,6 +1,6 @@
-import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import LogDocument from './logDocument';
+import { v4 as uuidv4 } from 'uuid';
 
 export class Provider implements vscode.TextDocumentContentProvider {
 	static scheme = 'CSLog';
@@ -74,10 +74,13 @@ export function generateLogUri(logName: string, unique: boolean): vscode.Uri {
 	const uriComponents = {
 		scheme: Provider.scheme,
 		path: `Log.${logName}`,
-		query: undefined
+	} as {
+		scheme: string,
+		path: string,
+		query?: string
 	};
 	if (unique) {
-		uriComponents.query = `id=${crypto.randomBytes(16).toString('hex')}`;
+		uriComponents.query = `id=${uuidv4()}`;
 	}
 	return vscode.Uri.from(uriComponents);
 }

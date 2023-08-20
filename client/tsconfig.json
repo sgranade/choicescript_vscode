@@ -4,7 +4,8 @@
 		"target": "es6",
 		"outDir": "out",
 		"rootDir": "src",
-		"sourceMap": true
+		"sourceMap": true,
+		"lib": ["webworker"] // TODO: Exclude node build?
 	},
 	"include": ["src", "../choicescript"],
 	"exclude": ["node_modules", ".vscode-test"]

@@ -1,7 +1,6 @@
-import { existsSync } from 'fs';
 import * as path from 'path';
 
-import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver/node';
+import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver/browser';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from "./index";
@@ -22,6 +21,7 @@ import {
 } from './language';
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange, normalizeUri } from './utilities';
 import { tokenizeMultireplace } from './tokens';
+import { FileSystemService } from './file-system-service';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
@@ -463,7 +463,7 @@ function validateOption(option: string, index: number, state: ValidationState): 
  * Validate whether or not images exist.
  * @param state Current parsing state.
  */
-function validateImages(state: ValidationState): Diagnostic[] {
+async function validateImages(state: ValidationState, fsProvider: FileSystemService): Promise<Diagnostic[]> {
 	const diagnostics: Diagnostic[] = [];
 	let imagePath = state.projectIndex.getPlatformImagePath();
 
@@ -476,7 +476,7 @@ function validateImages(state: ValidationState): Diagnostic[] {
 			// workspace directory, check the directory above the scene
 			// directory.
 			imagePath = state.projectIndex.getPlatformScenePath();
-			found = existsSync(path.join(imagePath, image));
+			found = await fsProvider.fileExists(path.join(imagePath, image));
 			if (!found && (
 				path.relative(
 					state.projectIndex.getPlatformWorkspacePath(),
@@ -484,14 +484,14 @@ function validateImages(state: ValidationState): Diagnostic[] {
 				) != ""
 			)) {
 				imagePath = path.normalize(path.join(imagePath, '..'));
-				found = existsSync(path.join(imagePath, image));
+				found = await fsProvider.fileExists(path.join(imagePath, image));
 			}
 			if (found) {
 				state.projectIndex.setPlatformImagePath(imagePath);
 			}
 		}
 		else {
-			found = existsSync(path.join(imagePath, image));
+			found = await fsProvider.fileExists(path.join(imagePath, image));
 		}
 
 		if (!found) {
@@ -599,7 +599,7 @@ const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${option
  * @param projectIndex Index of the ChoiceScript project
  * @returns List of diagnostic messages.
  */
-export function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex, validationSettings: ValidationSettings): Diagnostic[] {
+export async function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex, validationSettings: ValidationSettings, fsProvider: FileSystemService): Promise<Diagnostic[]> {
 	const state = new ValidationState(projectIndex, textDocument, validationSettings);
 
 	// Start with parse errors
@@ -615,7 +615,7 @@ export function generateDiagnostics(textDocument: TextDocument, projectIndex: Pr
 	diagnostics.push(...validateFlowControlEvents(state));
 
 	// Validate image existence
-	diagnostics.push(...validateImages(state));
+	diagnostics.push(...(await validateImages(state, fsProvider)));
 
 	// Validate tabs/spaces
 	diagnostics.push(...validateIndents(state));

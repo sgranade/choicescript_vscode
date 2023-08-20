@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { GenericNotificationHandler, LanguageClient } from 'vscode-languageclient/node';
+import { BaseLanguageClient, GenericNotificationHandler } from 'vscode-languageclient';
 
-let client: LanguageClient;
+let client: BaseLanguageClient;
 const notificationManagers: Map<string, ListenerManager> = new Map();
 
 /**
@@ -50,7 +50,7 @@ class ListenerManager extends DisposeWithFlag {
  * @param newClient Client for notifications.
  * @returns Disposable encapsulating all listeners.
  */
-export function initNotifications(newClient: LanguageClient): vscode.Disposable {
+export function initNotifications(newClient: BaseLanguageClient): vscode.Disposable {
 	if (client !== undefined) {
 		throw 'Tried to double-initialize notifications';
 	}
@@ -80,7 +80,7 @@ export function addNotificationHandler(method: string, handler: GenericNotificat
 	if (manager === undefined) {
 		manager = new ListenerManager();
 		const disposable = client.onNotification(method, (...params) => {
-			manager.handleNotification(manager, params);
+			manager?.handleNotification(manager, params);
 		});
 		manager.disposable = disposable;
 		notificationManagers.set(method, manager);

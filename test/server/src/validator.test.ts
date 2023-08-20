@@ -9,13 +9,17 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex } from '../../../server/src/index';
-import { CaseInsensitiveMap } from '../../../server/src/utilities';
-import { generateDiagnostics, ValidationSettings } from '../../../server/src/validator';
+import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex } from '../../../server/src/common/index';
+import { CaseInsensitiveMap } from '../../../server/src/common/utilities';
+import { generateDiagnostics, ValidationSettings } from '../../../server/src/common/validator';
+
+import { SystemFileProvider } from '../../../server/src/node/system-file-provider';
+import { FileSystemService } from '../../../server/src/common/file-system-service';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
 const startupUri: string = "file:///startup.txt";
+const fsProvider = new FileSystemService(new SystemFileProvider());
 
 function createDocument(text: string, uri: string = fakeDocumentUri): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();
@@ -126,44 +130,44 @@ function createValidationSettings(useCoGStyleGuide: boolean=true): SubstituteOf<
 
 describe("Validator", () => {
 	describe("Style Validation", () => {
-		it("should flag ellipses", () => {
+		it("should flag ellipses", async () => {
 			let fakeDocument = createDocument("Ellipses...");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("ellipsis");
 		});
 
-		it("should flag dashes", () => {
+		it("should flag dashes", async () => {
 			let fakeDocument = createDocument("Dashes--");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("em-dash");
 		});
 
-		it("shouldn't flag dashes in a comment", () => {
+		it("shouldn't flag dashes in a comment", async () => {
 			let fakeDocument = createDocument("*comment Dashes--");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag too-long options", () => {
+		it("should flag too-long options", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has too many words seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -171,42 +175,42 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(110);
 		});
 
-		it("should not flag shorter options", () => {
+		it("should not flag shorter options", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has just enough words seven eight nine ten eleven twelve thirteen fourteen fifteen.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not count the # in an option as a word", () => {
+		it("should not count the # in an option as a word", async () => {
 			let fakeDocument = createDocument("*choice\n\t# This option has four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should take multireplaces into account when counting words", () => {
+		it("should take multireplaces into account when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten | eleven twelve thirteen fourteen fifteen} words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should take the max words in the multireplaces into account when counting words", () => {
+		it("should take the max words in the multireplaces into account when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight nine ten eleven twelve thirteen fourteen | six} fifteen words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -214,32 +218,32 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(123);
 		});
 
-		it("should properly deal with no spaces before a multireplaces when counting words", () => {
+		it("should properly deal with no spaces before a multireplaces when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six} words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should properly deal with no spaces after a multireplaces when counting words", () => {
+		it("should properly deal with no spaces after a multireplaces when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to ha@{true ve six seven eight nine ten eleven twelve thirteen fourteen | ve six}, words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should properly deal with a multireplace at the start of the line", () => {
+		it("should properly deal with a multireplace at the start of the line", async () => {
 			let fakeDocument = createDocument("*choice\n\t#@{romance_expressed_hartmann Even though I like Hartmann, I make ${hartmann_him}|I make Hartmann} look better to Auguste, saying how well ${hartmann_he} @{hartmann_singular upholds|uphold} Gallatin traditions.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -247,22 +251,22 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(219);
 		});
 
-		it("should properly deal with a multireplace at the start of the line and a space at the end", () => {
+		it("should properly deal with a multireplace at the start of the line and a space at the end", async () => {
 			let fakeDocument = createDocument("*choice\n\t#@{var It goes against Practicum rules, but |}I talk to Kayla. I wonder if she'll believe in ");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should handle two multireplaces when counting words", () => {
+		it("should handle two multireplaces when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true six seven eight | six} and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -270,22 +274,22 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(144);
 		});
 
-		it("should ignore multireplaces with no body when counting words", () => {
+		it("should ignore multireplaces with no body when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option has @{true} four five six seven eight nine ten eleven twelve thirteen fourteen words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should include a multireplace in the error if it makes the option too long", () => {
+		it("should include a multireplace in the error if it makes the option too long", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have six seven eight nine ten eleven twelve thirteen fourteen @{true fifteen sixteen | fifteen} words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -293,12 +297,12 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(135);
 		});
 
-		it("should handle two multireplaces, one with no body, when counting words", () => {
+		it("should handle two multireplaces, one with no body, when counting words", async () => {
 			let fakeDocument = createDocument("*choice\n\t#This option appears to have @{true} six seven eight and @{true ten eleven twelve thirteen fourteen fifteen sixteen | ten} words.");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("more than 15");
@@ -308,32 +312,32 @@ describe("Validator", () => {
 	});
 
 	describe("Variable Reference Validation", () => {
-		it("should flag missing variables", () => {
+		it("should flag missing variables", async () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"unknown" not defined');
 		});
 
-		it("should not flag missing variables if the project hasn't been indexed", () => {
+		it("should not flag missing variables if the project hasn't been indexed", async () => {
 			let location = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["unknown", [location]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences, projectIsIndexed: false });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not flag existing local variables", () => {
+		it("should not flag existing local variables", async () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let localVariables = new CaseInsensitiveMap([["local_var", [createLocation]]]);
@@ -342,12 +346,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag a local variable referenced before it's created", () => {
+		it("should flag a local variable referenced before it's created", async () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let localVariables = new CaseInsensitiveMap([["local_var", [createLocation]]]);
@@ -356,13 +360,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
 		});
 
-		it("should not flag a local variable with a second creation location after the reference", () => {
+		it("should not flag a local variable with a second creation location after the reference", async () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let otherCreateLocation = Location.create(fakeDocumentUri, Range.create(5, 0, 5, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(3, 0, 3, 5));
@@ -372,14 +376,14 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ localVariables: localVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			// We do get a warning for the variable re-creation though
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"local_var" was defined earlier');
 		});
 
-		it("should not flag a local variable referenced before it's created if a global variable exists", () => {
+		it("should not flag a local variable referenced before it's created if a global variable exists", async () => {
 			let localCreateLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalCreateLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
@@ -395,14 +399,14 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			// We'll get a warning about a local var having the same name as a global var, but no error
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"var" has the same name as a global');
 		});
 
-		it("should not flag a local variable created through a gosub", () => {
+		it("should not flag a local variable created through a gosub", async () => {
 			let gosubLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let createLocation = Location.create(fakeDocumentUri, Range.create(21, 0, 21, 5));
@@ -415,12 +419,12 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not flag existing global variables", () => {
+		it("should not flag existing global variables", async () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let globalVariables: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["global_var", createLocation]]);
@@ -429,12 +433,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag a global variable referenced before it's created", () => {
+		it("should flag a global variable referenced before it's created", async () => {
 			let createLocation = Location.create(startupUri, Range.create(2, 0, 2, 5));
 			let referenceLocation = Location.create(startupUri, Range.create(1, 0, 1, 5));
 			let globalVariables: CaseInsensitiveMap<string, Location> = new CaseInsensitiveMap([["global_var", createLocation]]);
@@ -443,35 +447,35 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.include('"global_var" used before it was created');
 		});
 
-		it("should not flag built-in variables", () => {
+		it("should not flag built-in variables", async () => {
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_randomtest", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not flag param count", () => {
+		it("should not flag param count", async () => {
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["param_count", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag a non-param-count variable whose name contains 'param_count'", () => {
+		it("should flag a non-param-count variable whose name contains 'param_count'", async () => {
 			let location1 = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let location2 = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([
@@ -482,25 +486,25 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.include('"not_actually_param_count" not defined');
 			expect(diagnostics[1].message).to.include('"param_counter" not defined');
 		});
 
-		it("should not flag param variables", () => {
+		it("should not flag param variables", async () => {
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["param_2", [Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag a non-param-variable variable whose name contains e.g. 'param_1'", () => {
+		it("should flag a non-param-variable variable whose name contains e.g. 'param_1'", async () => {
 			let location1 = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let location2 = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([
@@ -511,14 +515,14 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.include('"not_param_1" not defined');
 			expect(diagnostics[1].message).to.include('"param_2e" not defined');
 		});
 
-		it("should flag achievement variables if not instantiated", () => {
+		it("should flag achievement variables if not instantiated", async () => {
 			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let variableReferences: IdentifierMultiIndex = new CaseInsensitiveMap([["choice_achieved_codename", [referenceLocation]]]);
@@ -526,13 +530,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_codename" not defined');
 		});
 
-		it("should not flag achievement variables after instantiation", () => {
+		it("should not flag achievement variables after instantiation", async () => {
 			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
@@ -545,12 +549,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, achievements: achievements, scopes: scopes });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag incorrect achievement variables", () => {
+		it("should flag incorrect achievement variables", async () => {
 			let achievements: CaseInsensitiveMap<string, [Location, number, string]> = new CaseInsensitiveMap([["codename", [Substitute.for<Location>(), 0, ""]]]);
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [Range.create(1, 0, 4, 0)],
@@ -564,13 +568,13 @@ describe("Validator", () => {
 
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Variable "choice_achieved_othername" not defined');
 		});
 
-		it("should not flag params variables after instantiation", () => {
+		it("should not flag params variables after instantiation", async () => {
 			let scopes: DocumentScopes = {
 				achievementVarScopes: [],
 				paramScopes: [Range.create(1, 0, 4, 0)],
@@ -582,37 +586,37 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ variableReferences: variableReferences, scopes: scopes });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
 
 	describe("All Commands Validation", () => {
-		it("should flag commands with text in front of them", () => {
+		it("should flag commands with text in front of them", async () => {
 			let fakeDocument = createDocument("Leading text *if This is illegal!");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
 		});
 
-		it("should not flag a command with *hide_reuse or similar before it", () => {
+		it("should not flag a command with *hide_reuse or similar before it", async () => {
 			let fakeDocument = createDocument("*hide_reuse *if var");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
 
 	describe("Variable Creation Commands Validation", () => {
-		it("should flag local variables with the same name as global ones", () => {
+		it("should flag local variables with the same name as global ones", async () => {
 			let createLocation = Location.create(fakeDocumentUri, Range.create(1, 0, 1, 5));
 			let globalVariables = new CaseInsensitiveMap([["global_var", createLocation]]);
 			let localVariables = new CaseInsensitiveMap([["global_var", [Substitute.for<Location>()]]]);
@@ -620,45 +624,45 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ globalVariables: globalVariables, localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
 		});
 
-		it("should flag local variables with a repeated name", () => {
+		it("should flag local variables with a repeated name", async () => {
 			let localVariables = new CaseInsensitiveMap([["local_var", [Substitute.for<Location>(), Substitute.for<Location>()]]]);
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
 		});
 
-		it("should flag global variables that don't start with a letter", () => {
+		it("should flag global variables that don't start with a letter", async () => {
 			let globalVariables = new CaseInsensitiveMap([["_invalid_var", Substitute.for<Location>()]]);
 
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ globalVariables: globalVariables });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
 		});
 
-		it("should flag local variables that don't start with a letter", () => {
+		it("should flag local variables that don't start with a letter", async () => {
 			let localVariables = new CaseInsensitiveMap([["_invalid_var", [Substitute.for<Location>()]]]);
 
 			let fakeDocument = createDocument("placeholder");
 			let fakeIndex = createIndex({ localVariables: localVariables });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
@@ -666,7 +670,7 @@ describe("Validator", () => {
 	});
 
 	describe("Label Reference Commands Validation", () => {
-		it("should flag missing labels", () => {
+		it("should flag missing labels", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto",
@@ -679,13 +683,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
 		});
 
-		it("should not flag a reference as missing labels", () => {
+		it("should not flag a reference as missing labels", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto",
@@ -698,12 +702,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag missing label locations", () => {
+		it("should flag missing label locations", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto",
@@ -716,13 +720,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
 		});
 
-		it("should be good with local labels", () => {
+		it("should be good with local labels", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto",
@@ -738,12 +742,12 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should be good with jumping to another scene without a label", () => {
+		it("should be good with jumping to another scene without a label", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto_scene",
@@ -758,12 +762,12 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag bad scene names", () => {
+		it("should flag bad scene names", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto_scene",
@@ -776,13 +780,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
 		});
 
-		it("should flag the location of bad scene names", () => {
+		it("should flag the location of bad scene names", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto_scene",
@@ -795,13 +799,13 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics[0].range.start).to.eql({ line: 2, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 2, character: 5 });
 		});
 
-		it("should not flag bad scene names if the project hasn't been indexed", () => {
+		it("should not flag bad scene names if the project hasn't been indexed", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto_scene",
@@ -814,12 +818,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events, projectIsIndexed: false });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not flag labels if the scene name contains a reference", () => {
+		it("should not flag labels if the scene name contains a reference", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "goto_scene",
@@ -832,12 +836,12 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ flowControlEvents: events });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should be good with hyphenated scene names", () => {
+		it("should be good with hyphenated scene names", async () => {
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
 				command: "gosub_scene",
@@ -851,12 +855,12 @@ describe("Validator", () => {
 				sceneList: ['scene-name'], flowControlEvents: events
 			});			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should be good with labels in another scene", () => {
+		it("should be good with labels in another scene", async () => {
 			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -875,12 +879,12 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should flag missing labels in another scene", () => {
+		it("should flag missing labels in another scene", async () => {
 			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -899,13 +903,13 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
 		});
 
-		it("should not flag missing labels in another scene if the project hasn't been indexed", () => {
+		it("should not flag missing labels in another scene if the project hasn't been indexed", async () => {
 			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -925,12 +929,12 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should not flag references in labels, even in another scene", () => {
+		it("should not flag references in labels, even in another scene", async () => {
 			let sceneLabels: Map<string, Label> = new Map([["scene_label", Substitute.for<Label>()]]);
 			let referenceLocation = Location.create(fakeDocumentUri, Range.create(2, 0, 2, 5));
 			let events: FlowControlEvent[] = [{
@@ -949,14 +953,14 @@ describe("Validator", () => {
 			});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(0);
 		});
 	});
 
 	describe("Image Validation", () => {
-		it("should flag missing image files", () => {
+		it("should flag missing image files", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -969,8 +973,8 @@ describe("Validator", () => {
 			let fakeDir = {};  // Empty directory
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
@@ -978,7 +982,7 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include("Couldn't find the image file");
 		});
 
-		it("should not flag image files in the already-determined image directory", () => {
+		it("should not flag image files in the already-determined image directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -991,8 +995,8 @@ describe("Validator", () => {
 			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
@@ -1000,7 +1004,7 @@ describe("Validator", () => {
 		});
 
 
-		it("should not flag image files in the scene directory", () => {
+		it("should not flag image files in the scene directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1014,15 +1018,15 @@ describe("Validator", () => {
 			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should set the image file directory for images in the scene directory", () => {
+		it("should set the image file directory for images in the scene directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1036,15 +1040,15 @@ describe("Validator", () => {
 			let fakeDir = { '/workspace/scenes/image.png': 'empty' };
 
 			mock(fakeDir);
-			generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
 			fakeIndex.received(1).setPlatformImagePath("/workspace/scenes");
 		});
 
-		it("should not flag image files in the directory above the scene directory if the scene directory isn't the workspace directory", () => {
+		it("should not flag image files in the directory above the scene directory if the scene directory isn't the workspace directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1059,15 +1063,15 @@ describe("Validator", () => {
 			let fakeDir = {'/workspace/image.png': 'empty' };
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
 			expect(diagnostics.length).to.equal(0);
 		});
 
-		it("should set the image file directory for images in the directory above the scene directory", () => {
+		it("should set the image file directory for images in the directory above the scene directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1082,15 +1086,15 @@ describe("Validator", () => {
 			let fakeDir = { '/workspace/image.png': 'empty' };
 
 			mock(fakeDir);
-			generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
 			fakeIndex.received(1).setPlatformImagePath(path.sep + "workspace");
 		});
 
-		it("should flag image files in the directory above the scene directory if the scene directory is the workspace directory", () => {
+		it("should flag image files in the directory above the scene directory if the scene directory is the workspace directory", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1105,8 +1109,8 @@ describe("Validator", () => {
 			let fakeDir = { '/repo/image.png': 'empty' };
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
@@ -1114,7 +1118,7 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include("Couldn't find the image file");
 		});
 
-		it("should not try to set the image directory if images aren't found", () => {
+		it("should not try to set the image directory if images aren't found", async () => {
 			let images = new CaseInsensitiveMap (
 				[["image.png", [Substitute.for<Location>()]]]
 			);
@@ -1129,15 +1133,15 @@ describe("Validator", () => {
 			let fakeDir = { '/repo/image.png': 'empty' };
 
 			mock(fakeDir);
-			generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
 			fakeIndex.didNotReceive().setPlatformImagePath(Arg.any());
 		});
 
-		it("should flag images in a different directory than the first image found", () => {
+		it("should flag images in a different directory than the first image found", async () => {
 			let images = new CaseInsensitiveMap([
 				["image1.png", [Substitute.for<Location>()]],
 				["image2.png", [Substitute.for<Location>()]]
@@ -1155,8 +1159,8 @@ describe("Validator", () => {
 			};
 
 			mock(fakeDir);
-			const diagnostics = generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			const diagnostics = await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
@@ -1164,7 +1168,7 @@ describe("Validator", () => {
 			expect(diagnostics[0].message).to.include("Couldn't find the image file");
 		});
 
-		it("should set the image file directory for the first image found", () => {
+		it("should set the image file directory for the first image found", async () => {
 			let images = new CaseInsensitiveMap([
 				["image1.png", [Substitute.for<Location>()]],
 				["image2.png", [Substitute.for<Location>()]]
@@ -1182,8 +1186,8 @@ describe("Validator", () => {
 			};
 
 			mock(fakeDir);
-			generateDiagnostics(
-				fakeDocument, fakeIndex, fakeSettings
+			await generateDiagnostics(
+				fakeDocument, fakeIndex, fakeSettings, fsProvider
 			);
 			mock.restore();
 
@@ -1192,12 +1196,12 @@ describe("Validator", () => {
 	});
 
 	describe("Indent Validation", () => {
-		it("should flag a switch from spaces to tabs", () => {
+		it("should flag a switch from spaces to tabs", async () => {
 			let fakeDocument = createDocument("*if true\n  indent\n*if false\n\tindent");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from spaces to tabs');
@@ -1205,12 +1209,12 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end.line).to.equal(29);
 		});
 
-		it("should flag a switch from tabs to spaces", () => {
+		it("should flag a switch from tabs to spaces", async () => {
 			let fakeDocument = createDocument("*if true\n\tindent\n*if false\n  indent");
 			let fakeIndex = createIndex({});
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('Switched from tabs to spaces');
@@ -1220,7 +1224,7 @@ describe("Validator", () => {
 	});
 
 	describe("Achievement Validation", () => {
-		it("should flag achievements with a repeated title", () => {
+		it("should flag achievements with a repeated title", async () => {
 			let achievements = new CaseInsensitiveMap([
 				["ach1", [Substitute.for<Location>(), 1, "Repeated title"]],
 				["ach2", [Location.create(fakeDocumentUri, Range.create(2, 0, 3, 5)), 1, "Repeated title"]]
@@ -1229,7 +1233,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('the same title was defined earlier');
@@ -1237,7 +1241,7 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end).to.eql({ line: 3, character: 5 });
 		})
 
-		it("should flag more than 100 achievements", () => {
+		it("should flag more than 100 achievements", async () => {
 			let achievements = new Map(
 				[...Array(103).keys()].map((v): [string, [Location, number, string]] => 
 					[
@@ -1253,7 +1257,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].message).to.contain('No more than 100 achievements allowed');
@@ -1261,7 +1265,7 @@ describe("Validator", () => {
 			expect(diagnostics[0].range.end).to.eql({ line: 100, character: 5 });
 		});
 
-		it("should flag more than 1000 points' worth of achievements", () => {
+		it("should flag more than 1000 points' worth of achievements", async () => {
 			let achievements = new Map(
 				[...Array(12).keys()].map((v): [string, [Location, number, string]] => 
 					[
@@ -1277,7 +1281,7 @@ describe("Validator", () => {
 			let fakeIndex = createIndex({ achievements: achievements });
 			let fakeSettings = createValidationSettings();
 
-			const diagnostics = generateDiagnostics(fakeDocument, fakeIndex, fakeSettings);
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(2);
 			expect(diagnostics[0].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1100');
