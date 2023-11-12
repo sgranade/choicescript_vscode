@@ -1,6 +1,6 @@
 import * as path from 'path';
 
-import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver/browser';
+import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ProjectIndex } from "./index";
