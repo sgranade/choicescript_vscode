@@ -119,7 +119,8 @@ function bbcodeDelimit(editor: vscode.TextEditor, delimitCharacters: string): vo
  * @param context Extension's context.
  * @param controller Status bar controller.
  * @param gameRunner The controller for running the game in a browser.
- * @param provider Text document provider.
+ * @param docProvider Text document provider.
+ * @param testProvider Test-running provider.
  */
 function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: GameRunnerService, docProvider: Provider, testProvider?: ChoiceScriptTestProvider) {
 
