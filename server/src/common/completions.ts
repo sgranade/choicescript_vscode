@@ -5,10 +5,10 @@ import {
 	TextEdit,
 	CompletionItem,
 	CompletionItemKind
-} from 'vscode-languageserver/browser';
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex, AchievementIndex, ReadonlyAchievementIndex } from "./index";
+import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex, ReadonlyAchievementIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 import { extractToMatchingDelimiter, comparePositions, normalizeUri, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
