@@ -462,6 +462,7 @@ function validateOption(option: string, index: number, state: ValidationState): 
 /**
  * Validate whether or not images exist.
  * @param state Current parsing state.
+ * @param fsProvider File system provider.
  */
 async function validateImages(state: ValidationState, fsProvider: FileSystemService): Promise<Diagnostic[]> {
 	const diagnostics: Diagnostic[] = [];
