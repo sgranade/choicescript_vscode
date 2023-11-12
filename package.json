@@ -75,10 +75,6 @@
 		],
 		"commands": [
 			{
-				"command": "helloworld-web-sample.helloWorld",
-				"title": "Hello World"
-			},
-			{
 				"command": "choicescript.italicize",
 				"title": "Italicize",
 				"category": "ChoiceScript"
