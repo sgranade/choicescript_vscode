@@ -1,4 +1,4 @@
-import { Range, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/browser';
+import { Range, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
