@@ -597,6 +597,8 @@ const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${option
  * 
  * @param textDocument Document to validate and generate diagnostics against
  * @param projectIndex Index of the ChoiceScript project
+ * @param validationSettings Current validation settings
+ * @param fsProvider File system provider
  * @returns List of diagnostic messages.
  */
 export async function generateDiagnostics(textDocument: TextDocument, projectIndex: ProjectIndex, validationSettings: ValidationSettings, fsProvider: FileSystemService): Promise<Diagnostic[]> {
