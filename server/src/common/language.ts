@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/browser';
+import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
 import { ReadonlyAchievementIndex } from "./index";
