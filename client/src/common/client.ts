@@ -3,51 +3,27 @@ import * as vscode from 'vscode';
 import {
 	LanguageClientOptions,
 	BaseLanguageClient,
-	integer
 } from 'vscode-languageclient';
 
 import { LineAnnotationController } from './annotations';
 import { Configuration, CustomCommands, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
-import { GameRunnerProvider, GameRunnerService } from './game-runner-service';
+import { ChoiceScriptGameRunProvider, ChoiceScriptGameRunnerService } from './game-runner-service';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
 import * as notifications from './notifications';
 import { StatusBarController } from './status-bar-controller';
 import { StatusBarItems } from './status-bar-items';
 import { registerRequestHandlers } from './request-handler';
+import { ChoiceScriptTestProvider } from './choicescript-test-service';
 
 let sceneFilesPath: string;
 let imageFilesPath: string;
 let annotationController: LineAnnotationController;
 
-export interface ChoiceScriptTestProvider {
-	initializeTestProvider(): void;
-	cancelTest(): void;
-	runQuicktest(
-		testScriptPath: string,
-		csPath: string,
-		scenePath: string,
-		imagePath: string,
-		csErrorHandler?: CsErrorHandler,
-		statusCallback?: (running: boolean) => void
-	): void;
-	runRandomtest(
-		testScriptPath: string, 
-		csPath: string,
-		scenePath: string,
-		source: RandomtestSettingsSource,
-		provider: Provider,
-		csErrorHandler?: (scene: string, line: integer, message: string) => void,
-		statusCallback?: (running: boolean) => void,
-		testCountCallback?: (count: integer) => void
-	): void;
-}
-
-
 export type CsErrorHandler = (scene: string, line: number, message: string) => void;
 
 export type LanguageClientConstructor = (id: string, name: string, clientOptions: LanguageClientOptions) => BaseLanguageClient;
-export type GameRunnerConstructor = (csPath: string, errorHandler?: CsErrorHandler) => GameRunnerProvider;
+export type GameRunProviderConstructor = (csPath: string, errorHandler?: CsErrorHandler) => ChoiceScriptGameRunProvider;
 
 /**
  * Annotate an error from ChoiceScript in the editor.
@@ -122,7 +98,7 @@ function bbcodeDelimit(editor: vscode.TextEditor, delimitCharacters: string): vo
  * @param docProvider Text document provider.
  * @param testProvider Test-running provider.
  */
-function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: GameRunnerService, docProvider: Provider, testProvider?: ChoiceScriptTestProvider) {
+function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: ChoiceScriptGameRunnerService, docProvider: Provider, testProvider?: ChoiceScriptTestProvider) {
 
 	const csCommands = [
 		vscode.commands.registerTextEditorCommand(
@@ -214,7 +190,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 		);
 	}
 
-	if (gameRunner.isAvailable) { // web platform isn't supported
+	if (gameRunner) { // web platform isn't supported
 		csCommands.push(vscode.commands.registerCommand(
 			CustomCommands.OpenGame, 
 			async () => {
@@ -242,7 +218,7 @@ function updateQuickSuggestions(): void {
 }
 
 
-export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, gameProviderConstructor?: GameRunnerConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
+export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, gameProviderConstructor?: GameRunProviderConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
@@ -297,12 +273,12 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	// Prepare for future ChoiceScript test runs (if we're not on web)
 	testProvider?.initializeTestProvider();
 
-	const gameProvider = gameProviderConstructor ? gameProviderConstructor(
+	const gameProvider =  gameProviderConstructor? gameProviderConstructor(
 		context.asAbsolutePath(RelativePaths.Choicescript),
 		annotateCSError
 	) : undefined;
 
-	const gameService = new GameRunnerService(gameProvider, controller);
+	const gameService = new ChoiceScriptGameRunnerService(gameProvider, controller);
 
 	notifications.addNotificationHandler(
 		CustomMessages.UpdatedSceneFilesPath,

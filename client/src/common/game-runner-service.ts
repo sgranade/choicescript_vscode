@@ -1,8 +1,8 @@
 import { StatusBarController } from './status-bar-controller';
 
-export class GameRunnerService {
+export class ChoiceScriptGameRunnerService {
 	constructor(
-		private _provider: GameRunnerProvider | undefined,
+		private _provider: ChoiceScriptGameRunProvider | undefined,
 		private _controller: StatusBarController,
 	) {}
 
@@ -10,13 +10,9 @@ export class GameRunnerService {
 		await this._provider?.run();
 		this._controller.gameRun();
 	}
-
-	get isAvailable() {
-		return !!this._provider;
-	}
 }
 
-export interface GameRunnerProvider {
+export interface ChoiceScriptGameRunProvider {
 	run: () => Promise<void>;
 	updateScenePath: (gameId: string, path: string) => void;
 	updateImagePath: (gameId: string, path: string) => void;

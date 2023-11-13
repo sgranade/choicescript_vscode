@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { GameRunnerProvider } from '../common/game-runner-service';
+import { ChoiceScriptGameRunProvider } from '../common/game-runner-service';
 import { CustomContext } from '../common/constants';
 import * as gameserver from './gameserver';
 
-export class NodeGameRunner implements GameRunnerProvider {
+export class NodeGameRunner implements ChoiceScriptGameRunProvider {
 	private _gameId: string;
 
 	constructor(

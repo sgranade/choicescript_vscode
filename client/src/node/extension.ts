@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { RelativePaths } from '../common/constants';
 import { BaseLanguageClient, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
-import { ChoiceScriptTestProvider, CsErrorHandler, GameRunnerConstructor, LanguageClientConstructor, startClient } from '../common/client';
+import { CsErrorHandler, GameRunProviderConstructor, LanguageClientConstructor, startClient } from '../common/client';
 import { NodeGameRunner } from './node-game-runner';
 import * as testFunctionality from './cstests';
+import { ChoiceScriptTestProvider } from '../common/choicescript-test-service';
 
 let client: BaseLanguageClient | undefined;
 
@@ -31,7 +32,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		return new LanguageClient(id, name, serverOptions, clientOptions);
 	};
 	
-	const gameRunnerConstructor: GameRunnerConstructor = (csPath: string, errorHandler: CsErrorHandler) => {
+	const gameRunProviderConstructor: GameRunProviderConstructor = (csPath: string, errorHandler: CsErrorHandler) => {
 		return new NodeGameRunner(csPath, errorHandler);
 	};
 
@@ -40,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	};
 	
 	console.log('Activating a ChoiceScript Language client in a node extension host context');
-	client = await startClient(context, clientConstructor, gameRunnerConstructor, testProvider);
+	client = await startClient(context, clientConstructor, gameRunProviderConstructor, testProvider);
 }
 
 export async function deactivate() {
