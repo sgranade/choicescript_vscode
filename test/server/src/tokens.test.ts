@@ -6,7 +6,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionEvalType } from '../../../server/src/tokens';
+import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionEvalType } from '../../../server/src/common/tokens';
 
 function createDocument(text: string, uri: string = "file:///scene.txt"): SubstituteOf<TextDocument> {
 	let fakeDocument = Substitute.for<TextDocument>();

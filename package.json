@@ -12,7 +12,11 @@
 	"contributors": [
 		{
 			"name": "KLNeidecker"
-		}
+		},
+		{
+			"name" : "Carey Williams",
+			"url" : "https://github.com/CareyJWilliams"
+		}  
 	],
 	"repository": {
 		"type": "git",
@@ -52,7 +56,8 @@
 		"onCommand:choicescript.italicize",
 		"onCommand:choicescript.bold"
 	],
-	"main": "./client/out/extension",
+	"main": "./client/dist/node/extension",
+	"browser": "./client/dist/web/extension",
 	"contributes": {
 		"languages": [
 			{
@@ -128,58 +133,58 @@
 				},
 				{
 					"command": "choicescript.openGame",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded"
 				},
 				{
 					"command": "choicescript.runQuicktest",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
 				{
 					"command": "choicescript.runRandomtestInteractive",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
 				{
 					"command": "choicescript.runRandomtestDefault",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
 				},
 				{
 					"command": "choicescript.rerunRandomtest",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning"
 				},
 				{
 					"command": "choicescript.cancelTest",
-					"when": "editorLangId == choicescript && choicescript.testRunning"
+					"when": "!isWeb && editorLangId == choicescript && choicescript.testRunning"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "choicescript.openGame",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded",
 					"group": "ChoiceScript@1"
 				},
 				{
 					"command": "choicescript.runQuicktest",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
 					"group": "ChoiceScript@3"
 				},
 				{
 					"command": "choicescript.runRandomtestInteractive",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
 					"group": "ChoiceScript@4"
 				},
 				{
 					"command": "choicescript.runRandomtestDefault",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
 					"group": "ChoiceScript@5"
 				},
 				{
 					"command": "choicescript.rerunRandomtest",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
 					"group": "ChoiceScript@6"
 				},
 				{
 					"command": "choicescript.cancelTest",
-					"when": "editorLangId == choicescript && choicescript.testRunning",
+					"when": "!isWeb && editorLangId == choicescript && choicescript.testRunning",
 					"group": "ChoiceScript@7"
 				}
 			]
@@ -286,14 +291,16 @@
 	"scripts": {
 		"lint": "eslint -c .eslintrc.json --ext .ts ./client/src && eslint -c .eslintrc.json --ext .ts ./server/src",
 		"vscode:prepublish": "npm run webpack",
-		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
-		"webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
+		"webpack": "webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+		"webpack:dev": "webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
 		"minify-cs": "node utilities/minify-cs.js",
 		"compile": "tsc -b && npm run minify-cs",
 		"watch": "tsc -b -w && npm run minify-cs",
 		"test": "nyc mocha -r ts-node/register \"test/server/src/*.test.ts\"",
 		"report-coverage": "nyc report --reporter=text-lcov > coverage.lcov",
-		"clean": "rimraf client/out && rimraf server/out",
+		"clean": "npm run clean-client && npm run clean-server",
+		"clean-client": "rimraf client/out && rimraf client/dist",
+		"clean-server": "rimraf server/out && rimraf server/dist",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
 	},
 	"devDependencies": {
@@ -301,7 +308,7 @@
 		"@types/chai": "^4.2.22",
 		"@types/mocha": "^10.0.0",
 		"@types/mock-fs": "^4.13.1",
-		"@types/node": "^18.11.8",
+		"@types/node": "^20.5.1",
 		"@types/urijs": "^1.19.19",
 		"@types/vscode": "^1.58.1",
 		"@typescript-eslint/eslint-plugin": "^5.14.0",
@@ -322,5 +329,9 @@
 		"vscode-languageserver-textdocument": "^1.0.4",
 		"webpack": "^5.70.0",
 		"webpack-cli": "^5.0.1"
+	},
+	"dependencies": {
+		"path-browserify": "^1.0.1",
+		"uuid": "^9.0.0"
 	}
 }

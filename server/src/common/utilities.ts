@@ -1,5 +1,5 @@
 import * as URI from 'urijs';
-import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver/node';
+import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
@@ -433,4 +433,27 @@ export function createDiagnosticFromLocation(
 	};
 
 	return diagnostic;
+}
+
+/**
+ * A simpler but browser-friendly re-implementation of Node's url fileURLToPath. 
+ * It strips the protocol from a URI/URL and decodes some special characters.
+ * 
+ * @param path The URL to convert to a path.
+ * @throws An error if the given string is not a URL/URI (i.e. has a protocol).
+ */
+export function fileURLToPath(path: string) {
+	return decodeURI(new URL(path).pathname);
+}
+
+
+/**
+ * A simpler but browser-friendly re-implementation of Node's url pathToFileURL.
+ * It takes a raw path, adds the 'file://' protocol and encodes some special characters.
+ * 
+ * @param path The URL to convert to a path.
+ * @throws An error if the given string is not a URL/URI (i.e. has a protocol).
+ */
+export function pathToFileURL(path: string) {
+	return `file://${encodeURI(path)}`;
 }

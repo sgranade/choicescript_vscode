@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractTokenAtIndex, sceneFromUri, convertAchievementToVariable, uriIsStartupFile, uriIsChoicescriptStatsFile } from '../../../server/src/language';
+import { extractTokenAtIndex, sceneFromUri, convertAchievementToVariable, uriIsStartupFile, uriIsChoicescriptStatsFile } from '../../../server/src/common/language';
 
 /* eslint-disable */
 

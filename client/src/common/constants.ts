@@ -64,5 +64,5 @@ export const RelativePaths = {
 	GameIndex: joinPath('choicescript', 'out', 'index.html'),
 	Quicktest: joinPath('choicescript', 'out', 'autotest.js'),
 	Randomtest: joinPath('choicescript', 'out', 'randomtest.js'),
-	VSCodeExtensionServer: joinPath('server', 'out', 'server.js')
+	VSCodeExtensionServer: joinPath('server', 'dist/node', 'server.js')
 };

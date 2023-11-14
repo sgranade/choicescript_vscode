@@ -9,3 +9,4 @@ out/
 coverage.lcov
 vscode-profile*
 private-notes.txt
+dist/

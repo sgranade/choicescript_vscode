@@ -4,8 +4,8 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Position, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ParserCallbacks, ParsingState, parse } from '../../../server/src/parser';
-import { FlowControlEvent, SummaryScope } from '../../../server/src';
+import { ParserCallbacks, ParsingState, parse } from '../../../server/src/common/parser';
+import { FlowControlEvent, SummaryScope } from '../../../server/src/common';
 
 /* eslint-disable */
 

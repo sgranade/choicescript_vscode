@@ -6,7 +6,7 @@ import { Location, Range } from 'vscode-languageserver/node';
 import { 
 	Index,
 	FlowControlEvent
-} from '../../../server/src/index';
+} from '../../../server/src/common/index';
 
 const documentUri = "file:///faker.txt";
 const otherSceneUri = "file:///other-scene.txt";

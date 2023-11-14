@@ -2,16 +2,32 @@
 
 'use strict';
 
-const withDefaults = require('../shared.webpack.config');
+const { withDefaults, withDefaultsWeb } = require('../shared.webpack.config');
 const path = require('path');
 
-module.exports = withDefaults({
-	context: path.join(__dirname),
+const nodeConfig = withDefaults({
 	entry: {
-		extension: './src/server.ts',
+		server: './server/src/node/server.ts',
 	},
 	output: {
-		filename: 'server.js',
-		path: path.join(__dirname, 'out')
+		filename: '[name].js',
+		path: path.join(__dirname, 'dist/node')
 	}
 });
+
+const webConfig = withDefaultsWeb({
+	mode: 'none', // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
+	target: 'webworker', // extensions run in a webworker context
+	entry: {
+		server: './server/src/web/server.ts'
+	},
+	output: {
+		filename: '[name].js',
+		path: path.join(__dirname, 'dist/web'),
+		libraryTarget: 'var',
+		library: 'serverExportVar',
+		devtoolModuleFilenameTemplate: '[absolute-resource-path]'
+	}
+});
+
+module.exports = [nodeConfig, webConfig];

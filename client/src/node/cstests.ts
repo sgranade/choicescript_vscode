@@ -1,12 +1,12 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { integer } from 'vscode-languageclient/node';
-import { CustomContext, Configuration, LocalWorkspaceStorageKeys, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from './constants';
-import { getWorkspaceStorageService } from './localStorageService';
-import { Provider, generateLogUri, logUriToFilename } from './logDocProvider';
-import LogDocument from './logDocument';
-import { MultiStepInput } from './multiStepInput';
+import { integer } from 'vscode-languageclient';
+import { CustomContext, Configuration, LocalWorkspaceStorageKeys, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from '../common/constants';
+import { getWorkspaceStorageService } from '../common/localStorageService';
+import { Provider, generateLogUri, logUriToFilename } from '../common/logDocProvider';
+import LogDocument from '../common/logDocument';
+import { MultiStepInput } from '../common/multiStepInput';
 
 
 // VS Code has a [20 MB limit on file sizes that it'll let extensions open](https://github.com/jjuback/gc-excelviewer/issues/49)

@@ -14,16 +14,16 @@ import {
 	DocumentScopes,
 	LabelIndex,
 	AchievementIndex
-} from '../../../server/src/index';
+} from '../../../server/src/common/index';
 import {
 	SymbolType,
 	findDefinitions,
 	findReferences,
 	generateRenames
-} from '../../../server/src/searches';
+} from '../../../server/src/common/searches';
 import {
 	CaseInsensitiveMap
-} from '../../../server/src/utilities';
+} from '../../../server/src/common/utilities';
 
 const documentUri: string = "file:///c:/faker.txt";
 const otherSceneUri: string = "file:///c:/other-scene.txt";
