@@ -5,7 +5,7 @@
 	"author": "Stephen Granade",
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.58.1"
+		"vscode": "^1.66.2"
 	},
 	"repository": {
 		"type": "git",
