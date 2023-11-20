@@ -1,9 +1,13 @@
 // Needed b/c Choicescript is an application w/a loose set of files rather than a library
 
-let terser = require('terser');
-let compareAsc = require('date-fns/compareAsc');
-let fs = require('fs/promises');
-let path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const terser = require('terser');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const compareAsc = require('date-fns/compareAsc');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fs = require('fs/promises');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const path = require('path');
 
 // All paths relative to this file
 const REL_SRC = "../choicescript/src";
@@ -47,7 +51,7 @@ async function processFile(filename, srcPath, outPath) {
 	}
 }
 
-async function makeSourceDir(dir) {
+async function makeSourceDir() {
 	try {
 		await fs.mkdir(outPath);
 	} catch (err) {

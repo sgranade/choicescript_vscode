@@ -2,24 +2,26 @@
 
 'use strict';
 
-const { withDefaults, withDefaultsWeb } = require('../shared.webpack.config');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { withDefaults } = require('../shared.webpack.config');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path');
 
 const nodeConfig = withDefaults({
+	context: path.join(__dirname),
 	entry: {
-		server: './server/src/node/server.ts',
+		server: './src/node/server.ts',
 	},
 	output: {
 		filename: '[name].js',
 		path: path.join(__dirname, 'dist/node')
 	}
-});
+}, false);
 
-const webConfig = withDefaultsWeb({
-	mode: 'none', // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
-	target: 'webworker', // extensions run in a webworker context
+const webConfig = withDefaults({
+	context: path.join(__dirname),
 	entry: {
-		server: './server/src/web/server.ts'
+		server: './src/web/server.ts'
 	},
 	output: {
 		filename: '[name].js',
@@ -28,6 +30,6 @@ const webConfig = withDefaultsWeb({
 		library: 'serverExportVar',
 		devtoolModuleFilenameTemplate: '[absolute-resource-path]'
 	}
-});
+}, true);
 
 module.exports = [nodeConfig, webConfig];

@@ -3,20 +3,11 @@
 	"tasks": [
 		{
 			"type": "npm",
-			"script": "compile",
-			"group": "build",
-			"presentation": {
-				"panel": "dedicated",
-				"reveal": "never"
-			},
-			"problemMatcher": [
-				"$tsc"
-			]
-		},
-		{
-			"type": "npm",
-			"script": "watch",
+			"script": "webpack:dev",
 			"isBackground": true,
+			"problemMatcher": [],
+			"label": "npm: webpack:dev",
+			"detail": "webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
 			"group": {
 				"kind": "build",
 				"isDefault": true
@@ -25,14 +16,13 @@
 				"panel": "dedicated",
 				"reveal": "never"
 			},
-			"problemMatcher": [
-				"$tsc-watch"
-			]
 		},
 		{
 			"type": "npm",
 			"script": "lint",
-			"problemMatcher": ["$eslint-stylish"],
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
 			"label": "npm: lint",
 			"detail": "eslint -c .eslintrc.js --ext .ts ./client/src && eslint -c .eslintrc.js --ext .ts ./server/src"
 		}
