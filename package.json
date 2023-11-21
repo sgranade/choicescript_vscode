@@ -34,7 +34,7 @@
 		"interactive fiction"
 	],
 	"engines": {
-		"vscode": "^1.58.1"
+		"vscode": "^1.75.0"
 	},
 	"capabilities": {
 		"untrustedWorkspaces": {
@@ -51,11 +51,6 @@
 		"color": "#C80000",
 		"theme": "dark"
 	},
-	"activationEvents": [
-		"onLanguage:choicescript",
-		"onCommand:choicescript.italicize",
-		"onCommand:choicescript.bold"
-	],
 	"main": "./client/dist/node/extension",
 	"browser": "./client/dist/web/extension",
 	"contributes": {
@@ -310,7 +305,7 @@
 		"@types/mock-fs": "^4.13.4",
 		"@types/node": "^20.9.2",
 		"@types/urijs": "^1.19.23",
-		"@types/vscode": "^1.58.1",
+		"@types/vscode": "^1.75.0",
 		"@typescript-eslint/eslint-plugin": "^6.11.0",
 		"@typescript-eslint/parser": "6.11",
 		"chai": "^4.3.10",
