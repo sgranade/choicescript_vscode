@@ -439,11 +439,25 @@ export function createDiagnosticFromLocation(
  * A simpler but browser-friendly re-implementation of Node's url fileURLToPath. 
  * It strips the protocol from a URI/URL and decodes some special characters.
  * 
- * @param path The URL to convert to a path.
+ * @param url The URL to convert to a path.
  * @throws An error if the given string is not a URL/URI (i.e. has a protocol).
  */
-export function fileURLToPath(path: string) {
-	return decodeURI(new URL(path).pathname);
+export function fileURLToPath(url: string) {
+	let path = decodeURIComponent(new URL(url).pathname);
+
+	// Check for Windows-style paths, which will be `/[a-z]:/...`
+	const winDrive = path.substring(0, 4);
+	const winDriveLetter = (path.codePointAt(1) ?? 0) | 0x20;
+	if (
+		winDrive.startsWith('/') &&
+		(winDrive.endsWith(':/') || winDrive.endsWith(':')) &&
+		winDriveLetter >= 97 && // lower-case a
+		winDriveLetter <= 122 // lower-case z
+	) {
+		path = `${path[1]}:/${path.substring(winDrive.length)}`;
+	}
+
+	return path;
 }
 
 

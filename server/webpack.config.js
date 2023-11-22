@@ -14,8 +14,9 @@ const nodeConfig = withDefaults({
 	},
 	output: {
 		filename: '[name].js',
-		path: path.join(__dirname, 'dist/node')
-	}
+		path: path.join(__dirname, 'dist/node'),
+		devtoolModuleFilenameTemplate: '[absolute-resource-path]'
+	},
 }, false);
 
 const webConfig = withDefaults({

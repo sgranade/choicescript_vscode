@@ -15,7 +15,8 @@ const nodeConfig = withDefaults({
 	output: {
 		filename: '[name].js',
 		path: path.join(__dirname, 'dist/node'),
-		libraryTarget: "commonjs"
+		libraryTarget: "commonjs",
+		devtoolModuleFilenameTemplate: '[absolute-resource-path]'
 	},
 }, false);
 

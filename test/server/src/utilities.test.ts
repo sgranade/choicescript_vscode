@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, caseInsensitiveMapToMap, readLine, extractToMatchingIndent, readNextNonblankLine, CaseInsensitiveMap } from '../../../server/src/common/utilities';
+import { extractToMatchingDelimiter, findLineBegin, findLineEnd, mapToUnionedCaseInsensitiveMap, caseInsensitiveMapToMap, readLine, extractToMatchingIndent, readNextNonblankLine, CaseInsensitiveMap, fileURLToPath } from '../../../server/src/common/utilities';
 
 /* eslint-disable */
 
@@ -228,6 +228,48 @@ describe("Utilities", () => {
 			let block = extractToMatchingIndent(text, 1, 14);
 
 			expect(block).to.eql("\t\tline a\n\t\tline b\n");
+		});
+	});
+
+	describe("Paths and URLs", () => {
+		it("should convert an escaped Windows path with only a drive letter and no remaining slash", () => {
+			const uri = "file:///c%3A";
+
+			const result = fileURLToPath(uri);
+
+			expect(result).to.eql("c:/");
+		});
+
+		it("should convert an escaped Windows path with a drive letter and trailing slash only", () => {
+			const uri = "file:///c%3A/";
+
+			const result = fileURLToPath(uri);
+
+			expect(result).to.eql("c:/");
+		});
+
+		it("should convert an escaped Windows path with capitalized escape codes", () => {
+			const uri = "file:///c%3A/docs/path";
+
+			const result = fileURLToPath(uri);
+
+			expect(result).to.eql("c:/docs/path");
+		});
+
+		it("should convert an escaped Windows path with lower case escape codes", () => {
+			const uri = "file:///c%3a/docs/path";
+
+			const result = fileURLToPath(uri);
+
+			expect(result).to.eql("c:/docs/path");
+		});
+
+		it("should convert an escaped Posix path", () => {
+			const uri = "file:///docs/space%20path";
+
+			const result = fileURLToPath(uri);
+
+			expect(result).to.eql("/docs/space path");
 		});
 	});
 })
