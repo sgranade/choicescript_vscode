@@ -49,7 +49,8 @@ function withDefaults(/**@type WebpackConfig*/extConfig, /**@type boolean*/forWe
 		},
 		resolve: {
 			mainFields: ['module', 'main'],
-			extensions: ['.ts', '.js'] // support ts-files and js-files
+			extensions: ['.ts', '.js'], // support ts-files and js-files
+			fallback: { "url": require.resolve("url") }
 		}
 	};
 
@@ -61,6 +62,7 @@ function withDefaults(/**@type WebpackConfig*/extConfig, /**@type boolean*/forWe
 			extensions: ['.ts', '.js'], // support ts-files and js-files
 			fallback: {
 				"path": require.resolve("path-browserify"),
+				"url": require.resolve("url")
 			}
 		},
 	};

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { CompletionItem, Connection, Definition, DocumentSymbolParams, Location, ReferenceParams, RenameParams, SymbolInformation, TextDocumentPositionParams, TextDocumentSyncKind, TextDocuments, WorkspaceEdit, WorkspaceFolder } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -11,7 +12,7 @@ import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
 import { countWords } from './parser';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { generateSymbols } from './structure';
-import { fileURLToPath, normalizeUri, pathToFileURL } from './utilities';
+import { normalizeUri } from './utilities';
 import { ValidationSettings, generateDiagnostics } from './validator';
 
 /**
@@ -265,7 +266,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 	 * @returns True if indexing succeeded; false otherwise.
 	 */
 	async function indexFile(path: string): Promise<boolean> {
-		const fileUri = pathToFileURL(path);
+		const fileUri = pathToFileURL(path).toString();
 	
 		try {
 			const data = await fileSystemService.readFile(path);
