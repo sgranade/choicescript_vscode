@@ -54,7 +54,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 	// I'm combining the concepts into a single "project files have changed" variable
 	let projectFilesHaveChanged = false;
 	// Heartbeat ID
-	let heartbeatId: NodeJS.Timer | undefined = undefined;
+	let heartbeatId: ReturnType<typeof setInterval> | undefined = undefined;
 	// How often to update the documents in the queue, in ms
 	const heartbeatDelay = 200;
 	// Minimum heartbeat delay, in ms
@@ -103,7 +103,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 
 	connection.onShutdown(() => {
 		if (heartbeatId !== undefined) {
-			clearInterval(heartbeatId as any);
+			clearInterval(heartbeatId);
 		}
 	});
 
