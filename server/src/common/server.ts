@@ -1,17 +1,19 @@
+import * as path from 'path';
 import { CompletionItem, Connection, Definition, DocumentSymbolParams, Location, ReferenceParams, RenameParams, SymbolInformation, TextDocumentPositionParams, TextDocumentSyncKind, TextDocuments, WorkspaceEdit, WorkspaceFolder } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+
 import { generateInitialCompletions } from './completions';
-import { Index, ProjectIndex } from "./index";
-import { FileSystemProvider, FileSystemService } from './file-system-service';
-import { updateProjectIndex } from './indexer';
 import { CustomMessages } from "./constants";
+import { FileSystemProvider, FileSystemService } from './file-system-service';
+import { Index, ProjectIndex } from "./index";
+import { updateProjectIndex } from './indexer';
 import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
-import { fileURLToPath, normalizeUri, pathToFileURL } from './utilities';
-import * as path from 'path';
-import { generateSymbols } from './structure';
-import { findDefinitions, findReferences, generateRenames } from './searches';
-import { ValidationSettings, generateDiagnostics } from './validator';
 import { countWords } from './parser';
+import { findDefinitions, findReferences, generateRenames } from './searches';
+import { generateSymbols } from './structure';
+import { fileURLToPath, normalizeUri, pathToFileURL } from './utilities';
+import { ValidationSettings, generateDiagnostics } from './validator';
+
 /**
  * Server event arguments about an updated word count in a document.
  */
@@ -88,7 +90,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 	connection.onInitialized(async () => {
 		connection.workspace.getWorkspaceFolders().then(workspaces => {
 			if (workspaces && workspaces.length > 0)
-				findStartupFiles(fileSystemService, workspaces);
+				findAndIndexProjects(fileSystemService, workspaces);
 		});
 		// Handle custom requests from the client
 		connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
@@ -190,7 +192,13 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		changedDocuments.set(normalizeUri(change.document.uri), change.document);
 	});
 
-	function findStartupFiles(fileSystemService: FileSystemService, workspaces: WorkspaceFolder[]): void {
+	/**
+	 * Find the `startup.txt` file and index the project associated with it.
+	 * 
+	 * @param fileSystemService Service that provides access to the file system.
+	 * @param workspaces List of workspace folders.
+	 */
+	function findAndIndexProjects(fileSystemService: FileSystemService, workspaces: WorkspaceFolder[]): void {
 		workspaces.forEach((workspace) => {
 			const rootPath = fileURLToPath(workspace.uri);
 			fileSystemService.findFiles('**/startup.txt', rootPath)
@@ -214,6 +222,12 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		}
 	}
 
+	/**
+	 * Fully index a ChoiceScript project given the path to `startup.txt`.
+	 * 
+	 * @param workspacePath Resolved path to the root of the workspace.
+	 * @param relativeStartupFilePath Path to `startup.txt` relative to the workspace.
+	 */
 	async function indexProject(workspacePath: string, relativeStartupFilePath: string): Promise<void> {
 		const projectPath = path.dirname(relativeStartupFilePath);
 		// Filenames from globby are posix paths regardless of platform
@@ -223,10 +237,10 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		connection.sendNotification(CustomMessages.UpdatedSceneFilesPath, sceneFilesPath);
 	
 		// Index the startup.txt file
-		await indexFile(relativeStartupFilePath);
+		await indexFile(path.join(sceneFilesPath, path.basename(relativeStartupFilePath)));
 	
 		// Try to index the stats page (which might not exist)
-		await indexFile(path.join(projectPath, "choicescript_stats.txt"));
+		await indexFile(path.join(sceneFilesPath, "choicescript_stats.txt"));
 	
 		const scenes = projectIndex.getAllReferencedScenes();
 
@@ -244,6 +258,12 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		connection.sendNotification(CustomMessages.ProjectIndexed);
 	}
 
+	/**
+	 * Index a ChoiceScript file and add it to the overall project index.
+	 * 
+	 * @param path Absolute path to the file to index.
+	 * @returns True if indexing succeeded; false otherwise.
+	 */
 	async function indexFile(path: string): Promise<boolean> {
 		const fileUri = pathToFileURL(path);
 	
@@ -269,7 +289,8 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 
 	/**
 	 * Index a list of scenes by name.
-	 * @param sceneNames List of scene names to index.
+	 * 
+	 * @param sceneNames List of scene names to index (such as "startup" or "chapter_1").
 	 */
 	async function indexScenes(sceneNames: readonly string[]) {
 		const platformScenePath = projectIndex.getPlatformScenePath();
