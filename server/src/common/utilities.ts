@@ -477,7 +477,7 @@ export function pathToFileURL(path: string) {
 		winDriveLetter <= 122 && // lower-case z
 		path[1] === ':'
 	) {
-		return `file:///${path[0]}%3A${encodeURI(path.substring(2))}`;
+		return `file:///${path[0]}:${encodeURI(path.substring(2))}`;
 	}
 	
 	return `file://${encodeURI(path)}`;

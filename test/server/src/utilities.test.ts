@@ -280,7 +280,7 @@ describe("Utilities", () => {
 
 				const result = pathToFileURL(path);
 
-				expect(result).to.eql("file:///c%3A/path/to/file.txt");
+				expect(result).to.eql("file:///c:/path/to/file.txt");
 			});
 
 			it("should convert a Posix path to an escaped URI", () => {
