@@ -1,7 +1,9 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as getPort from 'get-port';
-import * as Koa from 'koa';
+// Don't `import * as Koa from 'koa';` b/c there's an issue with that and esbuild-loader
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Koa = require('koa');
 import * as bodyParser from 'koa-bodyparser';
 import * as path from 'path';
 import { env, Uri, window } from 'vscode';

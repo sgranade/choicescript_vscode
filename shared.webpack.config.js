@@ -5,6 +5,8 @@
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const merge = require('merge-options');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 /**
  * Add default webpack options to a set of options.
@@ -22,21 +24,16 @@ function withDefaults(/**@type WebpackConfig*/extConfig, /**@type boolean*/forWe
 			rules: [{
 				test: /\.ts$/,
 				exclude: /node_modules/,
-				use: [{
-					// configure TypeScript loader:
-					// * enable sources maps for end-to-end source maps
-					loader: 'ts-loader',
-					options: {
-						compilerOptions: {
-							"sourceMap": true,
-						}
-					}
-				}]
+				loader: 'esbuild-loader',
+				options: {
+					target: 'es2015'
+				}
 			}]
 		},
 		externals: {
 			'vscode': 'commonjs vscode', // ignored because it doesn't exist
 		},
+		plugins: [new ForkTsCheckerWebpackPlugin()],
 		// yes, really source maps
 		devtool: 'source-map'
 	};
