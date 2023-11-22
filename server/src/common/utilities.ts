@@ -469,5 +469,16 @@ export function fileURLToPath(url: string) {
  * @throws An error if the given string is not a URL/URI (i.e. has a protocol).
  */
 export function pathToFileURL(path: string) {
+	// Check for Windows-style paths, which start with "c:/"
+	const winDriveLetter = (path.codePointAt(0) ?? 0) | 0x20;
+	if (
+		path.length >= 2 &&
+		winDriveLetter >= 97 && // lower-case a
+		winDriveLetter <= 122 && // lower-case z
+		path[1] === ':'
+	) {
+		return `file:///${path[0]}%3A${encodeURI(path.substring(2))}`;
+	}
+	
 	return `file://${encodeURI(path)}`;
 }
