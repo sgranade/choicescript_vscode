@@ -273,7 +273,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	// Prepare for future ChoiceScript test runs (if we're not on web)
 	testProvider?.initializeTestProvider();
 
-	const gameProvider =  gameProviderConstructor? gameProviderConstructor(
+	const gameProvider = gameProviderConstructor? gameProviderConstructor(
 		context.asAbsolutePath(RelativePaths.Choicescript),
 		annotateCSError
 	) : undefined;
@@ -294,6 +294,13 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 			imageFilesPath = e[0];
 			await gameProvider._init();
 			gameProvider.updateImagePath(gameProvider.gameId, imageFilesPath);
+		}
+	);
+	notifications.addNotificationHandler(
+		CustomMessages.DebugMessage,
+		async (e: string[]) => {
+			const msg = e[0];
+			console.log(msg);
 		}
 	);
 

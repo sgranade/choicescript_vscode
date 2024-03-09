@@ -194,6 +194,16 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 	});
 
 	/**
+	 * Logs a message by sending it to the client.
+	 * 
+	 * @param message Message to log.
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	function logMessage(message: string): void {
+		connection.sendNotification(CustomMessages.DebugMessage, message);
+	}
+
+	/**
 	 * Find the `startup.txt` file and index the project associated with it.
 	 * 
 	 * @param fileSystemService Service that provides access to the file system.
