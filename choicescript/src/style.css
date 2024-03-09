@@ -7,7 +7,7 @@ body {
   max-width: 80ch;
   min-height: 100vh; /* keep iOS address bar from popping in and out */
   font-size: 100%;  /* reset for CWS */
-  font-family: Georgia,"Times New Roman",serif;
+  font-family: Palatino,Cambria,Georgia,"Times New Roman",serif;
   background-color: #F7F4F1;
   color: rgba(0, 0, 0, 0.85);
   margin: 1ch auto;
@@ -212,6 +212,17 @@ table {
   background-color: #007AFF;
 }
 
+.selectedKeyboard, .choice>div.selectedKeyboard:hover, .next.selectedKeyboard {
+  color: rgba(255, 255, 255, 0.85);
+  background-color: #007AFF;
+  transition-property: background-color, color;
+  transition-duration: 0.5s;
+  transition-timing-function: linear;
+  -webkit-transition-property: background-color, color;
+  -webkit-transition-duration: 0.5s;
+  -webkit-transition-timing-function: linear;
+}
+
 .choice>div:first-child{
     border-top-width:1px;
     -webkit-border-top-right-radius:1ch;
@@ -297,7 +308,6 @@ h2 {
 
 #identity {
   float: right;
-  display: none;
 }
 
 #identity > a {
@@ -448,17 +458,68 @@ body.whitemode .next:hover {
   color: #ddd;
 }
 
-@media only screen and (max-width: 480px) {
+/* hide <dialog> on old browsers */
+dialog:not([open]) {
+  display: none;
+}
+
+#keyboardShortcuts {
+  font-family: system-ui;
+}
+
+#keyboardShortcuts::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+#keyboardShortcuts header {
+  display: flex;
+  justify-content: space-between;
+}
+
+#keyboardShortcuts header span {
+  font-weight: bold;
+}
+
+#keyboardShortcuts .table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+#keyboardShortcuts .table div {
+  padding: 0.5em;
+}
+
+#keyboardShortcuts .key {
+  background-color: ghostwhite;
+  border: thin solid lightgrey;
+  border-radius: 5px;
+  padding: 0.3em;
+  font-family: monospace;
+}
+
+#text .gameTitle {
+  display: none;
+}
+
+@media (max-width: 480px) or (max-height: 640px) {
   .definition{
     display: none;
   }
   
   #headerLinks {
-    line-height: 2; /* For tapability */
+    display: none;
   }
 
-  .gameTitle {
+  #title {
+    font-size: 1.125em;
+  }
+
+  #author {
     display: none;
+  }
+
+  #text .gameTitle {
+    display: block;
   }
 
   #advertisement {
@@ -478,4 +539,13 @@ body.whitemode .next:hover {
     max-width: 45%;
   }
   
+  #identity {
+    display: none;
+  }
+}
+
+@media (max-width: 375px) {
+  #achievementsButton {
+    display: none;
+  }
 }

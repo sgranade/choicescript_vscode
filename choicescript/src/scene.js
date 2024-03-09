@@ -349,6 +349,13 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
                   " <p><button class='next' onclick='window.rerestore();'>Restore Now</button></p></div>";
                 curl();
                 return;
+              } else if (/^409-/.test(err)) {
+                main.innerHTML = "<div id='text'><p>There was a " + err + " error while loading game data." +
+                  "  This error occurs when you've logged into this app with a different choiceofgames.com account from the account you originally used to buy the game." +
+                  "  You can resolve this error by going to Settings, signing out, and signing in as the account that originally purchased the game." +
+                  "  If you need additional assistance, you can email us at " + getSupportEmail() + " and mention error code " + err + ".</p>"
+                curl();
+                return;
               }
               main.innerHTML = "<div id='text'><p>Our apologies; there was a " + err + " error while loading game data."+
               "  Please refresh now; if that doesn't work, please click the Restart button and email "+getSupportEmail()+" with details, including the error number.</p>"+
@@ -447,13 +454,13 @@ Scene.prototype.loadSceneFast = function loadSceneFast(url) {
       } catch (e) {
         if (window.location.protocol == "file:" && !window.isMobile) {
           if (/Chrome/.test(navigator.userAgent)) {
-            window.onerror("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
+            window.reportError("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
             "load files in Chrome.)  ChoiceScript works just fine in Chrome, but only on a published website like "+
             "choiceofgames.com.  For the time being, please try another browser like Mozilla Firefox.");
             return;
           }
         }
-        window.onerror("Couldn't load URL: " + url + "\n" + e);
+        window.reportError("Couldn't load URL: " + url + "\n" + e);
       }
     }
 };
@@ -515,12 +522,12 @@ Scene.prototype.loadScene = function loadScene() {
             return;
         } else if (xhr.responseText === "") {
           if (window.location.protocol == "file:" && !window.isMobile && /Chrome/.test(navigator.userAgent)) {
-            window.onerror("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
+            window.reportError("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
             "load files in Chrome.)  ChoiceScript works just fine in Chrome, but only on a published website like "+
             "choiceofgames.com.  For the time being, please try another browser like Mozilla Firefox.");
             return;
           } else {
-            window.onerror("Couldn't load " + url + "\nThe file is probably missing or empty.");
+            window.reportError("Couldn't load " + url + "\nThe file is probably missing or empty.");
             return;
           }
         }
@@ -545,16 +552,16 @@ Scene.prototype.loadScene = function loadScene() {
       } catch (e) {
         if (window.location.protocol == "file:" && !window.isMobile) {
           if (/Chrome/.test(navigator.userAgent)) {
-            window.onerror("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
+            window.reportError("We're sorry, Google Chrome has blocked ChoiceScript from functioning.  (\"file:\" URLs cannot "+
             "load files in Chrome.)  ChoiceScript works just fine in Chrome, but only on a published website like "+
             "choiceofgames.com.  For the time being, please try another browser like Mozilla Firefox.");
             return;
           } else if (e.code === 1012 /*NS_ERROR_DOM_BAD_URI*/) {
-            window.onerror("Couldn't load scene file: " + url + "\nThe file is probably missing.");
+            window.reportError("Couldn't load scene file: " + url + "\nThe file is probably missing.");
             return;
           }
         }
-        window.onerror("Couldn't load URL: " + url + "\n" + e);
+        window.reportError("Couldn't load URL: " + url + "\n" + e);
       }
     }
 };
@@ -806,7 +813,9 @@ Scene.prototype.runCommand = function runCommand(line) {
             this.startupCallback();
             return true;
           }
-          this.initialCommands = false;
+          // if we're here, we're running a non-initial command
+          // except, *bug choice_beta can appear in the initial commands
+          if (command !== 'bug') this.initialCommands = false;
         }
         if (command == "choice" && String(this.name).toLowerCase() == "choicescript_screenshots") {
           throw new Error(this.lineMsg() + "choicescript_screenshots files should only contain *fake_choice commands, not real *choice commands");
@@ -981,7 +990,7 @@ Scene.prototype.save = function save(slot) {
         tempStatWrites = {};
       }
 
-      saveCookie(function() {}, slot, this.stats, this.temps, this.lineNum, this.indent, this.debugMode, this.nav);
+      saveCookie(function() {}, slot, this.stats, this.temps, this.lineNum, this.indent);
     }
 };
 
@@ -1355,11 +1364,6 @@ Scene.prototype.parsePurchase = function parsePurchase(data) {
     if (!parsed) throw new Error(this.lineMsg() + "invalid line; can't parse purchaseable product: " + data);
     result = {product: parsed[1], priceGuess: parsed[2], "goto": parsed[3], title: "It"};
   }
-  var product = result.product;
-  if (!this.nav.products[product] && product != "adfree") {
-    throw new Error(this.lineMsg() + "The product " + product + " wasn't declared in a *product command");
-  }
-  if (typeof this.temps["choice_purchased_" + product] === "undefined") throw new Error(this.lineMsg() + "Didn't check_purchases on this page");
   return result;
 }
 
@@ -1373,6 +1377,9 @@ Scene.prototype.purchase = function purchase(data) {
 }
 
 Scene.prototype.buyButton = function(product, priceGuess, label, title) {
+  if (label && typeof this.temps["choice_purchased_" + product] === "undefined") {
+    throw new Error(this.lineMsg() + "Didn't check_purchases on this page");
+  }
   this.finished = true;
   this.skipFooter = true;
   var self = this;
@@ -1636,6 +1643,7 @@ Scene.prototype.getVar = function getVar(variable) {
     if (variable == "choice_registered") return typeof window != "undefined" && !!window.registered;
     if (variable == "choice_is_web") return typeof window != "undefined" && !!window.isWeb;
     if (variable == "choice_is_steam") return typeof window != "undefined" && !!window.isSteamApp;
+    if (variable == "choice_is_steam_deck") return typeof window != "undefined" && !!window.isSteamApp && !!window.isSteamDeck;
     if (variable == "choice_is_ios_app") return typeof window != "undefined" && !!window.isIosApp;
     if (variable == "choice_is_ipad_app") return typeof window != "undefined" && !!window.isIosApp && !!window.isIPad;
     if (variable == "choice_is_android_app") return typeof window != "undefined" && !!window.isAndroidApp;
@@ -1663,6 +1671,9 @@ Scene.prototype.getVar = function getVar(variable) {
       if (typeof this.stats.choice_title === "undefined") {
         throw new Error(this.lineMsg() + "This game is missing a *title command");
       }
+    }
+    if (variable.startsWith("choice_saved_checkpoint")) {
+      return !!this.stats[variable];
     }
     if ((!this.temps.hasOwnProperty(variable))) {
         if ((!this.stats.hasOwnProperty(variable))) {
@@ -2080,7 +2091,13 @@ Scene.prototype.page_break_advertisement = function pageBreakAdvertisement(line)
   var self = this;
   this.finished = true;
   showFullScreenAdvertisementButton("Watch an Ad to Continue", function () {
-    self.page_break("");
+    self.finished = false;
+    if (self.screenEmpty) {
+      self.skipFooter = false;
+      self.resetPage();
+    } else {
+      self.page_break("");
+    }
   }, function () {
     delayBreakEnd();
     self.finished = false;
@@ -2700,8 +2717,10 @@ Scene.prototype.restore_game = function restore_game(data) {
   this.finished = true;
   this.skipFooter = true;
   var self = this;
+  var daysToUndelete = 30;
   var unrestorableScenes = this.parseRestoreGame(false/*alreadyFinished*/);
   function renderRestoreMenu(saveList, dirtySaveList) {
+    var recentlyDeletedCount = 0;
     self.paragraph();
     var options = [];
     for (var i = 0; i < saveList.length; i++) {
@@ -2710,14 +2729,79 @@ Scene.prototype.restore_game = function restore_game(data) {
       if (!save) continue;
       var name = "";
       if (save.temps && save.temps.choice_restore_name) name = save.temps.choice_restore_name;
+      if (save.deleted) {
+        if (!save.undeleted || save.undeleted < save.deleted) {
+          if ((Date.now() - save.deleted) < daysToUndelete * 1000 * 60 * 60 * 24) {
+            recentlyDeletedCount++;
+          }
+          continue;
+        }
+      }
       options.push({name:name + " ("+simpleDateTimeFormat(date)+")", group:"choice", state:save});
     }
+    var anythingToDelete = options.length > 0;
     if (false) options.push({name:"Restore using a password.", group:"choice", password:true});
     options.push({name:"Retrieve saved games online from choiceofgames.com.", group:"choice", fetch:true});
+    if (anythingToDelete) options.push({ name: "Delete saves.", group: "choice", deleting: true });
+    if (recentlyDeletedCount) {
+      var recentlyDeletedMessage;
+      if (recentlyDeletedCount === 1) {
+        recentlyDeletedMessage = "1 save recently deleted."
+      } else {
+        recentlyDeletedMessage = recentlyDeletedCount + " saves recently deleted."
+      }
+      options.push({ name: "Undelete saves. (" + recentlyDeletedMessage + ")", group: "choice", undeleting: true });
+    }
     if (dirtySaveList.length) options.push({name:"Upload saved games to choiceofgames.com.", group:"choice", upload:true});
     options.push({name:"Cancel.", group:"choice", cancel:true});
     var groups = [""];
     self.renderOptions(groups, options, function(option) {
+      function synchronizeBeforeEdit(renderMenu) {
+        clearScreen(function () {
+          fetchEmail(function (defaultEmail) {
+            self.printLine("Please type your email address to identify yourself.");
+            self.paragraph();
+            promptEmailAddress(this.target, defaultEmail, "allowContinue", function (cancel, email) {
+              if (cancel) {
+                self.finished = false;
+                if (typeof cancelLabel !== "undefined") {
+                  self["goto"](cancelLabel);
+                }
+                self.resetPage();
+                return;
+              }
+              clearScreen(function () {
+                startLoading();
+                getRemoteSaves(email, function (remoteSaveList) {
+                  doneLoading();
+                  self.prevLine = "text";
+                  if (!remoteSaveList) {
+                    self.printLine("Error downloading saves. Please try again later.");
+                    renderRestoreMenu(saveList, dirtySaveList);
+                  } else {
+                    mergeRemoteSaves(remoteSaveList, "recordDirty", function (saveList, newRemoteSaves, dirtySaveList) {
+                      if (dirtySaveList && dirtySaveList.length) {
+                        submitDirtySaves(dirtySaveList, email, function (ok) {
+                          if (ok) {
+                            renderMenu(email);
+                          } else {
+                            self.printLine("Error downloading saves. Please try again later.");
+                            renderRestoreMenu(saveList, dirtySaveList);
+                          }
+                        });
+                      } else {
+                        renderMenu(email);
+                      }
+                    });
+                  }
+                });
+              });
+            });
+          });
+        });
+      }
+
+
       if (option.upload) {
         clearScreen(function() {
           fetchEmail(function(defaultEmail){
@@ -2790,6 +2874,134 @@ Scene.prototype.restore_game = function restore_game(data) {
             });
           });
         });
+      } else if (option.deleting) {
+        synchronizeBeforeEdit(function renderDeleteMenu(email) {
+          var options = [];
+          for (var i = 0; i < saveList.length; i++) {
+            var save = saveList[i];
+            var date = new Date(save.timestamp * 1);
+            if (!save) continue;
+            if (save.deleted) {
+              if (!save.undeleted || save.undeleted < save.deleted) {
+                continue;
+              }
+            }
+            var name = "";
+            if (save.temps && save.temps.choice_restore_name) name = save.temps.choice_restore_name;
+            options.push({ name: name + " (" + simpleDateTimeFormat(date) + ")", group: "choice", state: save });
+          }
+          if (!options.length) {
+            self.printLine("There are no saves to delete.");
+            renderRestoreMenu(saveList, dirtySaveList);
+            return;
+          }
+          function submitButtonNameFunction(count) {
+            if (count == 1) {
+              return "Delete 1 Save";
+            } else {
+              return "Delete " + count + " Saves";
+            }
+          }
+          printCheckboxes(options, submitButtonNameFunction, function (results) {
+            startLoading();
+            var deletionDate = Date.now();
+            clearScreen(function () {
+              Promise.all(results.map(function (result, i) {
+                if (result) {
+                  return new Promise(function (resolve, reject) {
+                    var save = options[i].state;
+                    var slot = "save" + save.timestamp;
+                    var oldDeleted = save.deleted;
+                    save.deleted = deletionDate;
+                    var value = computeCookie(save.stats, save.temps, save.lineNum, save.indent, save.deleted, save.undeleted);
+                    writeCookie(value, slot, function(ok) {
+                      submitRemoteSave(slot, email, !"subscribe", function (ok) {
+                        if (ok) {
+                          resolve();
+                        } else {
+                          save.deleted = oldDeleted;
+                          var value = computeCookie(save.stats, save.temps, save.lineNum, save.indent, save.deleted, save.undeleted);
+                          writeCookie(value, slot, function () {});
+                          reject(new Error("Failed submitting " + slot));
+                        }
+                      })
+                    })
+                  });
+                }
+              })).then(function () {
+                doneLoading();
+                renderRestoreMenu(saveList, dirtySaveList);
+              }).catch(function(err) {
+                self.printLine("There was an error deleting saves. Please try again later.");
+                renderRestoreMenu(saveList, dirtySaveList);
+              });
+            });
+          });
+          printFooter();
+        });
+      } else if (option.undeleting) {
+        synchronizeBeforeEdit(function renderUndeleteMenu(email) {
+          var options = [];
+          for (var i = 0; i < saveList.length; i++) {
+            var save = saveList[i];
+            var date = new Date(save.timestamp * 1);
+            if (!save) continue;
+            if (!save.deleted || save.deleted < save.undeleted) {
+              continue;
+            }
+            var name = "";
+            if (save.temps && save.temps.choice_restore_name) name = save.temps.choice_restore_name;
+            options.push({ name: name + " (" + simpleDateTimeFormat(date) + ")", group: "choice", state: save });
+          }
+          if (!options.length) {
+            self.printLine("There are no recently deleted saves to undelete.");
+            renderRestoreMenu(saveList, dirtySaveList);
+            return;
+          }
+          function submitButtonNameFunction(count) {
+            if (count == 1) {
+              return "Undelete 1 Save";
+            } else {
+              return "Undelete " + count + " Saves";
+            }
+          }
+          printCheckboxes(options, submitButtonNameFunction, function (results) {
+            startLoading();
+            var undeletionDate = Date.now();
+            clearScreen(function () {
+              Promise.all(results.map(function (result, i) {
+                if (result) {
+                  return new Promise(function (resolve) {
+                    var save = options[i].state;
+                    var slot = "save" + save.timestamp;
+                    var oldUndeleted = save.undeleted;
+                    save.undeleted = undeletionDate;
+                    var value = computeCookie(save.stats, save.temps, save.lineNum, save.indent, save.deleted, save.undeleted);
+                    writeCookie(value, slot, function (ok) {
+                      submitRemoteSave(slot, email, !"subscribe", function (ok) {
+                        if (ok) {
+                          resolve();
+                        } else {
+                          save.undeleted = oldUndeleted;
+                          var value = computeCookie(save.stats, save.temps, save.lineNum, save.indent, save.deleted, save.undeleted);
+                          writeCookie(value, slot, function () { });
+                          reject(new Error("Failed submitting " + slot));
+                        }
+                      })
+                    })
+                  });
+                }
+              })).then(function () {
+                doneLoading();
+                renderRestoreMenu(saveList, dirtySaveList);
+              }).catch(function (err) {
+                self.printLine("There was an error undeleting saves. Please try again later.");
+                renderRestoreMenu(saveList, dirtySaveList);
+              });
+            });
+          });
+          printFooter();
+        });
       } else if (option.password) {
         clearScreen(function() {
           self.restore_password();
@@ -2818,7 +3030,7 @@ Scene.prototype.restore_game = function restore_game(data) {
             clearScreen(function() {
               restoreGame(state, null, /*userRestored*/true);
             });
-          }, "", state.stats, state.temps, state.lineNum, state.indent, this.debugMode, this.nav);
+          }, "", state.stats, state.temps, state.lineNum, state.indent);
         }
       }
     });
@@ -2874,7 +3086,7 @@ Scene.prototype.restore_password = function restore_password() {
         // we're going to pretend not to be user restored, so we get reprompted to save
         restoreGame(state, null, /*userRestored*/false);
       });
-    }, "", state.stats, state.temps, state.lineNum, state.indent, this.debugMode, this.nav);
+    }, "", state.stats, state.temps, state.lineNum, state.indent);
   });
   if (alreadyFinished) printFooter();
 };
@@ -3065,7 +3277,7 @@ Scene.prototype.save_game = function save_game(destinationSceneName) {
                 self.screenEmpty = true;
                 self.execute();
               });
-            }, slot, saveStats, {choice_reuse:"allow", choice_user_restored:true, choice_restore_name:saveName.value}, 0, 0, false, self.nav);
+            }, slot, saveStats, {choice_reuse:"allow", choice_user_restored:true, choice_restore_name:saveName.value}, 0, 0);
           });
           return;
         }
@@ -3102,7 +3314,7 @@ Scene.prototype.save_game = function save_game(destinationSceneName) {
                   }
                 });
               });
-            }, slot, saveStats, {choice_reuse:"allow", choice_user_restored:true, choice_restore_name:saveName.value}, 0, 0, false, self.nav);
+            }, slot, saveStats, {choice_reuse:"allow", choice_user_restored:true, choice_restore_name:saveName.value}, 0, 0);
           });
         });
       });
@@ -3446,6 +3658,79 @@ Scene.prototype.stat_chart = function stat_chart() {
   this.prevLine = "block";
   this.screenEmpty = false;
 };
+
+Scene.prototype.save_checkpoint = function saveCheckpoint(slot) {
+  var stat;
+  if (slot) {
+    if (!/^[a-zA-Z0-9_]+$/.test(slot)) throw new Error(this.lineMsg() + "Invalid *save_checkpoint slot, must be only letters, numbers, and _ underscores: " + slot);
+    slot = slot.toLowerCase();
+    stat = "choice_saved_checkpoint_" + slot;
+  } else {
+    slot = "checkpoint";
+    stat = "choice_saved_checkpoint";
+  }
+  if (this.secondaryMode) throw new Error(this.lineMsg() + "Cannot *save_checkpoint in " + this.secondaryMode + " mode");
+  this.stats[stat] = true;
+  this.temps.choice_just_restored_checkpoint = false;
+  saveCookie(function () {}, slot, this.stats, this.temps, this.lineNum + 1, this.indent, this.debugMode, this.nav);
+}
+
+Scene.prototype.restore_checkpoint = function restoreCheckpoint(slot) {
+  var stat;
+  this.finished = true;
+  this.skipFooter = true;
+  var self = this;
+  if (!this.testPath && this.secondaryMode) {
+    if (this.secondaryMode === 'stats') {
+      restoreCheckpointFromStats(function () {
+        delete self.secondaryMode;
+        delete self.saveSlot;
+        self.restore_checkpoint(slot);
+      })
+      return;
+    } else {
+      throw new Error(this.lineMsg() + "Cannot *restore_checkpoint in " + this.secondaryMode + " mode");
+    }
+  }
+
+  if (slot) {
+    if (!/^[a-zA-Z0-9_]+$/.test(slot)) throw new Error(this.lineMsg() + "Invalid *restore_checkpoint slot, must be only letters, numbers, and _ underscores: " + slot);
+    slot = slot.toLowerCase();
+    stat = "choice_saved_checkpoint_" + slot;
+  } else {
+    slot = "checkpoint";
+    stat = "choice_saved_checkpoint";
+  }
+  if (!this.stats[stat]) {
+    var certainty = this.testPath ? " could fail; we might not have" : " failed; we haven't";
+    if (slot === "checkpoint") {
+      throw new Error(this.lineMsg() + "*restore_checkpoint" + certainty + " saved a checkpoint. Use *if " + stat);
+    } else {
+      throw new Error(this.lineMsg() + "*restore_checkpoint for slot " + slot + certainty + " reached *save_checkpoint " + slot + ". Use *if " + stat);
+    }
+  }
+
+  if (this.testPath) return;
+
+  var forcedStats = null;
+  var forcedTemps = {choice_just_restored_checkpoint: true};
+  if (this.stats.checkpoint_exclusions || this.temps.checkpoint_exclusions) {
+    var exclusions = trim(this.getVar('checkpoint_exclusions').toLowerCase()).split(' ');
+    for (var i = 0; i < exclusions.length; i++) {
+      var exclusion = exclusions[i];
+      if (exclusion in this.stats) {
+        if (!forcedStats) forcedStats = {};
+        forcedStats[exclusion] = this.stats[exclusion];
+      }
+      if (exclusion in this.temps) {
+        if (!forcedTemps) forcedTemps = {};
+        forcedTemps[exclusion] = this.temps[exclusion];
+      }
+    }
+  }
+
+  loadAndRestoreGame(slot, null, forcedStats, forcedTemps);
+}
 
 Scene.prototype.parseStatChart = function parseStatChart() {
     // nextIndent: the level of indentation after the current line
@@ -3847,6 +4132,10 @@ Scene.prototype.tokenizeExpr = function tokenizeExpr(str) {
                 str = str.substr(token.length);
                 pos += token.length;
                 var item = {name:tokenType.name, value:token, pos:pos};
+                if (this.testPath && tokenType.name === "VAR" && /^choice_saved_checkpoint/i.test(token)) {
+                  // handle choice_saved_checkpoint in quicktest
+                  this.stats[token.toLowerCase()] = true;
+                }
                 if ("WHITESPACE" == tokenType.name) {
                     break;
                 } else if ("CURLY_QUOTE" == tokenType.name) {
@@ -4460,6 +4749,7 @@ Scene.prototype.bug = function scene_bug(message) {
   } else {
     message = "Bug";
   }
+  if (message === "Bug: choice_beta" && _global.beta) return;
   throw new Error(this.lineMsg() + message);
 };
 
@@ -4468,6 +4758,7 @@ Scene.prototype.warning = function scene_warning(message) {
 }
 
 Scene.prototype.feedback = function scene_feedback() {
+  this.stats.choice_feedback_requested = true;
   if (typeof window == "undefined" || this.randomtest) return;
   this.paragraph();
   this.printLine("On a scale from 1 to 10, how likely are you to recommend this game to a friend?");
@@ -4479,11 +4770,12 @@ Scene.prototype.feedback = function scene_feedback() {
   options.push({name:"1 (Least likely)"});
   options.push({name:"No response."});
   var self = this;
+  if (window.prepareReviewPrompt) window.prepareReviewPrompt();
   this.renderOptions([""], options, function(option) {
     var value = "null";
     var numberMatch = /^(\d+)/.exec(option.name);
     if (numberMatch) value = numberMatch[1]*1;
-    if (!window.storeName) {
+    if (!isWebSavePossible()) {
       self.finished = false;
       self.resetPage();
       return;
@@ -4496,12 +4788,15 @@ Scene.prototype.feedback = function scene_feedback() {
       if (/^(9|10)/.test(option.name)) {
         if (isReviewSupported()) {
           return clearScreen(function() {
-            self.printLine("Great! ");
-            promptForReview();
-            self.screenEmpty = false;
-            self.prevLine = "text";
-            self.page_break();
-            printFooter();
+            if (promptForReview()) {
+              self.screenEmpty = false;
+              self.prevLine = "text";
+              self.page_break();
+              printFooter();
+            } else {
+              self.finished = false;
+              self.resetPage();
+            }
           });
         }
       }
@@ -4584,7 +4879,11 @@ Scene.prototype.config = function config(data) {
 
 Scene.prototype.ifid = function ifid(id) {
   if (!/^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(id)) {
-    throw new Error(this.lineMsg() + "Invalid IFID. It should have five parts, like \"a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0\: " + id);
+    var example = "a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0";
+    try {
+      example = crypto.randomUUID();
+    } catch (e) {}
+    throw new Error(this.lineMsg() + "Invalid IFID. It should have five parts, like \""+example+"\": " + id);
   }
   if (!/^[A-F0-9\-]{36}$/i.test(id)) {
     throw new Error(this.lineMsg() + "Invalid IFID. It should contain only numbers, letters A-F, and dashes: " + id);
@@ -4737,5 +5036,5 @@ Scene.validCommands = {"comment":1, "goto":1, "gotoref":1, "label":1, "looplimit
     "bug":1,"link_button":1,"check_registration":1,"sound":1,"author":1,"gosub_scene":1,"achievement":1,
     "check_achievements":1,"redirect_scene":1,"print_discount":1,"purchase_discount":1,"track_event":1,
     "timer":1,"youtube":1,"product":1,"text_image":1,"ai":1,"params":1,"config":1,"ifid":1,
-    "page_break_advertisement":1, "finish_advertisement":1
+    "page_break_advertisement":1, "finish_advertisement":1, "save_checkpoint": 1, "restore_checkpoint": 1
     };

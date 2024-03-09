@@ -2199,6 +2199,21 @@ function parseProduct(line: string, startSectionIndex: number, state: ParsingSta
 }
 
 /**
+ * Parse a save_ or restore_checkpoint command.
+ * @param line Line after the command.
+ * @param startSectionIndex Index at the start of line.
+ * @param state Parsing state.
+ */
+function parseCheckpoint(line: string, startSectionIndex: number, state: ParsingState): void {
+	if (!/^[a-zA-Z0-9_]+$/.test(line)) {
+		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			startSectionIndex, startSectionIndex + line.length,
+			"A checkpoint slot's name can only contain letters, numbers or an underscore.", state);
+		state.callbacks.onParseError(diagnostic);
+	}
+}
+
+/**
  * Check a command to see if its arguments are incorrect
  * @param command Command to check.
  * @param commandSectionIndex Location of the command in the document section.
@@ -2353,6 +2368,10 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	else if (command == "product") {
 		if (line)
 			parseProduct(line, lineSectionIndex, state);
+	}
+	else if (command == "save_checkpoint" || command == "restore_checkpoint") {
+		if (line)
+			parseCheckpoint(line, lineSectionIndex, state);
 	}
 
 	return endParseIndex;

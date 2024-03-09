@@ -19,6 +19,7 @@ software distributed under the License is distributed on an
 either express or implied.
 -->
 <head>
+<meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name = "viewport" content = "width = device-width, initial-scale = 1.0, maximum-scale = 1.0">
 <!-- INSERT correct meta values -->
@@ -28,12 +29,12 @@ either express or implied.
 <script src="version.js"></script>
 <script src="persist.js"></script>
 <script src="alertify.min.js"></script>
+<script src="util.js"></script>
 <link href="style.css" rel="stylesheet" type="text/css">
 <style id="dynamic"></style>
 <script src="ui.js"></script>
 <script src="scene.js"></script>
 <script src="navigator.js"></script>
-<script src="util.js"></script>
 <script src="mygame.js"></script>
 <script src="cs-extension.js"></script>
 <link href="alertify.css" rel="stylesheet" type="text/css">
@@ -50,20 +51,21 @@ var rootDir = "../";
 <div id="advertisement">
 </div>
 <div id="header">
-  <div id="identity"><a href="#" id="email">you@example.com</a><a href="#" id="logout">Sign Out</a></div>
+  <div id="identity"><a href="#" id="email" style="display: none">you@example.com</a>
+  <a href="#" onclick="logout(); loginDiv(); return false;" id="logout" style="display: none">Sign Out</a>
+  </div>
 
-  <h1 class="gameTitle"><!-- My First ChoiceScript Game --></h1>
+  <h1 id="title" class="gameTitle"><!-- My First ChoiceScript Game --></h1>
 <h2 id="author" class="gameTitle"><!--by INSERTINSERTINSERT --></h2>
 
   <p id="headerLinks">
-      <a href="credits.html" id="aboutLink" class="spacedLink">About</a>
+      <!-- <a href="credits.html" id="aboutLink" class="spacedLink">About</a> -->
     </p>
   <p id="buttons">
     <button id="statsButton" class="spacedLink" onclick="showStats()">Show Stats</button>
-    <button id="restartButton" class="spacedLink" onclick="restartGame('prompt')">Restart</button>
     <button id="achievementsButton" onclick="showAchievements()" class="spacedLink" style="display: none">Achievements</button>
     <button id="bugButton" onclick="reportBug()" class="spacedLink" style="display: none">Report Bug</button>
-    <button id="menuButton" onclick="textOptionsMenu()" class="spacedLink">Settings</button>
+    <button id="menuButton" onclick="showMenu()" class="spacedLink">Menu</button>
   </p>
 </div>
 <div id="main">
@@ -78,5 +80,28 @@ startLoading();
 <noscript>
 <p>This game requires JavaScript; please enable JavaScript and refresh this page.</p>
 </noscript>
+<dialog id="keyboardShortcuts" onclick="event.target === this && this.close()">
+<header><span>Keyboard Shortcuts</span> <form method=dialog><button>X</button></form></header>
+<div class="table">
+  <div>Scroll Down</div>
+  <div><span class="key">Space</span></div>
+  <div>Scroll Up</div>
+  <div><span class="key">Shift</span> + <span class="key">Space</span></div>
+  <div>Next Option</div>
+  <div><span class="key">J</span></div>
+  <div>Previous Option</div>
+  <div><span class="key">K</span></div>
+  <div>Next (Press and Hold)</div>
+  <div><span class="key">Enter</span></div>
+  <div>Jump to Option</div>
+  <div><span class="key">1</span> - <span class="key">9</span></div>
+  <div>Show Stats</div>
+  <div><span class="key">Q</span></div>
+  <div>Menu</div>
+  <div><span class="key">W</span></div>
+  <div>Show Shortcuts</div>
+  <div><span class="key">?</span></div>
+</div>
+</dialog>
 </body>
 </html>

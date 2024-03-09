@@ -4573,6 +4573,40 @@ describe("Parser", () => {
 			});
 		});
 
+		describe("Checkpoints", () => {
+			it("should flag a save_checkpoint with symbols other than letters, numbers, or underscores", () => {
+				let fakeDocument = createDocument("*save_checkpoint azAZ_19*");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("A checkpoint slot's name can only contain letters, numbers or an underscore");
+				expect(received[0].range.start.line).to.equal(17);
+				expect(received[0].range.end.line).to.equal(25);
+			});
+
+			it("should flag a restore_checkpoint with symbols other than letters, numbers, or underscores", () => {
+				let fakeDocument = createDocument("*restore_checkpoint azAZ_19*");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("A checkpoint slot's name can only contain letters, numbers or an underscore");
+				expect(received[0].range.start.line).to.equal(20);
+				expect(received[0].range.end.line).to.equal(28);
+			});
+		});
+
 		describe("Other", () => {
 			it("should flag an #option outside of a *choice", () => {
 				let fakeDocument = createDocument("#This option isn't part of a *choice");

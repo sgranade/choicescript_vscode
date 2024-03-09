@@ -142,6 +142,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
      */ 
     search_order: [
       // TODO: air
+      'steamworksStorage',
       'cefStorage',
       'winOldStorage',
       'winStoreStorage',
@@ -149,6 +150,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       'iosStorage',
       'localChromeStorage',
       'androidStorage',
+      'indexed_db',
       'whatwg_db', 
       'localstorage',
       'globalstorage', 
@@ -331,6 +333,66 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       }
     }, 
 
+    steamworksStorage: {
+      size:   -1,
+
+      test: function() {
+        try {
+          return (typeof require !== "undefined" && require('steamworks.js'));
+        } catch (e) {
+          return false;
+        }
+      },
+
+      methods: {
+        key: function(key) {
+          return esc(this.name) + esc(key);
+        },
+
+        init: function() {
+
+        },
+
+        get: function(key, fn, scope) {
+          key = this.key(key);
+
+          // if callback isn't defined, then return
+          if (!fn)
+            return;
+
+          // get callback scope
+          scope = scope || this;
+
+          try {
+            results = steamworks.cloud.readFile("store" + key);
+            // steamworks.js fails with "" when the file doesn't exist
+            if (results === "") return fn.call(scope, !"ok");
+            var fixedResults = results.replace(/^.*\n/, "");
+            if (!fixedResults.length) return fn.call(scope, !"ok");
+            fn.call(scope, "ok", results.replace(/^.*\n/, ""));
+          } catch (e) {
+            fn.call(scope, !"ok");
+          }
+        },
+
+        set: function(key, val, fn, scope) {
+          key = this.key(key);
+          scope = scope || this;
+          var ok = steamworks.cloud.writeFile("store" + key, key+"\n"+val);
+          if (fn) fn.call(scope, ok);
+          return val;
+        },
+
+        // begin remove transaction
+        remove: function(key, fn, scope) {
+          key = this.key(key);
+          scope = scope || this;
+          var ok = steamworks.cloud.deleteFile("store" + key);
+          if (fn) fn.call(scope, ok);
+        }
+      }
+    },
+
     cefStorage: {
       size:   -1,
 
@@ -393,6 +455,74 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
           });
         }
       }
+    },
+
+    indexed_db: {
+      size: -1,
+      test: function() {
+        return window.indexedDB;
+      },
+      methods: {
+        promisifyRequest: function (request) {
+          return new Promise(function(resolve, reject) {
+            request.oncomplete = request.onsuccess = function() { resolve(request.result) };
+            request.onabort = request.onerror = function() { reject(request.error) };
+          });
+        },
+
+        init: function() {
+          var request = indexedDB.open(this.name);
+          request.onupgradeneeded = function () { return request.result.createObjectStore('PersistJS'); };
+          var dbp = this.promisifyRequest(request);
+          this.getStore = function (txMode, callback) {
+            return dbp.then(function (db) {
+              return callback(db.transaction('PersistJS', txMode).objectStore('PersistJS'));
+            });
+          };
+        },
+
+        get: function (key, fn, scope) {
+          scope = scope || this;
+          var self = this;
+          this.getStore('readonly', function(store) {
+            self.promisifyRequest(store.get(key)).then(function (val) {
+              fn.call(scope, true, val);
+            })
+          }).catch(function(error) {
+            console.error(error);
+            fn.call(scope, false);
+          })
+        },
+
+        set: function (key, val, fn, scope) {
+          scope = scope || this;
+          var self = this;
+          this.getStore('readwrite', function (store) {
+            store.put(val, key);
+            self.promisifyRequest(store.transaction).then(function () {
+              if (fn) fn.call(scope, true, val);
+            })
+          }).catch(function (error) {
+            console.error(error);
+            if (fn) fn.call(scope, false);
+          })
+        },
+
+        remove: function (key, val, fn, scope) {
+          scope = scope || this;
+          var self = this;
+          this.getStore('readwrite', function (store) {
+            store.delete(key);
+            self.promisifyRequest(store.transaction).then(function () {
+              if (fn) fn.call(scope, true);
+            })
+          }).catch(function (error) {
+            console.error(error);
+            if (fn) fn.call(scope, false);
+          })
+        },
+
+      },
     },
 
     // whatwg db backend (webkit, Safari 3.1+)
@@ -751,8 +881,11 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
           // expand key
           key = this.key(key);
 
+          var val = this.store.getItem(key);
+          if (val === undefined) val = null;
+
           if (fn)
-            fn.call(scope || this, true, this.store.getItem(key));
+            fn.call(scope || this, true, val);
         },
 
         set: function(key, val, fn, scope) {
@@ -774,6 +907,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           // get value
           val = this.store.getItem(key);
+          if (val === undefined) val = null;
 
           // delete value
           this.store.removeItem(key);
@@ -790,7 +924,8 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
       test: function() {
         try {
-          return (window.isIosApp || /CoGnibus/.test(navigator.userAgent)) ? true : false;
+          var userAgent = navigator.userAgent;
+          return (window.isIosApp || (/CoGnibus/.test(userAgent) && !/Android/.test(userAgent))) ? true : false;
         } catch (e) {
           return false;
         }
@@ -806,6 +941,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         },
 
         callIos: function(scheme, path) {
+          if (typeof webkit !== "undefined" && webkit.messageHandlers) {
+            return webkit.messageHandlers.choicescript.postMessage([scheme, path]);
+          }
           path = encodeURIComponent(path).replace(/[!~*')(]/g, function(match) {
             return "%" + match.charCodeAt(0).toString(16);
           });
@@ -886,61 +1024,91 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       }
     }, 
 
-    // DGF OSX managed storage
+    // DGF macOS managed storage
     macStorage: {
       size: -1,
 
-      test: function() {
-        try {
-          return window.macStorage ? true : false;
-        } catch (e) {
-          return false;
-        }
+      test: function () {
+        return !!window.isMacApp;
       },
 
       methods: {
-        key: function(key) {
+        key: function (key) {
           return esc(this.name) + esc(key);
         },
 
-        init: function() {
-          this.store = macStorage;
+        init: function () {
+
         },
 
-        get: function(key, fn, scope) {
+        callMac: function (scheme, path) {
+          if (typeof webkit !== "undefined" && webkit.messageHandlers) {
+            return webkit.messageHandlers.choicescript.postMessage([scheme, path]);
+          }
+        },
+
+        get: function (key, fn, scope) {
+          if (!fn) return;
           // expand key
           key = this.key(key);
 
-          if (fn)
-            fn.call(scope || this, true, this.store.objectForKey_(key));
+          var nonce = "storageget" + key + (+new Date);
+          var i = 0;
+          while (window[nonce]) {
+            nonce = "storageget" + key + (+new Date) + String(i++);
+          }
+          window[nonce] = function (value) {
+            delete window[nonce];
+            fn.call(scope || this, true, value);
+          }
+          this.callMac("storageget", key + " " + nonce);
         },
 
-        set: function(key, val, fn, scope) {
+        set: function (key, val, fn, scope) {
           // expand key
           key = this.key(key);
 
           // set value
-          this.store.setObject_forKey_(val, key);
-
-          if (fn)
-            fn.call(scope || this, true, val);
+          var nonce = "storageset" + key + (+new Date);
+          var i = 0;
+          while (window[nonce]) {
+            nonce = "storageget" + key + (+new Date) + String(i++);
+          }
+          window[nonce] = function () {
+            delete window[nonce];
+            if (fn) fn.call(scope || this, true, val);
+          }
+          this.callMac("storageset", key + " " + nonce + " " + encodeURIComponent(val));
         },
 
-        remove: function(key, fn, scope) {
+        remove: function (key, fn, scope) {
+          if (fn) {
+            this.get(key, function (val) {
+              this._remove(key, fn, scope, val);
+            }, this);
+          } else {
+            this._remove(key, fn, scope);
+          }
+        },
+
+        _remove: function (key, fn, scope, val) {
           var val;
 
           // expand key
           key = this.key(key);
 
-          // get value
-          val = this.store.objectForKey_(key)
-
           // delete value
-          this.store.removeObjectForKey_(key);
-
-          if (fn)
-            fn.call(scope || this, (val !== null), val);
-        } 
+          var nonce = "storagerem" + key + (+new Date);
+          var i = 0;
+          while (window[nonce]) {
+            nonce = "storageget" + key + (+new Date) + String(i++);
+          }
+          window[nonce] = function () {
+            delete window[nonce];
+            if (fn) fn.call(scope || this, (val !== null), val);
+          }
+          this.callMac("storagerem", key + " " + nonce);
+        }
       }
     }, 
 

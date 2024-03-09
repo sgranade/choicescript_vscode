@@ -28,7 +28,8 @@ export const validCommands: ReadonlyArray<string> = [
 	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
 	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
 	"timer", "youtube", "product", "text_image", "ai", "params", "config", "ifid",
-	"page_break_advertisement", "finish_advertisement"
+	"page_break_advertisement", "finish_advertisement",
+	"save_checkpoint", "restore_checkpoint",
 ];
 
 /**
@@ -38,7 +39,8 @@ export const argumentRequiredCommands: ReadonlyArray<string> = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product"
+	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product", "save_checkpoint",
+	"restore_checkpoint",
 ];
 
 /**
@@ -159,7 +161,7 @@ export const booleanFunctions: ReadonlyArray<string> = [
  */
 export const builtinVariables: ReadonlyArray<string> = [
 	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered",
-	"choice_is_web", "choice_is_steam",	"choice_is_ios_app",
+	"choice_is_web", "choice_is_steam", "choice_is_steam_deck", "choice_is_ios_app",
 	"choice_is_ipad_app", "choice_is_android_app", "choice_is_omnibus_app",
 	"choice_is_amazon_app",
 	"choice_is_advertising_supported", "choice_is_trial", "choice_release_date",
@@ -167,7 +169,8 @@ export const builtinVariables: ReadonlyArray<string> = [
 	"choice_linenum", "choice_scene",
 	"choice_restore_purchases_allowed", "choice_save_allowed",
 	"choice_time_stamp", "choice_nightmode", "choice_title",
-	"choice_purchase_supported", "choice_purchased_adfree"
+	"choice_purchase_supported", "choice_purchased_adfree",
+	"choice_saved_checkpoint"
 ];
 
 /**
