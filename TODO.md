@@ -1,5 +1,7 @@
 # TODO
 
+## Features
+
 - A way to highlight variables or labels you aren't using
 - A way to find variables hiding in "strings".
 - Update `.gitignore` to ignore game stats `.csv` files.
@@ -11,3 +13,7 @@
 - Increasing indents are an error. (extra space in front of any line)
 - Don't use the Variable token type to indicate "I don't know this token's contents"
 - Warn about use of ${} in expressions where it isn't allowed
+
+## Infrastructure
+
+- `chai` v5+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `chai` v5.
