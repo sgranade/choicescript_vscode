@@ -148,6 +148,16 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 ## Release Notes
 
+### [3.0.0]
+
+- Stats can now be generated and saved.
+- Achievements are now fully checked for correctness.
+- `*image` commands that refer to non-existent files are now flagged.
+- `*kindle_search`, `*product`, `*save_checkpoint`, and `*restore_checkpoint` commands are now parsed.
+- Images can now either be in the same directory as scene files or one directory up (the `mygame` directory).
+- Minor bug fixes.
+
+
 ### [2.6.0]
 
 - Ability to turn on showing text for only parts of a randomtest run using `*comment text off` and `*comment text on`.

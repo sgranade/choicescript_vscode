@@ -2,14 +2,16 @@
 
 Changes to the plugin.
 
-## Unreleased
+## [3.0.0] - 2024-03-10
+
+While this version includes minor functional changes, the underlying structure has been extensively re-worked to move it towards being a web extension, which is why we're bumping the major version number.
 
 ### Added
 
 - Stats can now be generated and saved.
 - Achievements are now fully checked for correctness.
 - `*image` commands that refer to non-existent files are now flagged.
-- `*kindle_search` and `*product` commands are now parsed.
+- `*kindle_search`, `*product`, `*save_checkpoint`, and `*restore_checkpoint` commands are now parsed.
 
 ### Changed
 
@@ -23,7 +25,7 @@ Changes to the plugin.
 - `*text_image` is now parsed properly.
 - Only the first `startup.txt` file in the project will be indexed. (You shouldn't have multiples of them anyway, but just in case...)
 
-## [2.6] - 2022-04-16
+## [2.6.0] - 2022-04-16
 
 ### Added
 
