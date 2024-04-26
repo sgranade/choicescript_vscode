@@ -80,8 +80,8 @@
 				"category": "ChoiceScript"
 			},
 			{
-				"command": "choicescript.openGame",
-				"title": "Open Game in Browser",
+				"command": "choicescript.runGame",
+				"title": "Run Game",
 				"category": "ChoiceScript",
 				"enablement": "isWorkspaceTrusted"
 			},
@@ -127,8 +127,8 @@
 					"when": "editorLangId == choicescript"
 				},
 				{
-					"command": "choicescript.openGame",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded"
+					"command": "choicescript.runGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded"
 				},
 				{
 					"command": "choicescript.runQuicktest",
@@ -153,8 +153,8 @@
 			],
 			"editor/context": [
 				{
-					"command": "choicescript.openGame",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded",
+					"command": "choicescript.runGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded",
 					"group": "ChoiceScript@1"
 				},
 				{

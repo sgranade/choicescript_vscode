@@ -7,7 +7,6 @@ import {
 
 import { LineAnnotationController } from './annotations';
 import { Configuration, CustomCommands, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
-import { ChoiceScriptGameRunProvider, ChoiceScriptGameRunnerService } from './game-runner-service';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
 import * as notifications from './notifications';
@@ -15,15 +14,16 @@ import { StatusBarController } from './status-bar-controller';
 import { StatusBarItems } from './status-bar-items';
 import { registerRequestHandlers } from './request-handler';
 import { ChoiceScriptTestProvider } from './choicescript-test-service';
+import { compileToAllScenes } from './compiler';
+import { GameWebViewManager } from './game-web-view';
 
 let sceneFilesPath: string;
 let imageFilesPath: string;
 let annotationController: LineAnnotationController;
+let gameWebViewManager: GameWebViewManager;
 
 export type CsErrorHandler = (scene: string, line: number, message: string) => void;
-
 export type LanguageClientConstructor = (id: string, name: string, clientOptions: LanguageClientOptions) => BaseLanguageClient;
-export type GameRunProviderConstructor = (csPath: string, errorHandler?: CsErrorHandler) => ChoiceScriptGameRunProvider;
 
 /**
  * Annotate an error from ChoiceScript in the editor.
@@ -94,11 +94,10 @@ function bbcodeDelimit(editor: vscode.TextEditor, delimitCharacters: string): vo
  * 
  * @param context Extension's context.
  * @param controller Status bar controller.
- * @param gameRunner The controller for running the game in a browser.
  * @param docProvider Text document provider.
  * @param testProvider Test-running provider.
  */
-function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: ChoiceScriptGameRunnerService, docProvider: Provider, testProvider?: ChoiceScriptTestProvider) {
+function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, docProvider: Provider, gameWebViewManager: GameWebViewManager, testProvider?: ChoiceScriptTestProvider) {
 
 	const csCommands = [
 		vscode.commands.registerTextEditorCommand(
@@ -190,15 +189,33 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 		);
 	}
 
-	if (gameRunner) { // web platform isn't supported
-		csCommands.push(vscode.commands.registerCommand(
-			CustomCommands.OpenGame, 
+	csCommands.push(
+		vscode.commands.registerCommand(
+			CustomCommands.RunGame,
 			async () => {
-				annotationController.clearAll();
-				await gameRunner.run();
+				const run = async () => {
+					annotationController.clearAll();
+					const compiledGame = await compileToAllScenes(vscode.Uri.file(sceneFilesPath));
+					await gameWebViewManager.runCompiledGame(compiledGame);
+				};
+				if (gameWebViewManager.isRunning()) {
+					const result = await vscode.window.showInformationMessage(
+						'A ChoiceScript game is already running.\n\nWhat would you like to do?',
+						{ detail: 'Running again will destroy your current session.', modal: true },
+						'Run',
+						'Focus'
+					);
+					if (result === 'Run') {
+						run();
+					} else if (result === 'Focus') {
+						gameWebViewManager.openOrShow();
+					}
+				} else {
+					run();
+				}
 			}
-		));
-	}
+		)
+	);
 
 	context.subscriptions.push(...csCommands);
 }
@@ -218,7 +235,7 @@ function updateQuickSuggestions(): void {
 }
 
 
-export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, gameProviderConstructor?: GameRunProviderConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
+export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
@@ -230,6 +247,8 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 		'ChoiceScript VSCode',
 		clientOptions
 	);
+
+	gameWebViewManager = new GameWebViewManager(context, annotateCSError);
 
 	registerRequestHandlers(client);
 
@@ -273,27 +292,16 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	// Prepare for future ChoiceScript test runs (if we're not on web)
 	testProvider?.initializeTestProvider();
 
-	const gameProvider = gameProviderConstructor? gameProviderConstructor(
-		context.asAbsolutePath(RelativePaths.Choicescript),
-		annotateCSError
-	) : undefined;
-
-	const gameService = new ChoiceScriptGameRunnerService(gameProvider, controller);
-
 	notifications.addNotificationHandler(
 		CustomMessages.UpdatedSceneFilesPath,
 		async (e: string[]) => {
 			sceneFilesPath = e[0];
-			await gameProvider._init();
-			gameProvider.updateScenePath(gameProvider.gameId, sceneFilesPath);
 		}
 	);
 	notifications.addNotificationHandler(
 		CustomMessages.UpdatedImageFilesPath,
 		async (e: string[]) => {
 			imageFilesPath = e[0];
-			await gameProvider._init();
-			gameProvider.updateImagePath(gameProvider.gameId, imageFilesPath);
 		}
 	);
 	notifications.addNotificationHandler(
@@ -305,7 +313,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	);
 
 	// Register our commands
-	registerCommands(context, controller, gameService, provider, testProvider);
+	registerCommands(context, controller, provider, gameWebViewManager, testProvider);
 
 	// Adjust the workspace's quick suggestions setting for ChoiceScript
 	updateQuickSuggestions();
