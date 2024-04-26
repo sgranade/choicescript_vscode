@@ -13,7 +13,7 @@ window.reportError = function(msg, file, line, column, error) {
 		};
 		vscode.postMessage({
 			command: 'error',
-			text: `🐛 at line ${err.line} in ${err.scene}:\n\t${err.message}`
+			text: `Bug at line ${err.line} in ${err.scene}:\n\t${err.message}`
 		});
 		vscode.postMessage({
 			command: 'annotate',
