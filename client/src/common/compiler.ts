@@ -11,7 +11,8 @@ export const titleRegex = /^\s*\*title\s+([\w\s]+)/;
 
 export async function compileToAllScenes(projectPath: Uri): Promise<CompiledChoiceScriptGame>{
 	const allScenes: AllScenesResult = {};
-	// Ideally
+	// Ideally we'd be able to sanity check that these are actually ChoiceScript 'scene' files,
+	// but given that raw text files with no commands *are* valid CS scenes, I don't think there's anything we can do.
 	const scenes = await workspace.findFiles(new RelativePattern(projectPath, '*.txt'));
 	let title: string;
 
