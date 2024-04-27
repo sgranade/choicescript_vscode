@@ -14,13 +14,16 @@ import { StatusBarController } from './status-bar-controller';
 import { StatusBarItems } from './status-bar-items';
 import { registerRequestHandlers } from './request-handler';
 import { ChoiceScriptTestProvider } from './choicescript-test-service';
-import { compileToAllScenes } from './compiler';
+import { ChoiceScriptCompiler } from './choicescript-compiler';
 import { GameWebViewManager } from './game-web-view';
+import { IWorkspaceProvider, WorkspaceProviderImpl } from './interfaces/vscode-workspace-provider';
 
 let sceneFilesPath: string;
 let imageFilesPath: string;
 let annotationController: LineAnnotationController;
 let gameWebViewManager: GameWebViewManager;
+let csCompiler: ChoiceScriptCompiler;
+let workspaceProvider: IWorkspaceProvider;
 
 export type CsErrorHandler = (scene: string, line: number, message: string) => void;
 export type LanguageClientConstructor = (id: string, name: string, clientOptions: LanguageClientOptions) => BaseLanguageClient;
@@ -116,7 +119,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunQuicktest, () => {
 					annotationController.clearAll();
 					if (sceneFilesPath !== undefined) {
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runQuicktest(
 								context.asAbsolutePath(RelativePaths.Quicktest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -132,7 +135,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunRandomtestDefault, () => {
 					annotationController.clearAll();
 					if (sceneFilesPath !== undefined) {
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -150,7 +153,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunRandomtestInteractive, () => {
 					if (sceneFilesPath !== undefined) {
 						annotationController.clearAll();
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -168,7 +171,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RerunRandomTest, () => {
 					if (sceneFilesPath !== undefined) {
 						annotationController.clearAll();
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -195,7 +198,9 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 			async () => {
 				const run = async () => {
 					annotationController.clearAll();
-					const compiledGame = await compileToAllScenes(vscode.Uri.file(sceneFilesPath));
+					// Ideally we'd be able to sanity check that these are actually ChoiceScript 'scene' files,
+					// but given that raw text files with no commands *are* valid CS scenes, I don't think there's anything we can do.
+					const compiledGame = await csCompiler.compile(await workspaceProvider.findFiles(sceneFilesPath, '*.txt'));
 					await gameWebViewManager.runCompiledGame(compiledGame);
 				};
 				if (gameWebViewManager.isRunning()) {
@@ -224,7 +229,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
  * Update the workspace editor.quickSuggestions state for ChoiceScript.
  */
 function updateQuickSuggestions(): void {
-	const quickSuggestionsState = !vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.DisableQuickSuggestions);
+	const quickSuggestionsState = !workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.DisableQuickSuggestions);
 	const quickSuggestionsValue = {
 		comments: quickSuggestionsState,
 		strings: quickSuggestionsState,
@@ -236,6 +241,8 @@ function updateQuickSuggestions(): void {
 
 
 export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
+
+	workspaceProvider = new WorkspaceProviderImpl();
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
@@ -249,6 +256,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	);
 
 	gameWebViewManager = new GameWebViewManager(context, annotateCSError);
+	csCompiler = new ChoiceScriptCompiler(workspaceProvider);
 
 	registerRequestHandlers(client);
 
@@ -266,8 +274,8 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 
 	// Create a controller for error annotations
 	annotationController = new LineAnnotationController();
-	const annotationsTextDocumentChangedSubscription = vscode.workspace.onDidChangeTextDocument(
-		annotationController.onTextDocumentChanged, annotationController
+	const annotationsTextDocumentChangedSubscription = workspaceProvider.onDidChangeTextDocument(
+		() => annotationController.onTextDocumentChanged, annotationController
 	);
 	context.subscriptions.push(
 		annotationController,
@@ -275,12 +283,12 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	);
 
 	// Deal with configuration changes
-	const configurationChangedSubscription = vscode.workspace.onDidChangeConfiguration(
+	const configurationChangedSubscription = workspaceProvider.onDidChangeConfiguration(
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		(e: vscode.ConfigurationChangeEvent) => {
+		() => {
 			updateQuickSuggestions();
 			client.sendNotification(
-				CustomMessages.CoGStyleGuide, vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.UseCOGStyleGuide)
+				CustomMessages.CoGStyleGuide, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.UseCOGStyleGuide)
 			);
 		}
 	);
