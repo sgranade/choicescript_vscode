@@ -21,10 +21,11 @@ export class ChoiceScriptCompiler {
 		let title: string;
 	
 		for (const s of scenes) {
-			const sceneName = s.fsPath.substring(s.fsPath.lastIndexOf('/') + 1, (s.fsPath.length - ".txt".length));
+			const m = /([^\\|/]+?)(?:.txt)?$/.exec(s.fsPath);
+			const sceneName = m[1];
 			allScenes[sceneName] = { labels: {}, lines: [] };
 			const content = new TextDecoder().decode((await this.workspaceProvider.fs.readFile(s)));
-			allScenes[sceneName].lines = content.split('\n');
+			allScenes[sceneName].lines = content.split(/\r?\n/);
 			for (let l = 0; l < allScenes[sceneName].lines.length; l++) {
 				if (sceneName === 'startup' && !title) {
 					const match = allScenes[sceneName].lines[l].match(titleRegex);

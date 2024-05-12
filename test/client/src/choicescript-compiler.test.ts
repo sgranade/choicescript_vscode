@@ -2,10 +2,11 @@
 
 import { expect } from 'chai';
 import 'mocha';
-import { ChoiceScriptCompiler } from '../../../client/src/common/choicescript-compiler';
 import { Substitute } from '@fluffy-spoon/substitute';
-import { IWorkspaceProvider } from '../../../client/src/common/interfaces/vscode-workspace-provider';
 import { URI as Uri } from 'vscode-uri';
+
+import { ChoiceScriptCompiler } from '../../../client/src/common/choicescript-compiler';
+import { IWorkspaceProvider } from '../../../client/src/common/interfaces/vscode-workspace-provider';
 
 describe("ChoiceScript Compiler", () => {
 
@@ -18,6 +19,33 @@ describe("ChoiceScript Compiler", () => {
 		];
 		const fakeSceneUris = fakeSceneNames.map(name =>
 			Uri.file(`${fakeSceneRoot}${name}.txt`)
+		);
+		const fakeWorkspaceProvider = Substitute.for<IWorkspaceProvider>();
+		fakeWorkspaceProvider.fs.returns!(
+			{
+				readFile: () => new Promise(r => r(new TextEncoder().encode("Test Content")))
+			}
+		);
+		const csc = new ChoiceScriptCompiler(fakeWorkspaceProvider);
+		return Promise.resolve(csc.compile(fakeSceneUris))
+			.then(function(result) {
+				expect(Object.keys(result.scenes).length === fakeSceneNames.length);
+				for (const scene in result.scenes) {
+					expect(fakeSceneNames).to.include(scene);
+				}
+			})
+			.catch(function(err) { throw new Error(err); });
+	});
+
+	it("Compiles all scene files on Windows", async () => {
+		const fakeSceneRoot = 'file:\\a\\b\\';
+		const fakeSceneNames = [
+			'startup',
+			'scene1',
+			'scene2'
+		];
+		const fakeSceneUris = fakeSceneNames.map(name =>
+			Uri.file(`${fakeSceneRoot}${name}`)
 		);
 		const fakeWorkspaceProvider = Substitute.for<IWorkspaceProvider>();
 		fakeWorkspaceProvider.fs.returns!(
