@@ -1,6 +1,6 @@
 import { workspace, RelativePattern } from 'vscode';
-import { Disposable } from 'vscode-languageclient';
-import { URI as Uri } from 'vscode-uri';
+import type { Disposable } from 'vscode-languageclient';
+import type { URI as Uri } from 'vscode-uri';
 
 type LanguageScope = {
 	/**

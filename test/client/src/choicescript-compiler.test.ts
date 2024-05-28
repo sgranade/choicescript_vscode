@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute } from '@fluffy-spoon/substitute';

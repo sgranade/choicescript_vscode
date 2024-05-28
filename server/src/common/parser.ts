@@ -1,5 +1,5 @@
-import { Range, Location, Position, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Range, Location, Position, type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
 	validCommands,
@@ -39,15 +39,15 @@ import {
 	createDiagnostic,
 	readLine,
 	readNextNonblankLine,
-	NewLine,
+	type NewLine,
 	summarize,
 	extractToMatchingIndent,
 	normalizeUri
 } from './utilities';
-import { SummaryScope } from '.';
+import type { SummaryScope } from '.';
 
 
-const nonWordOperators: ReadonlyArray<string> = mathOperators.concat(comparisonOperators, stringOperators);
+const nonWordOperators: readonly string[] = mathOperators.concat(comparisonOperators, stringOperators);
 
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
@@ -813,7 +813,7 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 		const mReuse = /(?<=\s|^)\*(disable|enable|hide)_reuse(?=\s|$)/.exec(m.groups.commandLine ?? "");
 		if (mReuse !== null) {
 			const commandIndex = m.groups.commandPrefix.length;
-			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0;
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + (m.groups.commandSpacing?.length ?? 0);
 			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 				preTextIndex + commandLineIndex + mReuse.index,
 				preTextIndex + commandLineIndex + mReuse.index + mReuse[0].length,
@@ -838,7 +838,7 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 		// There should be no other text after the *_reuse command other than an *if/*selectable_if
 		if (m.groups.commandLine?.trim() ?? "" !== "") {
 			const commandIndex = m.groups.commandPrefix.length;
-			const commandLineIndex = commandIndex + 1 + m.groups.command.length + m.groups.commandSpacing?.length ?? 0;
+			const commandLineIndex = commandIndex + 1 + m.groups.command.length + (m.groups.commandSpacing?.length ?? 0);
 
 			if (m.groups.commandLine.startsWith("*if") || m.groups.commandLine.startsWith("*selectable_if")) {
 				state.enterBlock("option");
@@ -1413,7 +1413,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
  * @param state Parsing state.
  */
 function parseScenes(text: string, startSectionIndex: number, state: ParsingState): void {
-	const sceneList: Array<string> = [];
+	const sceneList: string[] = [];
 	const scenePattern = /(\s+)(\$\s+)?(\S+)\s*\r?\n/;
 	let lineStart = startSectionIndex;
 
@@ -1918,7 +1918,6 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 	currentTokenIndex = tokenPattern.lastIndex;
 
 	do {
-
 		m = tokenPattern.exec(line);
 		if (m === null) {
 			const diagnostic = createParsingDiagnostic(
@@ -1995,6 +1994,7 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 			checkAchievementText(title, "title", 50, lineSectionIndex + currentTokenIndex, state);
 			title = title.trimStart();
 		}
+	// eslint-disable-next-line no-constant-condition
 	} while (false);
 
 	state.callbacks.onAchievementCreate(codename, location, points, title, state);

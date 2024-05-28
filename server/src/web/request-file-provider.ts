@@ -1,6 +1,6 @@
-import { FileSystemProvider } from '../common/file-system-service';
-import { RequestService } from '../common/request-service';
-import { URI } from 'vscode-languageserver';
+import type { FileSystemProvider } from '../common/file-system-service';
+import type { RequestService } from '../common/request-service';
+import type { URI } from 'vscode-languageserver';
 
 export class RequestFileProvider implements FileSystemProvider {
 

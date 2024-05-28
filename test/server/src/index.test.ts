@@ -5,7 +5,7 @@ import { Location, Range } from 'vscode-languageserver/node';
 
 import { 
 	Index,
-	FlowControlEvent
+	type FlowControlEvent
 } from '../../../server/src/common/index';
 
 const documentUri = "file:///faker.txt";

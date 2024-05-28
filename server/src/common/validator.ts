@@ -1,9 +1,9 @@
 import * as path from 'path';
 
-import { Location, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { type Location, type Diagnostic, DiagnosticSeverity, type DiagnosticRelatedInformation } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex } from "./index";
+import type { ProjectIndex } from "./index";
 import { findVariableCreationLocations, findLabelLocation } from "./searches";
 import {
 	builtinVariables,
@@ -21,7 +21,7 @@ import {
 } from './language';
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange, normalizeUri } from './utilities';
 import { tokenizeMultireplace } from './tokens';
-import { FileSystemService } from './file-system-service';
+import type { FileSystemService } from './file-system-service';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));

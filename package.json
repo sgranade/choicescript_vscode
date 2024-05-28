@@ -284,7 +284,7 @@
 		}
 	},
 	"scripts": {
-		"lint": "eslint -c .eslintrc.json --ext .ts ./client/src && eslint -c .eslintrc.json --ext .ts ./server/src",
+		"lint": "eslint",
 		"vscode:prepublish": "npm run webpack",
 		"webpack": "npm run minify-cs && webpack --mode production --config ./client/webpack.config.js --devtool hidden-source-map && webpack --mode production --config ./server/webpack.config.js --devtool hidden-source-map",
 		"webpack:dev": "npm run minify-cs && concurrently \"npm run dev-client\" \"npm run dev-server\"",

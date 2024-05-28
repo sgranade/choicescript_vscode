@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AllScenesResult, CompiledChoiceScriptGame } from './choicescript-compiler';
+import type { AllScenesResult, CompiledChoiceScriptGame } from './choicescript-compiler';
 
 const VIEW_TYPE = 'ChoiceScriptGameView';
 

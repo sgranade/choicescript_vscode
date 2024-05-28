@@ -1,18 +1,18 @@
 import {
-	Position,
+	type Position,
 	Range,
-	Location,
+	type Location,
 	TextEdit,
-	CompletionItem,
+	type CompletionItem,
 	CompletionItemKind
 } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex, ReadonlyAchievementIndex } from "./index";
+import type { ProjectIndex, IdentifierIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, LabelIndex, ReadonlyAchievementIndex } from "./index";
 import { validCommandsCompletions, startupCommandsCompletions, uriIsStartupFile } from './language';
 import { extractToMatchingDelimiter, comparePositions, normalizeUri, positionInRange, iteratorMap, iteratorFilter } from './utilities';
 
-function generateCompletionsFromArray(array: ReadonlyArray<string>,
+function generateCompletionsFromArray(array: readonly string[],
 	kind: CompletionItemKind, dataDescription: string): CompletionItem[] {
 	return array.map((x: string) => ({
 		label: x,

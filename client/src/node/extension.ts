@@ -1,13 +1,13 @@
-import * as vscode from 'vscode';
+import type { ExtensionContext } from 'vscode';
 import { RelativePaths } from '../common/constants';
-import { BaseLanguageClient, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
-import { LanguageClientConstructor, startClient } from '../common/client';
+import { type BaseLanguageClient, LanguageClient, type LanguageClientOptions, type ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import { type LanguageClientConstructor, startClient } from '../common/client';
 import * as testFunctionality from './cstests';
-import { ChoiceScriptTestProvider } from '../common/choicescript-test-service';
+import type { ChoiceScriptTestProvider } from '../common/choicescript-test-service';
 
 let client: BaseLanguageClient | undefined;
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: ExtensionContext) {
 	const serverModule = context.asAbsolutePath(
 		RelativePaths.VSCodeExtensionServer
 	);

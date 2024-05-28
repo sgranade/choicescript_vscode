@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import {
+import type {
 	LanguageClientOptions,
 	BaseLanguageClient,
 } from 'vscode-languageclient';
@@ -13,10 +13,10 @@ import * as notifications from './notifications';
 import { StatusBarController } from './status-bar-controller';
 import { StatusBarItems } from './status-bar-items';
 import { registerRequestHandlers } from './request-handler';
-import { ChoiceScriptTestProvider } from './choicescript-test-service';
+import type { ChoiceScriptTestProvider } from './choicescript-test-service';
 import { ChoiceScriptCompiler } from './choicescript-compiler';
 import { GameWebViewManager } from './game-web-view';
-import { IWorkspaceProvider, WorkspaceProviderImpl } from './interfaces/vscode-workspace-provider';
+import { type IWorkspaceProvider, WorkspaceProviderImpl } from './interfaces/vscode-workspace-provider';
 
 let sceneFilesPath: string;
 let imageFilesPath: string;
@@ -284,7 +284,6 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 
 	// Deal with configuration changes
 	const configurationChangedSubscription = workspaceProvider.onDidChangeConfiguration(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		() => {
 			updateQuickSuggestions();
 			client.sendNotification(

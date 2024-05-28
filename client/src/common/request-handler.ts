@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
-import { BaseLanguageClient, RequestType } from 'vscode-languageclient';
-import { URI } from 'vscode-languageclient';
+import { type BaseLanguageClient, RequestType } from 'vscode-languageclient';
+import type { URI } from 'vscode-languageclient';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FileContentRequest: RequestType<{ uri: URI; encoding?: string }, string, any> = new RequestType('fs/content');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FindFilesRequest: RequestType<{ pattern: string, rootPath?: URI }, URI[], any> = new RequestType('fs/findFiles');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FileExistsRequest: RequestType<URI, boolean, any> = new RequestType('fs/fileExists');
 
 export const registerRequestHandlers = (client: BaseLanguageClient) => {

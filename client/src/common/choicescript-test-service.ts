@@ -1,7 +1,7 @@
-import { integer } from 'vscode-languageclient';
-import { CsErrorHandler } from './client';
-import { RandomtestSettingsSource } from './constants';
-import { Provider } from './logDocProvider';
+import type { integer } from 'vscode-languageclient';
+import type { CsErrorHandler } from './client';
+import type { RandomtestSettingsSource } from './constants';
+import type { Provider } from './logDocProvider';
 
 export interface ChoiceScriptTestProvider {
 	initializeTestProvider(): void;

@@ -1,5 +1,5 @@
-import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { stringIsNumber, extractToMatchingDelimiter, createDiagnostic, readLine } from './utilities';
 import {

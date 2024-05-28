@@ -1,7 +1,7 @@
-import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { type CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 
 import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
-import { ReadonlyAchievementIndex } from "./index";
+import type { ReadonlyAchievementIndex } from "./index";
 
 
 /* COMMANDS */
@@ -9,12 +9,12 @@ import { ReadonlyAchievementIndex } from "./index";
 /**
  * Commands that can only be used in startup.txt
  */
-export const startupCommands: ReadonlyArray<string> = ["create", "create_array", "scene_list", "title", "author", "achievement", "product", "ifid"];
+export const startupCommands: readonly string[] = ["create", "create_array", "scene_list", "title", "author", "achievement", "product", "ifid"];
 
 /**
  * Complete list of valid commands.
  */
-export const validCommands: ReadonlyArray<string> = [
+export const validCommands: readonly string[] = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort",
 	"choice", "create",	"create_array", "temp", "temp_array", "delete",
 	"delete_array", "set", "setref", "print", "if", "selectable_if", "rand",
@@ -35,7 +35,7 @@ export const validCommands: ReadonlyArray<string> = [
 /**
  * Commands that require arguments.
  */
-export const argumentRequiredCommands: ReadonlyArray<string> = [
+export const argumentRequiredCommands: readonly string[] = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
@@ -46,14 +46,14 @@ export const argumentRequiredCommands: ReadonlyArray<string> = [
 /**
  * Commands that must not have any arguments.
  */
-export const argumentDisallowedCommands: ReadonlyArray<string> = [
+export const argumentDisallowedCommands: readonly string[] = [
 	"else", "page_break_advertisement", "finish_advertisement"
 ];
 
 /**
  * Commands that silently ignore any arguments.
  */
-export const argumentIgnoredCommands: ReadonlyArray<string> = [
+export const argumentIgnoredCommands: readonly string[] = [
 	"line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
 	"restart", "scene_list", "check_achievements"
 ];
@@ -61,58 +61,58 @@ export const argumentIgnoredCommands: ReadonlyArray<string> = [
 /**
  * Commands that can be used in front of a choice option.
  */
-export const optionAllowedCommands: ReadonlyArray<string> = [
+export const optionAllowedCommands: readonly string[] = [
 	"hide_reuse", "disable_reuse", "allow_reuse", "if", "selectable_if"
 ];
 
 /**
  * Commands that modify display of an option.
  */
-export const reuseCommands: ReadonlyArray<string> = ["allow_reuse", "hide_reuse", "disable_reuse"];
+export const reuseCommands: readonly string[] = ["allow_reuse", "hide_reuse", "disable_reuse"];
 
 /**
  * Commands that must only be in containing blocks (like "*if" or "*choice")
  */
-export const insideBlockCommands: ReadonlyArray<string> = ["selectable_if", "elseif", "elsif", "else"];
+export const insideBlockCommands: readonly string[] = ["selectable_if", "elseif", "elsif", "else"];
 
 /**
  * Commands that create labels or variables.
  */
-export const symbolCreationCommands: ReadonlyArray<string> = ["temp", "label", "params", "create"];
+export const symbolCreationCommands: readonly string[] = ["temp", "label", "params", "create"];
 
 /**
  * Commands that reference variables that won't otherise be handled if they're outside their proper containing command (like "*if" or "*choice")
  */
-export const variableReferenceCommands: ReadonlyArray<string> = ["selectable_if", "elseif", "elsif"];
+export const variableReferenceCommands: readonly string[] = ["selectable_if", "elseif", "elsif"];
 
 /**
  * Commands that manipulate the contents of variables.
  */
-export const variableManipulationCommands: ReadonlyArray<string> = [
+export const variableManipulationCommands: readonly string[] = [
 	"set", "delete", "rand", "input_text", "input_number"
 ];
 
 /**
  * Commands that control flow.
  */
-export const flowControlCommands: ReadonlyArray<string> = ["goto", "gosub", "goto_scene", "gosub_scene", "return"];
+export const flowControlCommands: readonly string[] = ["goto", "gosub", "goto_scene", "gosub_scene", "return"];
 
 /**
  * Sub-commands under a *stat_chart command.
  */
-export const statChartCommands: ReadonlyArray<string> = ["text", "percent", "opposed_pair"];
+export const statChartCommands: readonly string[] = ["text", "percent", "opposed_pair"];
 
 /**
  * Sub-commands under a *stat_chart command that have at least one indented line after.
  */
-export const statChartBlockCommands: ReadonlyArray<string> = ["opposed_pair"];
+export const statChartBlockCommands: readonly string[] = ["opposed_pair"];
 
 /* COMPLETIONS */
 
 /**
  * Commands to auto-complete in startup.txt only
  */
-export const startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
+export const startupCommandsCompletions: CompletionItem[] = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
 	label: x,
 	kind: CompletionItemKind.Keyword,
 	data: "command"
@@ -121,7 +121,7 @@ export const startupCommandsCompletions: ReadonlyArray<CompletionItem> = ["creat
 /**
  * Commands to auto-complete
  */
-export const validCommandsCompletions: ReadonlyArray<CompletionItem> = [
+export const validCommandsCompletions: CompletionItem[] = [
 	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
 	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
 	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
@@ -138,28 +138,28 @@ export const validCommandsCompletions: ReadonlyArray<CompletionItem> = [
 /**
  * ChoiceScript built-in functions
  */
-export const functions: ReadonlyArray<string> = [
+export const functions: readonly string[] = [
 	"not", "round", "timestamp", "log", "length", "auto"
 ];
 
 /**
  * ChoiceScript functions that take numbers
  */
-export const numberFunctions: ReadonlyArray<string> = [
+export const numberFunctions: readonly string[] = [
 	"round", "length", "log", "timestamp"
 ];
 
 /**
  * ChoiceScript functions that take booleans
  */
-export const booleanFunctions: ReadonlyArray<string> = [
+export const booleanFunctions: readonly string[] = [
 	"not"
 ];
 
 /**
  * ChoiceScript built-in variables
  */
-export const builtinVariables: ReadonlyArray<string> = [
+export const builtinVariables: readonly string[] = [
 	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered",
 	"choice_is_web", "choice_is_steam", "choice_is_steam_deck", "choice_is_ios_app",
 	"choice_is_ipad_app", "choice_is_android_app", "choice_is_omnibus_app",
@@ -181,42 +181,42 @@ export const paramValues = new RegExp("^param_(count|\\d+)$");
 /**
  * Math operators
  */
-export const mathOperators: ReadonlyArray<string> = [
+export const mathOperators: readonly string[] = [
 	"+", "-", "*", "/", "%", "^", "%+", "%-",
 ];
 
 /**
  * Comparison operators
  */
-export const comparisonOperators: ReadonlyArray<string> = [
+export const comparisonOperators: readonly string[] = [
 	"=", "<", ">", "<=", ">=", "!="
 ];
 
 /**
  * String operators
  */
-export const stringOperators: ReadonlyArray<string> = [
+export const stringOperators: readonly string[] = [
 	"&", "#"
 ];
 
 /**
  * Numeric named operators
  */
-export const numericNamedOperators: ReadonlyArray<string> = [
+export const numericNamedOperators: readonly string[] = [
 	"modulo"
 ];
 
 /**
  * ChoiceScript named operators
  */
-export const booleanNamedOperators: ReadonlyArray<string> = [
+export const booleanNamedOperators: readonly string[] = [
 	"and", "or"
 ];
 
 /**
  * ChoiceScript named values
  */
-export const booleanNamedValues: ReadonlyArray<string> = [
+export const booleanNamedValues: readonly string[] = [
 	"true", "false"
 ];
 

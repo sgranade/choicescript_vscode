@@ -1,7 +1,10 @@
-import { Connection, RequestType, URI } from 'vscode-languageserver';
+import { type Connection, RequestType, type URI } from 'vscode-languageserver';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FileContentRequest: RequestType<{ uri: URI; encoding?: string }, string, any> = new RequestType('fs/content');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FindFilesRequest: RequestType<{ pattern: string, rootPath?: URI }, URI[], any> = new RequestType('fs/findFiles');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const FileExistsRequest: RequestType<URI, boolean, any> = new RequestType('fs/fileExists');
 
 export class RequestService {

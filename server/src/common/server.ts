@@ -1,19 +1,19 @@
 import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { CompletionItem, Connection, Definition, DocumentSymbolParams, Location, ReferenceParams, RenameParams, SymbolInformation, TextDocumentPositionParams, TextDocumentSyncKind, TextDocuments, WorkspaceEdit, WorkspaceFolder } from 'vscode-languageserver';
+import { type CompletionItem, type Connection, type Definition, type DocumentSymbolParams, type Location, type ReferenceParams, type RenameParams, type SymbolInformation, type TextDocumentPositionParams, TextDocumentSyncKind, TextDocuments, type WorkspaceEdit, type WorkspaceFolder } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { generateInitialCompletions } from './completions';
 import { CustomMessages } from "./constants";
-import { FileSystemProvider, FileSystemService } from './file-system-service';
-import { Index, ProjectIndex } from "./index";
+import { type FileSystemProvider, FileSystemService } from './file-system-service';
+import { Index, type ProjectIndex } from "./index";
 import { updateProjectIndex } from './indexer';
 import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
 import { countWords } from './parser';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { generateSymbols } from './structure';
 import { normalizeUri } from './utilities';
-import { ValidationSettings, generateDiagnostics } from './validator';
+import { type ValidationSettings, generateDiagnostics } from './validator';
 
 /**
  * Server event arguments about an updated word count in a document.

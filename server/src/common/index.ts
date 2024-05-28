@@ -1,7 +1,7 @@
 import { basename } from 'path';
-import { Location, Range, Diagnostic } from 'vscode-languageserver';
+import type { Location, Range, Diagnostic } from 'vscode-languageserver';
 
-import { CaseInsensitiveMap, ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
+import { CaseInsensitiveMap, type ReadonlyCaseInsensitiveMap, normalizeUri, mapToUnionedCaseInsensitiveMap } from './utilities';
 import { uriIsStartupFile } from './language';
 
 /**
@@ -15,11 +15,11 @@ export type ReadonlyIdentifierIndex = ReadonlyCaseInsensitiveMap<string, Locatio
 /**
  * Type for a mutable index of identifiers that can exist in multiple locations, like references to variables.
  */
-export type IdentifierMultiIndex = CaseInsensitiveMap<string, Array<Location>>;
+export type IdentifierMultiIndex = CaseInsensitiveMap<string, Location[]>;
 /**
  * Type for an immutable index of identifiers that can exist in multiple locations.
  */
-export type ReadonlyIdentifierMultiIndex = ReadonlyCaseInsensitiveMap<string, ReadonlyArray<Location>>;
+export type ReadonlyIdentifierMultiIndex = ReadonlyCaseInsensitiveMap<string, readonly Location[]>;
 /**
  * Type for a mutable index of labels.
  */
@@ -31,11 +31,11 @@ export type ReadonlyLabelIndex = ReadonlyMap<string, Label>;
 /**
  * Type for a mutable index of references to labels.
  */
-export type LabelReferenceIndex = Map<string, Array<Location>>;
+export type LabelReferenceIndex = Map<string, Location[]>;
 /**
  * Type for an immutable index of references to labels.
  */
-export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, ReadonlyArray<Location>>;
+export type ReadonlyLabelReferenceIndex = ReadonlyMap<string, readonly Location[]>;
 /**
  * Type for a mutable index of achievements.
  */
@@ -144,7 +144,7 @@ export interface ProjectIndex {
 	 * Set the list of scene names in the project.
 	 * @param scenes New list of scene names.
 	 */
-	setSceneList(scenes: Array<string>): void;
+	setSceneList(scenes: string[]): void;
 	/**
 	 * Set the index of labels in a scene file.
 	 * @param sceneUri URI to document whose index is to be updated.
@@ -216,7 +216,7 @@ export interface ProjectIndex {
 	/**
 	 * Get all indexed scene names.
 	 */
-	getIndexedScenes(): ReadonlyArray<string>;
+	getIndexedScenes(): readonly string[];
 	/**
 	 * Get whether or not the project has a choicescripts_stats.txt file.
 	 */
@@ -244,7 +244,7 @@ export interface ProjectIndex {
 	/**
 	 * Get list of scenes in the startup file.
 	 */
-	getSceneList(): ReadonlyArray<string>;
+	getSceneList(): readonly string[];
 	/**
 	 * Get the number of words in a scene, or undefined if the scene doesn't exist.
 	 */
@@ -287,7 +287,7 @@ export interface ProjectIndex {
 	 * created by *check_achivement commands.
 	 * @param achievement Achievement to find references to.
 	 */
-	getAchievementReferences(achievement: string): ReadonlyArray<Location>;
+	getAchievementReferences(achievement: string): readonly Location[];
 	/**
 	 * Get all references to variables in one scene document.
 	 * @param sceneUri Scene document URI.
@@ -297,21 +297,21 @@ export interface ProjectIndex {
 	 * Get all references to a variable across all documents.
 	 * @param variable Variable to find references to.
 	 */
-	getVariableReferences(variable: string): ReadonlyArray<Location>;
+	getVariableReferences(variable: string): readonly Location[];
 	/**
 	 * Get all flow control events in a scene document.
 	 * @param sceneUri Scene document URI.
 	 */
-	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent>;
+	getFlowControlEvents(sceneUri: string): readonly FlowControlEvent[];
 	/**
 	 * Get all scenes listed in the scene list or referenced by flow control events project-wide.
 	 */
-	getAllReferencedScenes(): ReadonlyArray<string>;
+	getAllReferencedScenes(): readonly string[];
 	/**
 	 * Get all references to a label.
 	 * @param label Label.
 	 */
-	getLabelReferences(label: string): ReadonlyArray<Location>;
+	getLabelReferences(label: string): readonly Location[];
 	/**
 	 * Get document scopes for a scene file.
 	 * @param sceneUri Scene document URI.
@@ -326,7 +326,7 @@ export interface ProjectIndex {
 	 * Get the parse errors.
 	 * @param sceneUri Scene document URI.
 	 */
-	getParseErrors(sceneUri: string): ReadonlyArray<Diagnostic>;
+	getParseErrors(sceneUri: string): readonly Diagnostic[];
 	/**
 	 * Remove a document from the project index.
 	 * @param textDocumentUri URI to document to remove.
@@ -349,7 +349,7 @@ export class Index implements ProjectIndex {
 	private _localVariables: Map<string, IdentifierMultiIndex>;
 	private _subroutineLocalVariables: Map<string, IdentifierIndex>;
 	private _variableReferences: Map<string, IdentifierMultiIndex>;
-	private _scenes: Array<string>;
+	private _scenes: string[];
 	private _localLabels: Map<string, LabelIndex>;
 	private _flowControlEvents: Map<string, FlowControlEvent[]>;
 	private _achievements: Map<string, [Location, number, string]>;
@@ -399,10 +399,10 @@ export class Index implements ProjectIndex {
 	setSubroutineLocalVariables(sceneUri: string, newIndex: Map<string, Location>): void {
 		this._subroutineLocalVariables.set(sceneUri, new CaseInsensitiveMap(newIndex));
 	}
-	setVariableReferences(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
+	setVariableReferences(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void {
 		this._variableReferences.set(sceneUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
-	setSceneList(scenes: Array<string>): void {
+	setSceneList(scenes: string[]): void {
 		this._scenes = scenes;
 	}
 	setLabels(sceneUri: string, newIndex: LabelIndex): void {
@@ -414,13 +414,13 @@ export class Index implements ProjectIndex {
 	setAchievements(newIndex: Map<string, [Location, number, string]>): void {
 		this._achievements = new CaseInsensitiveMap(newIndex);
 	}
-	setAchievementReferences(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
+	setAchievementReferences(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void {
 		this._achievementReferences.set(sceneUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setDocumentScopes(sceneUri: string, newScopes: DocumentScopes): void {
 		this._documentScopes.set(sceneUri, newScopes);
 	}
-	setImages(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Array<Location>>): void {
+	setImages(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void {
 		this._images.set(sceneUri, mapToUnionedCaseInsensitiveMap(newIndex));
 	}
 	setParseErrors(sceneUri: string, errors: Diagnostic[]): void {
@@ -449,7 +449,7 @@ export class Index implements ProjectIndex {
 			this._flowControlEvents.has(sceneUri) ||
 			this._parseErrors.has(sceneUri);
 	}
-	getIndexedScenes(): ReadonlyArray<string> {
+	getIndexedScenes(): readonly string[] {
 		const sceneUris = [...new Set([
 			...this._wordCounts.keys(),
 			...this._localVariables.keys(),
@@ -481,7 +481,7 @@ export class Index implements ProjectIndex {
 		}
 		return this._startupFileUri.replace('startup', scene);
 	}
-	getSceneList(): ReadonlyArray<string> {
+	getSceneList(): readonly string[] {
 		return Array.from(this._scenes);
 	}
 	getWordCount(sceneUri: string): number | undefined {
@@ -510,7 +510,7 @@ export class Index implements ProjectIndex {
 		const index = this._achievementReferences.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
-	getAchievementReferences(achievement: string): ReadonlyArray<Location> {
+	getAchievementReferences(achievement: string): readonly Location[] {
 		const locations: Location[] = [];
 		for (const index of this._achievementReferences.values()) {
 			const partialLocations = index.get(achievement);
@@ -523,7 +523,7 @@ export class Index implements ProjectIndex {
 		const index = this._variableReferences.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
-	getVariableReferences(variable: string): ReadonlyArray<Location> {
+	getVariableReferences(variable: string): readonly Location[] {
 		const locations: Location[] = [];
 		for (const index of this._variableReferences.values()) {
 			const partialLocations = index.get(variable);
@@ -532,11 +532,11 @@ export class Index implements ProjectIndex {
 		}
 		return locations;
 	}
-	getFlowControlEvents(sceneUri: string): ReadonlyArray<FlowControlEvent> {
+	getFlowControlEvents(sceneUri: string): readonly FlowControlEvent[] {
 		const index = this._flowControlEvents.get(sceneUri) ?? [];
 		return index;
 	}
-	getAllReferencedScenes(): ReadonlyArray<string> {
+	getAllReferencedScenes(): readonly string[] {
 		const scenes: string[] = [...this.getSceneList()];
 
 		for (const events of this._flowControlEvents.values()) {
@@ -547,7 +547,7 @@ export class Index implements ProjectIndex {
 
 		return [...new Set(scenes)];
 	}
-	getLabelReferences(label: string): ReadonlyArray<Location> {
+	getLabelReferences(label: string): readonly Location[] {
 		const locations: Location[] = [];
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		for (const [documentUri, events] of this._flowControlEvents) {
@@ -555,7 +555,6 @@ export class Index implements ProjectIndex {
 				return (event.labelLocation !== undefined && event.label == label);
 			});
 			const matchingLocations = matchingEvents.map(event => {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				return event.labelLocation!;  // This is OK because the filter above gets rid of labelLocations that don't exist
 			});
 			locations.push(...matchingLocations);
@@ -577,7 +576,7 @@ export class Index implements ProjectIndex {
 		const index = this._images.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
 	}
-	getParseErrors(sceneUri: string): ReadonlyArray<Diagnostic> {
+	getParseErrors(sceneUri: string): readonly Diagnostic[] {
 		const errors = this._parseErrors.get(sceneUri) ?? [];
 		return errors;
 	}

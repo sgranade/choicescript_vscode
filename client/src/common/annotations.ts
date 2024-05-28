@@ -1,11 +1,11 @@
 import {
-	DecorationOptions,
+	type DecorationOptions,
 	DecorationRangeBehavior,
-	Disposable,
+	type Disposable,
 	Range,
-	TextDocumentChangeEvent,
-	TextEditor,
-	TextEditorDecorationType,
+	type TextDocumentChangeEvent,
+	type TextEditor,
+	type TextEditorDecorationType,
 	ThemeColor,
 	window
 } from 'vscode';

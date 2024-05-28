@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { ProjectStatus, StatusBarItems } from './status-bar-items';
+import type { ProjectStatus, StatusBarItems } from './status-bar-items';
 import { CustomContext, CustomMessages } from './constants';
 import * as notifications from './notifications';
 import * as URI from 'urijs';
 import {
-	BaseLanguageClient,
+	type BaseLanguageClient,
 	Location,
 	Range,
 } from 'vscode-languageclient';

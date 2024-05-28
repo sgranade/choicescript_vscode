@@ -1,5 +1,5 @@
-import { URI as Uri } from 'vscode-uri';
-import { IWorkspaceProvider } from './interfaces/vscode-workspace-provider';
+import type { URI as Uri } from 'vscode-uri';
+import type { IWorkspaceProvider } from './interfaces/vscode-workspace-provider';
 
 export type AllScenesResult = { [key: string]: { labels: { [key: string]: number }, lines: string[] }; }
 export type CompiledChoiceScriptGame = {

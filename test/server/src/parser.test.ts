@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 import 'mocha';
-import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Position, Location, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Substitute, type SubstituteOf, Arg } from '@fluffy-spoon/substitute';
+import { Position, type Location, type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ParserCallbacks, ParsingState, parse } from '../../../server/src/common/parser';
-import { FlowControlEvent, SummaryScope } from '../../../server/src/common';
+import { type ParserCallbacks, type ParsingState, parse } from '../../../server/src/common/parser';
+import type { FlowControlEvent, SummaryScope } from '../../../server/src/common';
 
 /* eslint-disable */
 

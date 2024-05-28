@@ -1,15 +1,15 @@
-import * as vscode from 'vscode';
+import type {EventEmitter, Uri} from 'vscode';
 
 
 /**
  * Document containing a read-only log from a ChoiceScript process.
  */
 export default class LogDocument {
-	private readonly _uri: vscode.Uri;
-	private readonly _emitter: vscode.EventEmitter<vscode.Uri>;
+	private readonly _uri: Uri;
+	private readonly _emitter: EventEmitter<Uri>;
 	private readonly _lines: string[];
 
-	constructor(uri: vscode.Uri, emitter: vscode.EventEmitter<vscode.Uri>, header?: string) {
+	constructor(uri: Uri, emitter: EventEmitter<Uri>, header?: string) {
 		this._uri = uri;
 		this._emitter = emitter;
 		this._lines = [];
@@ -18,7 +18,7 @@ export default class LogDocument {
 		}
 	}
 
-	get uri(): vscode.Uri {
+	get uri(): Uri {
 		return this._uri;
 	}
 
@@ -30,7 +30,7 @@ export default class LogDocument {
 		return this._lines.length;
 	}
 
-	get lines(): ReadonlyArray<string> {
+	get lines(): readonly string[] {
 		return this._lines;
 	}
 

@@ -1,4 +1,4 @@
-import { Memento } from 'vscode';
+import type { Memento } from 'vscode';
 
 /**
  * Manage data stored locally in a Memento object.
