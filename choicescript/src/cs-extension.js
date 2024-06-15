@@ -102,7 +102,7 @@ window.addEventListener('DOMContentLoaded', () => {
  */
 window.addEventListener('message', event => {
 
-	const message = event.data; // The JSON data our extension sent
+	const message = event.data;
 
 	switch (message.command) {
 		case 'update-resource-uri':
