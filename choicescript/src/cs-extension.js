@@ -63,3 +63,53 @@ window.reportError = function(msg, file, line, column, error) {
 	}
 	oldReportError(msg, file, line, column, error);
 };
+
+/**
+ * IMAGE CONVERTOR (OUTGOING)
+ * 
+ * Webviews need all of their resources to be passed through asWebviewUri.
+ * This is tricky to do with dynamic resources like user images and sound files.
+ * 
+ * What we do here is listen for the addition of image and audio tags within the webview DOM and make a request back
+ * to the extension for the webview uri.
+ */
+window.addEventListener('DOMContentLoaded', () => {
+	var mutationObserver = new MutationObserver(function(mutations) {
+		mutations.forEach(function(mutation) {
+		  if (mutation.type === "childList") {
+			  if (Array.from(mutation.addedNodes).length > 0) {
+				  const imgs = Array.from(mutation.addedNodes).filter(n => ['IMG', 'AUDIO'].includes(n.nodeName));
+				  if (imgs.length > 0) {
+					imgs.forEach(i => vscode.postMessage({ command: 'convert-resource-uri', src: i.getAttribute("src"), nodeName: i.nodeName }));
+				  }
+			  }
+		  }
+		});
+	  });
+	  mutationObserver.observe(document.getElementsByTagName("body")[0], {
+		childList: true,
+		subtree: true
+	  });
+});
+
+
+/**
+ * IMAGE CONVERTOR (INCOMING)
+ * 
+ * Handle the extension responses to weburi conversion requests (as above).
+ * When we receive an updated URI source we use the old URI source to find the appropriate
+ * element and update it accordingly, allowing it to load.
+ */
+window.addEventListener('message', event => {
+
+	const message = event.data; // The JSON data our extension sent
+
+	switch (message.command) {
+		case 'update-resource-uri':
+			const img = Array.from(document.getElementsByTagName(message.nodeName)).find(i => i.getAttribute("src") === message.oldSrc);
+			if (img) {
+				img.src = message.newSrc;
+			}
+			break;
+	}
+});

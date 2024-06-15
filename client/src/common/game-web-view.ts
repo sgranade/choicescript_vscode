@@ -38,7 +38,7 @@ export class GameWebViewManager {
 				vscode.ViewColumn.Beside,
 				{
 					retainContextWhenHidden: true,
-					localResourceRoots: [vscode.Uri.joinPath(this.extContext.extensionUri, 'choicescript')],
+					localResourceRoots: [vscode.Uri.joinPath(this.extContext.extensionUri, 'choicescript'), vscode.workspace.workspaceFolders[0].uri],
 					enableScripts: true
 				}
 			);
@@ -50,14 +50,14 @@ export class GameWebViewManager {
 		const view = this.panel.webview;
 		let content = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.runIndexHtmlUri));
 		// The following Content Security Policy doesn't really do much given how much we have to allow to get ChoiceScript to run properly, but it's here as a reminder.
-		content = content.replace("<head>", `<head>\n<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${view.cspSource} 'unsafe-inline' data: https:; script-src ${view.cspSource} 'unsafe-inline' https:; style-src ${view.cspSource} 'unsafe-inline' https:"/>`);
+		content = content.replace("<head>", `<head>\n<meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src ${view.cspSource} https:; img-src ${view.cspSource} 'unsafe-inline' data: https:; script-src ${view.cspSource} 'unsafe-inline' https:; style-src ${view.cspSource} 'unsafe-inline' https:"/>`);
 		// So that the contents of the HTML is different and is refreshed on a rerun.
 		content = content.replace("<body>", `<body>\n<div style='display: none;' id='time-cache'>${new Date().getTime()}</div>`);
 		// Configure the script and style references so that VS Code will allow them to be loaded.
 		content = content.replace(/src="([\w\-.]+\.js)"/g, (_match, fileName) => `src="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, 'choicescript', 'out', fileName)).toString()}"`);
 		content = content.replace(/href="([\w.]+\.css)"/g, (_match, fileName) => `href="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, 'choicescript', 'out', fileName)).toString()}"`);
 		// Add our compiled game content, this will be automatically picked up by Scene.js.
-		content = content.replace("startLoading();", `allScenes=${JSON.stringify(allScenes)};\nstartLoading()`);
+		content = content.replace("startLoading();", `allScenes=${JSON.stringify(allScenes)};\nstartLoading();`);
 		return content;
 	}
 
@@ -70,6 +70,9 @@ export class GameWebViewManager {
 						return;
 					case 'annotate':
 						this.annotateFn(message.scene, message.line, message.message);
+						return;
+					case 'convert-resource-uri':
+						this.panel.webview.postMessage({ command: 'update-resource-uri', nodeName: message.nodeName, oldSrc: message.src, newSrc: this.panel.webview.asWebviewUri(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, message.src)).toString() })
 						return;
 				}
 			},
