@@ -78,9 +78,9 @@ window.addEventListener('DOMContentLoaded', () => {
 		mutations.forEach(function(mutation) {
 		  if (mutation.type === "childList") {
 			  if (Array.from(mutation.addedNodes).length > 0) {
-				  const imgs = Array.from(mutation.addedNodes).filter(n => ['IMG', 'AUDIO'].includes(n.nodeName));
-				  if (imgs.length > 0) {
-					imgs.forEach(i => vscode.postMessage({ command: 'convert-resource-uri', src: i.getAttribute("src"), nodeName: i.nodeName }));
+				  const resources = Array.from(mutation.addedNodes).filter(n => ['IMG', 'AUDIO'].includes(n.nodeName));
+				  if (resources.length > 0) {
+					resources.forEach(r => vscode.postMessage({ command: 'convert-resource-uri', src: r.getAttribute("src"), nodeName: r.nodeName }));
 				  }
 			  }
 		  }
@@ -106,9 +106,9 @@ window.addEventListener('message', event => {
 
 	switch (message.command) {
 		case 'update-resource-uri':
-			const img = Array.from(document.getElementsByTagName(message.nodeName)).find(i => i.getAttribute("src") === message.oldSrc);
-			if (img) {
-				img.src = message.newSrc;
+			const resource = Array.from(document.getElementsByTagName(message.nodeName)).find(i => i.getAttribute("src") === message.oldSrc);
+			if (resource) {
+				resource.src = message.newSrc;
 			}
 			break;
 	}
