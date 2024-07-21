@@ -1,10 +1,10 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { integer } from 'vscode-languageclient';
+import type { integer } from 'vscode-languageclient';
 import { CustomContext, Configuration, LocalWorkspaceStorageKeys, RandomtestPutResultsInDocumentOptions, RandomtestSettingsSource } from '../common/constants';
 import { getWorkspaceStorageService } from '../common/localStorageService';
-import { Provider, generateLogUri, logUriToFilename } from '../common/logDocProvider';
+import { type Provider, generateLogUri, logUriToFilename } from '../common/logDocProvider';
 import LogDocument from '../common/logDocument';
 import { MultiStepInput } from '../common/multiStepInput';
 
@@ -434,7 +434,6 @@ function runTest(
 		output.appendLine(`\n${testName} finished on ${Date().toString()}`);
 		vscode.commands.executeCommand('setContext', CustomContext.TestRunning, false);
 		if (statusCallback !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			statusCallback!(false);
 		}
 		if (output instanceof LogDocument) {
@@ -468,7 +467,6 @@ function runTest(
 			vscode.window.showInformationMessage(`${testName} received unexpected signal: ${signal}`, 'OK');
 		}
 		if (successCallback !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			successCallback!(success);
 		}
 	});

@@ -1,6 +1,6 @@
 import * as URI from 'urijs';
-import { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
  * Map that stores and accesses string keys without regard to case.
@@ -45,7 +45,7 @@ export class CaseInsensitiveMap<K, V> extends Map<K, V> {
  * Convert a map to a case-insensitive map, combining array values instead of overwriting them.
  * @param map Original map.
  */
-export function mapToUnionedCaseInsensitiveMap<K, V extends Array<unknown>>(map: Map<K, V>): CaseInsensitiveMap<K, V> {
+export function mapToUnionedCaseInsensitiveMap<K, V extends unknown[]>(map: Map<K, V>): CaseInsensitiveMap<K, V> {
 	const newMap = new CaseInsensitiveMap<K, V>();
 	for (const [key, value] of map) {
 		const oldArray = newMap.get(key);

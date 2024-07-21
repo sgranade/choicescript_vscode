@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BaseLanguageClient, GenericNotificationHandler } from 'vscode-languageclient';
+import type { BaseLanguageClient, GenericNotificationHandler } from 'vscode-languageclient';
 
 let client: BaseLanguageClient;
 const notificationManagers: Map<string, ListenerManager> = new Map();

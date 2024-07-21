@@ -1,8 +1,8 @@
-import { Location, Range, Position, Diagnostic, DiagnosticSeverity, DiagnosticRelatedInformation } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Location, Range, type Position, type Diagnostic, DiagnosticSeverity, type DiagnosticRelatedInformation } from 'vscode-languageserver';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ParserCallbacks, ParsingState, parse } from './parser';
-import { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, AchievementIndex } from './index';
+import { type ParserCallbacks, type ParsingState, parse } from './parser';
+import type { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, AchievementIndex } from './index';
 import { createDiagnosticFromLocation, comparePositions, normalizeUri } from './utilities';
 
 /**
@@ -17,14 +17,14 @@ class IndexingState {
 	globalVariables: Map<string, Location> = new Map();
 	localVariables: Map<string, Location[]> = new Map();
 	variableReferences: Map<string, Location[]> = new Map();
-	scenes: Array<string> = [];
+	scenes: string[] = [];
 	labels: LabelIndex = new Map();
 	achievements: AchievementIndex = new Map();
 	achievementReferences: Map<string, Location[]> = new Map();
-	flowControlEvents: Array<FlowControlEvent> = [];
-	referencedScenes: Array<string> = [];
+	flowControlEvents: FlowControlEvent[] = [];
+	referencedScenes: string[] = [];
 	images: Map<string, Location[]> = new Map();
-	parseErrors: Array<Diagnostic> = [];
+	parseErrors: Diagnostic[] = [];
 
 	checkAchievementLocation: Location | undefined = undefined;
 	paramsLocations: Location[] = [];
@@ -208,7 +208,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onVariableReference: (symbol: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-			const referenceArray: Array<Location> = indexingState.variableReferences.get(symbol) ?? [];
+			const referenceArray: Location[] = indexingState.variableReferences.get(symbol) ?? [];
 			referenceArray.push(location);
 			indexingState.variableReferences.set(symbol, referenceArray);
 		},
@@ -246,7 +246,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			indexingState.scenes = scenes;
 		},
 
-		onAchievementCreate: (codename: string, location: Location, points: number, title: string, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+		onAchievementCreate: (codename: string, location: Location, points: number, title: string, state: ParsingState) => {
 			const prevAchievement = indexingState.achievements.get(codename);
 			if (prevAchievement !== undefined) {
 				const relatedInformation: DiagnosticRelatedInformation = {
@@ -266,7 +266,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 		},
 
 		onAchievementReference: (codename: string, location: Location, state: ParsingState) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-			const referenceArray: Array<Location> = indexingState.achievementReferences.get(codename) ?? [];
+			const referenceArray: Location[] = indexingState.achievementReferences.get(codename) ?? [];
 			referenceArray.push(location);
 			indexingState.achievementReferences.set(codename, referenceArray);
 		},

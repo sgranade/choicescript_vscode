@@ -1,29 +1,32 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import {
+import type {
 	LanguageClientOptions,
 	BaseLanguageClient,
 } from 'vscode-languageclient';
 
 import { LineAnnotationController } from './annotations';
 import { Configuration, CustomCommands, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
-import { ChoiceScriptGameRunProvider, ChoiceScriptGameRunnerService } from './game-runner-service';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
 import * as notifications from './notifications';
 import { StatusBarController } from './status-bar-controller';
 import { StatusBarItems } from './status-bar-items';
 import { registerRequestHandlers } from './request-handler';
-import { ChoiceScriptTestProvider } from './choicescript-test-service';
+import type { ChoiceScriptTestProvider } from './choicescript-test-service';
+import { ChoiceScriptCompiler } from './choicescript-compiler';
+import { GameWebViewManager } from './game-web-view';
+import { type IWorkspaceProvider, WorkspaceProviderImpl } from './interfaces/vscode-workspace-provider';
 
 let sceneFilesPath: string;
 let imageFilesPath: string;
 let annotationController: LineAnnotationController;
+let gameWebViewManager: GameWebViewManager;
+let csCompiler: ChoiceScriptCompiler;
+let workspaceProvider: IWorkspaceProvider;
 
 export type CsErrorHandler = (scene: string, line: number, message: string) => void;
-
 export type LanguageClientConstructor = (id: string, name: string, clientOptions: LanguageClientOptions) => BaseLanguageClient;
-export type GameRunProviderConstructor = (csPath: string, errorHandler?: CsErrorHandler) => ChoiceScriptGameRunProvider;
 
 /**
  * Annotate an error from ChoiceScript in the editor.
@@ -94,11 +97,10 @@ function bbcodeDelimit(editor: vscode.TextEditor, delimitCharacters: string): vo
  * 
  * @param context Extension's context.
  * @param controller Status bar controller.
- * @param gameRunner The controller for running the game in a browser.
  * @param docProvider Text document provider.
  * @param testProvider Test-running provider.
  */
-function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, gameRunner: ChoiceScriptGameRunnerService, docProvider: Provider, testProvider?: ChoiceScriptTestProvider) {
+function registerCommands(context: vscode.ExtensionContext, controller: StatusBarController, docProvider: Provider, gameWebViewManager: GameWebViewManager, testProvider?: ChoiceScriptTestProvider) {
 
 	const csCommands = [
 		vscode.commands.registerTextEditorCommand(
@@ -117,7 +119,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunQuicktest, () => {
 					annotationController.clearAll();
 					if (sceneFilesPath !== undefined) {
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runQuicktest(
 								context.asAbsolutePath(RelativePaths.Quicktest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -133,7 +135,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunRandomtestDefault, () => {
 					annotationController.clearAll();
 					if (sceneFilesPath !== undefined) {
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -151,7 +153,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RunRandomtestInteractive, () => {
 					if (sceneFilesPath !== undefined) {
 						annotationController.clearAll();
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -169,7 +171,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 				CustomCommands.RerunRandomTest, () => {
 					if (sceneFilesPath !== undefined) {
 						annotationController.clearAll();
-						vscode.workspace.saveAll().then(
+						workspaceProvider.saveAll().then(
 							() => testProvider.runRandomtest(
 								context.asAbsolutePath(RelativePaths.Randomtest),
 								context.asAbsolutePath(RelativePaths.Choicescript),
@@ -190,15 +192,35 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
 		);
 	}
 
-	if (gameRunner) { // web platform isn't supported
-		csCommands.push(vscode.commands.registerCommand(
-			CustomCommands.OpenGame, 
+	csCommands.push(
+		vscode.commands.registerCommand(
+			CustomCommands.RunGame,
 			async () => {
-				annotationController.clearAll();
-				await gameRunner.run();
+				const run = async () => {
+					annotationController.clearAll();
+					// Ideally we'd be able to sanity check that these are actually ChoiceScript 'scene' files,
+					// but given that raw text files with no commands *are* valid CS scenes, I don't think there's anything we can do.
+					const compiledGame = await csCompiler.compile(await workspaceProvider.findFiles(sceneFilesPath, '*.txt'));
+					await gameWebViewManager.runCompiledGame(compiledGame);
+				};
+				if (gameWebViewManager.isRunning()) {
+					const result = await vscode.window.showInformationMessage(
+						'A ChoiceScript game is already running.\n\nWhat would you like to do?',
+						{ detail: 'Running again will destroy your current session.', modal: true },
+						'Run',
+						'Focus'
+					);
+					if (result === 'Run') {
+						run();
+					} else if (result === 'Focus') {
+						gameWebViewManager.openOrShow();
+					}
+				} else {
+					run();
+				}
 			}
-		));
-	}
+		)
+	);
 
 	context.subscriptions.push(...csCommands);
 }
@@ -207,7 +229,7 @@ function registerCommands(context: vscode.ExtensionContext, controller: StatusBa
  * Update the workspace editor.quickSuggestions state for ChoiceScript.
  */
 function updateQuickSuggestions(): void {
-	const quickSuggestionsState = !vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.DisableQuickSuggestions);
+	const quickSuggestionsState = !workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.DisableQuickSuggestions);
 	const quickSuggestionsValue = {
 		comments: quickSuggestionsState,
 		strings: quickSuggestionsState,
@@ -218,7 +240,9 @@ function updateQuickSuggestions(): void {
 }
 
 
-export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, gameProviderConstructor?: GameRunProviderConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
+export async function startClient(context: vscode.ExtensionContext, clientConstructor: LanguageClientConstructor, testProvider?: ChoiceScriptTestProvider): Promise<BaseLanguageClient> {
+
+	workspaceProvider = new WorkspaceProviderImpl();
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
@@ -230,6 +254,9 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 		'ChoiceScript VSCode',
 		clientOptions
 	);
+
+	gameWebViewManager = new GameWebViewManager(context, annotateCSError);
+	csCompiler = new ChoiceScriptCompiler(workspaceProvider);
 
 	registerRequestHandlers(client);
 
@@ -247,8 +274,8 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 
 	// Create a controller for error annotations
 	annotationController = new LineAnnotationController();
-	const annotationsTextDocumentChangedSubscription = vscode.workspace.onDidChangeTextDocument(
-		annotationController.onTextDocumentChanged, annotationController
+	const annotationsTextDocumentChangedSubscription = workspaceProvider.onDidChangeTextDocument(
+		() => annotationController.onTextDocumentChanged, annotationController
 	);
 	context.subscriptions.push(
 		annotationController,
@@ -256,12 +283,11 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	);
 
 	// Deal with configuration changes
-	const configurationChangedSubscription = vscode.workspace.onDidChangeConfiguration(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		(e: vscode.ConfigurationChangeEvent) => {
+	const configurationChangedSubscription = workspaceProvider.onDidChangeConfiguration(
+		() => {
 			updateQuickSuggestions();
 			client.sendNotification(
-				CustomMessages.CoGStyleGuide, vscode.workspace.getConfiguration(Configuration.BaseSection).get(Configuration.UseCOGStyleGuide)
+				CustomMessages.CoGStyleGuide, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.UseCOGStyleGuide)
 			);
 		}
 	);
@@ -273,27 +299,16 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	// Prepare for future ChoiceScript test runs (if we're not on web)
 	testProvider?.initializeTestProvider();
 
-	const gameProvider = gameProviderConstructor? gameProviderConstructor(
-		context.asAbsolutePath(RelativePaths.Choicescript),
-		annotateCSError
-	) : undefined;
-
-	const gameService = new ChoiceScriptGameRunnerService(gameProvider, controller);
-
 	notifications.addNotificationHandler(
 		CustomMessages.UpdatedSceneFilesPath,
 		async (e: string[]) => {
 			sceneFilesPath = e[0];
-			await gameProvider._init();
-			gameProvider.updateScenePath(gameProvider.gameId, sceneFilesPath);
 		}
 	);
 	notifications.addNotificationHandler(
 		CustomMessages.UpdatedImageFilesPath,
 		async (e: string[]) => {
 			imageFilesPath = e[0];
-			await gameProvider._init();
-			gameProvider.updateImagePath(gameProvider.gameId, imageFilesPath);
 		}
 	);
 	notifications.addNotificationHandler(
@@ -305,7 +320,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 	);
 
 	// Register our commands
-	registerCommands(context, controller, gameService, provider, testProvider);
+	registerCommands(context, controller, provider, gameWebViewManager, testProvider);
 
 	// Adjust the workspace's quick suggestions setting for ChoiceScript
 	updateQuickSuggestions();

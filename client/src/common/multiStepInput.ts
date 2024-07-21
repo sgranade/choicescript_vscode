@@ -1,4 +1,4 @@
-import { QuickPickItem, window, Disposable, QuickInputButton, QuickInput, QuickInputButtons } from 'vscode';
+import { type QuickPickItem, window, type Disposable, type QuickInputButton, type QuickInput, QuickInputButtons } from 'vscode';
 
 /*
  * A multi-step input using window.createQuickPick() and window.createInputBox().

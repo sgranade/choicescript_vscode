@@ -1,5 +1,5 @@
-import { FileSystemProvider } from '../common/file-system-service';
-import { URI } from 'vscode-languageserver';
+import type { FileSystemProvider } from '../common/file-system-service';
+import type { URI } from 'vscode-languageserver';
 import * as fs from 'fs/promises';
 import * as globby from 'globby';
 

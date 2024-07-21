@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BaseLanguageClient, LanguageClient, LanguageClientOptions } from 'vscode-languageclient/browser';
+import { type BaseLanguageClient, LanguageClient, type LanguageClientOptions } from 'vscode-languageclient/browser';
 import { startClient } from '../common/client';
 
 let client: BaseLanguageClient;

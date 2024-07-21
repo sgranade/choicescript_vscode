@@ -12,7 +12,7 @@ export interface ProjectStatus {
  */
 export class StatusBarItems {
 	private _runningTestItem: vscode.StatusBarItem;
-	private _openGameStatusBarItem: vscode.StatusBarItem;
+	private _runGameStatusBarItem: vscode.StatusBarItem;
 	private _wordCountStatusBarItem: vscode.StatusBarItem;
 	private _wordCount: number | undefined;
 	private _selectionCount: number | undefined;
@@ -24,16 +24,16 @@ export class StatusBarItems {
 		this._runningTestItem.name = "ChoiceScript: Running Tests";
 		this._runningTestItem.text = "$(sync~spin) Running CS Test";
 		this._runningTestItem.tooltip = "Press to stop the running test";
-		this._openGameStatusBarItem = vscode.window.createStatusBarItem("cs_open_game", vscode.StatusBarAlignment.Left, 10);
-		this._openGameStatusBarItem.name = "ChoiceScript: Open Game";
-		this._openGameStatusBarItem.text = "$(open-preview) Open in Browser";
-		this._openGameStatusBarItem.tooltip = "Press to open game in browser";
-		this._openGameStatusBarItem.command = CustomCommands.OpenGame;
+		this._runGameStatusBarItem = vscode.window.createStatusBarItem("cs_run_game", vscode.StatusBarAlignment.Left, 10);
+		this._runGameStatusBarItem.name = "ChoiceScript: Run Game";
+		this._runGameStatusBarItem.text = "$(open-preview) Run Game";
+		this._runGameStatusBarItem.tooltip = "Press to run game";
+		this._runGameStatusBarItem.command = CustomCommands.RunGame;
 		this._wordCountStatusBarItem = vscode.window.createStatusBarItem("cs_word_count", vscode.StatusBarAlignment.Right, 1000);
 		this._wordCountStatusBarItem.name = "ChoiceScript: Word Count";
 		this._disposable = vscode.Disposable.from(
 			this._runningTestItem,
-			this._openGameStatusBarItem,
+			this._runGameStatusBarItem,
 			this._wordCountStatusBarItem
 		);
 	}
@@ -49,7 +49,7 @@ export class StatusBarItems {
 		}
 
 		if (editor === undefined) {
-			this._openGameStatusBarItem.hide();
+			this._runGameStatusBarItem.hide();
 			this._wordCountStatusBarItem.hide();
 		}
 		else {
@@ -58,15 +58,15 @@ export class StatusBarItems {
 			if (doc.languageId === "choicescript") {
 				this._updateWordCountText();
 				if (projectStatus.loaded && vscode.workspace.isTrusted) {
-					this._openGameStatusBarItem.show();
+					this._runGameStatusBarItem.show();
 				}
 				else {
-					this._openGameStatusBarItem.hide();
+					this._runGameStatusBarItem.hide();
 				}
 				this._wordCountStatusBarItem.show();
 			}
 			else {
-				this._openGameStatusBarItem.hide();
+				this._runGameStatusBarItem.hide();
 				this._wordCountStatusBarItem.hide();
 			}
 		}

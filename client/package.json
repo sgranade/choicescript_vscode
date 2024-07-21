@@ -13,15 +13,10 @@
 		"vscode": "^1.75.0"
 	},
 	"dependencies": {
-		"get-port": "^5.1.1",
-		"koa": "^2.14.2",
-		"koa-bodyparser": "^4.4.1",
 		"urijs": "^1.19.11",
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/koa": "^2.13.11",
-		"@types/koa-bodyparser": "^4.3.12",
 		"@types/vscode": "^1.75.0"
 	}
 }

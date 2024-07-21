@@ -1,6 +1,6 @@
-import { Position, Location, ReferenceContext, WorkspaceEdit, TextEdit } from 'vscode-languageserver';
+import { type Position, type Location, type ReferenceContext, type WorkspaceEdit, TextEdit } from 'vscode-languageserver';
 
-import { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
+import type { ProjectIndex, ReadonlyIdentifierIndex, ReadonlyLabelIndex, ReadonlyIdentifierMultiIndex } from "./index";
 import { variableIsAchievement, convertAchievementToVariable } from './language';
 import { positionInRange, CaseInsensitiveMap } from './utilities';
 

@@ -1,14 +1,13 @@
-import * as vscode from 'vscode';
+import type { ExtensionContext } from 'vscode';
 import { RelativePaths } from '../common/constants';
-import { BaseLanguageClient, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
-import { CsErrorHandler, GameRunProviderConstructor, LanguageClientConstructor, startClient } from '../common/client';
-import { NodeGameRunner } from './node-game-runner';
+import { type BaseLanguageClient, LanguageClient, type LanguageClientOptions, type ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import { type LanguageClientConstructor, startClient } from '../common/client';
 import * as testFunctionality from './cstests';
-import { ChoiceScriptTestProvider } from '../common/choicescript-test-service';
+import type { ChoiceScriptTestProvider } from '../common/choicescript-test-service';
 
 let client: BaseLanguageClient | undefined;
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: ExtensionContext) {
 	const serverModule = context.asAbsolutePath(
 		RelativePaths.VSCodeExtensionServer
 	);
@@ -31,17 +30,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	const clientConstructor: LanguageClientConstructor = (id: string, name: string, clientOptions: LanguageClientOptions) => {
 		return new LanguageClient(id, name, serverOptions, clientOptions);
 	};
-	
-	const gameRunProviderConstructor: GameRunProviderConstructor = (csPath: string, errorHandler: CsErrorHandler) => {
-		return new NodeGameRunner(csPath, errorHandler);
-	};
 
 	const testProvider: ChoiceScriptTestProvider = {
 		...testFunctionality
 	};
 	
 	console.log('Activating a ChoiceScript Language client in a node extension host context');
-	client = await startClient(context, clientConstructor, gameRunProviderConstructor, testProvider);
+	client = await startClient(context, clientConstructor, testProvider);
 }
 
 export async function deactivate() {

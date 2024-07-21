@@ -80,8 +80,8 @@
 				"category": "ChoiceScript"
 			},
 			{
-				"command": "choicescript.openGame",
-				"title": "Open Game in Browser",
+				"command": "choicescript.runGame",
+				"title": "Run Game",
 				"category": "ChoiceScript",
 				"enablement": "isWorkspaceTrusted"
 			},
@@ -127,8 +127,8 @@
 					"when": "editorLangId == choicescript"
 				},
 				{
-					"command": "choicescript.openGame",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded"
+					"command": "choicescript.runGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded"
 				},
 				{
 					"command": "choicescript.runQuicktest",
@@ -153,8 +153,8 @@
 			],
 			"editor/context": [
 				{
-					"command": "choicescript.openGame",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded",
+					"command": "choicescript.runGame",
+					"when": "editorLangId == choicescript && choicescript.projectLoaded",
 					"group": "ChoiceScript@1"
 				},
 				{
@@ -284,7 +284,7 @@
 		}
 	},
 	"scripts": {
-		"lint": "eslint -c .eslintrc.json --ext .ts ./client/src && eslint -c .eslintrc.json --ext .ts ./server/src",
+		"lint": "eslint",
 		"vscode:prepublish": "npm run webpack",
 		"webpack": "npm run minify-cs && webpack --mode production --config ./client/webpack.config.js --devtool hidden-source-map && webpack --mode production --config ./server/webpack.config.js --devtool hidden-source-map",
 		"webpack:dev": "npm run minify-cs && concurrently \"npm run dev-client\" \"npm run dev-server\"",
@@ -299,20 +299,20 @@
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.3.0",
 		"@fluffy-spoon/substitute": "^1.208.0",
 		"@types/chai": "^4.3.10",
+		"@types/eslint__js": "^8.42.3",
 		"@types/mocha": "^10.0.4",
 		"@types/mock-fs": "^4.13.4",
 		"@types/node": "^20.9.2",
 		"@types/urijs": "^1.19.23",
 		"@types/vscode": "^1.75.0",
-		"@typescript-eslint/eslint-plugin": "^7.1.1",
-		"@typescript-eslint/parser": "^7.1.1",
 		"chai": "^4.4.1",
 		"concurrently": "^8.2.2",
 		"date-fns": "^2.30.0",
 		"esbuild-loader": "^4.0.2",
-		"eslint": "^8.54.0",
+		"eslint": "^9.3.0",
 		"fork-ts-checker-webpack-plugin": "^9.0.2",
 		"merge-options": "^3.0.4",
 		"mocha": "^10.2.0",
@@ -323,6 +323,7 @@
 		"ts-loader": "^9.5.1",
 		"ts-node": "^10.9.1",
 		"typescript": "^5.2.2",
+		"typescript-eslint": "^7.11.0",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.11",
 		"webpack": "^5.89.0",
@@ -330,6 +331,7 @@
 	},
 	"dependencies": {
 		"path-browserify": "^1.0.1",
-		"uuid": "^9.0.1"
+		"uuid": "^9.0.1",
+		"vscode-uri": "^3.0.8"
 	}
 }

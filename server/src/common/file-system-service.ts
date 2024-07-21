@@ -1,4 +1,4 @@
-import { URI } from 'vscode-languageserver';
+import type { URI } from 'vscode-languageserver';
 
 export class FileSystemService {
 	constructor(private provider: FileSystemProvider) {}

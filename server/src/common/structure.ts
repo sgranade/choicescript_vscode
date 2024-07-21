@@ -1,7 +1,7 @@
-import { SymbolInformation, SymbolKind } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { type SymbolInformation, SymbolKind } from 'vscode-languageserver';
+import { type TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex } from './index';
+import { type ProjectIndex } from './index';
 import { uriIsStartupFile } from './language';
 import { normalizeUri } from './utilities';
 
