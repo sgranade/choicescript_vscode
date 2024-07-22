@@ -26,7 +26,7 @@ function withDefaults(/**@type WebpackConfig*/extConfig, /**@type boolean*/forWe
 				exclude: /node_modules/,
 				loader: 'esbuild-loader',
 				options: {
-					target: 'es2015'
+					target: 'es2018'
 				}
 			}]
 		},
