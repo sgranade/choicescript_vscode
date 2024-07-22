@@ -107,11 +107,6 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		}
 	});
 
-	connection.onDidChangeConfiguration(change => {  // eslint-disable-line @typescript-eslint/no-unused-vars
-		// Revalidate all open text documents
-		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
-	});
-
 	connection.onCompletion(
 		(textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
 			const document = documents.get(textDocumentPosition.textDocument.uri);
