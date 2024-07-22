@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## [3.1.0] - 2024-07-21
+
+### Changed
+
+- Games now run inside a tab in VS Code instead of opening a browser window. (Courtesy Carey Williams).
+
 ## [3.0.0] - 2024-03-10
 
 While this version includes minor functional changes, the underlying structure has been extensively re-worked to move it towards being a web extension, which is why we're bumping the major version number.
