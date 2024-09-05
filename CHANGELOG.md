@@ -8,6 +8,13 @@ Changes to the plugin.
 
 - Updated Choicescript to latest version (1802f41).
 
+### Fixed
+
+- `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
+- `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
+- `choice_just_restored_checkpoint` is now properly treated as a built-in variable.
+
+
 ## [3.1.0] - 2024-07-21
 
 ### Changed

@@ -39,8 +39,7 @@ export const argumentRequiredCommands: readonly string[] = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product", "save_checkpoint",
-	"restore_checkpoint",
+	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product"
 ];
 
 /**
@@ -125,7 +124,8 @@ export const validCommandsCompletions: CompletionItem[] = [
 	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
 	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
 	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
-	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene", "text_image", "params", "delay_break", "delay_ending"
+	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene",
+	"text_image", "params", "delay_break", "delay_ending", "save_checkpoint", "restore_checkpoint"
 ].map(x => ({
 	label: x,
 	kind: CompletionItemKind.Keyword,
@@ -170,7 +170,7 @@ export const builtinVariables: readonly string[] = [
 	"choice_restore_purchases_allowed", "choice_save_allowed",
 	"choice_time_stamp", "choice_nightmode", "choice_title",
 	"choice_purchase_supported", "choice_purchased_adfree",
-	"choice_saved_checkpoint"
+	"choice_saved_checkpoint", "choice_just_restored_checkpoint"
 ];
 
 /**

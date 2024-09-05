@@ -997,6 +997,7 @@ function skipOptionContents(text: string, choiceInfo: ChoiceInfo, parsedOption: 
 	let nextLineStartIndex = parsedOption.nextLineIndex;
 	let contentsStart = -1;
 
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readNextNonblankLine(text, nextLineStartIndex);
 		if (nextLine === undefined) {
@@ -1122,6 +1123,7 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 	let memberCount = 0;
 	let groupContentsEndIndex = currentLine.index + currentLine.line.trimRight().length;
 
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		// parse the line: should be an option
 		const parsedOption = parseSingleOptionLine(text, choiceInfo, currentLine, state);
@@ -1358,6 +1360,7 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 	let nextLine: NewLine | undefined = undefined;
 	let lineStart = optionContentsIndex;
 
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readLine(text, lineStart);
 		if (nextLine === undefined) {
@@ -1432,6 +1435,7 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
 	lineStart = lineEnd;
 
 	// Now loop as long as the scene pattern matches and the padding is consistent
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		lineEnd = findLineEnd(text, lineStart);
 		if (!lineEnd) {
@@ -1674,6 +1678,7 @@ function parseIfBlock(text: string, command: string, commandPadding: string, lin
 	let nextLine: NewLine | undefined;
 	let m: RegExpExecArray | null;
 	let currentIndex = contentsIndex + blockContents.length;
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readNextNonblankLine(text, currentIndex);
 		// The next line must exist and be a command
@@ -2190,7 +2195,7 @@ function parseKindleSearch(line: string, startSectionIndex: number, state: Parsi
  * @param state Parsing state.
  */
 function parseProduct(line: string, startSectionIndex: number, state: ParsingState): void {
-	if (!/^[a-z]+$/.test(line)) {
+	if (!/^\s*[a-z]+$/.test(line)) {
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
 			startSectionIndex, startSectionIndex + line.length,
 			"A product ID can only contain lower-case letters.", state);
@@ -2205,11 +2210,23 @@ function parseProduct(line: string, startSectionIndex: number, state: ParsingSta
  * @param state Parsing state.
  */
 function parseCheckpoint(line: string, startSectionIndex: number, state: ParsingState): void {
-	if (!/^[a-zA-Z0-9_]+$/.test(line)) {
+	if (!/^\s*([a-zA-Z0-9_]+(\s|$)|$)/.test(line)) {
+		let nonSpaceIndex = line.search(/\S/);
+		if (nonSpaceIndex == -1) nonSpaceIndex = 0;
 		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startSectionIndex, startSectionIndex + line.length,
+			startSectionIndex + nonSpaceIndex,
+			startSectionIndex + line.length,
 			"A checkpoint slot's name can only contain letters, numbers or an underscore.", state);
 		state.callbacks.onParseError(diagnostic);
+	}
+	else {
+		const m = /^(\s*)([a-z0-9_]*?[A-Z][a-zA-Z0-9_]*)/.exec(line);
+		if (m !== null) {
+			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+				startSectionIndex + m[1].length, startSectionIndex + m[0].length,
+				"The capital letters in this slot's name will be turned into lower case values", state);
+			state.callbacks.onParseError(diagnostic);
+		}
 	}
 }
 
