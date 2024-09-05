@@ -13,6 +13,9 @@ export const startupCommands: readonly string[] = ["create", "create_array", "sc
 
 /**
  * Complete list of valid commands.
+ * 
+ * Note that, as these change, the syntax highlighting in
+ * cs.tmLanguage.json should be updated.
  */
 export const validCommands: readonly string[] = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort",
