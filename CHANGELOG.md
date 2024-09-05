@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Changed
+
+- Updated Choicescript to latest version (1802f41).
+
 ## [3.1.0] - 2024-07-21
 
 ### Changed

@@ -26,7 +26,7 @@ function Scene(name, stats, nav, options) {
     this.stats = stats;
     // implicit_control_flow controls whether goto is necessary to leave options (true means no)
     // _choiceEnds stores the line numbers to jump to when choice #options end.
-    this.temps = {choice_reuse:"allow", choice_user_restored:false, _choiceEnds:{}};
+    this.temps = {choice_reuse:"allow", choice_user_restored:false, _choiceEnds:{}, _looplimit: 1000};
 
     // the navigator determines which scene comes next
     this.nav = nav;
@@ -1016,8 +1016,8 @@ Scene.prototype["goto"] = function scene_goto(line) {
     if (!this.localCoverage) this.localCoverage = {};
     if (this.localCoverage[this.lineNum]) {
         this.localCoverage[this.lineNum]++;
-        if (this.looplimit_count && this.localCoverage[this.lineNum] > this.looplimit_count) {
-            throw new Error(this.lineMsg() + "visited this line too many times (" + this.looplimit_count + ")");
+        if (this.temps._looplimit && this.localCoverage[this.lineNum] > this.temps._looplimit) {
+            throw new Error(this.lineMsg() + "visited this line too many times (" + this.temps._looplimit + ")");
         }
     } else {
         this.localCoverage[this.lineNum] = 1;
@@ -1051,7 +1051,7 @@ Scene.prototype.gosub_scene = function scene_gosub_scene(data) {
       this.stats.choice_subscene_stack = [];
     }
     this.stats.choice_subscene_stack.push({name:this.name, lineNum: this.lineNum + 1, indent: this.indent, temps: this.temps});
-    this.goto_scene(data);
+    this.goto_scene(data, true /*isGosubScene*/);
 };
 
 Scene.prototype.params = function scene_params(data) {
@@ -1231,7 +1231,12 @@ Scene.prototype.parseGotoScene = function parseGotoScene(data) {
 
 // *goto_scene foo
 //
-Scene.prototype.goto_scene = function gotoScene(data) {
+Scene.prototype.goto_scene = function gotoScene(data, isGosubScene) {
+    if (!isGosubScene && (this.stats.choice_subscene_stack || []).length) {
+      var stackFrame = this.stats.choice_subscene_stack.pop();
+      this.warning("You should *return before *goto_scene after *gosub_scene from from " + stackFrame.name + " line " + stackFrame.lineNum);
+      delete this.stats.choice_subscene_stack;
+    }
     var result = this.parseGotoScene(data);
 
     if (result.sceneName == this.name) {
@@ -2278,9 +2283,8 @@ Scene.prototype.advertisement = function advertisement(durationInSeconds) {
 
 // *looplimit 5
 // The number of times a given line is allowed to be accessed
-Scene.prototype.looplimit_count = 1000;
 Scene.prototype.looplimit = function looplimit(count) {
-  this.looplimit_count = num(count, this.lineNum, this.name);
+  this.temps._looplimit = num(count, this.lineNum, this.name);
 };
 
 Scene.prototype.hide_reuse = function hide_reuse() {
@@ -3283,7 +3287,7 @@ Scene.prototype.save_game = function save_game(destinationSceneName) {
         }
 
         var shouldSubscribe = subscribeBox.checked;
-        var subscribe = shouldSubscribe && window.isHeartsChoice ? "hc" : "cog";
+        var subscribe = shouldSubscribe && (window.isHeartsChoice ? "hc" : "cog");
         var email = trim(emailInput.value);
         if (!/^\S+@\S+\.\S+$/.test(email)) {
           messageText = document.createTextNode("Sorry, \""+email+"\" is not an email address.  Please type your email address again.");

@@ -2,6 +2,7 @@
 
 ## Features
 
+- `$${var}` doesn't show the leading dollar sign when run.
 - A way to highlight variables or labels you aren't using
 - A way to find variables hiding in "strings".
 - Update `.gitignore` to ignore game stats `.csv` files.
@@ -16,4 +17,6 @@
 
 ## Infrastructure
 
+- Node 22 build task is failing.
 - `chai` v5+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `chai` v5.
+- Other ESM-only libraries: `date-fns`, `eslint`, `nyc`, `uuid`
