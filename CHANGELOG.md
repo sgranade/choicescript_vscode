@@ -13,7 +13,7 @@ Changes to the plugin.
 - Creating a variable that starts with `choice_` is now properly flagged as an error.
 - `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
 - `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
-- `choice_just_restored_checkpoint` is now properly treated as a built-in variable.
+- `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
 
 
 ## [3.1.0] - 2024-07-21
