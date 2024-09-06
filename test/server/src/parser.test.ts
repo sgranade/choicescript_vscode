@@ -3267,6 +3267,38 @@ describe("Parser", () => {
 		});
 
 		describe("Variable Creation Commands", () => {
+			it("should flag *create commands whose variable starts with choice_", () => {
+				let fakeDocument = createDocument("*create choice_nope 7");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].range.start.line).to.equal(8);
+				expect(received[0].range.end.line).to.equal(19);
+			});
+
+			it("should flag *temp commands whose variable starts with choice_", () => {
+				let fakeDocument = createDocument("*temp choice_nope");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].range.start.line).to.equal(6);
+				expect(received[0].range.end.line).to.equal(17);
+			});
+
 			it("should flag *create commands with no value to set the variable to", () => {
 				let fakeDocument = createDocument("*create variable");
 				let received: Array<Diagnostic> = [];

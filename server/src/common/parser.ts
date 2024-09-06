@@ -737,6 +737,18 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 		switch (command) {
 			case "create":
 				// *create instantiates global variables
+				// If the variable starts with "choice_", it's illegal
+				if (symbol.startsWith("choice_")) {
+					const diagnostic = createParsingDiagnostic(
+						DiagnosticSeverity.Error,
+						lineSectionIndex,
+						lineSectionIndex + symbol.length,
+						'Variable names can\'t start with "choice_"',
+						state
+					);
+					state.callbacks.onParseError(diagnostic);
+					break;
+				}
 				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
 				// Warn about using *create after *temp in startup.txt
 				if (state.createdTempVariables && uriIsStartupFile(state.textDocumentUri)) {
@@ -757,6 +769,18 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				break;
 			case "temp":
 				// *temp instantiates variables local to the scene file
+				// If the variable starts with "choice_", it's illegal
+				if (symbol.startsWith("choice_")) {
+					const diagnostic = createParsingDiagnostic(
+						DiagnosticSeverity.Error,
+						lineSectionIndex,
+						lineSectionIndex + symbol.length,
+						'Variable names can\'t start with "choice_"',
+						state
+					);
+					state.callbacks.onParseError(diagnostic);
+					break;
+				}
 				state.callbacks.onLocalVariableCreate(symbol, symbolLocation, state);
 				state.createdTempVariables = true;
 				if (expression !== undefined) {
