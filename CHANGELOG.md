@@ -6,7 +6,7 @@ Changes to the plugin.
 
 ### Changed
 
-- Updated Choicescript to latest version (1802f41).
+- Updated Choicescript to latest version (c9b1a39).
 
 ### Fixed
 

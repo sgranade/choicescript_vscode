@@ -446,6 +446,10 @@ function configureShowText() {
     printImage = function printImage(source, alignment, alt, invert) {
       console.log('[IMAGE: ' + (alt || source) + ']');
     }
+    achieve = function achieve(name, title, description) {
+      console.log('[ACHIEVEMENT] ' + title);
+      console.log('\xa0\xa0\xa0\xa0' + description + "\n");
+    }
 	} else {
 		oldPrintLine = Scene.prototype.printLine;
 		Scene.prototype.printLine = function randomtest_printLine(line) {
@@ -951,7 +955,7 @@ function randomtestAsync(i, showCoverage) {
 
 function randomtest() {
 	configureShowText();
-	var warnings = 0;
+  var warnings = 0;
 	var start = new Date().getTime();
 	randomSeed *= 1;
 	var percentage = iterations / 100;
@@ -967,19 +971,19 @@ function randomtest() {
 		try {
 			scene.execute();
 			while (timeout) {
-				if (stats.choice_warnings) {
-					warnings += stats.choice_warnings;
-					stats.choice_warnings = 0;
-				}
+        if (stats.choice_warnings) {
+          warnings += stats.choice_warnings;
+          stats.choice_warnings = 0;
+        }
 				var fn = timeout;
 				timeout = null;
 				fn();
 			}
 			println(); // flush buffer
-			if (stats.choice_warnings) {
-				warnings += stats.choice_warnings;
-				stats.choice_warnings = 0;
-			}
+      if (stats.choice_warnings) {
+        warnings += stats.choice_warnings;
+        stats.choice_warnings = 0;
+      }
 		} catch (e) {
       if (e.message == "skip run") {
         println("SKIPPED RUN " + i);
@@ -1006,7 +1010,7 @@ function randomtest() {
 			}
 		}
 		console.log("RANDOMTEST PASSED");
-		if (warnings) console.log(warnings + " warning" + (warnings === 1 ? "": "s"));
+    if (warnings) console.log(warnings + " warning" + (warnings === 1 ? "": "s"));
 		var duration = (new Date().getTime() - start) / 1000;
 		console.log("Time: " + duration + "s");
 		checkSaveStats();
