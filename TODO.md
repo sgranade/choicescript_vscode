@@ -19,4 +19,4 @@
 
 - Node 22 build task is failing.
 - `chai` v5+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `chai` v5.
-- Other ESM-only libraries: `date-fns`, `eslint`, `nyc`, `uuid`
+- All ESM-only libraries: `chai`, `date-fns`, `eslint`, `globby`, `nyc`, `uuid`

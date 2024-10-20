@@ -2,7 +2,7 @@
 	"name": "choicescript-vscode",
 	"displayName": "ChoiceScript Language",
 	"description": "ChoiceScript language support for VS Code",
-	"version": "3.1.0",
+	"version": "3.1.1",
 	"author": {
 		"name": "Stephen Granade",
 		"email": "stephen@granades.com",
@@ -309,7 +309,7 @@
 		"@types/urijs": "^1.19.23",
 		"@types/vscode": "^1.75.0",
 		"chai": "^4.4.1",
-		"concurrently": "^8.2.2",
+		"concurrently": "^9.0.1",
 		"date-fns": "^2.30.0",
 		"esbuild-loader": "^4.0.2",
 		"eslint": "^8.57.0",
