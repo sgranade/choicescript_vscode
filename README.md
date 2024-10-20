@@ -148,9 +148,19 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 ## Release Notes
 
+### [3.1.1]
+
+- Creating a variable that starts with `choice_` is now properly flagged as an error.
+- `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
+- `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
+- `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
+- Updated Choicescript to latest version (c9b1a39).
+
+
 ### [3.1.0]
 
 - Games are now opened in a VS Code tab instead of opening a browser window. (Courtesy Carey Williams).
+
 
 ### [3.0.0]
 
