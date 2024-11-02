@@ -41,7 +41,8 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 	const projectIndex = new Index();
 
 	const validationSettings: ValidationSettings = {
-		useCoGStyleGuide: true
+		useCoGStyleGuide: true,
+		errorOnScript: true
 	};
 
 	// Queue of documents whose content has changed and who need to be updated
@@ -95,6 +96,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		});
 		// Handle custom requests from the client
 		connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
+		connection.onNotification(CustomMessages.AllowUnsafeScript, onAllowUnsafeScript);
 		connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
 		connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
 	
@@ -390,6 +392,11 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 
 	function onCoGStyleGuide(useCoGStyleGuide: boolean) {
 		validationSettings.useCoGStyleGuide = useCoGStyleGuide;
+		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
+	}
+
+	function onAllowUnsafeScript(allowUnsafeScript: boolean) {
+		validationSettings.errorOnScript = !allowUnsafeScript;
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	}
 	

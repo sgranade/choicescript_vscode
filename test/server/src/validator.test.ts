@@ -9,7 +9,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Range, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex } from '../../../server/src/common/index';
+import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex, ScriptIndex } from '../../../server/src/common/index';
 import { CaseInsensitiveMap } from '../../../server/src/common/utilities';
 import { generateDiagnostics, ValidationSettings } from '../../../server/src/common/validator';
 
@@ -44,13 +44,14 @@ interface IndexArgs {
 	scopes?: DocumentScopes;
 	images?: IdentifierMultiIndex;
 	projectIsIndexed?: boolean;
+	scriptUsages?: Location[]
 }
 
 function createIndex({
 	globalVariables, localVariables, subroutineVariables, startupUri, labels,
 	labelsUri, sceneList, sceneFileUri, achievements,
 	variableReferences, flowControlEvents, scopes, images,
-	projectIsIndexed }: IndexArgs): SubstituteOf<ProjectIndex> {
+	projectIsIndexed, scriptUsages }: IndexArgs): SubstituteOf<ProjectIndex> {
 	if (globalVariables === undefined) {
 		globalVariables = new CaseInsensitiveMap();
 	}
@@ -94,6 +95,9 @@ function createIndex({
 	if (projectIsIndexed === undefined) {
 		projectIsIndexed = true;
 	}
+	if (scriptUsages === undefined) {
+		scriptUsages = [];
+	}
 
 	let fakeIndex = Substitute.for<ProjectIndex>();
 	fakeIndex.getGlobalVariables().returns(globalVariables);
@@ -118,6 +122,7 @@ function createIndex({
 	fakeIndex.getParseErrors(Arg.any()).returns([]);
 	fakeIndex.getImages(Arg.any()).returns(images);
 	fakeIndex.projectIsIndexed().returns(projectIsIndexed);
+	fakeIndex.getScriptUsages(Arg.any()).returns(scriptUsages);
 
 	return fakeIndex;
 }

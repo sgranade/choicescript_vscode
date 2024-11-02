@@ -230,6 +230,11 @@
 					"default": true,
 					"description": "Whether to turn off VS Code's automatic suggestions when typing text (as opposed to commands or variables)."
 				},
+				"choicescript.allowUnsafeScript": {
+					"type": "boolean",
+					"default": false,
+					"description": "Whether to allow execution of *script commands in ChoiceScript games you're running inside VS Code. This poses a security risk and you should only run games who's code you've vetted whilst this setting is enabled. "
+				},
 				"choicescript.randomtest.putResultsInDocument": {
 					"type": "string",
 					"default": "fulltext",

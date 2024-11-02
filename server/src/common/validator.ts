@@ -35,6 +35,10 @@ export interface ValidationSettings {
 	 * Whether to validate against CoG style guides.
 	 */
 	useCoGStyleGuide: boolean;
+	/**
+	 * Whether to error or warn on script.
+	 */
+	errorOnScript: boolean;
 }
 
 /**
@@ -591,6 +595,30 @@ function validateAchievements(state: ValidationState): Diagnostic[] {
 	return diagnostics;
 }
 
+/**
+ * Warns or errors on *script usage.
+ * @param state Current parsing state.
+ */
+function validateScriptUsage(state: ValidationState): Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+
+	for (const loc of state.projectIndex.getScriptUsages(state.textDocumentUri)) {
+		if (state.validationSettings.errorOnScript) {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Error, loc,
+				`You need to enable unsafe *script usage in settings`
+			))
+		} else {
+			diagnostics.push(createDiagnosticFromLocation(
+				DiagnosticSeverity.Warning, loc,
+				`Running games that use *script is a security-risk (use caution)`
+			))
+		}
+
+	}
+	return diagnostics;
+}
+
 const matchPattern = RegExp(`${stylePattern}|${incorrectCommandPattern}|${optionPattern}`, 'g');
 
 /**
@@ -625,6 +653,9 @@ export async function generateDiagnostics(textDocument: TextDocument, projectInd
 
 	// Validate achievements
 	diagnostics.push(...validateAchievements(state));
+
+	// Validate script usage
+	diagnostics.push(...validateScriptUsage(state));
 
 	// Add suggestions for the user that don't rise to the level of an error
 	matchPattern.lastIndex = 0;

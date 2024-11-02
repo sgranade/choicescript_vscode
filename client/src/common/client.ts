@@ -255,7 +255,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 		clientOptions
 	);
 
-	gameWebViewManager = new GameWebViewManager(context, annotateCSError);
+	gameWebViewManager = new GameWebViewManager(context, annotateCSError, workspaceProvider);
 	csCompiler = new ChoiceScriptCompiler(workspaceProvider);
 
 	registerRequestHandlers(client);
@@ -288,6 +288,9 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 			updateQuickSuggestions();
 			client.sendNotification(
 				CustomMessages.CoGStyleGuide, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.UseCOGStyleGuide)
+			);
+			client.sendNotification(
+				CustomMessages.AllowUnsafeScript, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.AllowUnsafeScript)
 			);
 		}
 	);

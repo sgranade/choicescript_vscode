@@ -1,4 +1,5 @@
 export enum CustomMessages {
+	AllowUnsafeScript = 'choicescript/allowunsafescript',
 	CoGStyleGuide = 'choicescript/cogstyleguide',
 	DebugMessage = 'choicescript/debugmessage',
 	ProjectIndexed = 'choicescript/projectindexed',
