@@ -22,5 +22,4 @@ utilities/**
 .mocharc.json
 CHANGELOG.md
 eslint.config.mjs
-package.json
 TODO.md

@@ -2,6 +2,12 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams).
+
 ## [3.1.1] - 2024-10-20
 
 ### Changed
