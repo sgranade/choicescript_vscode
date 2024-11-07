@@ -3,7 +3,7 @@ import type { IWorkspaceProvider } from './interfaces/vscode-workspace-provider'
 
 export type AllScenesResult = { [key: string]: { labels: { [key: string]: number }, lines: string[] }; }
 export type CompiledChoiceScriptGame = {
-	title: string,
+	title?: string,
 	scenes: AllScenesResult
 }
 
