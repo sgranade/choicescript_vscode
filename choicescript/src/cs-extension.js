@@ -15,6 +15,7 @@ window.reportError = function(msg, file, line, column, error) {
 	const lineErrorMsgRegEx = new RegExp(/(\S+) line (\d+): (.+)/);
 	const sceneLoadErrorRegex = new RegExp(/Couldn't load scene (.+)/);
 	const labelErrorRegex = new RegExp(/doesn't contain label (.+)/);
+	const scriptErrorRegex = new RegExp(/error executing \*script/);
 
 	let match;
 	const annotationData = {
@@ -56,10 +57,14 @@ window.reportError = function(msg, file, line, column, error) {
 		});
 	}
 	if (annotationData.line) {
-		vscode.postMessage({
+		let error = {
 			command: 'annotate',
 			...annotationData
-		});
+		};
+		if (scriptErrorRegex.test(msg)) {
+			error.message = `Refused to execute unsafe *script command. You can allow this via allowUnsafeScript in the extension settings.`
+		} 
+		vscode.postMessage(error);
 	}
 	oldReportError(msg, file, line, column, error);
 };
