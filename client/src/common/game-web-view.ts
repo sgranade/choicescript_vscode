@@ -24,14 +24,12 @@ export class GameWebViewManager {
 	}
 
 	public async runCompiledGame(game: CompiledChoiceScriptGame) {
-		this.openOrShow(game.title);
+		this.windowTitle = game.title ?? "Untitled";
+		this.openOrShow();
 		this.panel.webview.html = (await this.getWebviewContent(game.scenes)).toString();
 	}
 
-	public openOrShow(title?: string) {
-		if (title) {
-			this.windowTitle = title;
-		}
+	public openOrShow() {
 		if (this.panel) {
 			this.panel.reveal();
 		} else {
@@ -47,6 +45,7 @@ export class GameWebViewManager {
 			);
 			this.registerPanelSubscriptions();
 		}
+		this.panel.title = this.windowTitle;
 	}
 
 	private async getWebviewContent(allScenes: AllScenesResult): Promise<string> {

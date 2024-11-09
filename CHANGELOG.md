@@ -2,6 +2,32 @@
 
 Changes to the plugin.
 
+## Unreleased
+
+### Fixed
+
+- Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams).
+
+## [3.1.1] - 2024-10-20
+
+### Changed
+
+- Updated Choicescript to latest version (c9b1a39).
+
+### Fixed
+
+- Creating a variable that starts with `choice_` is now properly flagged as an error.
+- `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
+- `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
+- `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
+
+
+## [3.1.0] - 2024-07-21
+
+### Changed
+
+- Games now run inside a tab in VS Code instead of opening a browser window. (Courtesy Carey Williams).
+
 ## [3.0.0] - 2024-03-10
 
 While this version includes minor functional changes, the underlying structure has been extensively re-worked to move it towards being a web extension, which is why we're bumping the major version number.

@@ -13,6 +13,9 @@ export const startupCommands: readonly string[] = ["create", "create_array", "sc
 
 /**
  * Complete list of valid commands.
+ * 
+ * Note that, as these change, the syntax highlighting in
+ * cs.tmLanguage.json should be updated.
  */
 export const validCommands: readonly string[] = [
 	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort",
@@ -39,8 +42,7 @@ export const argumentRequiredCommands: readonly string[] = [
 	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
 	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
 	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product", "save_checkpoint",
-	"restore_checkpoint",
+	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product"
 ];
 
 /**
@@ -125,7 +127,8 @@ export const validCommandsCompletions: CompletionItem[] = [
 	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
 	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
 	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
-	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene", "text_image", "params", "delay_break", "delay_ending"
+	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene",
+	"text_image", "params", "delay_break", "delay_ending", "save_checkpoint", "restore_checkpoint"
 ].map(x => ({
 	label: x,
 	kind: CompletionItemKind.Keyword,
@@ -159,19 +162,36 @@ export const booleanFunctions: readonly string[] = [
 /**
  * ChoiceScript built-in variables
  */
-export const builtinVariables: readonly string[] = [
-	"choice_subscribe_allowed", "choice_register_allowed", "choice_registered",
-	"choice_is_web", "choice_is_steam", "choice_is_steam_deck", "choice_is_ios_app",
-	"choice_is_ipad_app", "choice_is_android_app", "choice_is_omnibus_app",
-	"choice_is_amazon_app",
-	"choice_is_advertising_supported", "choice_is_trial", "choice_release_date",
-	"choice_prerelease", "choice_kindle", "choice_randomtest", "choice_quicktest",
-	"choice_linenum", "choice_scene",
-	"choice_restore_purchases_allowed", "choice_save_allowed",
-	"choice_time_stamp", "choice_nightmode", "choice_title",
-	"choice_purchase_supported", "choice_purchased_adfree",
-	"choice_saved_checkpoint"
+const choiceVariableAppNames = [ "ios", "ipad", "android", "omnibus", "amazon" ];
+const choiceVariableIsNames = [
+	"web",
+	"steam(_deck)?",
+	"(" + choiceVariableAppNames.join("|") + ")_app",
+	"advertising_supported",
+	"trial"
 ];
+const choiceVariableNames = [
+	"(subscribe|register|restore_purchases|save)_allowed",
+	"registered",
+	"is_(" + choiceVariableIsNames.join("|") + ")",
+	"release_date",
+	"prerelease",
+	"kindle",
+	"(random|quick)test",
+	"linenum",
+	"scene",
+	"time_stamp",
+	"nightmode",
+	"title",
+	"saved_checkpoint(_[a-zA-Z0-9_]+)?",
+	"reuse",
+	"user_restored",
+	"restore_name",
+	"just_restored_checkpoint",
+	"purchase_supported",
+	"purchased_adfree"
+];
+export const builtinVariables = new RegExp(`^${choiceVariableNames.join("|")}$`);
 
 /**
  * ChoiceScript param variables

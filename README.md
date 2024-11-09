@@ -38,11 +38,11 @@ Note that, since ChoiceScript files are just text files, the extension treats al
 
 ## Running Your Game
 
-To run the game, press the Open button on the left side of the bottom status bar.
+To run the game, press the Run Game button on the left side of the bottom status bar.
 
-![Open Game in Browser Button](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/cs-open-game-button.png)
+![Run Game](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/cs-run-game-button.png)
 
-The game will open in your default browser. To restart the game, reload the browser window. The game will update with any changes you've made to your files.
+The game will open in a separate tab in Visual Studio Code. To restart the game, close that tab and then press the Run Game button again. The game will update with any changes you've made to your files.
 
 
 ## Testing Your Game
@@ -147,6 +147,20 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 
 ## Release Notes
+
+### [3.1.1]
+
+- Creating a variable that starts with `choice_` is now properly flagged as an error.
+- `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
+- `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
+- `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
+- Updated Choicescript to latest version (c9b1a39).
+
+
+### [3.1.0]
+
+- Games are now opened in a VS Code tab instead of opening a browser window. (Courtesy Carey Williams).
+
 
 ### [3.0.0]
 

@@ -25,7 +25,6 @@ import type { FileSystemService } from './file-system-service';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
-const builtinVariablesLookup: ReadonlyMap<string, number> = new Map(builtinVariables.map(x => [x, 1]));
 
 /**
  * Validation settings.
@@ -227,7 +226,7 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				}
 			}
 		}
-		else if (!builtinVariablesLookup.has(variable) && !paramValues.test(variable) && projectIsIndexed) {
+		else if (!builtinVariables.test(variable) && !paramValues.test(variable) && projectIsIndexed) {
 			const scopes = state.projectIndex.getDocumentScopes(state.textDocumentUri);
 			let trimmedLocations = locations;
 

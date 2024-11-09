@@ -3,9 +3,7 @@
 
 'use strict';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const merge = require('merge-options');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 /**
@@ -26,7 +24,7 @@ function withDefaults(/**@type WebpackConfig*/extConfig, /**@type boolean*/forWe
 				exclude: /node_modules/,
 				loader: 'esbuild-loader',
 				options: {
-					target: 'es2015'
+					target: 'es2018'
 				}
 			}]
 		},

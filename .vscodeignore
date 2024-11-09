@@ -14,9 +14,12 @@ client/**
 server/**
 !server/dist
 !server/dist/**/*
-choicescript/*
+choicescript/**
 !choicescript/out
 coverage.lcov
 private-notes.txt
 utilities/**
+.mocharc.json
+CHANGELOG.md
+eslint.config.mjs
 TODO.md

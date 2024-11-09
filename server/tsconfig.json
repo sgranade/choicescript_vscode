@@ -1,13 +1,13 @@
 {
 	"compilerOptions": {
-		"target": "es6",
+		"target": "ES2018",
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"sourceMap": true,
 		"strict": true,
 		"outDir": "out",
 		"rootDir": "src",
-		"lib": ["ES6", "webworker"]
+		"lib": ["ES2018", "webworker"]
 	},
 	"include": ["src"],
 	"exclude": ["node_modules", ".vscode-test"]

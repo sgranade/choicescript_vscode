@@ -292,7 +292,7 @@ if (typeof importScripts != "undefined") {
 			return booleanQuestion("Save stats to a file (randomtest-stats.csv)?", false);
 		}).then(function (answer) {
 			saveStats = answer;
-			return booleanQuestion("Write output to a file (randomtest-output.txt)?", false);
+			return booleanQuestion("Write output to a file (randomtest-output.txt)?", true);
 		}).then(function (answer) {
 			if (answer) {
 				var fs = require('fs');
@@ -446,6 +446,10 @@ function configureShowText() {
     printImage = function printImage(source, alignment, alt, invert) {
       console.log('[IMAGE: ' + (alt || source) + ']');
     }
+    achieve = function achieve(name, title, description) {
+      console.log('[ACHIEVEMENT] ' + title);
+      console.log('\xa0\xa0\xa0\xa0' + description + "\n");
+    }
 	} else {
 		oldPrintLine = Scene.prototype.printLine;
 		Scene.prototype.printLine = function randomtest_printLine(line) {
@@ -471,6 +475,12 @@ Scene.prototype.check_purchase = function scene_checkPurchase(data) {
 
 Scene.prototype.randomLog = function randomLog(msg) {
 	console.log(this.name + " " + msg);
+}
+
+Scene.prototype.warning = function randomWarning(msg) {
+  if (!this.stats.choice_warnings) this.stats.choice_warnings = 0;
+  this.stats.choice_warnings++;
+  console.log("WARNING " + this.lineMsg() + msg);
 }
 
 Scene.prototype.randomtest = true;
@@ -621,7 +631,6 @@ Scene.prototype.tokenizeExpr = function cached_tokenizeExpr(str) {
 
 Scene.prototype.ending = function () {
 	this.paragraph();
-	this.reset();
 	this.finished = true;
 }
 
@@ -946,6 +955,7 @@ function randomtestAsync(i, showCoverage) {
 
 function randomtest() {
 	configureShowText();
+  var warnings = 0;
 	var start = new Date().getTime();
 	randomSeed *= 1;
 	var percentage = iterations / 100;
@@ -961,11 +971,19 @@ function randomtest() {
 		try {
 			scene.execute();
 			while (timeout) {
+        if (stats.choice_warnings) {
+          warnings += stats.choice_warnings;
+          stats.choice_warnings = 0;
+        }
 				var fn = timeout;
 				timeout = null;
 				fn();
 			}
 			println(); // flush buffer
+      if (stats.choice_warnings) {
+        warnings += stats.choice_warnings;
+        stats.choice_warnings = 0;
+      }
 		} catch (e) {
       if (e.message == "skip run") {
         println("SKIPPED RUN " + i);
@@ -992,6 +1010,7 @@ function randomtest() {
 			}
 		}
 		console.log("RANDOMTEST PASSED");
+    if (warnings) console.log(warnings + " warning" + (warnings === 1 ? "": "s"));
 		var duration = (new Date().getTime() - start) / 1000;
 		console.log("Time: " + duration + "s");
 		checkSaveStats();

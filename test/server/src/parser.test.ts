@@ -3267,6 +3267,38 @@ describe("Parser", () => {
 		});
 
 		describe("Variable Creation Commands", () => {
+			it("should flag *create commands whose variable starts with choice_", () => {
+				let fakeDocument = createDocument("*create choice_nope 7");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].range.start.line).to.equal(8);
+				expect(received[0].range.end.line).to.equal(19);
+			});
+
+			it("should flag *temp commands whose variable starts with choice_", () => {
+				let fakeDocument = createDocument("*temp choice_nope");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].range.start.line).to.equal(6);
+				expect(received[0].range.end.line).to.equal(17);
+			});
+
 			it("should flag *create commands with no value to set the variable to", () => {
 				let fakeDocument = createDocument("*create variable");
 				let received: Array<Diagnostic> = [];
@@ -4574,6 +4606,19 @@ describe("Parser", () => {
 		});
 
 		describe("Checkpoints", () => {
+			it("should be okay with a save_checkpoint with no slot name after it", () => {
+				let fakeDocument = createDocument("*save_checkpoint ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
 			it("should flag a save_checkpoint with symbols other than letters, numbers, or underscores", () => {
 				let fakeDocument = createDocument("*save_checkpoint azAZ_19*");
 				let received: Array<Diagnostic> = [];
@@ -4590,6 +4635,36 @@ describe("Parser", () => {
 				expect(received[0].range.end.line).to.equal(25);
 			});
 
+			it("should warn on a save_checkpoint with upper case letters", () => {
+				let fakeDocument = createDocument("*save_checkpoint itisUp");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("The capital letters in this slot's name will be turned into lower case values");
+				expect(received[0].severity).to.eql(DiagnosticSeverity.Warning);
+				expect(received[0].range.start.line).to.equal(17);
+				expect(received[0].range.end.line).to.equal(23);
+			});
+
+			it("should be okay with a restore_checkpoint with no slot name after it", () => {
+				let fakeDocument = createDocument("*restore_checkpoint ");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(0);
+			});
+
 			it("should flag a restore_checkpoint with symbols other than letters, numbers, or underscores", () => {
 				let fakeDocument = createDocument("*restore_checkpoint azAZ_19*");
 				let received: Array<Diagnostic> = [];
@@ -4604,6 +4679,23 @@ describe("Parser", () => {
 				expect(received[0].message).to.include("A checkpoint slot's name can only contain letters, numbers or an underscore");
 				expect(received[0].range.start.line).to.equal(20);
 				expect(received[0].range.end.line).to.equal(28);
+			});
+
+			it("should warn on a restore_checkpoint with upper case letters", () => {
+				let fakeDocument = createDocument("*restore_checkpoint itisUp");
+				let received: Array<Diagnostic> = [];
+				let fakeCallbacks = Substitute.for<ParserCallbacks>();
+				fakeCallbacks.onParseError(Arg.all()).mimicks((e: Diagnostic) => {
+					received.push(e);
+				});
+
+				parse(fakeDocument, fakeCallbacks);
+
+				expect(received.length).to.equal(1);
+				expect(received[0].message).to.include("The capital letters in this slot's name will be turned into lower case values");
+				expect(received[0].severity).to.eql(DiagnosticSeverity.Warning);
+				expect(received[0].range.start.line).to.equal(20);
+				expect(received[0].range.end.line).to.equal(26);
 			});
 		});
 
