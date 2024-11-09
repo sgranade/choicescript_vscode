@@ -6,15 +6,16 @@ import * as mock from 'mock-fs';
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Location, Range, Position } from 'vscode-languageserver/node';
+import { Location, Range, Position, DiagnosticSeverity } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex, ScriptIndex } from '../../../server/src/common/index';
+import { ProjectIndex, IdentifierIndex, IdentifierMultiIndex, DocumentScopes, FlowControlEvent, LabelIndex, Label, AchievementIndex } from '../../../server/src/common/index';
 import { CaseInsensitiveMap } from '../../../server/src/common/utilities';
 import { generateDiagnostics, ValidationSettings } from '../../../server/src/common/validator';
 
 import { SystemFileProvider } from '../../../server/src/node/system-file-provider';
 import { FileSystemService } from '../../../server/src/common/file-system-service';
+import { AllowUnsafeScriptOption } from '../../../server/src/common/constants';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
@@ -127,9 +128,10 @@ function createIndex({
 	return fakeIndex;
 }
 
-function createValidationSettings(useCoGStyleGuide: boolean=true): SubstituteOf<ValidationSettings> {
+function createValidationSettings(useCoGStyleGuide: boolean=true, allowUnsafeScript: AllowUnsafeScriptOption = "allow"): SubstituteOf<ValidationSettings> {
 	let fakeSettings = Substitute.for<ValidationSettings>();
 	fakeSettings.useCoGStyleGuide = useCoGStyleGuide;
+	fakeSettings.allowUnsafeScript = allowUnsafeScript;
 	return fakeSettings;
 }
 
@@ -1295,6 +1297,63 @@ describe("Validator", () => {
 			expect(diagnostics[1].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1200');
 			expect(diagnostics[1].range.start).to.eql({ line: 11, character: 0 });
 			expect(diagnostics[1].range.end).to.eql({ line: 11, character: 5 });
+		});
+	});
+
+	describe("Script Validation", () => {
+		it("should diagnose *script commands with an error if allowUnsafeScript is 'never'", async () => {
+			let fakeDocument = createDocument("placeholder");
+			let scriptUsages = [
+				Location.create(fakeDocument.uri, Range.create(Position.create(0, 0), Position.create(0, 5)))
+			];
+			let fakeIndex = createIndex({ scriptUsages });
+
+			let settings = {
+				"allowUnsafeScript": "never",
+				"useCoGStyleGuide": true
+			} as ValidationSettings;
+
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, settings, fsProvider);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].severity === DiagnosticSeverity.Error);
+			expect(diagnostics[0].message).to.contain('You need to enable unsafe *script usage in settings');
+		});
+
+		it("should diagnose *script commands with a warning if allowUnsafeScript is 'warn'", async () => {
+			let fakeDocument = createDocument("placeholder");
+			let scriptUsages = [
+				Location.create(fakeDocument.uri, Range.create(Position.create(0, 0), Position.create(0, 5)))
+			];
+			let fakeIndex = createIndex({ scriptUsages });
+
+			let settings = {
+				"allowUnsafeScript": "warn",
+				"useCoGStyleGuide": true
+			} as ValidationSettings;
+
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, settings, fsProvider);
+
+			expect(diagnostics.length).to.equal(1);
+			expect(diagnostics[0].severity === DiagnosticSeverity.Warning);
+			expect(diagnostics[0].message).to.contain('Running games that use *script is a security-risk (use caution)');
+		});
+
+		it("should not validate *script commands if allowUnsafeScript is 'allow'", async () => {
+			let fakeDocument = createDocument("placeholder");
+			let scriptUsages = [
+				Location.create(fakeDocument.uri, Range.create(Position.create(0, 0), Position.create(0, 5)))
+			];
+			let fakeIndex = createIndex({ scriptUsages });
+
+			let settings = {
+				"allowUnsafeScript": "allow",
+				"useCoGStyleGuide": true
+			} as ValidationSettings;
+
+			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, settings, fsProvider);
+
+			expect(diagnostics.length).to.equal(0);
 		});
 	});
 });

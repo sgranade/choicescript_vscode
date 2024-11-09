@@ -576,6 +576,24 @@ describe("Indexer", () => {
 		});
 	});
 
+	describe("Script commands", () => {
+		it("should capture *script commands", () => {
+			let fakeDocument = createDocument("*script alert(0);\n*script alert(2);");
+			let fakeDocument2 = createDocument("*script alert(0);");
+			let received: Array<Location[]> = [];
+			let fakeIndex = createIndex();
+			fakeIndex.setScriptUsages(Arg.all()).mimicks(
+				(sceneUri: string, usages: Location[]) => { received.push(usages); }
+			);
+
+			updateProjectIndex(fakeDocument, true, false, fakeIndex);
+			updateProjectIndex(fakeDocument2, true, false, fakeIndex);
+
+			expect(received[0].length).to.eql(2);
+			expect(received[1].length).to.eql(1);
+		});
+	});
+
 	describe("Parse Errors", () => {
 		it("should flag attempts to re-create already-created global variables", () => {
 			let fakeDocument = createDocument("*create variable 3\n*create variable 9");
