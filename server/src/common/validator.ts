@@ -22,6 +22,7 @@ import {
 import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange, normalizeUri } from './utilities';
 import { tokenizeMultireplace } from './tokens';
 import type { FileSystemService } from './file-system-service';
+import { AllowUnsafeScriptOption } from './constants';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
@@ -37,7 +38,7 @@ export interface ValidationSettings {
 	/**
 	 * Whether to error or warn on script.
 	 */
-	errorOnScript: boolean;
+	allowUnsafeScript: AllowUnsafeScriptOption;
 }
 
 /**
@@ -602,18 +603,17 @@ function validateScriptUsage(state: ValidationState): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 
 	for (const loc of state.projectIndex.getScriptUsages(state.textDocumentUri)) {
-		if (state.validationSettings.errorOnScript) {
+		if (state.validationSettings.allowUnsafeScript == "never") {
 			diagnostics.push(createDiagnosticFromLocation(
 				DiagnosticSeverity.Error, loc,
 				`You need to enable unsafe *script usage in settings`
 			))
-		} else {
+		} else if (state.validationSettings.allowUnsafeScript == "warn") {
 			diagnostics.push(createDiagnosticFromLocation(
 				DiagnosticSeverity.Warning, loc,
 				`Running games that use *script is a security-risk (use caution)`
 			))
 		}
-
 	}
 	return diagnostics;
 }

@@ -6,7 +6,7 @@ import type {
 } from 'vscode-languageclient';
 
 import { LineAnnotationController } from './annotations';
-import { Configuration, CustomCommands, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
+import { AllowUnsafeScriptOption, Configuration, CustomCommands, CustomMessages, RandomtestSettingsSource, RelativePaths } from './constants';
 import { setupLocalStorages as setupLocalStorageManagers } from './localStorageService';
 import { Provider } from './logDocProvider';
 import * as notifications from './notifications';
@@ -290,7 +290,7 @@ export async function startClient(context: vscode.ExtensionContext, clientConstr
 				CustomMessages.CoGStyleGuide, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.UseCOGStyleGuide)
 			);
 			client.sendNotification(
-				CustomMessages.AllowUnsafeScript, workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.AllowUnsafeScript)
+				CustomMessages.AllowUnsafeScript, workspaceProvider.getConfiguration<AllowUnsafeScriptOption>(Configuration.BaseSection, Configuration.AllowUnsafeScript)
 			);
 		}
 	);

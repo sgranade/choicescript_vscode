@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { AllScenesResult, CompiledChoiceScriptGame } from './choicescript-compiler';
-import { Configuration } from './constants';
+import { AllowUnsafeScriptOption, Configuration } from './constants';
 import { IWorkspaceProvider } from './interfaces/vscode-workspace-provider';
 
 const VIEW_TYPE = 'ChoiceScriptGameView';
@@ -50,7 +50,7 @@ export class GameWebViewManager {
 
 	private async getWebviewContent(allScenes: AllScenesResult): Promise<string> {
 		const view = this.panel.webview;
-		const allowEvalString = this.workspaceProvider.getConfiguration(Configuration.BaseSection, Configuration.AllowUnsafeScript) ? " 'unsafe-eval'" : "";
+		const allowEvalString = this.workspaceProvider.getConfiguration<AllowUnsafeScriptOption>(Configuration.BaseSection, Configuration.AllowUnsafeScript) != "never" ? " 'unsafe-eval'" : "";
 		let content = new TextDecoder().decode(await vscode.workspace.fs.readFile(this.runIndexHtmlUri));
 		// The following Content Security Policy doesn't really do much given how much we have to allow to get ChoiceScript to run properly, but it's here as a reminder.
 		content = content.replace("<head>", `<head>\n<meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src ${view.cspSource} https:; img-src ${view.cspSource} 'unsafe-inline' data: https:; script-src ${view.cspSource} 'unsafe-inline'${allowEvalString} https:; style-src ${view.cspSource} 'unsafe-inline' https:"/>`);

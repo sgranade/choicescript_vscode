@@ -61,6 +61,8 @@ export enum RandomtestSettingsSource {
 	Interactive
 }
 
+export type AllowUnsafeScriptOption = "never" | "warn" | "allow";
+
 // Paths relative to the extension
 export const RelativePaths = {
 	Choicescript: joinPath('choicescript', 'out'),

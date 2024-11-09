@@ -9,3 +9,5 @@ export enum CustomMessages {
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
 }
+
+export type AllowUnsafeScriptOption = "never" | "warn" | "allow";

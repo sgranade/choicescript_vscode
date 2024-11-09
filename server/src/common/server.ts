@@ -4,7 +4,7 @@ import { type CompletionItem, type Connection, type Definition, type DocumentSym
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { generateInitialCompletions } from './completions';
-import { CustomMessages } from "./constants";
+import { AllowUnsafeScriptOption, CustomMessages } from "./constants";
 import { type FileSystemProvider, FileSystemService } from './file-system-service';
 import { Index, type ProjectIndex } from "./index";
 import { updateProjectIndex } from './indexer';
@@ -42,7 +42,7 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 
 	const validationSettings: ValidationSettings = {
 		useCoGStyleGuide: true,
-		errorOnScript: true
+		allowUnsafeScript: "never"
 	};
 
 	// Queue of documents whose content has changed and who need to be updated
@@ -390,8 +390,8 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	}
 
-	function onAllowUnsafeScript(allowUnsafeScript: boolean) {
-		validationSettings.errorOnScript = !allowUnsafeScript;
+	function onAllowUnsafeScript(allowUnsafeScript: AllowUnsafeScriptOption) {
+		validationSettings.allowUnsafeScript = allowUnsafeScript;
 		documents.all().forEach(doc => validateTextDocument(doc, projectIndex));
 	}
 	
