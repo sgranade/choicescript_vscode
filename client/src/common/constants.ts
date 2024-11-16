@@ -10,6 +10,7 @@ export enum Configuration {
 	BaseSection = 'choicescript',
 	UseCOGStyleGuide = 'useChoiceOfGamesStyleGuide',
 	DisableQuickSuggestions = 'disableQuickSuggestions',
+	AllowUnsafeScript = 'allowUnsafeScript',
 	RandomtestIterations = 'randomtest.iterations',
 	RandomtestSeed = 'randomtest.randomSeed',
 	RandomtestPutResultsInDocument = 'randomtest.putResultsInDocument',
@@ -39,6 +40,7 @@ export enum CustomContext {
 }
 
 export enum CustomMessages {
+	AllowUnsafeScript = 'choicescript/allowunsafescript',
 	CoGStyleGuide = 'choicescript/cogstyleguide',
 	DebugMessage = 'choicescript/debugmessage',
 	ProjectIndexed = 'choicescript/projectindexed',
@@ -58,6 +60,8 @@ export enum RandomtestSettingsSource {
 	LastTestRun,
 	Interactive
 }
+
+export type AllowUnsafeScriptOption = "never" | "warn" | "allow";
 
 // Paths relative to the extension
 export const RelativePaths = {

@@ -19,6 +19,7 @@ class IndexingState {
 	variableReferences: Map<string, Location[]> = new Map();
 	scenes: string[] = [];
 	labels: LabelIndex = new Map();
+	scriptCommands: Location[] = [];
 	achievements: AchievementIndex = new Map();
 	achievementReferences: Map<string, Location[]> = new Map();
 	flowControlEvents: FlowControlEvent[] = [];
@@ -156,6 +157,10 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 			// Record where params temporary variables are brought into existence
 			if (command == "params") {
 				indexingState.paramsLocations.push(commandLocation);
+			}
+			// Record instances of *script
+			if (command == "script") {
+				indexingState.scriptCommands.push(commandLocation);
 			}
 		},
 
@@ -312,6 +317,7 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 	index.setFlowControlEvents(uri, indexingState.flowControlEvents);
 	index.setImages(uri, indexingState.images);
 	index.setParseErrors(uri, indexingState.parseErrors);
+	index.setScriptUsages(uri, indexingState.scriptCommands);
 
 	const newScenes: string[] = [];
 	const indexedScenes = new Set(index.getIndexedScenes());

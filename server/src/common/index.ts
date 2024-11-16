@@ -184,6 +184,12 @@ export interface ProjectIndex {
 	 */
 	setImages(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void;
 	/**
+	 * Set the usages of *script.
+	 * @param sceneUri URI to document whose index is to be updated.
+	 * @param usages An array of locations where *script is used.
+	 */
+	setScriptUsages(sceneUri: string, usages: Location[]): void;
+	/**
 	 * Set the list of errors that occured during parsing.
 	 * @param sceneUri URI to document whose index is to be updated.
 	 * @param errors New list of errors.
@@ -323,6 +329,11 @@ export interface ProjectIndex {
 	 */
 	getImages(sceneUri: string): ReadonlyIdentifierMultiIndex;
 	/**
+	 * Get list of all *script calls in the document.
+	 * @param sceneUri Scene document URI.
+	 */
+	getScriptUsages(sceneUri: string): readonly Location[];
+	/**
 	 * Get the parse errors.
 	 * @param sceneUri Scene document URI.
 	 */
@@ -356,6 +367,7 @@ export class Index implements ProjectIndex {
 	private _achievementReferences: Map<string, IdentifierMultiIndex>;
 	private _documentScopes: Map<string, DocumentScopes>;
 	private _images: Map<string, IdentifierMultiIndex>;
+	private _scriptUsages: Map<string, Location[]>;
 	private _parseErrors: Map<string, Diagnostic[]>;
 	constructor() {
 		this._projectIsIndexed = false;
@@ -375,6 +387,7 @@ export class Index implements ProjectIndex {
 		this._achievementReferences = new Map();
 		this._documentScopes = new Map();
 		this._images = new Map();
+		this._scriptUsages = new Map();
 		this._parseErrors = new Map();
 	}
 	setPlatformWorkspacePath(path: string): void {
@@ -422,6 +435,9 @@ export class Index implements ProjectIndex {
 	}
 	setImages(sceneUri: string, newIndex: IdentifierMultiIndex | Map<string, Location[]>): void {
 		this._images.set(sceneUri, mapToUnionedCaseInsensitiveMap(newIndex));
+	}
+	setScriptUsages(sceneUri: string, usages: Location[]): void {
+		this._scriptUsages.set(sceneUri, usages);
 	}
 	setParseErrors(sceneUri: string, errors: Diagnostic[]): void {
 		this._parseErrors.set(sceneUri, [...errors]);
@@ -575,6 +591,9 @@ export class Index implements ProjectIndex {
 	getImages(sceneUri: string): ReadonlyIdentifierMultiIndex {
 		const index = this._images.get(sceneUri) ?? new CaseInsensitiveMap();
 		return index;
+	}
+	getScriptUsages(sceneUri: string): readonly Location[] {
+		return this._scriptUsages.get(sceneUri) ?? [];
 	}
 	getParseErrors(sceneUri: string): readonly Diagnostic[] {
 		const errors = this._parseErrors.get(sceneUri) ?? [];

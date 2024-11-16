@@ -1,4 +1,5 @@
 export enum CustomMessages {
+	AllowUnsafeScript = 'choicescript/allowunsafescript',
 	CoGStyleGuide = 'choicescript/cogstyleguide',
 	DebugMessage = 'choicescript/debugmessage',
 	ProjectIndexed = 'choicescript/projectindexed',
@@ -8,3 +9,5 @@ export enum CustomMessages {
 	UpdatedWordCount = 'choicescript/updatedwordcount',
 	WordCountRequest = 'choicescript/wordcount',
 }
+
+export type AllowUnsafeScriptOption = "never" | "warn" | "allow";
