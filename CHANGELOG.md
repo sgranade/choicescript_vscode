@@ -4,9 +4,13 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Changed
+
+- Now optionally allows `*script` commands to execute. By default the command is blocked, but you can change that through the new "Allow Unsafe Script" setting. (MR #34, courtesy Carey Williams.)
+
 ### Fixed
 
-- Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams).
+- Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams.)
 
 ## [3.1.1] - 2024-10-20
 

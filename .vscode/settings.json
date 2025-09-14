@@ -1,6 +1,7 @@
 {
 	"editor.insertSpaces": false,
-	"tslint.enable": true,
 	"typescript.tsc.autoDetect": "off",
-	"typescript.preferences.quoteStyle": "single"
+	"typescript.preferences.quoteStyle": "single",
+	"mochaExplorer.files": "test/**/*.ts",
+	"mochaExplorer.require": "ts-node/register"
 }
