@@ -1,9 +1,10 @@
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, type SubstituteOf, Arg } from '@fluffy-spoon/substitute';
-import { Position, type Location, type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver/node';
+import { Diagnostic, DiagnosticSeverity, type Location, Position } from 'vscode-languageserver/node';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { DiagnosticCodes } from '../../../server/src/common/diagnostics';
 import { type ParserCallbacks, type ParsingState, parse } from '../../../server/src/common/parser';
 import type { FlowControlEvent, SummaryScope } from '../../../server/src/common';
 
@@ -2098,7 +2099,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*fake_command isn't a valid");
+				expect(received[0].code).to.eql(DiagnosticCodes.InvalidCommand);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(13);
 			});
@@ -2114,7 +2115,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*set is missing its");
+				expect(received[0].code).to.eql(DiagnosticCodes.MissingCommandArguments);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(4);
 			});
@@ -2130,7 +2131,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("must not have anything after it");
+				expect(received[0].code).to.eql(DiagnosticCodes.NothingAfterCommand);
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(27);
 			});
@@ -2147,7 +2148,7 @@ describe("Parser", () => {
 
 				expect(received.length).to.equal(1);
 				expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
-				expect(received[0].message).to.include("This will be ignored");
+				expect(received[0].code).to.eql(DiagnosticCodes.IgnoredArgument);
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(15);
 			});
@@ -2163,7 +2164,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*create can only be used in");
+				expect(received[0].code).to.eql(DiagnosticCodes.StartupOnlyCommand);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(7);
 			});
@@ -2181,10 +2182,10 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(2);
-				expect(received[0].message).to.include("*if must have an indented line with contents after it");
+				expect(received[0].code).to.eql(DiagnosticCodes.EmptyBlock);
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(8);
-				expect(received[1].message).to.include("*else must have an indented line with contents after it");
+				expect(received[1].code).to.eql(DiagnosticCodes.EmptyBlock);
 				expect(received[1].range.start.line).to.equal(44);
 				expect(received[1].range.end.line).to.equal(44);
 			});
@@ -2200,7 +2201,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *elseif must be part of an *if");
+				expect(received[0].code).to.eql(DiagnosticCodes.IfBlockOnlyCommand);
 				expect(received[0].range.start.line).to.equal(36);
 				expect(received[0].range.end.line).to.equal(42);
 			});
@@ -2216,7 +2217,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *else must be part of an *if");
+				expect(received[0].code).to.eql(DiagnosticCodes.IfBlockOnlyCommand);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(5);
 			});
@@ -2232,7 +2233,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *elseif must be part of an *if");
+				expect(received[0].code).to.eql(DiagnosticCodes.IfBlockOnlyCommand);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(7);
 			});
@@ -2248,7 +2249,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].code).to.eql(DiagnosticCodes.InvalidValue);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(14);
 			});
@@ -2264,7 +2265,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].code).to.eql(DiagnosticCodes.InvalidValue);
 				expect(received[0].range.start.line).to.equal(25);
 				expect(received[0].range.end.line).to.equal(26);
 			});
@@ -2280,7 +2281,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*label names can't have spaces");
+				expect(received[0].code).to.eql(DiagnosticCodes.NoSpacesInLabelName);
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(15);
 			});
@@ -2312,7 +2313,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
+					expect(received[0].code).to.eql(DiagnosticCodes.UnallowedCommandBeforeOption);
 					expect(received[0].range.start.line).to.equal(19);
 					expect(received[0].range.end.line).to.equal(23);
 				});
@@ -2341,7 +2342,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Nothing except an *if or *selectable_if is allowed between *hide_reuse and the #option");
+					expect(received[0].code).to.eql(DiagnosticCodes.TextAfterReuse);
 					expect(received[0].range.start.line).to.equal(31);
 					expect(received[0].range.end.line).to.equal(34);
 				});
@@ -2383,7 +2384,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Arguments to an *if before an #option must be in parentheses");
+					expect(received[0].code).to.eql(DiagnosticCodes.MissingParentheses);
 					expect(received[0].range.start.line).to.equal(23);
 					expect(received[0].range.end.line).to.equal(28);
 				});
@@ -2412,7 +2413,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Arguments to a *selectable_if before an #option must be in parentheses");
+					expect(received[0].code).to.eql(DiagnosticCodes.MissingParentheses);
 					expect(received[0].range.start.line).to.equal(34);
 					expect(received[0].range.end.line).to.equal(39);
 				});
@@ -2441,7 +2442,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("*disable_reuse must be before *selectable_if");
+					expect(received[0].code).to.eql(DiagnosticCodes.ReuseAfterIf);
 					expect(received[0].range.start.line).to.equal(42);
 					expect(received[0].range.end.line).to.equal(56);
 				});
@@ -2457,7 +2458,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Must be either an #option or an *if");
+					expect(received[0].code).to.eql(DiagnosticCodes.NotOptionOrIf);
 					expect(received[0].range.start.line).to.equal(19);
 					expect(received[0].range.end.line).to.equal(24);
 				});
@@ -2473,7 +2474,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("An option in a *choice must have contents");
+					expect(received[0].code).to.eql(DiagnosticCodes.EmptyOption);
 					expect(received[0].range.start.line).to.equal(30);
 					expect(received[0].range.end.line).to.equal(31);
 				});
@@ -2489,7 +2490,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("An option in a *choice must have contents");
+					expect(received[0].code).to.eql(DiagnosticCodes.EmptyOption);
 					expect(received[0].range.start.line).to.equal(30);
 					expect(received[0].range.end.line).to.equal(31);
 				});
@@ -2557,7 +2558,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].code).to.eql(DiagnosticCodes.IndentedTooMuch);
 					expect(received[0].range.start.line).to.equal(74);
 					expect(received[0].range.end.line).to.equal(76);
 				});
@@ -2573,7 +2574,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].code).to.eql(DiagnosticCodes.IndentedTooMuch);
 					expect(received[0].range.start.line).to.equal(44);
 					expect(received[0].range.end.line).to.equal(47);
 				});
@@ -2589,7 +2590,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Line is not indented far enough");
+					expect(received[0].code).to.eql(DiagnosticCodes.IndentedTooLittle);
 					expect(received[0].range.start.line).to.equal(37);
 					expect(received[0].range.end.line).to.equal(40);
 				});
@@ -2605,7 +2606,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Spaces used instead of tabs");
+					expect(received[0].code).to.eql(DiagnosticCodes.SwitchedToSpaces);
 					expect(received[0].range.start.line).to.equal(15);
 					expect(received[0].range.end.line).to.equal(17);
 				});
@@ -2621,7 +2622,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Spaces used instead of tabs");
+					expect(received[0].code).to.eql(DiagnosticCodes.SwitchedToSpaces);
 					expect(received[0].range.start.line).to.equal(21);
 					expect(received[0].range.end.line).to.equal(23);
 				});
@@ -2637,7 +2638,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Tabs used instead of spaces");
+					expect(received[0].code).to.eql(DiagnosticCodes.SwitchedToTabs);
 					expect(received[0].range.start.line).to.equal(22);
 					expect(received[0].range.end.line).to.equal(24);
 				});
@@ -2668,7 +2669,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[0].code).to.eql(DiagnosticCodes.UnallowedGroupNameCharacters);
 					expect(received[0].range.start.line).to.equal(15);
 					expect(received[0].range.end.line).to.equal(21);
 				});
@@ -2684,10 +2685,10 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(2);
-					expect(received[0].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[0].code).to.eql(DiagnosticCodes.UnallowedGroupNameCharacters);
 					expect(received[0].range.start.line).to.equal(20);
 					expect(received[0].range.end.line).to.equal(26);
-					expect(received[1].message).to.include("Choice group names can only have letters, numbers, or _");
+					expect(received[1].code).to.eql(DiagnosticCodes.UnallowedGroupNameCharacters);
 					expect(received[1].range.start.line).to.equal(28);
 					expect(received[1].range.end.line).to.equal(34);
 				});
@@ -2735,7 +2736,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("This #option is too indented");
+					expect(received[0].code).to.eql(DiagnosticCodes.IndentedTooMuch);
 					expect(received[0].range.start.line).to.equal(40);
 					expect(received[0].range.end.line).to.equal(43);
 				});
@@ -2764,7 +2765,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Group sub-options must be exactly the same");
+					expect(received[0].code).to.eql(DiagnosticCodes.MismatchedGroupSuboptions);
 					expect(received[0].range.start.line).to.equal(49);
 					expect(received[0].range.end.line).to.equal(54);
 				});
@@ -2780,7 +2781,7 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(1);
-					expect(received[0].message).to.include("Only *if, *selectable_if, or one of the reuse commands allowed in front of an option");
+					expect(received[0].code).to.eql(DiagnosticCodes.UnallowedCommandBeforeOption);
 					expect(received[0].range.start.line).to.equal(32);
 					expect(received[0].range.end.line).to.equal(35);
 				});
@@ -2796,10 +2797,10 @@ describe("Parser", () => {
 					parse(fakeDocument, fakeCallbacks);
 
 					expect(received.length).to.equal(2);
-					expect(received[0].message).to.include("Nothing is allowed between group sub-options");
+					expect(received[0].code).to.eql(DiagnosticCodes.NothingBetweenGroupSuboptions);
 					expect(received[0].range.start.line).to.equal(32);
 					expect(received[0].range.end.line).to.equal(38);
-					expect(received[1].message).to.include("Nothing is allowed between group sub-options");
+					expect(received[1].code).to.eql(DiagnosticCodes.NothingBetweenGroupSuboptions);
 					expect(received[1].range.start.line).to.equal(79);
 					expect(received[1].range.end.line).to.equal(86);
 				});
@@ -2816,7 +2817,7 @@ describe("Parser", () => {
 
 					expect(received.length).to.equal(1);
 					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
-					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].code).to.eql(DiagnosticCodes.MismatchedIfStatements);
 					expect(received[0].range.start.line).to.equal(59);
 					expect(received[0].range.end.line).to.equal(60);
 				});
@@ -2833,7 +2834,7 @@ describe("Parser", () => {
 
 					expect(received.length).to.equal(1);
 					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
-					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].code).to.eql(DiagnosticCodes.MismatchedIfStatements);
 					expect(received[0].range.start.line).to.equal(62);
 					expect(received[0].range.end.line).to.equal(63);
 				});
@@ -2850,7 +2851,7 @@ describe("Parser", () => {
 
 					expect(received.length).to.equal(1);
 					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
-					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].code).to.eql(DiagnosticCodes.MismatchedIfStatements);
 					expect(received[0].range.start.line).to.equal(63);
 					expect(received[0].range.end.line).to.equal(69);
 				});
@@ -2867,7 +2868,7 @@ describe("Parser", () => {
 
 					expect(received.length).to.equal(1);
 					expect(received[0].severity).to.equal(DiagnosticSeverity.Warning);
-					expect(received[0].message).to.include("*if statements in front of group sub-options must all evaluate to the same true or false value");
+					expect(received[0].code).to.eql(DiagnosticCodes.MismatchedIfStatements);
 					expect(received[0].range.start.line).to.equal(66);
 					expect(received[0].range.end.line).to.equal(72);
 				});
@@ -2886,7 +2887,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Replacement is missing its }");
+				expect(received[0].code).to.eql(DiagnosticCodes.MissingCloseBrace);
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(22);
 			});
@@ -2902,7 +2903,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Replacement is missing its }");
+				expect(received[0].code).to.eql(DiagnosticCodes.MissingCloseBrace);
 				expect(received[0].range.start.line).to.equal(18);
 				expect(received[0].range.end.line).to.equal(32);
 			});
@@ -2918,7 +2919,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Replacement is empty");
+				expect(received[0].code).to.eql(DiagnosticCodes.EmptyReplacement);
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(11);
 			});
@@ -2934,7 +2935,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Replacement is empty");
+				expect(received[0].code).to.eql(DiagnosticCodes.EmptyReplacement);
 				expect(received[0].range.start.line).to.equal(18);
 				expect(received[0].range.end.line).to.equal(21);
 			});
@@ -2952,7 +2953,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace is missing its }");
+				expect(received[0].code).to.eql(DiagnosticCodes.MissingCloseBrace);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(15);
 			});
@@ -2968,7 +2969,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace is missing its }");
+				expect(received[0].code).to.eql(DiagnosticCodes.MissingCloseBrace);
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(25);
 			});
@@ -2997,7 +2998,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace is empty");
+				expect(received[0].code).to.eql(DiagnosticCodes.EmptyMultireplace);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -3013,7 +3014,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace is empty");
+				expect(received[0].code).to.eql(DiagnosticCodes.EmptyMultireplace);
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(26);
 			});
@@ -3029,7 +3030,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Spaces aren't allowed at the start of a multireplace");
+				expect(received[0].code).to.eql(DiagnosticCodes.NoSpacesAtStartOfMultireplace);
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -3045,7 +3046,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace has no options");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingOptions);
 				expect(received[0].range.start.line).to.equal(11);
 				expect(received[0].range.end.line).to.equal(13);
 			});
@@ -3061,7 +3062,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace has no options");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingOptions);
 				expect(received[0].range.start.line).to.equal(21);
 				expect(received[0].range.end.line).to.equal(23);
 			});
@@ -3077,7 +3078,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace must have at least two options separated by |");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooFewOptions);
 				expect(received[0].range.start.line).to.equal(23);
 				expect(received[0].range.end.line).to.equal(24);
 			});
@@ -3093,7 +3094,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace must have at least two options separated by |");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooFewOptions);
 				expect(received[0].range.start.line).to.equal(33);
 				expect(received[0].range.end.line).to.equal(34);
 			});
@@ -3109,7 +3110,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace must have a space after its variable");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingSpaceAfterVariable);
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(22);
 			});
@@ -3125,7 +3126,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace must have a space after parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingSpaceAfterParens);
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(20);
 			});
@@ -3141,7 +3142,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplace must have a space after parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingSpaceAfterParens);
 				expect(received[0].range.start.line).to.equal(29);
 				expect(received[0].range.end.line).to.equal(30);
 			});
@@ -3170,7 +3171,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplaces cannot be nested");
+				expect(received[0].code).to.equal(DiagnosticCodes.NestedMultireplace);
 				expect(received[0].range.start.line).to.equal(55);
 				expect(received[0].range.end.line).to.equal(89);
 			});
@@ -3186,7 +3187,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Multireplaces cannot be nested");
+				expect(received[0].code).to.equal(DiagnosticCodes.NestedMultireplace);
 				expect(received[0].range.start.line).to.equal(65);
 				expect(received[0].range.end.line).to.equal(99);
 			});
@@ -3202,7 +3203,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Potentially missing parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.PossibleMissingParens);
 				expect(received[0].range.start.line).to.equal(2);
 				expect(received[0].range.end.line).to.equal(7);
 			});
@@ -3218,7 +3219,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(2);
-				expect(received[1].message).to.include("Potentially missing parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingSpaceAfterVariable);
 				expect(received[1].range.start.line).to.equal(2);
 				expect(received[1].range.end.line).to.equal(7);
 			});
@@ -3234,7 +3235,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Potentially missing parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.PossibleMissingParens);
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(17);
 			});
@@ -3278,7 +3279,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].code).to.equal(DiagnosticCodes.NoChoiceVariableNames);
 				expect(received[0].range.start.line).to.equal(8);
 				expect(received[0].range.end.line).to.equal(19);
 			});
@@ -3294,7 +3295,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include('Variable names can\'t start with "choice_"');
+				expect(received[0].code).to.equal(DiagnosticCodes.NoChoiceVariableNames);
 				expect(received[0].range.start.line).to.equal(6);
 				expect(received[0].range.end.line).to.equal(17);
 			});
@@ -3310,7 +3311,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing value to set the variable to");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingVariableValue);
 				expect(received[0].range.start.line).to.equal(16);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -3339,7 +3340,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("can only be used in startup.txt");
+				expect(received[0].code).to.equal(DiagnosticCodes.StartupOnlyCommand);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(7);
 			});
@@ -3355,7 +3356,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must come before any *temp commands");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoCreateAfterTemp);
 				expect(received[0].range.start.line).to.equal(18);
 				expect(received[0].range.end.line).to.equal(24);
 			});
@@ -3373,7 +3374,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Without parentheses, this expression will always be true");
+				expect(received[0].code).to.equal(DiagnosticCodes.AlwaysTrueExpression);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(23);
 			});
@@ -3402,7 +3403,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a boolean value");
+				expect(received[0].code).to.equal(DiagnosticCodes.MustBeBooleanValue);
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(5);
 			});
@@ -3418,7 +3419,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a boolean value");
+				expect(received[0].code).to.equal(DiagnosticCodes.MustBeBooleanValue);
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -3434,7 +3435,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing end )");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(24);
 			});
@@ -3450,7 +3451,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Too many elements - are you missing parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooManyExpressionElements);
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(27);
 			});
@@ -3479,7 +3480,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Function must be followed by");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingFollowingParentheses);
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(7);
 			});
@@ -3495,7 +3496,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a boolean value");
+				expect(received[0].code).to.equal(DiagnosticCodes.MustBeBooleanValue);
 				expect(received[0].range.start.line).to.equal(4);
 				expect(received[0].range.end.line).to.equal(14);
 			});
@@ -3539,7 +3540,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a variable or variable reference");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotVariableOrReference);
 				expect(received[0].range.start.line).to.equal(5);
 				expect(received[0].range.end.line).to.equal(6);
 			});
@@ -3555,7 +3556,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a valid value");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidValue);
 				expect(received[0].range.start.line).to.equal(9);
 				expect(received[0].range.end.line).to.equal(10);
 			});
@@ -3571,7 +3572,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Too many elements");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooManyExpressionElements);
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(15);
 			});
@@ -3587,7 +3588,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a number or a variable");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotNumberOrVariable);
 				expect(received[0].range.start.line).to.equal(10);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -3603,7 +3604,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing value to set the variable to");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingVariableValue);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(13);
 			});
@@ -3632,7 +3633,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Incomplete expression");
+				expect(received[0].code).to.equal(DiagnosticCodes.IncompleteExpression);
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -3648,7 +3649,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Incomplete expression");
+				expect(received[0].code).to.equal(DiagnosticCodes.IncompleteExpression);
 				expect(received[0].range.start.line).to.equal(12);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -3664,7 +3665,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a number");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotNumberOrVariable);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(19);
 			});
@@ -3680,7 +3681,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Not a string or comparison operator");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotStringOrComparisonOperator);
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(16);
 			});
@@ -3696,7 +3697,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a number or a variable");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotNumberOrVariable);
 				expect(received[0].range.start.line).to.equal(19);
 				expect(received[0].range.end.line).to.equal(23);
 			});
@@ -3712,7 +3713,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be a numeric operator");
+				expect(received[0].code).to.equal(DiagnosticCodes.NotNumericOperatorOrValueOrVariable);
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(17);
 			});
@@ -3728,10 +3729,10 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(2);
-				expect(received[0].message).to.include("Unknown operator");
+				expect(received[0].code).to.equal(DiagnosticCodes.UnknownOperator);
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(15);
-				expect(received[1].message).to.include("Incomplete expression");
+				expect(received[1].code).to.equal(DiagnosticCodes.IncompleteExpression);
 				expect(received[1].range.start.line).to.equal(19);
 				expect(received[1].range.end.line).to.equal(19);
 			});
@@ -3747,7 +3748,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing end )");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(20);
 			});
@@ -3763,7 +3764,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Too many elements");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooManyExpressionElements);
 				expect(received[0].range.start.line).to.equal(20);
 				expect(received[0].range.end.line).to.equal(23);
 			});
@@ -3792,7 +3793,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Function must be followed by parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingFollowingParentheses);
 				expect(received[0].range.start.line).to.equal(14);
 				expect(received[0].range.end.line).to.equal(17);
 			});
@@ -3827,7 +3828,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*stat_chart must have at least one stat");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingStat);
 				expect(received[0].range.start.line).to.equal(0);
 				expect(received[0].range.end.line).to.equal(11);
 			});
@@ -3843,7 +3844,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be one of text, percent, opposed_pair");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidStatChartCommand);
 				expect(received[0].range.start.line).to.equal(13);
 				expect(received[0].range.end.line).to.equal(25);
 			});
@@ -3861,7 +3862,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *achievement is missing its arguments");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCommandArguments);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(12);
 			});
@@ -3877,7 +3878,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *achievement is missing its visibility");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingAchievementVisibility);
 				expect(received[0].range.start.line).to.equal(21);
 				expect(received[0].range.end.line).to.equal(21);
 			});
@@ -3893,7 +3894,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *achievement is missing its points value");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingAchievementPoints);
 				expect(received[0].range.start.line).to.equal(29);
 				expect(received[0].range.end.line).to.equal(29);
 			});
@@ -3909,7 +3910,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *achievement is missing its title");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingAchievementTitle);
 				expect(received[0].range.start.line).to.equal(32);
 				expect(received[0].range.end.line).to.equal(33);
 			});
@@ -3925,7 +3926,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement visibility must be 'hidden' or 'visible'");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidAchievementVisibility);
 				expect(received[0].range.start.line).to.equal(22);
 				expect(received[0].range.end.line).to.equal(31);
 			});
@@ -3989,7 +3990,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement title can't include a ${} replace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoReplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(35);
 				expect(received[0].range.end.line).to.equal(37);
 			});
@@ -4005,7 +4006,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement title can't include a @{} multireplace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoMultireplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(35);
 				expect(received[0].range.end.line).to.equal(37);
 			});
@@ -4021,7 +4022,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement title can't include [] brackets");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoBracketsInAchievement);
 				expect(received[0].range.start.line).to.equal(35);
 				expect(received[0].range.end.line).to.equal(36);
 			});
@@ -4037,7 +4038,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement title can't be longer than 50 characters");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooLongAchievement);
 				expect(received[0].range.start.line).to.equal(33+50);
 				expect(received[0].range.end.line).to.equal(33+51);
 			});
@@ -4053,7 +4054,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement is missing its indented pre-earned description");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingAchievementPreEarnedDesc);
 				expect(received[0].range.start.line).to.equal(34);
 				expect(received[0].range.end.line).to.equal(34);
 			});
@@ -4069,7 +4070,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement pre-earned description can't include a ${} replace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoReplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(39);
 				expect(received[0].range.end.line).to.equal(41);
 			});
@@ -4085,7 +4086,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement pre-earned description can't include a @{} multireplace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoMultireplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(39);
 				expect(received[0].range.end.line).to.equal(41);
 			});
@@ -4101,7 +4102,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement pre-earned description can't include [] brackets");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoBracketsInAchievement);
 				expect(received[0].range.start.line).to.equal(39);
 				expect(received[0].range.end.line).to.equal(40);
 			});
@@ -4117,7 +4118,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement pre-earned description can't be longer than 200 characters");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooLongAchievement);
 				expect(received[0].range.start.line).to.equal(37+200);
 				expect(received[0].range.end.line).to.equal(37+202);
 			});
@@ -4178,7 +4179,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Hidden *achievement's pre-earned description must be 'hidden'");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidAchievementHiddenPreEarnedDesc);
 				expect(received[0].range.start.line).to.equal(36);
 				expect(received[0].range.end.line).to.equal(37);
 			});
@@ -4194,7 +4195,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement post-earned description can't include a ${} replace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoReplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(43);
 				expect(received[0].range.end.line).to.equal(45);
 			});
@@ -4210,7 +4211,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement post-earned description can't include a @{} multireplace");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoMultireplaceInAchievement);
 				expect(received[0].range.start.line).to.equal(43);
 				expect(received[0].range.end.line).to.equal(45);
 			});
@@ -4226,7 +4227,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement post-earned description can't include [] brackets");
+				expect(received[0].code).to.equal(DiagnosticCodes.NoBracketsInAchievement);
 				expect(received[0].range.start.line).to.equal(43);
 				expect(received[0].range.end.line).to.equal(44);
 			});
@@ -4242,7 +4243,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("*achievement post-earned description can't be longer than 200 characters");
+				expect(received[0].code).to.equal(DiagnosticCodes.TooLongAchievement);
 				expect(received[0].range.start.line).to.equal(41+200);
 				expect(received[0].range.end.line).to.equal(41+203);
 			});
@@ -4260,7 +4261,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *image is missing its arguments");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCommandArguments);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(6);
 			});
@@ -4289,7 +4290,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidImageAlignment);
 				expect(received[0].range.start.line).to.equal(17);
 				expect(received[0].range.end.line).to.equal(24);
 			});
@@ -4331,7 +4332,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidImageAlignment);
 				expect(received[0].range.start.line).to.equal(17);
 				expect(received[0].range.end.line).to.equal(22);
 			});
@@ -4349,7 +4350,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Command *text_image is missing its arguments");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCommandArguments);
 				expect(received[0].range.start.line).to.equal(1);
 				expect(received[0].range.end.line).to.equal(11);
 			});
@@ -4378,7 +4379,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Must be one of left, right, or center");
+				expect(received[0].code).to.equal(DiagnosticCodes.InvalidImageAlignment);
 				expect(received[0].range.start.line).to.equal(22);
 				expect(received[0].range.end.line).to.equal(29);
 			});
@@ -4454,7 +4455,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Nothing can follow an IFID");
+				expect(received[0].code).to.equal(DiagnosticCodes.NothingAfterIFID);
 				expect(received[0].range.start.line).to.equal(43);
 				expect(received[0].range.end.line).to.equal(49);
 			});
@@ -4485,7 +4486,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("The first argument to kindle_search must be in parentheses");
+				expect(received[0].code).to.equal(DiagnosticCodes.KindleSearchMissingParentheses);
 				expect(received[0].range.start.line).to.equal(15);
 				expect(received[0].range.end.line).to.equal(29);
 			});
@@ -4501,7 +4502,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("Missing close parenthesis");
+				expect(received[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 				expect(received[0].range.start.line).to.equal(30);
 				expect(received[0].range.end.line).to.equal(31);
 			});
@@ -4646,7 +4647,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("The capital letters in this slot's name will be turned into lower case values");
+				expect(received[0].code).to.equal(DiagnosticCodes.CapitalLettersWillBeLowercased);
 				expect(received[0].severity).to.eql(DiagnosticSeverity.Warning);
 				expect(received[0].range.start.line).to.equal(17);
 				expect(received[0].range.end.line).to.equal(23);
@@ -4692,7 +4693,7 @@ describe("Parser", () => {
 				parse(fakeDocument, fakeCallbacks);
 
 				expect(received.length).to.equal(1);
-				expect(received[0].message).to.include("The capital letters in this slot's name will be turned into lower case values");
+				expect(received[0].code).to.equal(DiagnosticCodes.CapitalLettersWillBeLowercased);
 				expect(received[0].severity).to.eql(DiagnosticSeverity.Warning);
 				expect(received[0].range.start.line).to.equal(20);
 				expect(received[0].range.end.line).to.equal(26);

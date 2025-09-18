@@ -1,9 +1,10 @@
-import { Location, Range, type Position, type Diagnostic, DiagnosticSeverity, type DiagnosticRelatedInformation } from 'vscode-languageserver';
+import { Diagnostic, type DiagnosticRelatedInformation, Location, Range, type Position } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { type ParserCallbacks, type ParsingState, parse } from './parser';
 import type { FlowControlEvent, DocumentScopes, ProjectIndex, SummaryScope, LabelIndex, Label, AchievementIndex } from './index';
-import { createDiagnosticFromLocation, comparePositions, normalizeUri } from './utilities';
+import { comparePositions, normalizeUri } from './utilities';
+import { createDiagnosticFromLocation, DiagnosticCodes } from './diagnostics';
 
 /**
  * Captures information about the current state of indexing
@@ -172,8 +173,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 					message: "Previously-created variable"
 				};
 				const diagnostic = createDiagnosticFromLocation(
-					DiagnosticSeverity.Error, location,
-					`Variable "${symbol}" was already created`
+					DiagnosticCodes.VariableAlreadyCreated,
+					location,
 				);
 				diagnostic.relatedInformation = [relatedInformation];
 				state.callbacks.onParseError(diagnostic);
@@ -197,8 +198,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 					message: "Previously-created label"
 				};
 				const diagnostic = createDiagnosticFromLocation(
-					DiagnosticSeverity.Error, location,
-					`Label "${symbol}" was already created`
+					DiagnosticCodes.LabelAlreadyCreated,
+					location,
 				);
 				diagnostic.relatedInformation = [relatedInformation];
 				state.callbacks.onParseError(diagnostic);
@@ -234,10 +235,12 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 				if (size == 0) {
 					const location = Location.create(commandLocation.uri, commandLocation.range);
 					location.range.start.character--;
-					state.callbacks.onParseError(createDiagnosticFromLocation(
-						DiagnosticSeverity.Error, location,
-						`*return has no associated label`
-					));
+					state.callbacks.onParseError(
+						createDiagnosticFromLocation(
+							DiagnosticCodes.ReturnWithoutLabel,
+							location,
+						)
+					);
 				}
 				else {
 					const label = Array.from(indexingState.labels)[size - 1][1];
@@ -259,8 +262,8 @@ export function updateProjectIndex(textDocument: TextDocument, isStartupFile: bo
 					message: "Previously-created achievement"
 				};
 				const diagnostic = createDiagnosticFromLocation(
-					DiagnosticSeverity.Error, location,
-					`Achievement "${codename}" was already created`
+					DiagnosticCodes.AchievementAlreadyCreated,
+					location,
 				);
 				diagnostic.relatedInformation = [relatedInformation];
 				state.callbacks.onParseError(diagnostic);

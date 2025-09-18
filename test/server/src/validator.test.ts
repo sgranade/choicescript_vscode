@@ -16,6 +16,7 @@ import { generateDiagnostics, ValidationSettings } from '../../../server/src/com
 import { SystemFileProvider } from '../../../server/src/node/system-file-provider';
 import { FileSystemService } from '../../../server/src/common/file-system-service';
 import { AllowUnsafeScriptOption } from '../../../server/src/common/constants';
+import { DiagnosticCodes } from '../../../server/src/common/diagnostics';
 
 const fakeDocumentUri: string = "file:///faker.txt";
 const fakeSceneUri: string = "file:///other-scene.txt";
@@ -145,7 +146,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("ellipsis");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.UnicodeEllipsisRequired);
 		});
 
 		it("should flag dashes", async () => {
@@ -156,7 +157,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("em-dash");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.UnicodeEmDashRequired);
 		});
 
 		it("shouldn't flag dashes in a comment", async () => {
@@ -177,7 +178,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(102);
 			expect(diagnostics[0].range.end.line).to.equal(110);
 		});
@@ -220,7 +221,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(117);
 			expect(diagnostics[0].range.end.line).to.equal(123);
 		});
@@ -253,7 +254,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(148);
 			expect(diagnostics[0].range.end.line).to.equal(219);
 		});
@@ -276,7 +277,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(123);
 			expect(diagnostics[0].range.end.line).to.equal(144);
 		});
@@ -299,7 +300,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(110);
 			expect(diagnostics[0].range.end.line).to.equal(135);
 		});
@@ -312,7 +313,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("more than 15");
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.TooLongOption);
 			expect(diagnostics[0].range.start.line).to.equal(117);
 			expect(diagnostics[0].range.end.line).to.equal(138);
 		});
@@ -329,7 +330,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include('"unknown" not defined');
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.VariableNotDefined);
 		});
 
 		it("should not flag missing variables if the project hasn't been indexed", async () => {
@@ -370,7 +371,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include('"local_var" used before it was created');
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.VariableUsedBeforeCreation);
 		});
 
 		it("should not flag a local variable with a second creation location after the reference", async () => {
@@ -387,7 +388,7 @@ describe("Validator", () => {
 
 			// We do get a warning for the variable re-creation though
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include('"local_var" was defined earlier');
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.LocalVariableDefinedEarlier);
 		});
 
 		it("should not flag a local variable referenced before it's created if a global variable exists", async () => {
@@ -410,7 +411,7 @@ describe("Validator", () => {
 
 			// We'll get a warning about a local var having the same name as a global var, but no error
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include('"var" has the same name as a global');
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.LocalVariableShadowsGlobalVariable);
 		});
 
 		it("should not flag a local variable created through a gosub", async () => {
@@ -457,7 +458,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include('"global_var" used before it was created');
+			expect(diagnostics[0].code).to.equal(DiagnosticCodes.VariableUsedBeforeCreation);
 		});
 
 		it("should not flag built-in variables", async () => {
@@ -608,7 +609,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain("*if should be on a line by itself");
+			expect(diagnostics[0].message).to.contain("This command should be on a line by itself");
 		});
 
 		it("should not flag a command with *hide_reuse or similar before it", async () => {
@@ -634,7 +635,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('"global_var" has the same name as a global variable');
+			expect(diagnostics[0].message).to.contain('This variable has the same name as a global variable');
 		});
 
 		it("should flag local variables with a repeated name", async () => {
@@ -646,7 +647,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('"local_var" was defined earlier');
+			expect(diagnostics[0].message).to.contain('This variable was already defined earlier');
 		});
 
 		it("should flag global variables that don't start with a letter", async () => {
@@ -659,7 +660,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
+			expect(diagnostics[0].message).to.contain('A variable name must start with a letter');
 		});
 
 		it("should flag local variables that don't start with a letter", async () => {
@@ -672,7 +673,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('"_invalid_var" must start with a letter');
+			expect(diagnostics[0].message).to.contain('A variable name must start with a letter');
 		});
 	});
 
@@ -693,7 +694,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('Label "local_label" wasn\'t found');
+			expect(diagnostics[0].message).to.contain('This label wasn\'t found');
 		});
 
 		it("should not flag a reference as missing labels", async () => {
@@ -790,7 +791,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('Scene "missing_scene" wasn\'t found');
+			expect(diagnostics[0].message).to.contain('This scene wasn\'t found');
 		});
 
 		it("should flag the location of bad scene names", async () => {
@@ -913,7 +914,7 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.contain('Label "missing_label" wasn\'t found');
+			expect(diagnostics[0].message).to.contain('This label wasn\'t found');
 		});
 
 		it("should not flag missing labels in another scene if the project hasn't been indexed", async () => {
@@ -986,7 +987,7 @@ describe("Validator", () => {
 			mock.restore();
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+			expect(diagnostics[0].message).to.include("Couldn't find this image file");
 		});
 
 		it("should not flag image files in the already-determined image directory", async () => {
@@ -1122,7 +1123,7 @@ describe("Validator", () => {
 			mock.restore();
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+			expect(diagnostics[0].message).to.include("Couldn't find this image file");
 		});
 
 		it("should not try to set the image directory if images aren't found", async () => {
@@ -1172,7 +1173,7 @@ describe("Validator", () => {
 			mock.restore();
 
 			expect(diagnostics.length).to.equal(1);
-			expect(diagnostics[0].message).to.include("Couldn't find the image file");
+			expect(diagnostics[0].message).to.include("Couldn't find this image file");
 		});
 
 		it("should set the image file directory for the first image found", async () => {
@@ -1291,10 +1292,10 @@ describe("Validator", () => {
 			const diagnostics = await generateDiagnostics(fakeDocument, fakeIndex, fakeSettings, fsProvider);
 
 			expect(diagnostics.length).to.equal(2);
-			expect(diagnostics[0].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1100');
+			expect(diagnostics[0].message).to.contain('Total achievement points must be 1,000 or fewer. (This makes it 1100');
 			expect(diagnostics[0].range.start).to.eql({ line: 10, character: 0 });
 			expect(diagnostics[0].range.end).to.eql({ line: 10, character: 5 });
-			expect(diagnostics[1].message).to.contain('Total achievement points must be 1,000 or less (this makes it 1200');
+			expect(diagnostics[1].message).to.contain('Total achievement points must be 1,000 or fewer. (This makes it 1200');
 			expect(diagnostics[1].range.start).to.eql({ line: 11, character: 0 });
 			expect(diagnostics[1].range.end).to.eql({ line: 11, character: 5 });
 		});
@@ -1336,7 +1337,7 @@ describe("Validator", () => {
 
 			expect(diagnostics.length).to.equal(1);
 			expect(diagnostics[0].severity === DiagnosticSeverity.Warning);
-			expect(diagnostics[0].message).to.contain('Running games that use *script is a security-risk (use caution)');
+			expect(diagnostics[0].message).to.contain('Running games that use *script is a security-risk.');
 		});
 
 		it("should not validate *script commands if allowUnsafeScript is 'allow'", async () => {

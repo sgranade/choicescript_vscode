@@ -6,6 +6,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Location, Position, Diagnostic } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { DiagnosticCodes } from '../../../server/src/common/diagnostics';
 import {
 	ProjectIndex,
 	LabelIndex,
@@ -607,7 +608,7 @@ describe("Indexer", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
-			expect(received[0][0].message).to.include('Variable "variable" was already created');
+			expect(received[0][0].code).to.equal(DiagnosticCodes.VariableAlreadyCreated);
 			expect(received[0][0].range.start.line).to.equal(27);
 			expect(received[0][0].range.end.line).to.equal(35);
 		});
@@ -624,7 +625,7 @@ describe("Indexer", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
-			expect(received[0][0].message).to.include('Label "previous_label" was already created');
+			expect(received[0][0].code).to.equal(DiagnosticCodes.LabelAlreadyCreated);
 			expect(received[0][0].range.start.line).to.equal(29);
 			expect(received[0][0].range.end.line).to.equal(43);
 		});
@@ -641,7 +642,7 @@ describe("Indexer", () => {
 
 			expect(received.length).to.equal(1);
 			expect(received[0].length).to.equal(1);
-			expect(received[0][0].message).to.include('Achievement "name" was already created');
+			expect(received[0][0].code).to.equal(DiagnosticCodes.AchievementAlreadyCreated);
 			expect(received[0][0].range.start.line).to.equal(55);
 			expect(received[0][0].range.end.line).to.equal(59);
 		});

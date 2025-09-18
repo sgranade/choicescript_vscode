@@ -1,6 +1,7 @@
-import { Range, Location, Position, type Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
+import { Diagnostic, Range, Location, Position } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { createDiagnostic, DiagnosticCode, DiagnosticCodes } from './diagnostics';
 import {
 	validCommands,
 	multiStartPattern,
@@ -36,7 +37,6 @@ import {
 import {
 	findLineEnd,
 	extractToMatchingDelimiter,
-	createDiagnostic,
 	readLine,
 	readNextNonblankLine,
 	type NewLine,
@@ -48,7 +48,6 @@ import type { SummaryScope } from '.';
 
 
 const nonWordOperators: readonly string[] = mathOperators.concat(comparisonOperators, stringOperators);
-
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const argumentRequiredCommandsLookup: ReadonlyMap<string, number> = new Map(argumentRequiredCommands.map(x => [x, 1]));
@@ -192,14 +191,15 @@ function parsingPositionAt(offset: number, state: ParsingState): Position {
  * 
  * Start and end locations are 0-based indices into the section.
  * 
- * @param severity Diagnostic severity
+ * @param state Parsing state.
+ * @param code Diagnostic code.
  * @param start Diagnostic's start location in the section.
  * @param end Diagnostic's end location in the section.
- * @param message Diagnostic message.
- * @param state Parsing state.
+ * @param message Diagnostic message, or undefined to use default diagnostic message.
  */
-function createParsingDiagnostic(severity: DiagnosticSeverity, start: number, end: number, message: string, state: ParsingState): Diagnostic {
-	return createDiagnostic(severity, state.textDocument, start + state.sectionGlobalIndex, end + state.sectionGlobalIndex, message);
+function createParsingDiagnostic(state: ParsingState, code: DiagnosticCode, start: number, end: number, 
+	message?: string): Diagnostic {
+	return createDiagnostic(code, state.textDocument, start + state.sectionGlobalIndex, end + state.sectionGlobalIndex, message);
 }
 
 /**
@@ -228,15 +228,21 @@ function validIndentWhitespace(index: number, padding: string, isTabs: boolean, 
 	let diagnostic: Diagnostic | undefined;
 
 	if (isTabs && / /.test(padding)) {
-		diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			index, index + padding.length,
-			"Spaces used instead of tabs", state);
+		diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.SwitchedToSpaces,
+			index,
+			index + padding.length,
+		);
 		
 	}
 	else if (!isTabs && /\t/.test(padding)) {
-		diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			index, index + padding.length,
-			"Tabs used instead of spaces", state);
+		diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.SwitchedToTabs,
+			index,
+			index + padding.length,
+		);
 	}
 
 	if (diagnostic !== undefined) {
@@ -318,11 +324,12 @@ function parseTokenizedExpression(tokenizedExpression: Expression, state: Parsin
 				break;
 			}
 			case ExpressionTokenType.UnknownOperator: {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.UnknownOperator,
 					tokenSectionIndex,
 					tokenSectionIndex + token.text.length,
-					"Unknown operator",
-					state);
+				);
 				state.callbacks.onParseError(diagnostic);
 				break;
 			}
@@ -392,17 +399,21 @@ function parseReference(text: string, openDelimiterLength: number, sectionIndex:
 	const reference = extractToMatchingDelimiter(text, '{', '}', localIndex);
 	if (reference === undefined) {
 		const lineEndIndex = findLineEnd(text, localIndex);
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingCloseBrace,
 			localIndex - openDelimiterLength + textToSectionDelta,
 			lineEndIndex + textToSectionDelta,
-			"Replacement is missing its }", state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (reference.trim() == "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.EmptyReplacement,
 			localIndex - openDelimiterLength + textToSectionDelta,
 			localIndex + reference.length + 1 + textToSectionDelta,
-			"Replacement is empty", state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -510,9 +521,12 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 	);
 
 	if (tokens === undefined || tokens.unterminated) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			localIndex - openDelimiterLength + textToSectionDelta, localIndex + textToSectionDelta,
-			"Multireplace is missing its }", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingCloseBrace,
+			localIndex - openDelimiterLength + textToSectionDelta,
+			localIndex + textToSectionDelta,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -530,30 +544,33 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 			else {
 				endLocalIndex = startLocalIndex + tokens.text.length;
 			}
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.NestedMultireplace,
 				startLocalIndex + textToSectionDelta,
 				endLocalIndex + textToSectionDelta,
-				"Multireplaces cannot be nested",
-				state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 
 		if (tokens.test.bareExpression.trim() == "") {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.EmptyMultireplace,
 				localIndex - openDelimiterLength + textToSectionDelta,
 				tokens.endIndex + textToSectionDelta,
-				"Multireplace is empty",
-				state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else {
 			const whitespaceMatch = tokens.text.match(/^\s+/);
 			if (whitespaceMatch !== null) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.NoSpacesAtStartOfMultireplace,
 					localIndex + textToSectionDelta,
 					localIndex + whitespaceMatch[0].length + textToSectionDelta,
-					"Spaces aren't allowed at the start of a multireplace",
-					state);
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 
@@ -565,9 +582,11 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				if (tokens.text.startsWith("(")) {
 					startLocalIndex++;
 				}
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.MissingOptions,
 					startLocalIndex, tokens.endIndex + textToSectionDelta,
-					"Multireplace has no options", state);
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
@@ -576,31 +595,33 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 					tokens.body[0].text.trim() !== "" &&
 					tokens.bareTest.localIndex + tokens.bareTest.text.length == tokens.body[0].localIndex
 				) {
-					let errorStart, errorEnd, errorTypeMsg;
+					let errorStart, errorEnd, errorCode;
 					if (tokens.bareTest.text.endsWith(")")) {
 						errorStart = tokens.body[0].localIndex - 1 + textToSectionDelta;
 						errorEnd = tokens.body[0].localIndex + textToSectionDelta;
-						errorTypeMsg = "parentheses";
+						errorCode = DiagnosticCodes.MissingSpaceAfterParens;
 					}
 					else {
 						errorStart = localIndex + textToSectionDelta;
 						errorEnd = tokens.body[0].localIndex + tokens.body[0].text.split(' ')[0].length + textToSectionDelta;
-						errorTypeMsg = "its variable";
+						errorCode = DiagnosticCodes.MissingSpaceAfterVariable;
 					}
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					const diagnostic = createParsingDiagnostic(
+						state,
+						errorCode,
 						errorStart,
 						errorEnd,
-						`Multireplace must have a space after ${errorTypeMsg}`,
-						state);
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 
 				if (tokens.body.length == 1) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.TooFewOptions,
 						tokens.body[0].localIndex + tokens.body[0].text.length + textToSectionDelta,
 						tokens.endIndex + textToSectionDelta,
-						"Multireplace must have at least two options separated by |",
-						state);
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 
@@ -617,11 +638,12 @@ function parseMultireplacement(text: string, openDelimiterLength: number, sectio
 				if (!tokens.text.startsWith("(")) {
 					const firstText = tokens.body[0].text.split(' ')[0];
 					if (nonWordOperatorsStartsWithRegex.test(firstText)) {
-						const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Information,
+						const diagnostic = createParsingDiagnostic(
+							state,
+							DiagnosticCodes.PossibleMissingParens,
 							tokens.test.globalIndex - state.sectionGlobalIndex,
 							tokens.body[0].localIndex + firstText.length + textToSectionDelta,
-							"Potentially missing parentheses",
-							state);
+						);
 						state.callbacks.onParseError(diagnostic);
 					}
 				}
@@ -666,19 +688,23 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState): 
 	const tokens = tokenizedExpression.tokens;
 
 	if (tokens.length == 0) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			lineSectionIndex, lineSectionIndex,
-			"Missing variable name", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingVariableName,
+			lineSectionIndex,
+			lineSectionIndex,
+		);
 		state.callbacks.onParseError(diagnostic);
 		return;
 	}
 	// The first token must be a variable or a variable reference
 	if (tokens[0].type != ExpressionTokenType.Variable && tokens[0].type != ExpressionTokenType.VariableReference) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.NotVariableOrReference,
 			lineSectionIndex + tokens[0].index,
 			lineSectionIndex + tokens[0].index + tokens[0].text.length,
-			"Not a variable or variable reference",
-			state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -689,9 +715,12 @@ function parseSet(line: string, lineSectionIndex: number, state: ParsingState): 
 	const remainingExpression = tokenizedExpression.slice(1);
 	if (remainingExpression.tokens.length == 0) {
 		const index = lineSectionIndex + tokens[0].index + tokens[0].text.length;
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			index, index,
-			"Missing value to set the variable to", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingVariableValue,
+			index,
+			index,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -740,11 +769,10 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				// If the variable starts with "choice_", it's illegal
 				if (symbol.startsWith("choice_")) {
 					const diagnostic = createParsingDiagnostic(
-						DiagnosticSeverity.Error,
+						state,
+						DiagnosticCodes.NoChoiceVariableNames,
 						lineSectionIndex,
 						lineSectionIndex + symbol.length,
-						'Variable names can\'t start with "choice_"',
-						state
 					);
 					state.callbacks.onParseError(diagnostic);
 					break;
@@ -752,15 +780,21 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				state.callbacks.onGlobalVariableCreate(symbol, symbolLocation, state);
 				// Warn about using *create after *temp in startup.txt
 				if (state.createdTempVariables && uriIsStartupFile(state.textDocumentUri)) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						commandSectionIndex, commandSectionIndex + command.length,
-						"Must come before any *temp commands", state);
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.NoCreateAfterTemp,
+						commandSectionIndex,
+						commandSectionIndex + command.length,
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 				if (expression === undefined) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						lineSectionIndex + symbol.length, lineSectionIndex + symbol.length,
-						"Missing value to set the variable to", state);
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.MissingVariableValue,
+						lineSectionIndex + symbol.length,
+						lineSectionIndex + symbol.length,
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 				else {
@@ -772,11 +806,10 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				// If the variable starts with "choice_", it's illegal
 				if (symbol.startsWith("choice_")) {
 					const diagnostic = createParsingDiagnostic(
-						DiagnosticSeverity.Error,
+						state,
+						DiagnosticCodes.NoChoiceVariableNames,
 						lineSectionIndex,
 						lineSectionIndex + symbol.length,
-						'Variable names can\'t start with "choice_"',
-						state
 					);
 					state.callbacks.onParseError(diagnostic);
 					break;
@@ -792,9 +825,12 @@ function parseSymbolManipulationCommand(command: string, commandSectionIndex: nu
 				state.callbacks.onLabelCreate(symbol, symbolLocation, state);
 				// A label's name can't contain spaces and then extra info
 				if (expression !== undefined && expression.trim() !== "" && spacing !== undefined) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						expressionSectionIndex - spacing.length, expressionSectionIndex,
-						"*label names can't have spaces", state);
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.NoSpacesInLabelName,
+						expressionSectionIndex - spacing.length,
+						expressionSectionIndex,
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 				break;
@@ -827,9 +863,12 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 	// Text before an #option must be either a single allowed command or a *_reuse *if set of commands (in that order)
 	const m = commandRegex.exec(preText);
 	if (!m || m.groups === undefined || !optionAllowedCommandsLookup.has(m.groups.command)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			preTextIndex, preTextIndex + preText.trimRight().length,
-			"Only *if, *selectable_if, or one of the reuse commands allowed in front of an option", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.UnallowedCommandBeforeOption,
+			preTextIndex,
+			preTextIndex + preText.trimEnd().length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else if (m.groups.command == "if" || m.groups.command == "selectable_if") {
@@ -838,10 +877,13 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 		if (mReuse !== null) {
 			const commandIndex = m.groups.commandPrefix.length;
 			const commandLineIndex = commandIndex + 1 + m.groups.command.length + (m.groups.commandSpacing?.length ?? 0);
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.ReuseAfterIf,
 				preTextIndex + commandLineIndex + mReuse.index,
 				preTextIndex + commandLineIndex + mReuse.index + mReuse[0].length,
-				`${mReuse[0]} must be before *${m.groups.command}`, state);
+				`${mReuse[0]} must come before *${m.groups.command}`,
+			);
 			state.callbacks.onParseError(diagnostic);
 			// Take the command out of the string
 			preText = preText.slice(0, commandLineIndex + mReuse.index)
@@ -870,10 +912,12 @@ function parseTextBeforeAnOption(preText: string, preTextIndex: number, state: P
 				state.exitBlock();
 			}
 			else {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.TextAfterReuse,
 					preTextIndex + commandLineIndex,
-					preTextIndex + commandLineIndex + m.groups.commandLine.trimRight().length,
-					`Nothing except an *if or *selectable_if is allowed between *${m.groups.command} and the #option`, state);
+					preTextIndex + commandLineIndex + m.groups.commandLine.trimEnd().length,
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 		}
@@ -918,9 +962,11 @@ function parseSingleOptionLine(
 		if (optionLine.splitLine.contents.startsWith("*if ")) {
 			// If there are multiple *if statements, each needs to be indented from the previous
 			if ((ifIndents.length > 0) && (optionLine.splitLine.padding.length <= ifIndents[ifIndents.length-1])) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.IndentedTooLittle,
 					optionLine.index, optionLine.index + optionLine.splitLine.padding.length,
-					"Line is not indented far enough", state);
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
@@ -954,9 +1000,12 @@ function parseSingleOptionLine(
 		else {
 			const startIndex = optionLine.index + optionLine.splitLine.padding.length;
 			const endIndex = optionLine.index + optionLine.line.length;
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				startIndex, endIndex,
-				"Must be either an #option or an *if", state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.NotOptionOrIf,
+				startIndex,
+				endIndex,
+			);
 			state.callbacks.onParseError(diagnostic);
 			return {
 				lineIndex: optionLineStartIndex,
@@ -1043,9 +1092,12 @@ function skipOptionContents(text: string, choiceInfo: ChoiceInfo, parsedOption: 
 		nextLineStartIndex += nextLine.line.length;
 	}
 	if (contentsStart != -1) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			contentsStart, nextLineStartIndex - 1,
-			"Nothing is allowed between group sub-options", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.NothingBetweenGroupSuboptions,
+			contentsStart,
+			nextLineStartIndex - 1,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -1064,24 +1116,26 @@ function skipOptionContents(text: string, choiceInfo: ChoiceInfo, parsedOption: 
 function verifyOptionIndent(choiceInfo: ChoiceInfo, parsedOption: OptionLineInfo, allowableIndents: number[], state: ParsingState): boolean {
 	const leftmostIndent = parsedOption.ifIndents.length > 0 ? parsedOption.ifIndents[0] : parsedOption.optionIndent;
 	if (allowableIndents.indexOf(leftmostIndent) == -1) {
-		let errorMessage: string;
+		let errorCode;
 		if (leftmostIndent < allowableIndents[0]) {
 			// If we're part of multiple subgroups, shorter indent means leaving the group
 			if (choiceInfo.groupInfo.length > 1) {
 				return false;
 			}
-			errorMessage = "Line is not indented far enough";
+			errorCode = DiagnosticCodes.IndentedTooLittle;
 		}
 		else if (leftmostIndent > allowableIndents[allowableIndents.length-1]) {
-			errorMessage = "Line is indented too far";
+			errorCode = DiagnosticCodes.IndentedTooMuch;
 		}
 		else {
-			errorMessage = "Line indent doesn't match earlier indents";
+			errorCode = DiagnosticCodes.MismatchedIndent;
 		}
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			errorCode,
 			parsedOption.lineIndex,
 			parsedOption.lineIndex + leftmostIndent,
-			errorMessage, state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -1170,17 +1224,21 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 		else {
 			if (parsedOption.ifText != currentGroupInfo.ifText[memberCount]) {
 				const errorStartIndex = (parsedOption.ifText !== undefined) ? parsedOption.ifTextStartIndex : (currentLine.index + ((parsedOption.ifIndents.length > 0) ? parsedOption.ifIndents[0] : parsedOption.optionIndent));
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.MismatchedIfStatements,
 					errorStartIndex,
 					errorStartIndex + (parsedOption.ifText?.length ?? 1),
-					"*if statements in front of group sub-options must all evaluate to the same true or false value",
-					state);
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			if (parsedOption.optionText != currentGroupInfo.optionText[memberCount]) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					parsedOption.optionIndex + 1, parsedOption.optionIndex + parsedOption.optionText.length,
-					"Group sub-options must be exactly the same", state);
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.MismatchedGroupSuboptions,
+					parsedOption.optionIndex + 1,
+					parsedOption.optionIndex + parsedOption.optionText.length,
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 		}
@@ -1198,9 +1256,12 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 			if (lastContentLine === undefined) {
 				// If this is a choice, it has to have contents
 				if (!choiceInfo.isFakeChoice) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						optionContentsEndIndex, optionContentsEndIndex + 1,
-						"An option in a *choice must have contents", state);
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.EmptyOption,
+						optionContentsEndIndex,
+						optionContentsEndIndex + 1,
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 				if (nextLine !== undefined) {
@@ -1222,9 +1283,13 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 			groupContentsEndIndex = optionContentsEndIndex;
 
 			if ((nextLine === undefined) || ((nextLine.splitLine?.padding.length ?? 0) <= allowableIndents[allowableIndents.length-1])) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					parsedOption.nextLineIndex - 1, nextLineStartIndex,
-					`Missing options for group ${choiceInfo.groupInfo.slice(currentGroupNum+1).map(gi => gi.name).join(', ')}`, state);
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.MissingGroupSuboption,
+					parsedOption.nextLineIndex - 1,
+					nextLineStartIndex,
+					`Missing options for group ${choiceInfo.groupInfo.slice(currentGroupNum+1).map(gi => gi.name).join(', ')}.`,
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
@@ -1258,9 +1323,13 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 
 	currentGroupInfo.complete = true;
 	if (memberCount + 1 < currentGroupInfo.optionText.length) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			currentLine.index - 1, currentLine.index,
-			`Group ${currentGroupInfo.name} is missing ${currentGroupInfo.optionText.length - memberCount - 1} options`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingMultipleGroupSuboptions,
+			currentLine.index - 1,
+			currentLine.index,
+			`Group ${currentGroupInfo.name} is missing ${currentGroupInfo.optionText.length - memberCount - 1} options`,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -1295,9 +1364,12 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	if (commandIndent) {
 		paddingTypeIsKnown = true;
 		if (isTabs && / /.test(commandPadding)) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				commandSectionIndex, commandSectionIndex + commandPadding.length,
-				"Tabs and spaces can't be mixed", state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.MixedTabsAndSpaces,
+				commandSectionIndex, 
+				commandSectionIndex + commandPadding.length,
+			);
 			state.callbacks.onParseError(diagnostic);
 			return optionsSectionIndex;
 		}
@@ -1310,11 +1382,12 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 		if ((/\W/.test(groupNames[i]))) {
 			badGroupNameIndex += 1;
 			badGroupNameIndex += line.substr(badGroupNameIndex).search(groupNames[i]);
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.UnallowedGroupNameCharacters,
 				lineSectionIndex + badGroupNameIndex,
 				lineSectionIndex + badGroupNameIndex + groupNames[i].length,
-				"Choice group names can only have letters, numbers, or _",
-				state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 	}
@@ -1413,9 +1486,12 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 
 			// Flag lines that are indented too little
 			if (padding.length < optionContentsIndent) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					lineStart, lineStart + padding.length,
-					"Line is not indented far enough", state);
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.IndentedTooLittle,
+					lineStart, 
+					lineStart + padding.length,
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 		}
@@ -1518,9 +1594,12 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 			break;
 		}
 		else if (m.groups.padding != padding) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				m.index, m.index + m[0].length,
-				"Line is indented too far.", state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.IndentedTooMuch,
+				m.index, 
+				m.index + m[0].length,
+			);
 			state.callbacks.onParseError(diagnostic);
 			break;
 		}
@@ -1531,18 +1610,24 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 		if (statChartCommands.includes(command)) {
 			const spacing = m.groups.spacing;
 			if (spacing === undefined) {
-				const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-					commandStart, commandStart + command.length,
-					`Missing variable after ${command}`, state);
+				const diagnostic = createParsingDiagnostic(
+					state,
+					DiagnosticCodes.MissingVariableName,
+					commandStart, 
+					commandStart + command.length,
+				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
 				const remainderStart = commandStart + command.length + spacing.length;
 				const variable = extractTokenAtIndex(text, remainderStart);
 				if (variable === undefined) {
-					const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-						remainderStart, remainderStart,
-						"Not a valid variable.", state);
+					const diagnostic = createParsingDiagnostic(
+						state,
+						DiagnosticCodes.InvalidVariable,
+						remainderStart, 
+						remainderStart,
+					);
 					state.callbacks.onParseError(diagnostic);
 				}
 				else if (variable[0] == '{') {
@@ -1573,9 +1658,12 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 			}
 		}
 		else {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				commandStart, commandStart + command.length,
-				`Must be one of ${statChartCommands.join(", ")}`, state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.InvalidStatChartCommand,
+				commandStart, 
+				commandStart + command.length,
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 
@@ -1583,9 +1671,12 @@ function parseStatChart(text: string, commandSectionIndex: number, contentStartS
 	}
 
 	if (lineStart == contentStartSectionIndex) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex - 1, commandSectionIndex + "stat_chart".length,
-			`*stat_chart must have at least one stat`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingStat,
+			commandSectionIndex - 1, 
+			commandSectionIndex + "stat_chart".length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -1601,11 +1692,12 @@ function validateConditionExpression(tokenizedExpression: Expression, state: Par
 		tokenizedExpression.evalType != ExpressionEvalType.Empty &&
 		tokenizedExpression.evalType != ExpressionEvalType.Unknowable) {
 		const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MustBeBooleanValue,
 			tokenizedExpression.globalIndex + tokenizedExpression.combinedTokens[0].index,
 			tokenizedExpression.globalIndex + lastToken.index + lastToken.text.length,
-			"Must be a boolean value",
-			state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -1646,11 +1738,12 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 		if (booleanFunctionsLookup.has(tokenizedExpression.tokens[0]?.text) &&
 			tokenizedExpression.evalType == ExpressionEvalType.Boolean) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.AlwaysTrueExpression,
 				tokenizedExpressionSectionIndex + tokenizedExpression.combinedTokens[0].index,
 				tokenizedExpressionSectionIndex + lastToken.index + lastToken.text.length,
-				"Without parentheses, this expression will always be true",
-				state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 		// In fact, everything has to be in parentheses for an *if on the line with an #option
@@ -1658,11 +1751,12 @@ function parseVariableReferenceCommand(command: string, line: string, lineSectio
 			tokenizedExpression.combinedTokens.length > 1 || 
 			(tokenizedExpression.combinedTokens.length > 0 && tokenizedExpression.combinedTokens[0].type != ExpressionTokenType.Parentheses)) {
 			const lastToken = tokenizedExpression.combinedTokens[tokenizedExpression.combinedTokens.length - 1];
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.MissingParentheses,
 				tokenizedExpressionSectionIndex,
 				tokenizedExpressionSectionIndex + lastToken.index + lastToken.text.length,
-				`Arguments to ${command == "selectable_if" ? "a" : "an"} *${command} before an #option must be in parentheses`,
-				state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 	}
@@ -1689,9 +1783,12 @@ function parseIfBlock(text: string, command: string, commandPadding: string, lin
 	// Parse the block's contents
 	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
 	if (blockContents.trim() == "" && !(state.enclosingBlock?.startsWith("option"))) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			lineSectionIndex + line.length, lineSectionIndex + line.length,
-			`*${command} must have an indented line with contents after it.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.EmptyBlock,
+			lineSectionIndex + line.length, 
+			lineSectionIndex + line.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -1737,10 +1834,12 @@ function parseIfBlock(text: string, command: string, commandPadding: string, lin
 		currentIndex = contentsIndex;
 		const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
 		if (blockContents.trim() == "") {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.EmptyBlock,
 				newCommandLineIndex + newCommandLine.length,
 				newCommandLineIndex + newCommandLine.length,
-				`*${newCommand} must have an indented line with contents after it.`, state);
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else {
@@ -1853,55 +1952,50 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
  * Check the text in an achievement (such as a title) for illegal characters or length, raising a parse error if found.
  * 
  * @param text Text to check.
- * @param textTypeDesc Type of achievement text, such as "title" or "pre-earned description".
  * @param maxLen Maximum number of characters in the text.
  * @param textIndex Index of the text in the document.
  * @param state Parsing state.
  */
-function checkAchievementText(text: string, textTypeDesc: string, maxLen: number, textIndex: number, state: ParsingState) {
+function checkAchievementText(text: string, maxLen: number, textIndex: number, state: ParsingState) {
 	// I really should look for an entire ${} replace &c., but
 	// this is what ChoiceScript does, so
 	let delimIndex = text.indexOf("${");
 	if (delimIndex != -1) {
 		const diagnostic = createParsingDiagnostic(
-			DiagnosticSeverity.Error,
+			state,
+			DiagnosticCodes.NoReplaceInAchievement,
 			textIndex + delimIndex,
 			textIndex + delimIndex + 2,
-			`*achievement ${textTypeDesc} can't include a \${} replace`,
-			state
 		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	delimIndex = text.indexOf("@{");
 	if (delimIndex != -1) {
 		const diagnostic = createParsingDiagnostic(
-			DiagnosticSeverity.Error,
+			state,
+			DiagnosticCodes.NoMultireplaceInAchievement,
 			textIndex + delimIndex,
 			textIndex + delimIndex + 2,
-			`*achievement ${textTypeDesc} can't include a @{} multireplace`,
-			state
 		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	delimIndex = text.indexOf("[");
 	if (delimIndex != -1) {
 		const diagnostic = createParsingDiagnostic(
-			DiagnosticSeverity.Error,
+			state,
+			DiagnosticCodes.NoBracketsInAchievement,
 			textIndex + delimIndex,
 			textIndex + delimIndex + 1,
-			`*achievement ${textTypeDesc} can't include [] brackets`,
-			state
 		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	if (text.trimStart().length > maxLen) {
 		const startIndex = text.search(/\S/);
 		const diagnostic = createParsingDiagnostic(
-			DiagnosticSeverity.Error,
+			state,
+			DiagnosticCodes.TooLongAchievement,
 			textIndex + startIndex + maxLen,
 			textIndex + text.length,
-			`*achievement ${textTypeDesc} can't be longer than ${maxLen} characters`,
-			state
 		);
 		state.callbacks.onParseError(diagnostic);
 	}
@@ -1929,11 +2023,10 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 	// If no codename, don't continue
 	if (m === null) {
 		const diagnostic = createParsingDiagnostic(
-			DiagnosticSeverity.Error,
+			state,
+			DiagnosticCodes.MissingAchievementCodename,
 			lineSectionIndex,
 			lineSectionIndex,
-			"Command *achievement is missing its codename", 
-			state
 		);
 		state.callbacks.onParseError(diagnostic);
 		return contentsIndex;
@@ -1950,11 +2043,10 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		m = tokenPattern.exec(line);
 		if (m === null) {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error,
+				state,
+				DiagnosticCodes.MissingAchievementVisibility,
 				lineSectionIndex + currentTokenIndex,
 				lineSectionIndex + currentTokenIndex,
-				"Command *achievement is missing its visibility", 
-				state
 			);
 			state.callbacks.onParseError(diagnostic);
 			break;
@@ -1962,11 +2054,10 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		visibility = m[2].toLowerCase();
 		if (visibility !== "visible" && visibility !== "hidden") {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error,
+				state,
+				DiagnosticCodes.InvalidAchievementVisibility,
 				lineSectionIndex + currentTokenIndex + m[1].length,
 				lineSectionIndex + tokenPattern.lastIndex,
-				"*achievement visibility must be 'hidden' or 'visible'",
-				state
 			);
 			state.callbacks.onParseError(diagnostic);
 		}
@@ -1975,11 +2066,10 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		m = tokenPattern.exec(line);
 		if (m === null) {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error,
+				state,
+				DiagnosticCodes.MissingAchievementPoints,
 				lineSectionIndex + currentTokenIndex,
 				lineSectionIndex + currentTokenIndex,
-				"Command *achievement is missing its points value",
-				state
 			);
 			state.callbacks.onParseError(diagnostic);
 			break;
@@ -1998,11 +2088,11 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		}
 		if (pointsError !== undefined) {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error,
+				state,
+				DiagnosticCodes.InvalidAchievementPointsValue,
 				lineSectionIndex + currentTokenIndex + m[1].length,
 				lineSectionIndex + tokenPattern.lastIndex,
 				pointsError,
-				state
 			);
 			state.callbacks.onParseError(diagnostic);
 		}
@@ -2011,16 +2101,15 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		title = line.slice(tokenPattern.lastIndex);
 		if (title.trim() === "") {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error,
+				state,
+				DiagnosticCodes.MissingAchievementTitle,
 				lineSectionIndex + currentTokenIndex,
 				lineSectionIndex + currentTokenIndex + title.length,
-				"Command *achievement is missing its title",
-				state
 			);
 			state.callbacks.onParseError(diagnostic);
 		}
 		else {
-			checkAchievementText(title, "title", 50, lineSectionIndex + currentTokenIndex, state);
+			checkAchievementText(title, 50, lineSectionIndex + currentTokenIndex, state);
 			title = title.trimStart();
 		}
 	// eslint-disable-next-line no-constant-condition
@@ -2034,9 +2123,12 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 	const blockContents = extractToMatchingIndent(text, commandIndent, contentsIndex);
 	let currentIndex = 0;
 	if (blockContents.trim() == "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			lineSectionIndex + line.length, lineSectionIndex + line.length,
-			"*achievement is missing its indented pre-earned description", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingAchievementPreEarnedDesc,
+			lineSectionIndex + line.length, 
+			lineSectionIndex + line.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
@@ -2044,18 +2136,16 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 		if (nextLine !== undefined && nextLine.splitLine !== undefined) {
 			if (visibility === "hidden" && nextLine.splitLine.contents.toLowerCase() !== "hidden") {
 				const diagnostic = createParsingDiagnostic(
-					DiagnosticSeverity.Error,
+					state,
+					DiagnosticCodes.InvalidAchievementHiddenPreEarnedDesc,
 					contentsIndex + nextLine.splitLine.padding.length, 
 					contentsIndex + nextLine.line.trimEnd().length,
-					"Hidden *achievement's pre-earned description must be 'hidden'", 
-					state
 				);
 				state.callbacks.onParseError(diagnostic);
 			}
 			else {
 				checkAchievementText(
 					nextLine.splitLine.contents,
-					"pre-earned description",
 					200,
 					contentsIndex + currentIndex + nextLine.splitLine.padding.length,
 					state
@@ -2066,11 +2156,10 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 			if (nextLine === undefined || nextLine.splitLine === undefined) {
 				if (visibility === "hidden") {
 					const diagnostic = createParsingDiagnostic(
-						DiagnosticSeverity.Error,
+						state,
+						DiagnosticCodes.MissingAchievementHiddenPreEarnedDesc,
 						contentsIndex + currentIndex, 
 						contentsIndex + currentIndex,
-						"Hidden *achievement must have a post-earned description (is the indent wrong?)", 
-						state
 					);
 					state.callbacks.onParseError(diagnostic);
 				}
@@ -2078,7 +2167,6 @@ function parseAchievement(text: string, commandPadding: string, line: string, li
 			else {
 				checkAchievementText(
 					nextLine.splitLine.contents,
-					"post-earned description",
 					200,
 					contentsIndex + currentIndex + nextLine.splitLine.padding.length,
 					state
@@ -2125,9 +2213,12 @@ function parseImage(image: string, remainingLine: string, startSectionIndex: num
 			endCharacterIndex++;
 		}
 		const endIndex = startSectionIndex + image.length + endCharacterIndex;
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startIndex, endIndex,
-			`Must be one of left, right, or center.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.InvalidImageAlignment,
+			startIndex, 
+			endIndex,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	const location = createParsingLocation(startSectionIndex, startSectionIndex + image.length, state);
@@ -2144,17 +2235,23 @@ function parseImage(image: string, remainingLine: string, startSectionIndex: num
 function parseIfid(ifid: string, remainingLine: string, startSectionIndex: number, state: ParsingState): void {
 	const ifidRegex = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 	if (!ifidRegex.test(ifid)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startSectionIndex, startSectionIndex + ifid.length,
-			"An IFID must have only hexidecimal characters (0-9 or a-f) in a 8-4-4-4-12 pattern.", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.UnallowedIFIDCharacters,
+			startSectionIndex, 
+			startSectionIndex + ifid.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	if (remainingLine.trim() != '') {
 		const firstCharacterIndex = remainingLine.search(/\S/);
 		const startIndex = startSectionIndex + ifid.length + firstCharacterIndex;
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startIndex, startIndex + remainingLine.length - firstCharacterIndex,
-			`Nothing can follow an IFID.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.NothingAfterIFID,
+			startIndex, 
+			startIndex + remainingLine.length - firstCharacterIndex,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -2169,25 +2266,24 @@ function parseKindleSearch(line: string, startSectionIndex: number, state: Parsi
 	if (line.search(/^\(.+\) [^)]+/) == -1) {
 		let startIndex = startSectionIndex;
 		let endIndex = -1;
-		let message = "";
+		let code;
 		const parenthesizedSearch = /^\((.*)\)( )?/.exec(line);
 
 		if (parenthesizedSearch) {
 			if (!parenthesizedSearch[1]) {
 				startIndex += 1;
 				endIndex = startIndex;
-				message = "Missing search.";
-	
+				code = DiagnosticCodes.MissingKindleSearchSearch;
 			}
 			else if (parenthesizedSearch[2] === undefined) {
 				startIndex += parenthesizedSearch[1].length + 2;
 				endIndex = startIndex;
-				message = "Missing space before the button name.";
+				code = DiagnosticCodes.MissingSpaceBeforeButtonName;
 			}
 			else {
 				startIndex += parenthesizedSearch[0].length;
 				endIndex = startIndex;
-				message = "Missing button name.";
+				code = DiagnosticCodes.MissingButtonName;
 			}
 		}
 		else {
@@ -2195,17 +2291,20 @@ function parseKindleSearch(line: string, startSectionIndex: number, state: Parsi
 			if (openParensMatch) {
 				startIndex += openParensMatch[0].length;
 				endIndex = startIndex + 1;
-				message = "Missing close parenthesis.";
+				code = DiagnosticCodes.MissingCloseParenthesis;
 			}
 			else {
 				endIndex = startIndex + line.length;
-				message = "The first argument to kindle_search must be in parentheses.";
+				code = DiagnosticCodes.KindleSearchMissingParentheses;
 			}
 		}
 
 		if (endIndex != -1) {
 			const diagnostic = createParsingDiagnostic(
-				DiagnosticSeverity.Error, startIndex, endIndex, message, state
+				state,
+				code,
+				startIndex, 
+				endIndex, 
 			);
 			state.callbacks.onParseError(diagnostic);
 		}
@@ -2220,9 +2319,12 @@ function parseKindleSearch(line: string, startSectionIndex: number, state: Parsi
  */
 function parseProduct(line: string, startSectionIndex: number, state: ParsingState): void {
 	if (!/^\s*[a-z]+$/.test(line)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			startSectionIndex, startSectionIndex + line.length,
-			"A product ID can only contain lower-case letters.", state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.UnallowedProductIDCharacters,
+			startSectionIndex, 
+			startSectionIndex + line.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 }
@@ -2237,18 +2339,23 @@ function parseCheckpoint(line: string, startSectionIndex: number, state: Parsing
 	if (!/^\s*([a-zA-Z0-9_]+(\s|$)|$)/.test(line)) {
 		let nonSpaceIndex = line.search(/\S/);
 		if (nonSpaceIndex == -1) nonSpaceIndex = 0;
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.UnallowedCheckpointSlotNameCharacters,
 			startSectionIndex + nonSpaceIndex,
 			startSectionIndex + line.length,
-			"A checkpoint slot's name can only contain letters, numbers or an underscore.", state);
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 	else {
 		const m = /^(\s*)([a-z0-9_]*?[A-Z][a-zA-Z0-9_]*)/.exec(line);
 		if (m !== null) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-				startSectionIndex + m[1].length, startSectionIndex + m[0].length,
-				"The capital letters in this slot's name will be turned into lower case values", state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				DiagnosticCodes.CapitalLettersWillBeLowercased,
+				startSectionIndex + m[1].length, 
+				startSectionIndex + m[0].length,
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 	}
@@ -2265,25 +2372,34 @@ function parseCheckpoint(line: string, startSectionIndex: number, state: Parsing
  */
 function checkCommandArgumentContents(command: string, commandSectionIndex: number, commandLine: string, commandLineSectionIndex: number, state: ParsingState): boolean {
 	if (argumentRequiredCommandsLookup.has(command) && commandLine.trim() == "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex, commandSectionIndex + command.length,
-			`Command *${command} is missing its arguments.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.MissingCommandArguments,
+			commandSectionIndex, 
+			commandSectionIndex + command.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 		return false;
 	}
 
 	if (argumentDisallowedCommandsLookup.has(command) && commandLine.trim() != "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandLineSectionIndex, commandLineSectionIndex + commandLine.length,
-			`Command *${command} must not have anything after it.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.NothingAfterCommand,
+			commandLineSectionIndex, 
+			commandLineSectionIndex + commandLine.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 		return false;
 	}
 
 	if (argumentIgnoredCommandsLookup.has(command) && commandLine.trim() != "") {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Warning,
-			commandLineSectionIndex, commandLineSectionIndex + commandLine.length,
-			`This will be ignored.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.IgnoredArgument,
+			commandLineSectionIndex, 
+			commandLineSectionIndex + commandLine.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -2311,17 +2427,23 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	state.callbacks.onCommand(prefix, command, spacing, line, commandLocation, state);
 
 	if (!validCommandsLookup.has(command)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex, commandSectionIndex + command.length,
-			`Command *${command} isn't a valid ChoiceScript command.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.InvalidCommand,
+			commandSectionIndex, 
+			commandSectionIndex + command.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 		return endParseIndex;  // Short-circuit: Nothing more to be done
 	}
 
 	if (startupCommandsLookup.has(command) && !uriIsStartupFile(state.textDocumentUri)) {
-		const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-			commandSectionIndex, commandSectionIndex + command.length,
-			`Command *${command} can only be used in startup.txt.`, state);
+		const diagnostic = createParsingDiagnostic(
+			state,
+			DiagnosticCodes.StartupOnlyCommand,
+			commandSectionIndex,
+			commandSectionIndex + command.length,
+		);
 		state.callbacks.onParseError(diagnostic);
 	}
 
@@ -2332,10 +2454,12 @@ function parseCommand(document: string, prefix: string, command: string, spacing
 	if (insideBlockCommandsLookup.has(command)) {
 		if ((command == "selectable_if" && !(state.enclosingBlock?.startsWith("option"))) ||
 			(command != "selectable_if" && state.enclosingBlock != "if")) {
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				commandSectionIndex, commandSectionIndex + command.length,
-				`Command *${command} must be ${(command == "selectable_if" ? "in front of an #option" : "part of an *if command block")}.`,
-				state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				command == "selectable_if" ? DiagnosticCodes.OptionOnlyCommand : DiagnosticCodes.IfBlockOnlyCommand,
+				commandSectionIndex,
+				commandSectionIndex + command.length,
+			);
 			state.callbacks.onParseError(diagnostic);
 		}
 	}
@@ -2467,23 +2591,26 @@ function parseSection(section: string, sectionGlobalIndex: number, state: Parsin
 		}
 		else if (m.groups.option) {
 			// An option outside a *choice isn't allowed, so mark it as an error
-			let errorMessage: string;
 			let errorStartIndex: number;
 			let errorEndIndex: number;
+			let code;
 			const optionIndex = m.index + m[0].length - m.groups.option.length;
 			if (state.enclosingBlock?.startsWith("option")) {
-				errorMessage = "This #option is too indented";
 				errorStartIndex = optionIndex - m.groups.optionPrefix.length;
 				errorEndIndex = optionIndex;
+				code = DiagnosticCodes.IndentedTooMuch;
 			}
 			else {
-				errorMessage = "An #option must only appear inside a *choice or *fake_choice";
 				errorStartIndex = optionIndex;
 				errorEndIndex = errorStartIndex + 1;
+				code = DiagnosticCodes.OptionInChoiceBlockOnly;
 			}
-			const diagnostic = createParsingDiagnostic(DiagnosticSeverity.Error,
-				errorStartIndex, errorEndIndex,
-				errorMessage, state);
+			const diagnostic = createParsingDiagnostic(
+				state,
+				code,
+				errorStartIndex,
+				errorEndIndex,
+			);
 			state.callbacks.onParseError(diagnostic);
 			// The match consumes the entire line, so back up the index to just after the "#"
 			sectionParsingGlobalRegex.lastIndex = optionIndex + 1;

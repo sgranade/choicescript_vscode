@@ -1,6 +1,5 @@
 import * as URI from 'urijs';
-import type { Diagnostic, DiagnosticSeverity, Location, Range, Position } from 'vscode-languageserver';
-import type { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Range, Position } from 'vscode-languageserver';
 
 /**
  * Map that stores and accesses string keys without regard to case.
@@ -295,6 +294,7 @@ export function extractToMatchingDelimiter(text: string, openDelimiter: string, 
  */
 export function readNextNonblankLine(text: string, lineStart: number): NewLine | undefined {
 	let nextLine: NewLine | undefined;
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readLine(text, lineStart);
 		if (nextLine === undefined) {
@@ -322,6 +322,7 @@ export function extractToMatchingIndent(text: string, initialIndent: number, sta
 	let lastIndex = startIndex;
 	let nextLine: NewLine | undefined;
 
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readNextNonblankLine(text, lastIndex);
 		if (nextLine === undefined || (nextLine.splitLine?.padding.length ?? 0) <= initialIndent) {
@@ -387,52 +388,6 @@ export function positionInRange(position: Position, range: Range): boolean {
 export function rangeInOtherRange(range1: Range, range2: Range): boolean {
 	return (comparePositions(range1.start, range2.start) >= 0 &&
 		comparePositions(range1.end, range2.end) <= 0);
-}
-
-/**
- * Generate a diagnostic message.
- * 
- * Pass start and end locations as 0-based indexes into the document's text.
- * 
- * @param severity Diagnostic severity
- * @param textDocument Document to which the diagnostic applies.
- * @param start Start location in the text of the diagnostic message.
- * @param end End location in the text of the diagnostic message.
- * @param message Diagnostic message.
- */
-export function createDiagnostic(severity: DiagnosticSeverity, textDocument: TextDocument,
-	start: number, end: number, message: string): Diagnostic {
-	const diagnostic: Diagnostic = {
-		severity: severity,
-		range: {
-			start: textDocument.positionAt(start),
-			end: textDocument.positionAt(end)
-		},
-		message: message,
-		source: 'ChoiceScript'
-	};
-
-	return diagnostic;
-}
-
-/**
- * Generate a diagnostic message given a location.
- * 
- * @param severity Diagnostic severity
- * @param location Location of the message in the document.
- * @param message Diagnostic message.
- */
-export function createDiagnosticFromLocation(
-	severity: DiagnosticSeverity, location: Location,
-	message: string): Diagnostic {
-	const diagnostic: Diagnostic = {
-		severity: severity,
-		range: location.range,
-		message: message,
-		source: 'ChoiceScript'
-	};
-
-	return diagnostic;
 }
 
 /**

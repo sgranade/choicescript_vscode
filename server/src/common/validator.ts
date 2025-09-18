@@ -1,10 +1,12 @@
 import * as path from 'path';
 
-import { type Location, type Diagnostic, DiagnosticSeverity, type DiagnosticRelatedInformation } from 'vscode-languageserver';
+import { Diagnostic, type DiagnosticRelatedInformation, type Location } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { AllowUnsafeScriptOption } from './constants';
+import { createDiagnostic, createDiagnosticFromLocation, DiagnosticCode, DiagnosticCodes } from './diagnostics';
+import type { FileSystemService } from './file-system-service';
 import type { ProjectIndex } from "./index";
-import { findVariableCreationLocations, findLabelLocation } from "./searches";
 import {
 	builtinVariables,
 	paramValues,
@@ -19,10 +21,9 @@ import {
 	optionPattern,
 	multiStartPattern
 } from './language';
-import { findLineBegin, comparePositions, createDiagnostic, createDiagnosticFromLocation, rangeInOtherRange, normalizeUri } from './utilities';
+import { findVariableCreationLocations, findLabelLocation } from "./searches";
 import { tokenizeMultireplace } from './tokens';
-import type { FileSystemService } from './file-system-service';
-import { AllowUnsafeScriptOption } from './constants';
+import { findLineBegin, comparePositions, rangeInOtherRange, normalizeUri } from './utilities';
 
 const validCommandsLookup: ReadonlyMap<string, number> = new Map(validCommands.map(x => [x, 1]));
 const reuseCommandsLookup: ReadonlyMap<string, number> = new Map(reuseCommands.map(x => [x, 1]));
@@ -89,20 +90,24 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 	for (const [variable, location] of globalVariables.entries())
 	{
 		if (!startsWithLetterRegex.test(variable)) {
-			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, location,
-				`"${variable}" must start with a letter`
-			));
+			diagnostics.push(
+				createDiagnosticFromLocation(
+					DiagnosticCodes.VariableMustStartWithLetter,
+					location,
+				)
+			);
 		}
 	}
 	// Check variable names and make sure no local variables have the same name as global ones or are repeated
 	for (const [variable, locations] of state.projectIndex.getLocalVariables(state.textDocumentUri).entries()) {
 		if (!startsWithLetterRegex.test(variable)) {
 			for (const location of locations) {
-				diagnostics.push(createDiagnosticFromLocation(
-					DiagnosticSeverity.Error, location,
-					`"${variable}" must start with a letter`
-				));
+				diagnostics.push(
+					createDiagnosticFromLocation(
+						DiagnosticCodes.VariableMustStartWithLetter,
+						location,
+					)
+				);
 			}
 		}
 		if (locations.length > 1) {
@@ -112,8 +117,8 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 			};
 			for (const location of locations.slice(1)) {
 				const diagnostic = createDiagnosticFromLocation(
-					DiagnosticSeverity.Information, location,
-					`Local variable "${variable}" was defined earlier`
+					DiagnosticCodes.LocalVariableDefinedEarlier,
+					location,
 				);
 				diagnostic.relatedInformation = [relatedInformation];
 				diagnostics.push(diagnostic);
@@ -127,8 +132,8 @@ function validateVariables(state: ValidationState): Diagnostic[] {
 			};
 			for (const location of locations) {
 				const diagnostic = createDiagnosticFromLocation(
-					DiagnosticSeverity.Information, location,
-					`Local variable "${variable}" has the same name as a global variable`
+					DiagnosticCodes.LocalVariableShadowsGlobalVariable,
+					location,
 				);
 				diagnostic.relatedInformation = [relatedInformation];
 				diagnostics.push(diagnostic);
@@ -156,8 +161,9 @@ function validateLabelReference(
 
 		if (labelLocation === undefined) {
 			diagnostic = createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, location,
-				`Label "${label}" wasn't found`);
+				DiagnosticCodes.LabelNotFound,
+				location,
+			);
 		}
 	}
 	return diagnostic;
@@ -177,8 +183,8 @@ function validateSceneReference(
 	if (!(scene !== undefined && scene[0] == '{')) {
 		if (!state.projectIndex.getIndexedScenes().includes(scene)) {
 			diagnostic = createDiagnosticFromLocation(
-				DiagnosticSeverity.Warning, location,
-				`Scene "${scene}" wasn't found in startup.txt or in the game's folder`
+				DiagnosticCodes.SceneNotFound,
+				location,
 			);
 		}
 	}
@@ -220,8 +226,10 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				// but there's a global variable with the same name
 				if (uriIsStartupFile(state.textDocumentUri) || !state.projectIndex.getGlobalVariables().has(variable)) {
 					const newDiagnostics = badLocations.map((location: Location): Diagnostic => {
-						return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
-							`Variable "${variable}" used before it was created`);
+						return createDiagnosticFromLocation(
+							DiagnosticCodes.VariableUsedBeforeCreation,
+							location,
+						);
 					});
 					diagnostics.push(...newDiagnostics);
 				}
@@ -250,8 +258,11 @@ function validateReferences(state: ValidationState): Diagnostic[] {
 				}
 			}
 			const newDiagnostics = trimmedLocations.map((location: Location): Diagnostic => {
-				return createDiagnosticFromLocation(DiagnosticSeverity.Error, location,
-					`Variable "${variable}" not defined ${whereDefined}`);
+				return createDiagnosticFromLocation(
+					DiagnosticCodes.VariableNotDefined,
+					location,
+					`Variable "${variable}" not defined ${whereDefined}`
+				);
 			});
 			diagnostics.push(...newDiagnostics);
 		}
@@ -321,14 +332,19 @@ function validateStyle(characters: string, index: number, state: ValidationState
 		return;
 	}
 
-	let description = "";
-	if (characters == '...')
-		description = "ellipsis (…)";
-	else
-		description = "em-dash (—)";
-	return createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-		index, index + characters.length,
-		`Choice of Games style requires a Unicode ${description}`);
+	let code;
+	if (characters == '...') {
+		code = DiagnosticCodes.UnicodeEllipsisRequired;
+	}
+	else {
+		code = DiagnosticCodes.UnicodeEmDashRequired;
+	}
+	return createDiagnostic(
+		code,
+		state.textDocument,
+		index,
+		index + characters.length,
+	);
 }
 
 /**
@@ -363,9 +379,12 @@ function validateCommandInLine(command: string, index: number, state: Validation
 			return;
 		}
 
-		diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-			index, index + command.length + 1,
-			`*${command} should be on a line by itself`);
+		diagnostic = createDiagnostic(
+			DiagnosticCodes.CommandNotOnItsOwnLine,
+			state.textDocument,
+			index,
+			index + command.length + 1,
+		);
 	}
 
 	return diagnostic;
@@ -454,9 +473,12 @@ function validateOption(option: string, index: number, state: ValidationState): 
 	
 		// See if we've got more than 15 words
 		if (overLimitLocalIndex !== undefined) {
-			diagnostic = createDiagnostic(DiagnosticSeverity.Information, state.textDocument,
-				index + overLimitLocalIndex, index + option.length,
-				"Option is more than 15 words long");
+			diagnostic = createDiagnostic(
+				DiagnosticCodes.TooLongOption,
+				state.textDocument,
+				index + overLimitLocalIndex,
+				index + option.length,
+			);
 		}
 	}
 
@@ -500,10 +522,14 @@ async function validateImages(state: ValidationState, fsProvider: FileSystemServ
 		}
 
 		if (!found) {
-			diagnostics.push(...locations.map(l => createDiagnosticFromLocation(
-				DiagnosticSeverity.Warning, l,
-				`Couldn't find the image file`
-			)));
+			diagnostics.push(
+				...locations.map(
+					l => createDiagnosticFromLocation(
+						DiagnosticCodes.MissingImageFile,
+						l,
+					)
+				)
+			);
 		}
 	}
 
@@ -523,22 +549,25 @@ function validateIndents(state: ValidationState): Diagnostic[] {
 		const indentChar = m[1];
 
 		let searchRegex: RegExp;
-		let errorMessage: string;
+		let code: DiagnosticCode;
 
 		if (indentChar == " ") {
 			// Look for tabs
 			searchRegex = /(?:^|\n) *(\t+)/g;
-			errorMessage = "Switched from spaces to tabs";
+			code = DiagnosticCodes.SwitchedToTabs;
 		}
 		else {
 			searchRegex = /(?:^|\n)\t*( +)/g;
-			errorMessage = "Switched from tabs to spaces";
+			code = DiagnosticCodes.SwitchedToSpaces;
 		}
 
 		while ((m = searchRegex.exec(state.text))) {
-			const diagnostic = createDiagnostic(DiagnosticSeverity.Error, state.textDocument,
-				m.index + m[0].length - m[1].length, m.index + m[0].length,
-				errorMessage);
+			const diagnostic = createDiagnostic(
+				code,
+				state.textDocument,
+				m.index + m[0].length - m[1].length,
+				m.index + m[0].length,
+			);
 			diagnostics.push(diagnostic);
 		}
 	}
@@ -561,17 +590,20 @@ function validateAchievements(state: ValidationState): Diagnostic[] {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	for (const [codename, [location, points, title]] of achievements) { 
 		if (count == 100) {
-			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, location,
-				"No more than 100 achievements allowed"
-			));
+			diagnostics.push(
+				createDiagnosticFromLocation(
+					DiagnosticCodes.TooManyAchievements,
+					location,
+				)
+			);
 		}
 		count++;
 		totalPoints += points;
 		if (totalPoints > 1000) {
 			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, location,
-				`Total achievement points must be 1,000 or less (this makes it ${totalPoints} points)`
+				DiagnosticCodes.TooManyAchievementPoints,
+				location,
+				`Total achievement points must be 1,000 or fewer. (This makes it ${totalPoints} points.)`
 			));
 		}
 		prevLocation = seenTitles.get(title);
@@ -581,8 +613,8 @@ function validateAchievements(state: ValidationState): Diagnostic[] {
 				message: "First achievement with that title"
 			};
 			const diagnostic = createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, location,
-				"An achievement with the same title was defined earlier"
+				DiagnosticCodes.RedefinedAchievement,
+				location,
 			);
 			diagnostic.relatedInformation = [relatedInformation];
 			diagnostics.push(diagnostic);
@@ -604,15 +636,19 @@ function validateScriptUsage(state: ValidationState): Diagnostic[] {
 
 	for (const loc of state.projectIndex.getScriptUsages(state.textDocumentUri)) {
 		if (state.validationSettings.allowUnsafeScript == "never") {
-			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Error, loc,
-				`You need to enable unsafe *script usage in settings`
-			))
+			diagnostics.push(
+				createDiagnosticFromLocation(
+					DiagnosticCodes.ScriptWillNotRun,
+					loc,
+				)
+			)
 		} else if (state.validationSettings.allowUnsafeScript == "warn") {
-			diagnostics.push(createDiagnosticFromLocation(
-				DiagnosticSeverity.Warning, loc,
-				`Running games that use *script is a security-risk (use caution)`
-			))
+			diagnostics.push(
+				createDiagnosticFromLocation(
+					DiagnosticCodes.ScriptIsUnsafe,
+					loc,
+				)
+			)
 		}
 	}
 	return diagnostics;

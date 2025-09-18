@@ -6,6 +6,7 @@ import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';
 import { Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { DiagnosticCodes } from '../../../server/src/common/diagnostics';
 import { Expression, tokenizeMultireplace, ExpressionTokenType, ExpressionEvalType } from '../../../server/src/common/tokens';
 
 function createDocument(text: string, uri: string = "file:///scene.txt"): SubstituteOf<TextDocument> {
@@ -392,7 +393,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include('Missing end "');
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.MissingCloseQuote);
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(10);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -609,7 +610,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Missing end }");
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.MissingCloseBrace);
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(6);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -796,7 +797,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(8);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -809,7 +810,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(17);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -822,7 +823,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Missing end )");
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.MissingCloseParenthesis);
 					expect(expression.validateErrors[0].range.start.line).to.equal(2);
 					expect(expression.validateErrors[0].range.end.line).to.equal(29);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
@@ -882,7 +883,7 @@ describe("Tokenizing", () => {
 					let expression = new Expression(text, 2, fakeDocument);
 
 					expect(expression.validateErrors.length).to.equal(1);
-					expect(expression.validateErrors[0].message).to.include("Not a boolean or variable")
+					expect(expression.validateErrors[0].code).to.equal(DiagnosticCodes.NotBooleanOrVariable);
 					expect(expression.validateErrors[0].range.start.line).to.equal(6);
 					expect(expression.validateErrors[0].range.end.line).to.equal(7);
 					expect(expression.evalType).to.equal(ExpressionEvalType.Error);
