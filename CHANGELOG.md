@@ -4,6 +4,10 @@ Changes to the plugin.
 
 ## Unreleased
 
+### Added
+
+- `@{}` multireplace snippet.
+
 ### Changed
 
 - Now optionally allows `*script` commands to execute. By default the command is blocked, but you can change that through the new "Allow Unsafe Script" setting. (MR #34, courtesy Carey Williams.)

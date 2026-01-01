@@ -1,10 +1,11 @@
 import {
+	CompletionItem,
 	type Position,
 	Range,
 	type Location,
 	TextEdit,
-	type CompletionItem,
-	CompletionItemKind
+	CompletionItemKind,
+	InsertTextFormat
 } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -203,10 +204,17 @@ export function generateInitialCompletions(document: TextDocument, position: Pos
 			let returnVariableCompletions = false;
 
 			// In a multi-replace like @{}, only auto-complete if we're in the first section
+			// or are an empty multi-replace (in which case, return a multi-replace snippet)
 			if (isMultireplace) {
 				const section = text.slice(start + 1, index + 1);
 				if (section == "}" || section == "\r" || section.trim() == "") {
-					returnVariableCompletions = true;
+					const insertText = "($1) ${2:option 1}|${0:option 2}" + (section == "}" ? "" : "}");
+					completions = [{
+						label: "@{multireplace}",
+						kind: CompletionItemKind.Snippet,
+						insertText: insertText,
+						insertTextFormat: InsertTextFormat.Snippet
+					}];
 				}
 				else if (section.length > 1 && section[0] == '(') {
 					const innards = section.slice(1);
