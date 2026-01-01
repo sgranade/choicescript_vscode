@@ -15,6 +15,7 @@ Changes to the plugin.
 ### Fixed
 
 - Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams.)
+- Syntax highlighting: `*comment`, `*label`, `TODO`, `true`, `false`, `and`, and `or` are no longer highlighted unless they're semantically correct (i.e. "todolist" no longer highlights "todo"). (Courtesy Vadim Rychkov.)
 
 ## [3.1.1] - 2024-10-20
 

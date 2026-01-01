@@ -30,7 +30,7 @@
 	"repository": {
 		"comment": {
 			"name": "comment.line.cs",
-			"begin": "^\\s*\\*comment",
+			"begin": "^\\s*\\*comment\\b",
 			"end": "(?=$)",
 			"patterns": [
 				{
@@ -88,7 +88,7 @@
 			]
 		},
 		"label-creation-command": {
-			"match": "(?<!\\*)(\\*label)(\\s*(\\w+))",
+			"match": "(?<!\\*)(\\*label)(\\s+(\\w+))",
 			"captures": {
 				"1": {
 					"name": "keyword.control.cs"
@@ -231,7 +231,7 @@
 			]
 		},
 		"operator": {
-			"match": "(\\*|\\+|-|\\/|%\\+|%-)|(!?=|>=?|<=?|%)|(&)|(and|or)",
+			"match": "(\\*|\\+|-|\\/|%\\+|%-)|(!?=|>=?|<=?|%)|(&)|(\\b(and|or)\\b)",
 			"captures": {
 				"1": {
 					"name": "keyword.operator.arithmetic.cs"
@@ -253,7 +253,7 @@
 		},
 		"literal": {
 			"name": "constant.language.cs",
-			"match": "true|false"
+			"match": "\\b(true|false)\\b"
 		},
 		"variable-name": {
 			"name": "variable.other",
@@ -279,7 +279,7 @@
 			"patterns": [
 				{
 					"name": "invalid.illegal.cs",
-					"match": "todo|TODO"
+					"match": "\\b(todo|TODO)\\b"
 				}
 			]
 		},
