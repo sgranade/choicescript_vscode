@@ -906,6 +906,10 @@ Scene.prototype.fake_choice = function fake_choice(data) {
 
 Scene.prototype.standardResolution = function(option) {
   var self = this;
+  trackEvent('game_choice', {
+    choice_file: this.name,
+    choice_line: option.line + 1,
+  });
   self.lineNum = option.line;
   self.indent = self.getIndent(self.nextNonBlankLine(true/*includingThisOne*/));
   if (option.reuse && option.reuse != "allow") self.temps.choice_used[option.line-1] = 1;
@@ -2630,6 +2634,10 @@ Scene.prototype.more_games = function more_games(now) {
 
 Scene.prototype.ending = function ending() {
     if (typeof window == "undefined") return;
+    trackEvent('game_end', {
+      choice_file: this.name,
+      choice_line: this.lineNum + 1,
+    });
     this.paragraph();
     var groups = [""];
     options = [];
@@ -4676,10 +4684,11 @@ Scene.prototype.achievement = function scene_achievement(data) {
     throw new Error(this.lineMsg()+"Invalid achievements. Adding " + points + " would add up to more than 1,000 points: " + this.achievementTotal);
   }
   var title = parsed[4];
+  var titleAllowedLength = 50;
   if (/(\$\{)/.test(title)) throw new Error(this.lineMsg()+"Invalid *achievement. ${} not permitted in achievement title: " + title);
   if (/(\@\{)/.test(title)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement title: " + title);
   if (/(\[)/.test(title)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement title: " + title);
-  if (title.length > 50) throw new Error(this.lineMsg()+"Invalid *achievement. Title must be 50 characters or fewer: " + title);
+  if (title.length > titleAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Title must be " + titleAllowedLength + " characters or fewer: " + title);
 
   // Get the description from the next indented line
   var line = this.lines[++this.lineNum];
@@ -4688,10 +4697,11 @@ Scene.prototype.achievement = function scene_achievement(data) {
     throw new Error(this.lineMsg()+"Invalid *achievement. An indented description is required.");
   }
   var preEarnedDescription = trim(line);
+  var descriptionAllowedLength = 200;
   if (/(\$\{)/.test(preEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. ${} not permitted in achievement description: " + preEarnedDescription);
   if (/(\@\{)/.test(preEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement description: " + preEarnedDescription);
   if (/(\[)/.test(preEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement description: " + preEarnedDescription);
-  if (preEarnedDescription.length > 200) throw new Error(this.lineMsg()+"Invalid *achievement. Pre-earned description must be 200 characters or fewer: " + preEarnedDescription);
+  if (preEarnedDescription.length > descriptionAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Pre-earned description must be " + descriptionAllowedLength + " characters or fewer: " + preEarnedDescription);
 
   if (!visible) {
     if (preEarnedDescription.toLowerCase() != "hidden") throw new Error(this.lineMsg()+"Invalid *achievement. Hidden achievements must set their pre-earned description to 'hidden'.");
@@ -4709,7 +4719,7 @@ Scene.prototype.achievement = function scene_achievement(data) {
     if (/(\$\{)/.test(postEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. ${} not permitted in achievement description: " + postEarnedDescription);
     if (/(\@\{)/.test(postEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement description: " + postEarnedDescription);
     if (/(\[)/.test(postEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement description: " + postEarnedDescription);
-    if (postEarnedDescription.length > 200) throw new Error(this.lineMsg()+"Invalid *achievement. Post-earned description must be 200 characters or fewer: " + postEarnedDescription);
+    if (postEarnedDescription.length > descriptionAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Post-earned description must be " + descriptionAllowedLength + " characters or fewer: " + postEarnedDescription);
   } else {
     // No indent means the next line is not a post-earned description
     this.rollbackLineCoverage();
@@ -4767,6 +4777,10 @@ Scene.prototype.warning = function scene_warning(message) {
 Scene.prototype.feedback = function scene_feedback() {
   this.stats.choice_feedback_requested = true;
   if (typeof window == "undefined" || this.randomtest) return;
+  trackEvent('game_feedback_display', {
+    choice_file: this.name,
+    choice_line: this.lineNum + 1,
+  });
   this.paragraph();
   this.printLine("On a scale from 1 to 10, how likely are you to recommend this game to a friend?");
   this.paragraph();
@@ -4782,6 +4796,11 @@ Scene.prototype.feedback = function scene_feedback() {
     var value = "null";
     var numberMatch = /^(\d+)/.exec(option.name);
     if (numberMatch) value = numberMatch[1]*1;
+    trackEvent('game_feedback_response', {
+      feedback: value,
+      choice_file: self.name,
+      choice_line: self.lineNum + 1,
+    });
     if (!isWebSavePossible()) {
       self.finished = false;
       self.resetPage();
@@ -4831,33 +4850,24 @@ Scene.prototype.feedback = function scene_feedback() {
 };
 
 Scene.prototype.parseTrackEvent = function(data) {
-  var event = {};
+  var params = {};
   var stack = this.tokenizeExpr(data);
-  if (!stack.length) throw new Error(this.lineMsg() + "Invalid track_event statement, expected at least two args: category and action");
-  event.category = this.evaluateValueToken(stack.shift(), stack);
-  if (!stack.length) throw new Error(this.lineMsg() + "Invalid track_event statement, expected at least two args: category and action");
-  event.action = this.evaluateValueToken(stack.shift(), stack);
-  if (stack.length) {
-    event.label = this.evaluateValueToken(stack.shift(), stack);
-    if (stack.length) {
-      event.value = this.evaluateValueToken(stack.shift(), stack);
-      if (stack.length) {
-        throw new Error(this.lineMsg() + "Invalid track_event statement, expected at most four args: category, action, label, value");
-      }
-      var intValue = parseInt(event.value, 10);
-      if (isNaN(intValue) || event.value != intValue || event.value.toString() != intValue.toString()) {
-        throw new Error(this.lineMsg() + "Invalid track_event statement, value must be an integer: " + event.value);
-      }
-    }
+  if (!stack.length) throw new Error(this.lineMsg() + "Invalid track_event statement, expected at least one arg: name");
+  params.__name = this.evaluateValueToken(stack.shift(), stack);
+  while (stack.length) {
+    var parameterName = this.evaluateValueToken(stack.shift(), stack);
+    if (!stack.length) throw new Error(this.lineMsg() + "Invalid track_event statement, expected value for parameter " + parameterName);
+    var parameterValue = this.evaluateValueToken(stack.shift(), stack);
+    params[parameterName] = parameterValue;
   }
-  return event;
+  return params;
 }
 
 Scene.prototype.track_event = function track_event(data) {
-  var event = this.parseTrackEvent(data);
-  if (typeof ga !== "undefined") {
-    ga('send', 'event', event.category, event.action, event.label, event.value);
-  }
+  var params = this.parseTrackEvent(data);
+  var name = params.__name;
+  delete params.__name;
+  trackEvent(name, params);
 }
 
 Scene.prototype.ai = function ai(data) {}

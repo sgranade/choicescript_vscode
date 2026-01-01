@@ -1,3 +1,4 @@
+// Extensions to Choicescript for the VS Code extension
 const oldReportError = window.reportError;
 const vscode = acquireVsCodeApi();
 
