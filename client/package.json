@@ -14,10 +14,11 @@
 	},
 	"dependencies": {
 		"urijs": "^1.19.11",
-		"vscode-languageclient": "^9.0.1"
+		"vscode-languageclient": "^10.1.0",
+		"vscode-languageserver": "^10.1.0"
 	},
 	"devDependencies": {
 		"@types/uuid": "^10.0.0",
-		"@types/vscode": "^1.75.0"
+		"@types/vscode": "^1.90.0"
 	}
 }

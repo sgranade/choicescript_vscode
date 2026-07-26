@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
             name: string,
             clientOptions: LanguageClientOptions,
         ) => {
-            return new LanguageClient(id, name, clientOptions, serverWorker);
+            return new LanguageClient(id, name, serverWorker, clientOptions);
         };
 
         console.log(

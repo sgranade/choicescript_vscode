@@ -2,11 +2,14 @@
 
 ## Features
 
+- Switch to Vitest
+- Load files from the client -- see Twine extension for example.
+- Add code suggestions (quick actions) to the server to correct some errors.
 - `$${var}` doesn't show the leading dollar sign when run.
 - A way to highlight variables or labels you aren't using
 - A way to find variables hiding in "strings".
 - Update `.gitignore` to ignore game stats `.csv` files.
-- `*if (var = 1)) #choice` (note the extra end parens) produce, like, three errors (Unknown operator, Incomplete expression, Arguments to an *if before an #option must be in parentheses). Those aren't really correct.
+- `*if (var = 1)) #choice` (note the extra end parens) produce, like, three errors (Unknown operator, Incomplete expression, Arguments to an \*if before an #option must be in parentheses). Those aren't really correct.
 - `[i]Italics or @{true [/i]not.|more italics[/i]}` gives borked italicizing in VS Code.
 - Here's something weird: change the name of one variable to the name of an already-existing variable. Then, with the cursor still on the original variable, search for references. The reference search finds nothing. Huh.
 - Capture warnings that quicktest or randomtest output? (Like defining a `*temp` variable w/the same name as a global.)
@@ -18,5 +21,4 @@
 ## Infrastructure
 
 - Node 22 build task is failing.
-- `chai` v5+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `chai` v5.
-- All ESM-only libraries: `chai`, `date-fns`, `eslint`, `globby`, `nyc`, `uuid`
+- `globby` v14+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `globby` v14+.

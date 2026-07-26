@@ -1,6 +1,6 @@
 {
     "editor.insertSpaces": false,
-    "mochaExplorer.files": "test/**/*.ts",
-    "mochaExplorer.require": "ts-node/register",
+    "mochaExplorer.files": "test/**/src/*.test.ts",
+    "mochaExplorer.require": "tsx",
     "editor.formatOnSave": true
 }

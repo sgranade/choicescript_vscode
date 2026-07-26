@@ -1,6 +1,6 @@
-const esbuild = require("esbuild");
-const fs = require("fs/promises");
-const path = require("path");
+import * as esbuild from "esbuild";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 const production = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
