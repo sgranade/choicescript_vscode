@@ -1,30 +1,50 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"script": "webpack:dev",
-			"isBackground": true,
-			"problemMatcher": [],
-			"label": "npm: webpack:dev",
-			"detail": "webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"presentation": {
-				"panel": "dedicated",
-				"reveal": "never"
-			},
-		},
-		{
-			"type": "npm",
-			"script": "lint",
-			"problemMatcher": [
-				"$eslint-stylish"
-			],
-			"label": "npm: lint",
-			"detail": "eslint -c .eslintrc.js --ext .ts ./client/src && eslint -c .eslintrc.js --ext .ts ./server/src"
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "compile",
+            "group": "build",
+            "presentation": {
+                "panel": "dedicated",
+                "reveal": "never"
+            },
+            "problemMatcher": "$esbuild"
+        },
+        {
+            "label": "watch",
+            "dependsOn": ["npm: watch:tsc", "npm: watch:esbuild"],
+            "presentation": {
+                "reveal": "never"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "npm",
+            "script": "watch:esbuild",
+            "group": "build",
+            "problemMatcher": "$esbuild-watch",
+            "isBackground": true,
+            "label": "npm: watch:esbuild",
+            "presentation": {
+                "group": "watch",
+                "reveal": "never"
+            }
+        },
+        {
+            "type": "npm",
+            "script": "watch:tsc",
+            "group": "build",
+            "problemMatcher": "$tsc-watch",
+            "isBackground": true,
+            "label": "npm: watch:tsc",
+            "presentation": {
+                "group": "watch",
+                "reveal": "never"
+            }
+        }
+    ]
 }

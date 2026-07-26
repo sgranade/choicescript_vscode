@@ -1,20 +1,14 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "ES2018",
-		"outDir": "out",
-		"rootDir": "src",
-		"sourceMap": true
-	},
-	"include": [
-		"src"
-	],
-	"exclude": [
-		"node_modules",
-		".vscode-test"
-	],
-	"references": [
-		{ "path": "./client" },
-		{ "path": "./server" }
-	]
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2023",
+        "lib": ["es2023"],
+        "sourceMap": true,
+        "outDir": "out",
+        "rootDir": "src",
+        "types": ["node"]
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", ".vscode-test"],
+    "references": [{ "path": "./client" }, { "path": "./server" }]
 }

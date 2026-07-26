@@ -1,352 +1,354 @@
 {
-	"name": "choicescript-vscode",
-	"displayName": "ChoiceScript Language",
-	"description": "ChoiceScript language support for VS Code",
-	"version": "3.1.1",
-	"author": {
-		"name": "Stephen Granade",
-		"email": "stephen@granades.com",
-		"url": "https://github.com/sgranade"
-	},
-	"license": "SEE LICENSE IN License.txt",
-	"contributors": [
-		{
-			"name": "KLNeidecker"
-		},
-		{
-			"name": "Carey Williams",
-			"url": "https://github.com/CareyJWilliams"
-		}
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/sgranade/choicescript_vscode"
-	},
-	"publisher": "StephenGranade",
-	"categories": [
-		"Programming Languages",
-		"Linters",
-		"Snippets"
-	],
-	"keywords": [
-		"ChoiceScript",
-		"cyoa",
-		"interactive fiction"
-	],
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"capabilities": {
-		"untrustedWorkspaces": {
-			"supported": "limited",
-			"description": "ChoiceScript requires trust to run or perform QuickTest or RandomTest on games."
-		},
-		"virtualWorkspaces": {
-			"supported": false,
-			"description": "ChoiceScript only works with local file paths."
-		}
-	},
-	"icon": "images/ChoiceOfGames.png",
-	"galleryBanner": {
-		"color": "#C80000",
-		"theme": "dark"
-	},
-	"main": "./client/dist/node/extension",
-	"browser": "./client/dist/web/extension",
-	"contributes": {
-		"languages": [
-			{
-				"id": "choicescript",
-				"aliases": [
-					"ChoiceScript",
-					"choicescript",
-					"cs"
-				],
-				"extensions": [
-					".txt"
-				],
-				"configuration": "./language-configuration.json"
-			}
-		],
-		"commands": [
-			{
-				"command": "choicescript.italicize",
-				"title": "Italicize",
-				"category": "ChoiceScript"
-			},
-			{
-				"command": "choicescript.bold",
-				"title": "Bold",
-				"category": "ChoiceScript"
-			},
-			{
-				"command": "choicescript.runGame",
-				"title": "Run Game",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			},
-			{
-				"command": "choicescript.runQuicktest",
-				"title": "Run Quicktest",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			},
-			{
-				"command": "choicescript.runRandomtestInteractive",
-				"title": "Run Randomtest",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			},
-			{
-				"command": "choicescript.runRandomtestDefault",
-				"title": "Run Randomtest with Default Settings",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			},
-			{
-				"command": "choicescript.rerunRandomtest",
-				"title": "Re-run Randomtest with Previous Settings",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			},
-			{
-				"command": "choicescript.cancelTest",
-				"title": "Cancel Running Test",
-				"category": "ChoiceScript",
-				"enablement": "isWorkspaceTrusted"
-			}
-		],
-		"menus": {
-			"commandPalette": [
-				{
-					"command": "choicescript.italicize",
-					"when": "editorLangId == choicescript"
-				},
-				{
-					"command": "choicescript.bold",
-					"when": "editorLangId == choicescript"
-				},
-				{
-					"command": "choicescript.runGame",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded"
-				},
-				{
-					"command": "choicescript.runQuicktest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
-				},
-				{
-					"command": "choicescript.runRandomtestInteractive",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
-				},
-				{
-					"command": "choicescript.runRandomtestDefault",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
-				},
-				{
-					"command": "choicescript.rerunRandomtest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning"
-				},
-				{
-					"command": "choicescript.cancelTest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.testRunning"
-				}
-			],
-			"editor/context": [
-				{
-					"command": "choicescript.runGame",
-					"when": "editorLangId == choicescript && choicescript.projectLoaded",
-					"group": "ChoiceScript@1"
-				},
-				{
-					"command": "choicescript.runQuicktest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
-					"group": "ChoiceScript@3"
-				},
-				{
-					"command": "choicescript.runRandomtestInteractive",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
-					"group": "ChoiceScript@4"
-				},
-				{
-					"command": "choicescript.runRandomtestDefault",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
-					"group": "ChoiceScript@5"
-				},
-				{
-					"command": "choicescript.rerunRandomtest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
-					"group": "ChoiceScript@6"
-				},
-				{
-					"command": "choicescript.cancelTest",
-					"when": "!isWeb && editorLangId == choicescript && choicescript.testRunning",
-					"group": "ChoiceScript@7"
-				}
-			]
-		},
-		"keybindings": [
-			{
-				"command": "choicescript.italicize",
-				"key": "ctrl+i",
-				"mac": "cmd+i",
-				"when": "editorTextFocus && editorLangId == choicescript"
-			},
-			{
-				"command": "choicescript.italicize",
-				"key": "ctrl+shift+i",
-				"mac": "cmd+shift+i",
-				"when": "editorTextFocus && editorLangId == choicescript"
-			},
-			{
-				"command": "choicescript.bold",
-				"key": "ctrl+shift+b",
-				"mac": "cmd+shift+b",
-				"when": "editorTextFocus && editorLangId == choicescript"
-			}
-		],
-		"grammars": [
-			{
-				"language": "choicescript",
-				"scopeName": "source.cs",
-				"path": "./syntaxes/cs.tmLanguage.json"
-			}
-		],
-		"snippets": [
-			{
-				"language": "choicescript",
-				"path": "./snippets.json"
-			}
-		],
-		"configuration": {
-			"title": "ChoiceScript",
-			"properties": {
-				"choicescript.useChoiceOfGamesStyleGuide": {
-					"type": "boolean",
-					"default": true,
-					"description": "Whether to check your game's text and length of options against Choice of Games's in-house style guide."
-				},
-				"choicescript.disableQuickSuggestions": {
-					"type": "boolean",
-					"default": true,
-					"description": "Whether to turn off VS Code's automatic suggestions when typing text (as opposed to commands or variables)."
-				},
-				"choicescript.allowUnsafeScript": {
-					"type": "string",
-					"default": "never",
-					"enum": [
-						"never",
-						"warn",
-						"allow"
-					],
-					"enumDescriptions": [
-						"Do not allow *script calls and mark their usage with error diagnostics",
-						"Allow *script calls but mark their usage with warning diagnostics",
-						"Allow *script calls and do not mark them with any diagnostics"
-					],
-					"description": "Whether to allow execution of *script commands in ChoiceScript games you're running inside VS Code. This poses a security risk and you should only run games who's code you've vetted whilst this setting is not 'never'."
-				},
-				"choicescript.randomtest.putResultsInDocument": {
-					"type": "string",
-					"default": "fulltext",
-					"enum": [
-						"never",
-						"always",
-						"fulltext"
-					],
-					"enumDescriptions": [
-						"Never put the results in a document",
-						"Always put the results in a document",
-						"Only put the results in a document when showing full game text"
-					],
-					"description": "When to put Randomtest results in a VS Code document that you can save."
-				},
-				"choicescript.randomtest.putResultsInUniqueDocument": {
-					"type": "boolean",
-					"default": true,
-					"description": "After the test, put the results in a unique document so previous test results aren't overwritten."
-				},
-				"choicescript.randomtest.iterations": {
-					"type": "integer",
-					"default": 1000,
-					"description": "Number of times to run randomtest on a game."
-				},
-				"choicescript.randomtest.randomSeed": {
-					"type": "integer",
-					"default": 0,
-					"description": "Fixed random seed to use."
-				},
-				"choicescript.randomtest.avoidUsedOptions": {
-					"type": "boolean",
-					"default": true,
-					"description": "Avoid used options in testing, which is less random but can find bugs faster."
-				},
-				"choicescript.randomtest.showChoices": {
-					"type": "boolean",
-					"default": false,
-					"description": "Show the choices randomtest made."
-				},
-				"choicescript.randomtest.showFullText": {
-					"type": "boolean",
-					"default": false,
-					"description": "Show the full text that randomtest encounters."
-				},
-				"choicescript.randomtest.showLineCoverageStatistics": {
-					"type": "boolean",
-					"default": false,
-					"description": "After the test, show how many times each line was encountered."
-				}
-			}
-		}
-	},
-	"scripts": {
-		"lint": "eslint",
-		"vscode:prepublish": "npm run webpack",
-		"webpack": "npm run minify-cs && webpack --mode production --config ./client/webpack.config.js --devtool hidden-source-map && webpack --mode production --config ./server/webpack.config.js --devtool hidden-source-map",
-		"webpack:dev": "npm run minify-cs && concurrently \"npm run dev-client\" \"npm run dev-server\"",
-		"dev-client": "webpack --mode none --config ./client/webpack.config.js --watch",
-		"dev-server": "webpack --mode none --config ./server/webpack.config.js --watch",
-		"minify-cs": "node utilities/minify-cs.js",
-		"test": "nyc mocha",
-		"report-coverage": "nyc report --reporter=text-lcov > coverage.lcov",
-		"clean": "npm run clean-client && npm run clean-server",
-		"clean-client": "rimraf client/dist",
-		"clean-server": "rimraf server/dist",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
-	},
-	"devDependencies": {
-		"@eslint/js": "^9.7.0",
-		"@fluffy-spoon/substitute": "^1.208.0",
-		"@types/chai": "^4.3.10",
-		"@types/eslint__js": "^8.42.3",
-		"@types/mocha": "^10.0.4",
-		"@types/mock-fs": "^4.13.4",
-		"@types/node": "^20.9.2",
-		"@types/urijs": "^1.19.23",
-		"@types/vscode": "^1.75.0",
-		"chai": "^4.4.1",
-		"concurrently": "^9.0.1",
-		"date-fns": "^2.30.0",
-		"esbuild-loader": "^4.0.2",
-		"eslint": "^8.57.0",
-		"fork-ts-checker-webpack-plugin": "^9.0.2",
-		"merge-options": "^3.0.4",
-		"mocha": "^10.2.0",
-		"mock-fs": "^5.2.0",
-		"nyc": "^15.1.0",
-		"rimraf": "^6.0.1",
-		"terser": "^5.24.0",
-		"ts-loader": "^9.5.1",
-		"ts-node": "^10.9.1",
-		"typescript": "^5.4.5",
-		"typescript-eslint": "^7.16.1",
-		"vscode-languageserver": "^9.0.1",
-		"vscode-languageserver-textdocument": "^1.0.11",
-		"webpack": "^5.89.0",
-		"webpack-cli": "^5.1.4"
-	},
-	"dependencies": {
-		"path-browserify": "^1.0.1",
-		"uuid": "^9.0.1",
-		"vscode-uri": "^3.0.8"
-	}
+    "name": "choicescript-vscode",
+    "displayName": "ChoiceScript Language",
+    "description": "ChoiceScript language support for VS Code",
+    "version": "3.1.1",
+    "author": {
+        "name": "Stephen Granade",
+        "email": "stephen@granades.com",
+        "url": "https://github.com/sgranade"
+    },
+    "license": "SEE LICENSE IN License.txt",
+    "contributors": [
+        {
+            "name": "KLNeidecker"
+        },
+        {
+            "name": "Carey Williams",
+            "url": "https://github.com/CareyJWilliams"
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sgranade/choicescript_vscode"
+    },
+    "publisher": "StephenGranade",
+    "categories": [
+        "Programming Languages",
+        "Linters",
+        "Snippets"
+    ],
+    "keywords": [
+        "ChoiceScript",
+        "cyoa",
+        "interactive fiction"
+    ],
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": "limited",
+            "description": "ChoiceScript requires trust to run or perform QuickTest or RandomTest on games."
+        },
+        "virtualWorkspaces": {
+            "supported": false,
+            "description": "ChoiceScript only works with local file paths."
+        }
+    },
+    "icon": "images/ChoiceOfGames.png",
+    "galleryBanner": {
+        "color": "#C80000",
+        "theme": "dark"
+    },
+    "main": "./client/dist/node/extension",
+    "browser": "./client/dist/web/extension",
+    "contributes": {
+        "languages": [
+            {
+                "id": "choicescript",
+                "aliases": [
+                    "ChoiceScript",
+                    "choicescript",
+                    "cs"
+                ],
+                "extensions": [
+                    ".txt"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "choicescript.italicize",
+                "title": "Italicize",
+                "category": "ChoiceScript"
+            },
+            {
+                "command": "choicescript.bold",
+                "title": "Bold",
+                "category": "ChoiceScript"
+            },
+            {
+                "command": "choicescript.runGame",
+                "title": "Run Game",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            },
+            {
+                "command": "choicescript.runQuicktest",
+                "title": "Run Quicktest",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            },
+            {
+                "command": "choicescript.runRandomtestInteractive",
+                "title": "Run Randomtest",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            },
+            {
+                "command": "choicescript.runRandomtestDefault",
+                "title": "Run Randomtest with Default Settings",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            },
+            {
+                "command": "choicescript.rerunRandomtest",
+                "title": "Re-run Randomtest with Previous Settings",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            },
+            {
+                "command": "choicescript.cancelTest",
+                "title": "Cancel Running Test",
+                "category": "ChoiceScript",
+                "enablement": "isWorkspaceTrusted"
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "choicescript.italicize",
+                    "when": "editorLangId == choicescript"
+                },
+                {
+                    "command": "choicescript.bold",
+                    "when": "editorLangId == choicescript"
+                },
+                {
+                    "command": "choicescript.runGame",
+                    "when": "editorLangId == choicescript && choicescript.projectLoaded"
+                },
+                {
+                    "command": "choicescript.runQuicktest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+                },
+                {
+                    "command": "choicescript.runRandomtestInteractive",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+                },
+                {
+                    "command": "choicescript.runRandomtestDefault",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning"
+                },
+                {
+                    "command": "choicescript.rerunRandomtest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning"
+                },
+                {
+                    "command": "choicescript.cancelTest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.testRunning"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "choicescript.runGame",
+                    "when": "editorLangId == choicescript && choicescript.projectLoaded",
+                    "group": "ChoiceScript@1"
+                },
+                {
+                    "command": "choicescript.runQuicktest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+                    "group": "ChoiceScript@3"
+                },
+                {
+                    "command": "choicescript.runRandomtestInteractive",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+                    "group": "ChoiceScript@4"
+                },
+                {
+                    "command": "choicescript.runRandomtestDefault",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && !choicescript.testRunning",
+                    "group": "ChoiceScript@5"
+                },
+                {
+                    "command": "choicescript.rerunRandomtest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.projectLoaded && choicescript.previousRandomtestSettingsExist && !choicescript.testRunning",
+                    "group": "ChoiceScript@6"
+                },
+                {
+                    "command": "choicescript.cancelTest",
+                    "when": "!isWeb && editorLangId == choicescript && choicescript.testRunning",
+                    "group": "ChoiceScript@7"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "choicescript.italicize",
+                "key": "ctrl+i",
+                "mac": "cmd+i",
+                "when": "editorTextFocus && editorLangId == choicescript"
+            },
+            {
+                "command": "choicescript.italicize",
+                "key": "ctrl+shift+i",
+                "mac": "cmd+shift+i",
+                "when": "editorTextFocus && editorLangId == choicescript"
+            },
+            {
+                "command": "choicescript.bold",
+                "key": "ctrl+shift+b",
+                "mac": "cmd+shift+b",
+                "when": "editorTextFocus && editorLangId == choicescript"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "choicescript",
+                "scopeName": "source.cs",
+                "path": "./syntaxes/cs.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "choicescript",
+                "path": "./snippets.json"
+            }
+        ],
+        "configuration": {
+            "title": "ChoiceScript",
+            "properties": {
+                "choicescript.useChoiceOfGamesStyleGuide": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to check your game's text and length of options against Choice of Games's in-house style guide."
+                },
+                "choicescript.disableQuickSuggestions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to turn off VS Code's automatic suggestions when typing text (as opposed to commands or variables)."
+                },
+                "choicescript.allowUnsafeScript": {
+                    "type": "string",
+                    "default": "never",
+                    "enum": [
+                        "never",
+                        "warn",
+                        "allow"
+                    ],
+                    "enumDescriptions": [
+                        "Do not allow *script calls and mark their usage with error diagnostics",
+                        "Allow *script calls but mark their usage with warning diagnostics",
+                        "Allow *script calls and do not mark them with any diagnostics"
+                    ],
+                    "description": "Whether to allow execution of *script commands in ChoiceScript games you're running inside VS Code. This poses a security risk and you should only run games who's code you've vetted whilst this setting is not 'never'."
+                },
+                "choicescript.randomtest.putResultsInDocument": {
+                    "type": "string",
+                    "default": "fulltext",
+                    "enum": [
+                        "never",
+                        "always",
+                        "fulltext"
+                    ],
+                    "enumDescriptions": [
+                        "Never put the results in a document",
+                        "Always put the results in a document",
+                        "Only put the results in a document when showing full game text"
+                    ],
+                    "description": "When to put Randomtest results in a VS Code document that you can save."
+                },
+                "choicescript.randomtest.putResultsInUniqueDocument": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "After the test, put the results in a unique document so previous test results aren't overwritten."
+                },
+                "choicescript.randomtest.iterations": {
+                    "type": "integer",
+                    "default": 1000,
+                    "description": "Number of times to run randomtest on a game."
+                },
+                "choicescript.randomtest.randomSeed": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Fixed random seed to use."
+                },
+                "choicescript.randomtest.avoidUsedOptions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Avoid used options in testing, which is less random but can find bugs faster."
+                },
+                "choicescript.randomtest.showChoices": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show the choices randomtest made."
+                },
+                "choicescript.randomtest.showFullText": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show the full text that randomtest encounters."
+                },
+                "choicescript.randomtest.showLineCoverageStatistics": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "After the test, show how many times each line was encountered."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run package",
+        "compile": "npm-run-all check-types esbuild minify-cs",
+        "check-types": "tsc -b --noEmit",
+        "esbuild": "node esbuild.js",
+        "minify-cs": "node utilities/minify-cs.js",
+        "watch": "npm-run-all -p watch:*",
+        "watch:esbuild": "node esbuild.js --watch",
+        "watch:tsc": "tsc -b --noEmit --watch",
+        "package": "npm-run-all check-types \"esbuild -- --production\"",
+        "test": "cross-env nyc mocha",
+        "coverage": "nyc report --reporter=text-lcov > coverage.lcov",
+        "lint": "eslint ./client/src ./server/src",
+        "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.7.0",
+        "@fluffy-spoon/substitute": "^1.208.0",
+        "@types/chai": "^4.3.10",
+        "@types/eslint__js": "^8.42.3",
+        "@types/mocha": "^10.0.4",
+        "@types/mock-fs": "^4.13.4",
+        "@types/node": "^20.9.2",
+        "@types/urijs": "^1.19.23",
+        "@types/vscode": "^1.75.0",
+        "chai": "^4.4.1",
+        "concurrently": "^9.0.1",
+        "cross-env": "^10.1.0",
+        "date-fns": "^2.30.0",
+        "esbuild": "^0.28.1",
+        "esbuild-loader": "^4.0.2",
+        "eslint": "^8.57.0",
+        "fork-ts-checker-webpack-plugin": "^9.0.2",
+        "merge-options": "^3.0.4",
+        "mocha": "^10.2.0",
+        "mock-fs": "^5.2.0",
+        "npm-run-all": "^4.1.5",
+        "nyc": "^15.1.0",
+        "terser": "^5.24.0",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.4.5",
+        "typescript-eslint": "^7.16.1",
+        "vscode-languageserver": "^9.0.1",
+        "vscode-languageserver-textdocument": "^1.0.11"
+    },
+    "dependencies": {
+        "path-browserify": "^1.0.1",
+        "uuid": "^9.0.1",
+        "vscode-uri": "^3.0.8"
+    },
+    "allowScripts": {
+        "esbuild@0.28.1": true
+    }
 }
