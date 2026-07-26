@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import URI = require("urijs");
 import * as vscode from "vscode";
 import {
@@ -6,7 +7,7 @@ import {
     Range,
 } from "vscode-languageclient";
 
-import { CustomContext, CustomMessages } from "./constants";
+import { CustomContext, CustomMessages, CustomRequests } from "./constants";
 import * as notifications from "./notifications";
 import type { ProjectStatus, StatusBarItems } from "./status-bar-items";
 
@@ -97,7 +98,7 @@ export class StatusBarController {
         if (e) {
             this._client
                 .sendRequest(
-                    CustomMessages.WordCountRequest,
+                    CustomRequests.WordCount,
                     e.document.uri.toString(),
                 )
                 .then((count: unknown) => {
@@ -118,7 +119,7 @@ export class StatusBarController {
             Range.create(e.selections[0].start, e.selections[0].end),
         );
         this._client
-            .sendRequest(CustomMessages.SelectionWordCountRequest, location)
+            .sendRequest(CustomRequests.SelectionWordCount, location)
             .then((count: unknown) => {
                 if (typeof count === "number") {
                     this._statusBar.updateSelectionCount(count);

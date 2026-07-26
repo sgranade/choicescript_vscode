@@ -44,7 +44,7 @@ export function findVariableCreationLocations(
 	variable: string, considerEffectiveLocation: boolean,
 	documentUri: string, index: ProjectIndex): Location[] | undefined {
 	// Precedence order: effective location variable location; local; global
-	let location: Location | undefined = undefined;
+	let location: Location | undefined;
 	if (considerEffectiveLocation) {
 		location = index.getSubroutineLocalVariables(documentUri).get(variable);
 		if (location !== undefined) {

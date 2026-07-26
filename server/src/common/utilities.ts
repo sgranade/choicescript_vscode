@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import URI = require("urijs");
 import type { Range, Position } from "vscode-languageserver";
 
@@ -303,7 +304,6 @@ export function readNextNonblankLine(
     lineStart: number,
 ): NewLine | undefined {
     let nextLine: NewLine | undefined;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
         nextLine = readLine(text, lineStart);
         if (nextLine === undefined) {
@@ -334,7 +334,6 @@ export function extractToMatchingIndent(
     let lastIndex = startIndex;
     let nextLine: NewLine | undefined;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
         nextLine = readNextNonblankLine(text, lastIndex);
         if (

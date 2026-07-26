@@ -539,7 +539,7 @@ export class Expression {
 				openDelimiterIndex += m.groups.prefix.length;
 			}
 
-			let closeDelimiter = '';
+			let closeDelimiter: string;
 			let tokenType: ExpressionTokenType;
 			let tokenizedContents: Expression | undefined = undefined;
 			if (openDelimiter == '{') {
@@ -1074,7 +1074,7 @@ export function tokenizeMultireplace(
 	const fullText = workingText;
 
 	const multireplaceEndLocalIndex = workingText.length + 1;
-	let testEndLocalIndex = 0;
+	let testEndLocalIndex: number;
 
 	if (workingText[0] == '(' || workingText[0] == '{')
 	{

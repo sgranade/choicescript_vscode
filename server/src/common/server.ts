@@ -10,6 +10,7 @@ import { Index, type ProjectIndex } from "./index";
 import { updateProjectIndex } from './indexer';
 import { uriIsStartupFile, uriIsChoicescriptStatsFile } from './language';
 import { countWords } from './parser';
+import { SelectionWordCountRequest, WordCountRequest } from './request-service';
 import { findDefinitions, findReferences, generateRenames } from './searches';
 import { generateSymbols } from './structure';
 import { normalizeUri } from './utilities';
@@ -97,8 +98,8 @@ export const startServer = (connection: Connection, fsProvider: FileSystemProvid
 		// Handle custom requests from the client
 		connection.onNotification(CustomMessages.CoGStyleGuide, onCoGStyleGuide);
 		connection.onNotification(CustomMessages.AllowUnsafeScript, onAllowUnsafeScript);
-		connection.onRequest(CustomMessages.WordCountRequest, onWordCount);
-		connection.onRequest(CustomMessages.SelectionWordCountRequest, onSelectionWordCount);
+		connection.onRequest(WordCountRequest, onWordCount);
+		connection.onRequest(SelectionWordCountRequest, onSelectionWordCount);
 	
 		heartbeatId = setInterval(heartbeat, heartbeatDelay);
 	});

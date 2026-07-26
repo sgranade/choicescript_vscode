@@ -1070,7 +1070,6 @@ function skipOptionContents(text: string, choiceInfo: ChoiceInfo, parsedOption: 
 	let nextLineStartIndex = parsedOption.nextLineIndex;
 	let contentsStart = -1;
 
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readNextNonblankLine(text, nextLineStartIndex);
 		if (nextLine === undefined) {
@@ -1201,7 +1200,6 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 	let memberCount = 0;
 	let groupContentsEndIndex = currentLine.index + currentLine.line.trimRight().length;
 
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		// parse the line: should be an option
 		const parsedOption = parseSingleOptionLine(text, choiceInfo, currentLine, state);
@@ -1209,7 +1207,7 @@ function parseOptionSubgroup(text: string, choiceInfo: ChoiceInfo, currentLine: 
 			return { nextLine: undefined, endIndex: groupContentsEndIndex };
 		}
 
-		let isPartOfSubgroup = true;
+		let isPartOfSubgroup: boolean;
 		({allowableIndents, isPartOfSubgroup} = processOptionIndents(choiceInfo, parsedOption, allowableIndents, memberCount == 0, state));
 		if (!isPartOfSubgroup) {
 			break;
@@ -1358,7 +1356,7 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	const groupInfo: OptionGroupInfo[] = [];
 	const choiceScopes: SummaryScope[] = [];
 	const startGlobalPosition = parsingPositionAt(commandSectionIndex, state);
-	let contentsEndIndex: number | undefined = undefined;
+	let contentsEndIndex: number | undefined;
 
 	// Get the padding type if we can
 	if (commandIndent) {
@@ -1397,13 +1395,12 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	}
 
 	// Get the first option and its indent
-	let nextLine = readNextNonblankLine(text, optionsSectionIndex);
+	const nextLine = readNextNonblankLine(text, optionsSectionIndex);
 	if (nextLine === undefined || nextLine.splitLine === undefined || nextLine.splitLine.padding.length <= commandIndent) {
 		return optionsSectionIndex;
 	}
 	if (!paddingTypeIsKnown) {
 		isTabs = /\t/.test(nextLine.splitLine.padding);
-		paddingTypeIsKnown = true;
 		if (!validIndentWhitespace(nextLine.index, nextLine.splitLine.padding, isTabs, state)) {
 			return optionsSectionIndex;
 		}
@@ -1421,7 +1418,8 @@ function parseChoice(text: string, command: string, commandPadding: string, comm
 	const choiceInfo: ChoiceInfo = {
 		commandIndent, isFakeChoice, isTabs, groupInfo, choiceScopes
 	};
-	({ nextLine: nextLine, endIndex: contentsEndIndex } = parseOptionSubgroup(
+	// eslint-disable-next-line prefer-const
+	({ endIndex: contentsEndIndex } = parseOptionSubgroup(
 		text, choiceInfo, nextLine, 0, state
 	));
 
@@ -1454,10 +1452,9 @@ function parseSingleOptionContents(text: string, optionContentsIndex: number, op
 	let optionContents = "";
 	let optionContentsIndent = -1;
 	let lastContentLine: NewLine | undefined;
-	let nextLine: NewLine | undefined = undefined;
+	let nextLine: NewLine | undefined;
 	let lineStart = optionContentsIndex;
 
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readLine(text, lineStart);
 		if (nextLine === undefined) {
@@ -1535,7 +1532,6 @@ function parseScenes(text: string, startSectionIndex: number, state: ParsingStat
 	lineStart = lineEnd;
 
 	// Now loop as long as the scene pattern matches and the padding is consistent
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		lineEnd = findLineEnd(text, lineStart);
 		if (!lineEnd) {
@@ -1799,7 +1795,6 @@ function parseIfBlock(text: string, command: string, commandPadding: string, lin
 	let nextLine: NewLine | undefined;
 	let m: RegExpExecArray | null;
 	let currentIndex = contentsIndex + blockContents.length;
-	// eslint-disable-next-line no-constant-condition
 	while (true) {
 		nextLine = readNextNonblankLine(text, currentIndex);
 		// The next line must exist and be a command
@@ -1878,7 +1873,6 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 	let sceneLocation: Location | undefined = undefined;
 
 	if (command != "return") {
-		let firstToken = "";
 		let secondToken = "";
 		let secondTokenLocalIndex = 0;
 		let remainderLine = "";
@@ -1892,7 +1886,7 @@ function parseFlowControlCommand(command: string, commandSectionIndex: number, l
 		}
 		// Get the first token, which may be a {} reference
 		let token = extractTokenAtIndex(line, 0, "{}", tokenDelimiters);
-		firstToken = (token !== undefined) ? token : "";
+		const firstToken = (token !== undefined) ? token : "";
 		if (firstToken != "") {
 			remainderLineLocalIndex = firstToken.length;
 			remainderLine = line.substring(remainderLineLocalIndex);
@@ -2265,7 +2259,7 @@ function parseIfid(ifid: string, remainingLine: string, startSectionIndex: numbe
 function parseKindleSearch(line: string, startSectionIndex: number, state: ParsingState): void {
 	if (line.search(/^\(.+\) [^)]+/) == -1) {
 		let startIndex = startSectionIndex;
-		let endIndex = -1;
+		let endIndex: number;
 		let code;
 		const parenthesizedSearch = /^\((.*)\)( )?/.exec(line);
 

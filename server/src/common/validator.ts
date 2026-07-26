@@ -495,7 +495,7 @@ async function validateImages(state: ValidationState, fsProvider: FileSystemServ
 	let imagePath = state.projectIndex.getPlatformImagePath();
 
 	for (const [image, locations] of state.projectIndex.getImages(state.textDocumentUri)) {
-		let found = false;
+		let found: boolean;
 
 		if (imagePath === undefined) {
 			// Our logic: First look in the scene files' directory.

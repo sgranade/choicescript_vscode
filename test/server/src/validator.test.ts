@@ -1,8 +1,7 @@
 /* eslint-disable */
 
 import * as path from 'path';
-
-import * as mock from 'mock-fs';
+import mock from "mock-fs";
 import { expect } from 'chai';
 import 'mocha';
 import { Substitute, SubstituteOf, Arg } from '@fluffy-spoon/substitute';

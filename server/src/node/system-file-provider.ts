@@ -1,7 +1,7 @@
 import type { FileSystemProvider } from "../common/file-system-service";
 import type { URI } from "vscode-languageserver";
 import * as fs from "fs/promises";
-import globby = require("globby");
+import { globby } from "globby";
 
 export class SystemFileProvider implements FileSystemProvider {
     public async readFile(path: URI): Promise<string> {
@@ -16,7 +16,7 @@ export class SystemFileProvider implements FileSystemProvider {
         try {
             await fs.access(path, fs.constants.F_OK);
             return true;
-        } catch (err) {
+        } catch {
             return false;
         }
     }
