@@ -91,6 +91,17 @@ Scene.prototype.printLoop = function printLoop() {
     var line;
     for (;!this.finished && this.lineNum < this.lines.length; this.lineNum++) {
         line = this.lines[this.lineNum];
+        var choiceEnd = this.temps._choiceEnds[this.lineNum];
+        if (choiceEnd === 0) {
+            throw new Error(this.lineMsg() + "It is illegal to fall out of a *choice statement; you must *goto or *finish before the end of the indented block.");
+        }
+        if (choiceEnd) {
+          // Skip to the end of the choice if we hit the end of an #option.
+          this.rollbackLineCoverage();
+          this.lineNum = choiceEnd;
+          this.rollbackLineCoverage();
+          continue;
+        }
         if (!trim(line)) {
             this.paragraph();
             continue;
@@ -102,18 +113,6 @@ Scene.prototype.printLoop = function printLoop() {
             throw new Error(this.lineMsg() + "increasing indent not allowed, expected " + this.indent + " was " + indent);
         } else if (indent < this.indent) {
             this.dedent(indent);
-        }
-        // Ability to end a choice #option without goto is guarded by implicit_control_flow variable
-        if (this.temps._choiceEnds[this.lineNum] &&
-                (this.getVar("implicit_control_flow") || this.temps._fakeChoiceDepth > 0)) {
-            // Skip to the end of the choice if we hit the end of an #option
-            this.rollbackLineCoverage();
-            this.lineNum = this.temps._choiceEnds[this.lineNum];
-            this.rollbackLineCoverage();
-            if (this.temps._fakeChoiceDepth > 0) {
-                this.temps._fakeChoiceDepth--;
-            }
-            continue;
         }
         this.indent = indent;
         if (/^\s*#/.test(line)) {
@@ -871,7 +870,7 @@ Scene.prototype.runCommand = function runCommand(line) {
 // If no group is specified, don't generate a prompt message
 // if multiple groups are specified, allow the user to make multiple choices simultaneously
 //   all multi-dimensional choices must be valid (otherwise throw a parse error)
-Scene.prototype.choice = function choice(data) {
+Scene.prototype.choice = function choice(data, isFakeChoice) {
     var startLineNum = this.lineNum;
     var groups = data.split(/ /);
     for (var i = 0; i < groups.length; i++) {
@@ -879,29 +878,24 @@ Scene.prototype.choice = function choice(data) {
         throw new Error(this.lineMsg() + "invalid choice group name: " + groups[i]);
       }
     }
-    var options = this.parseOptions(this.indent, groups);
+    var allowFallthrough = (isFakeChoice === true) || this.getVar("implicit_control_flow");
+    var options = this.parseOptions(this.indent, groups, allowFallthrough);
     var self = this;
     this.renderOptions(groups, options, function(option) {
       self.standardResolution(option);
     });
     this.finished = true;
-    if (this.temps._fakeChoiceDepth > 0 || this.getVar("implicit_control_flow")) {
-      if (!this.temps._choiceEnds) {
-        this.temps._choiceEnds = {};
-      }
-      for (i = 0; i < options.length; i++) {
-        this.temps._choiceEnds[options[i].line-1] = this.lineNum;
-      }
+    if (!this.temps._choiceEnds) {
+      this.temps._choiceEnds = {};
+    }
+    for (i = 0; i < options.length; i++) {
+      this.temps._choiceEnds[options[i].line-1] = allowFallthrough ? this.lineNum : 0;
     }
     this.lineNum = startLineNum;
 };
 
 Scene.prototype.fake_choice = function fake_choice(data) {
-    if (this.temps._fakeChoiceDepth === undefined) {
-        this.temps._fakeChoiceDepth = 0;
-    }
-    this.temps._fakeChoiceDepth++;
-    this.choice(data);
+    this.choice(data, true);
 };
 
 Scene.prototype.standardResolution = function(option) {
@@ -1288,14 +1282,18 @@ Scene.prototype.product = function product(productId) {
 }
 
 Scene.prototype.restore_purchases = function scene_restorePurchases(data) {
+  var params = data.split(" ");
+  var label = params[0];
+  if (!label) throw new Error(this.lineMsg() + "The *restore_purchases command requires a label and an optional product.");
+  var product = params[1];
   var self = this;
   var target = this.target;
   if (!target) target = document.getElementById('text');
   var button = printButton("Restore Purchases", target, false,
     function() {
       safeCall(self, function() {
-          restorePurchases(null, function() {
-            self["goto"](data);
+          restorePurchases(product, function() {
+            self["goto"](label);
             self.finished = false;
             self.resetPage();
           });
@@ -1404,9 +1402,14 @@ Scene.prototype.buyButton = function(product, priceGuess, label, title) {
     } else {
       if (price == "guess") price = priceGuess + " USD";
       var prerelease = self.getVar('choice_prerelease');
+      var isSteam = self.getVar('choice_is_steam');
       var buttonText;
       if (prerelease) {
-        buttonText = "Pre-Order " + title;
+        if (isSteam) {
+          buttonText = "Wishlist " + title + " on Steam";
+        } else {
+          buttonText = "Pre-Order " + title;
+        }
       } else {
         buttonText = "Buy "+title+" Now";
       }
@@ -1477,6 +1480,12 @@ Scene.prototype.purchase_discount = function purchase_discount(line) {
 
 Scene.prototype.buyButtonDiscount = function buyButtonDiscount(product, expectedEndDate, fullPriceGuess, discountedPriceGuess, label, title) {
   var prerelease = this.getVar('choice_prerelease');
+  var isSteam = this.getVar('choice_is_steam');
+  if (prerelease && isSteam) {
+    // Steam doesn't do pre-orders; if we're here, this is an early Steam demo.
+    // The buy button will be a wishlist button, with no discount to apply.
+    return this.buyButton(product, discountedPriceGuess, label, title);
+  }
   var discountText;
   if (prerelease) {
     discountText = "[b]Buy now before the price increases![/b]";
@@ -1759,7 +1768,7 @@ Scene.prototype["delete_array"] = function scene_delete_array(arrayName) {
 };
 
 // during a choice, recursively parse the options
-Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaining, expectedSubOptions) {
+Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaining, allowFallthrough, expectedSubOptions) {
     // nextIndent: the level of indentation after the current line
     // For example, in the color/toy sample above, we start at 0
     // then the nextIndent is 2 for "red"
@@ -1967,7 +1976,7 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
         options.push(option);
         if (choicesRemaining.length>1) {
             // recursive call will modify this.indent
-            option.suboptions = this.parseOptions(this.indent, choicesRemaining.slice(1), previousSubOptions);
+            option.suboptions = this.parseOptions(this.indent, choicesRemaining.slice(1), allowFallthrough, previousSubOptions);
             // now restore it
             this.indent = nextIndent;
             if (!previousSubOptions) previousSubOptions = option.suboptions;
@@ -1982,8 +1991,7 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
     if (choicesRemaining.length>1 && !suboptionsEncountered) {
         throw new Error(this.lineMsg() + "invalid indent, there were subchoices remaining: [" + choicesRemaining.join(",") + "]");
     }
-    if (bodyExpected &&
-            (this.temps._fakeChoiceDepth === undefined || this.temps._fakeChoiceDepth < 1)) {
+    if (bodyExpected && allowFallthrough !== true) {
         throw new Error(this.lineMsg() + "Expected choice body");
     }
     if (!atLeastOneSelectableOption) this.conflictingOptions(this.lineMsg() + "No selectable options");
@@ -1995,7 +2003,7 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
     this.lineNum = this.previousNonBlankLineNum();
     if (!prevOption.endLine) prevOption.endLine = this.lineNum+1;
     for (i = 0; i < choiceEnds.length; i++) {
-        this.temps._choiceEnds[choiceEnds[i]] = this.lineNum;
+        this.temps._choiceEnds[choiceEnds[i]] = allowFallthrough ? this.lineNum : 0;
     }
     this.rollbackLineCoverage();
     return options;
@@ -2182,7 +2190,7 @@ Scene.prototype.kindle_image = function kindle_image() {
 };
 
 Scene.prototype.youtube = function youtube(slug) {
-  if (typeof printYoutubeFrame !== "undefined") {
+  if (typeof window != "undefined" && window.isWeb && typeof printYoutubeFrame !== "undefined") {
     printYoutubeFrame(slug);
     this.prevLine = "block";
     this.screenEmpty = false;
@@ -3697,7 +3705,7 @@ Scene.prototype.restore_checkpoint = function restoreCheckpoint(slot) {
   var self = this;
   if (!this.testPath && this.secondaryMode) {
     if (this.secondaryMode === 'stats') {
-      restoreCheckpointFromStats(function () {
+      restoreCheckpointFromStats(slot || "", function () {
         delete self.secondaryMode;
         delete self.saveSlot;
         self.restore_checkpoint(slot);
@@ -4689,6 +4697,7 @@ Scene.prototype.achievement = function scene_achievement(data) {
   if (/(\@\{)/.test(title)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement title: " + title);
   if (/(\[)/.test(title)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement title: " + title);
   if (title.length > titleAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Title must be " + titleAllowedLength + " characters or fewer: " + title);
+  if (title.length > 30) this.warning(this.lineMsg() + "Achievement title too long for Apple ("+title.length+" out of 30): " + title);
 
   // Get the description from the next indented line
   var line = this.lines[++this.lineNum];
@@ -4702,6 +4711,7 @@ Scene.prototype.achievement = function scene_achievement(data) {
   if (/(\@\{)/.test(preEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement description: " + preEarnedDescription);
   if (/(\[)/.test(preEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement description: " + preEarnedDescription);
   if (preEarnedDescription.length > descriptionAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Pre-earned description must be " + descriptionAllowedLength + " characters or fewer: " + preEarnedDescription);
+  if (preEarnedDescription.length > 120) this.warning(this.lineMsg() + "Achievement pre-earned description too long for Apple (" + preEarnedDescription.length + " out of 120): " + preEarnedDescription);
 
   if (!visible) {
     if (preEarnedDescription.toLowerCase() != "hidden") throw new Error(this.lineMsg()+"Invalid *achievement. Hidden achievements must set their pre-earned description to 'hidden'.");
@@ -4720,6 +4730,7 @@ Scene.prototype.achievement = function scene_achievement(data) {
     if (/(\@\{)/.test(postEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. @{} not permitted in achievement description: " + postEarnedDescription);
     if (/(\[)/.test(postEarnedDescription)) throw new Error(this.lineMsg()+"Invalid *achievement. [] not permitted in achievement description: " + postEarnedDescription);
     if (postEarnedDescription.length > descriptionAllowedLength) throw new Error(this.lineMsg() + "Invalid *achievement. Post-earned description must be " + descriptionAllowedLength + " characters or fewer: " + postEarnedDescription);
+    if (postEarnedDescription.length > 120) this.warning(this.lineMsg() + "Achievement pre-earned description too long for Apple (" + postEarnedDescription.length + " out of 120): " + postEarnedDescription);
   } else {
     // No indent means the next line is not a post-earned description
     this.rollbackLineCoverage();

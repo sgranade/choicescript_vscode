@@ -57,10 +57,8 @@ print = function print(str) {
 	console.log(str);
 };
 
-nav.setStartingStatsClone(stats);
-if (typeof purchases !== "undefined") {
-	nav.loadProducts(undefined, purchases);
-}
+nav = new SceneNavigator(["startup"]);
+stats = {};
 
 var sceneList = [];
 var warnings = [];
@@ -78,6 +76,12 @@ if (fileExists(path.join(scenePath, "choicescript_stats.txt"))) {
 }
 if (fileExists(path.join(scenePath, "choicescript_screenshots.txt"))) {
 	list.push("choicescript_screenshots.txt");
+}
+if (fileExists(path.join(scenePath, "screenshots.txt"))) {
+    list.push("screenshots.txt");
+}
+if (fileExists(path.join(scenePath, "choicescript_description.txt"))) {
+	list.push("choicescript_description.txt");
 }
 if (fileExists(path.join(scenePath, "choicescript_upgrade.txt"))) {
 	list.push("choicescript_upgrade.txt");

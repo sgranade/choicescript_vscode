@@ -41,6 +41,8 @@ var avoidUsedOptions = true;
 var recordBalance = false;
 var saveStats = false;
 var outputFile = undefined;
+var allowBetaBug = false;
+var requireFeedbackCommand = false;
 var slurps = {}
 function parseArgs(args) {
 	for (var i = 0; i < args.length; i++) {
@@ -78,6 +80,10 @@ function parseArgs(args) {
 			saveStats = (value !== "false");
 		} else if (name === "outputFile") {
 			outputFile = value;
+		} else if (name === "allowBetaBug") {
+			allowBetaBug = value;
+		} else if (name === "requireFeedbackCommand") {
+			requireFeedbackCommand = (value !== "false");
 		}
 	}
 	if (isTrial === null) {
@@ -330,9 +336,12 @@ if (typeof importScripts != "undefined") {
 	load(path.join(csPath, "scene.js"));
 	load(path.join(csPath, "navigator.js"));
 	load(path.join(csPath, "util.js"));
-	load(path.join(myGameJSPath, "mygame.js"));
 	load(path.join(headlessJSPath, "headless.js"));
 	load(path.join(seedrandomJSPath, "seedrandom.js"));
+	if (allowBetaBug) {
+		_global.beta = true;
+	}
+	load(path.join(myGameJSPath, "mygame.js"));
 } else if (typeof args == "undefined") {
 	isRhino = true;
 	args = arguments;
@@ -521,6 +530,7 @@ Scene.prototype.abort = function randomtest_abort(param) {
   this.paragraph();
   this.finished = true;
   if (param === 'skip') {
+    println("SKIPPED RUN");
     throw new Error("skip run");
   }
 };
@@ -536,6 +546,10 @@ Scene.prototype.restore_game = function (data) {
 		this["goto"](cancel);
 	}
 };
+
+Scene.prototype.restore_checkpoint = function() {
+  throw new Error(this.lineMsg() + "Randomtest is not allowed to run *restore_checkpoint. Use \"*if (not(choice_randomtest))\" to prevent this error.");
+}
 
 Scene.prototype.advertisement = function randomtest_advertisement(durationInSeconds) {
   if (this.name === "startup") {
@@ -672,25 +686,28 @@ Scene.prototype.finish = Scene.prototype.autofinish = function random_finish(but
 }
 
 Scene.prototype.oldGotoScene = Scene.prototype.goto_scene;
-Scene.prototype.goto_scene = function random_goto_scene(data) {
+Scene.prototype.goto_scene = function random_goto_scene(data, isGosubScene) {
 	var result = this.parseGotoScene(data);
 	var name = result.sceneName;
 	if (isTrial && typeof purchases != "undefined" && purchases[name]) {
 		throw new Error(this.lineMsg() + "Trying to go to scene " + name + " but that scene requires purchase");
 	}
+	if (!isGosubScene && result.label) this.randomLog("*goto_scene (" + (this.lineNum + 1) + ") " + data);
 	this.oldGotoScene.apply(this, arguments);
 }
 
 Scene.prototype.buyButton = function random_buyButton(product, priceGuess, label, title) {
+	if (typeof this.temps["choice_purchased_" + product] === "undefined") throw new Error(this.lineMsg() + "Didn't check_purchases on this page");
 	println('[Buy ' + title + ' Now for ' + priceGuess + ']');
 	println("");
 };
 
-Scene.prototype.choice = function choice(data) {
+Scene.prototype.choice = function choice(data, isFakeChoice) {
 	var groups = ["choice"];
 	if (data) groups = data.split(/ /);
 	var choiceLine = this.lineNum;
-	var options = this.parseOptions(this.indent, groups);
+	var allowFallthrough = (isFakeChoice === true) || this.getVar("implicit_control_flow");
+	var options = this.parseOptions(this.indent, groups, allowFallthrough);
 	var flattenedOptions = [];
 	flattenOptions(flattenedOptions, options);
 
@@ -701,7 +718,7 @@ Scene.prototype.choice = function choice(data) {
 		this.temps._choiceEnds = {};
 	}
 	for (var i = 0; i < options.length; i++) {
-		this.temps._choiceEnds[options[i].line - 1] = this.lineNum;
+		this.temps._choiceEnds[options[i].line - 1] = allowFallthrough ? this.lineNum : 0;
 	}
 	this.paragraph();
 	if (showChoices) {
@@ -957,6 +974,7 @@ function randomtest() {
 	configureShowText();
   var warnings = 0;
 	var start = new Date().getTime();
+  var missingFeedback = 0;
 	randomSeed *= 1;
 	var percentage = iterations / 100;
 	for (var i = 0; i < iterations; i++) {
@@ -984,18 +1002,27 @@ function randomtest() {
         warnings += stats.choice_warnings;
         stats.choice_warnings = 0;
       }
-		} catch (e) {
+      if (!stats.choice_feedback_requested) missingFeedback++;
+    } catch (e) {
       if (e.message == "skip run") {
         println("SKIPPED RUN " + i);
-				iterations++;
-				continue;
-			}
-			console.log("RANDOMTEST FAILED: " + e);
-			process.exitCode = 1;
-			processExit = true;
-			break;
-		}
-	}
+        iterations++;
+        continue;
+      }
+      console.log("RANDOMTEST FAILED: " + e);
+      process.exitCode = 1;
+      processExit = true;
+      break;
+    }
+  }
+
+  if (!processExit && missingFeedback) {
+    if (requireFeedbackCommand && missingFeedback === iterations) {
+      console.log("RANDOMTEST FAILED: All " + iterations + " runs missing *feedback");
+	  process.exitCode = 1;
+	  processExit = true;
+    }
+  }
 
 	if (!processExit) {
 		if (showText) console.log("Word count: " + wordCount);
@@ -1008,6 +1035,9 @@ function randomtest() {
 					console.log(sceneName + " " + (sceneCoverage[j] || 0) + ": " + sceneLines[j]);
 				}
 			}
+		}
+		if (missingFeedback) {
+			//console.log("WARNING: " + missingFeedback + " runs missing *feedback");
 		}
 		console.log("RANDOMTEST PASSED");
     if (warnings) console.log(warnings + " warning" + (warnings === 1 ? "": "s"));

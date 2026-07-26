@@ -35,7 +35,9 @@ function autotester(sceneText, nav, sceneName, extraLabels) {
   }
 
   // Don't test for *bugs; *if cheating makes *bugs fake-reachable
-  Scene.prototype.bug = function test_bug() {
+  Scene.prototype.bug = function test_bug(msg) {
+    // skip over *bug choice_beta; it likely appears at the top of startup, to prevent pushes
+    if (msg === "choice_beta") return;
     this.finished = true;
   };
 
@@ -44,6 +46,9 @@ function autotester(sceneText, nav, sceneName, extraLabels) {
     this.replaceVariables(buttonName);
     this.resetCheckedPurchases();
   };
+  Scene.prototype.page_break_advertisement = function() {
+    this.page_break("");
+  }
   Scene.prototype.subscribe = function() {};
   Scene.prototype.feedback = function() {};
   Scene.prototype.save = function() {};
@@ -57,6 +62,7 @@ function autotester(sceneText, nav, sceneName, extraLabels) {
     }
   }
   Scene.prototype.buyButton = function (product, priceGuess, label) {
+    if (typeof this.temps["choice_purchased_" + product] === "undefined") throw new Error(this.lineMsg() + "Didn't check_purchases on this page");
     if (seen[label]) return;
     var scene = this.clone();
     scene.testPath.push(',');
@@ -173,7 +179,7 @@ function autotester(sceneText, nav, sceneName, extraLabels) {
   }
   
   
-  Scene.prototype.choice = function choice(data) {
+  Scene.prototype.choice = function choice(data, isFakeChoice) {
       var groups = ["choice"];
       if (data) {
         groups = data.split(/ /);
@@ -184,12 +190,13 @@ function autotester(sceneText, nav, sceneName, extraLabels) {
         }
       }
       var choiceLine = this.lineNum;
-      var options = this.parseOptions(this.indent, groups);
+      var allowFallthrough = (isFakeChoice === true) || this.getVar("implicit_control_flow");
+      var options = this.parseOptions(this.indent, groups, allowFallthrough);
       if (!this.temps._choiceEnds) {
         this.temps._choiceEnds = {};
       }
       for (i = 0; i < options.length; i++) {
-        this.temps._choiceEnds[options[i].line-1] = this.lineNum;
+        this.temps._choiceEnds[options[i].line-1] = allowFallthrough ? this.lineNum : 0;
       }
       var flattenedOptions = [];
       flattenOptions(flattenedOptions, options);

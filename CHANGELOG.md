@@ -11,7 +11,7 @@ Changes to the plugin.
 ### Changed
 
 - Now optionally allows `*script` commands to execute. By default the command is blocked, but you can change that through the new "Allow Unsafe Script" setting. (MR #34, courtesy Carey Williams.)
-- Updated Choicescript to latest version (3c51a79).
+- Updated Choicescript to latest version (60a6c3e).
 
 ### Fixed
 
