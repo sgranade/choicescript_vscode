@@ -1,32 +1,55 @@
-name: build
+name: Node.js CI
 
 on:
-  push:
-    branches: [ main ]
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
 
 jobs:
-  build:
+    build:
+        runs-on: ubuntu-latest
 
-    runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                node-version: ["22.x", "24.x"]
+                # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v7
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "npm"
+            - name: Install Packages
+              run: npm ci
+            - name: Compile
+              run: npm run compile --if-present
+            - name: Test
+              run: npm test
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm install
-    - run: xvfb-run -a npm test
-      if: runner.os == 'Linux'
-    - run: npm test
-      if: runner.os != 'Linux'
-    - name: Coverage
-      run: npm run report-coverage
-    - uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.lcov
+    coverage:
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            id-token: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Use Node.js 24.x
+              uses: actions/setup-node@v7
+              with:
+                  node-version: "24.x"
+                  cache: "npm"
+            - name: Install Packages
+              run: npm ci
+            - name: Coverage
+              run: npm run coverage
+            - uses: codecov/codecov-action@v7
+              with:
+                  files: ./coverage.lcov
+                  use_oidc: true
