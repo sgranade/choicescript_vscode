@@ -1,108 +1,264 @@
-import { type CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { type CompletionItem, CompletionItemKind } from "vscode-languageserver";
 
-import { getFilenameFromUri, extractToMatchingDelimiter } from './utilities';
+import { getFilenameFromUri, extractToMatchingDelimiter } from "./utilities";
 import type { ReadonlyAchievementIndex } from "./index";
-
 
 /* COMMANDS */
 
 /**
  * Commands that can only be used in startup.txt
  */
-export const startupCommands: readonly string[] = ["create", "create_array", "scene_list", "title", "author", "achievement", "product", "ifid"];
+export const startupCommands: readonly string[] = [
+    "create",
+    "create_array",
+    "scene_list",
+    "title",
+    "author",
+    "achievement",
+    "product",
+    "ifid",
+];
 
 /**
  * Complete list of valid commands.
- * 
+ *
  * Note that, as these change, the syntax highlighting in
  * cs.tmLanguage.json should be updated.
  */
 export const validCommands: readonly string[] = [
-	"comment", "goto", "gotoref", "label", "looplimit", "finish", "abort",
-	"choice", "create",	"create_array", "temp", "temp_array", "delete",
-	"delete_array", "set", "setref", "print", "if", "selectable_if", "rand",
-	"page_break", "line_break", "script", "else", "elseif", "elsif", "reset",
-	"goto_scene", "fake_choice", "input_text", "ending", "share_this_game",	"stat_chart",
-	"subscribe", "show_password", "gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse",
-	"check_purchase", "restore_purchases", "purchase", "restore_game", "advertisement",
-	"kindle_search", "kindle_product", "feedback",
-	"save_game", "delay_break", "image", "kindle_image", "link", "input_number", "goto_random_scene",
-	"restart", "more_games", "delay_ending", "end_trial", "login", "achieve", "scene_list", "title",
-	"bug", "link_button", "check_registration", "sound", "author", "gosub_scene", "achievement",
-	"check_achievements", "redirect_scene", "print_discount", "purchase_discount", "track_event",
-	"timer", "youtube", "product", "text_image", "ai", "params", "config", "ifid",
-	"page_break_advertisement", "finish_advertisement",
-	"save_checkpoint", "restore_checkpoint",
+    "comment",
+    "goto",
+    "gotoref",
+    "label",
+    "looplimit",
+    "finish",
+    "abort",
+    "choice",
+    "create",
+    "create_array",
+    "temp",
+    "temp_array",
+    "delete",
+    "delete_array",
+    "set",
+    "setref",
+    "print",
+    "if",
+    "selectable_if",
+    "rand",
+    "page_break",
+    "line_break",
+    "script",
+    "else",
+    "elseif",
+    "elsif",
+    "reset",
+    "goto_scene",
+    "fake_choice",
+    "input_text",
+    "ending",
+    "share_this_game",
+    "stat_chart",
+    "subscribe",
+    "show_password",
+    "gosub",
+    "return",
+    "hide_reuse",
+    "disable_reuse",
+    "allow_reuse",
+    "check_purchase",
+    "restore_purchases",
+    "purchase",
+    "restore_game",
+    "advertisement",
+    "kindle_search",
+    "kindle_product",
+    "feedback",
+    "save_game",
+    "delay_break",
+    "image",
+    "kindle_image",
+    "link",
+    "input_number",
+    "goto_random_scene",
+    "restart",
+    "more_games",
+    "delay_ending",
+    "end_trial",
+    "login",
+    "achieve",
+    "scene_list",
+    "title",
+    "bug",
+    "link_button",
+    "check_registration",
+    "sound",
+    "author",
+    "gosub_scene",
+    "achievement",
+    "check_achievements",
+    "redirect_scene",
+    "print_discount",
+    "purchase_discount",
+    "track_event",
+    "timer",
+    "youtube",
+    "product",
+    "text_image",
+    "ai",
+    "params",
+    "config",
+    "ifid",
+    "page_break_advertisement",
+    "finish_advertisement",
+    "save_checkpoint",
+    "restore_checkpoint",
 ];
 
 /**
  * Commands that require arguments.
  */
 export const argumentRequiredCommands: readonly string[] = [
-	"goto", "gotoref", "label", "create", "temp", "delete", "set", "setref", "print", "if", "selectable_if",
-	"rand", "script", "elseif", "elsif", "goto_scene", "input_text", "gosub", "save_game", "image", "link",
-	"input_number", "achieve", "title", "author", "gosub_scene", "achievement", "timer", "redirect_scene",
-	"text_image", "config", "delay_ending", "ifid", "kindle_search", "kindle_product"
+    "goto",
+    "gotoref",
+    "label",
+    "create",
+    "temp",
+    "delete",
+    "set",
+    "setref",
+    "print",
+    "if",
+    "selectable_if",
+    "rand",
+    "script",
+    "elseif",
+    "elsif",
+    "goto_scene",
+    "input_text",
+    "gosub",
+    "save_game",
+    "image",
+    "link",
+    "input_number",
+    "achieve",
+    "title",
+    "author",
+    "gosub_scene",
+    "achievement",
+    "timer",
+    "redirect_scene",
+    "text_image",
+    "config",
+    "delay_ending",
+    "ifid",
+    "kindle_search",
+    "kindle_product",
 ];
 
 /**
  * Commands that must not have any arguments.
  */
 export const argumentDisallowedCommands: readonly string[] = [
-	"else", "page_break_advertisement", "finish_advertisement"
+    "else",
+    "page_break_advertisement",
+    "finish_advertisement",
 ];
 
 /**
  * Commands that silently ignore any arguments.
  */
 export const argumentIgnoredCommands: readonly string[] = [
-	"line_break", "reset", "ending", "stat_chart", "return", "goto_random_scene",
-	"restart", "scene_list", "check_achievements"
+    "line_break",
+    "reset",
+    "ending",
+    "stat_chart",
+    "return",
+    "goto_random_scene",
+    "restart",
+    "scene_list",
+    "check_achievements",
 ];
 
 /**
  * Commands that can be used in front of a choice option.
  */
 export const optionAllowedCommands: readonly string[] = [
-	"hide_reuse", "disable_reuse", "allow_reuse", "if", "selectable_if"
+    "hide_reuse",
+    "disable_reuse",
+    "allow_reuse",
+    "if",
+    "selectable_if",
 ];
 
 /**
  * Commands that modify display of an option.
  */
-export const reuseCommands: readonly string[] = ["allow_reuse", "hide_reuse", "disable_reuse"];
+export const reuseCommands: readonly string[] = [
+    "allow_reuse",
+    "hide_reuse",
+    "disable_reuse",
+];
 
 /**
  * Commands that must only be in containing blocks (like "*if" or "*choice")
  */
-export const insideBlockCommands: readonly string[] = ["selectable_if", "elseif", "elsif", "else"];
+export const insideBlockCommands: readonly string[] = [
+    "selectable_if",
+    "elseif",
+    "elsif",
+    "else",
+];
 
 /**
  * Commands that create labels or variables.
  */
-export const symbolCreationCommands: readonly string[] = ["temp", "label", "params", "create"];
+export const symbolCreationCommands: readonly string[] = [
+    "temp",
+    "label",
+    "params",
+    "create",
+];
 
 /**
  * Commands that reference variables that won't otherise be handled if they're outside their proper containing command (like "*if" or "*choice")
  */
-export const variableReferenceCommands: readonly string[] = ["selectable_if", "elseif", "elsif"];
+export const variableReferenceCommands: readonly string[] = [
+    "selectable_if",
+    "elseif",
+    "elsif",
+];
 
 /**
  * Commands that manipulate the contents of variables.
  */
 export const variableManipulationCommands: readonly string[] = [
-	"set", "delete", "rand", "input_text", "input_number"
+    "set",
+    "delete",
+    "rand",
+    "input_text",
+    "input_number",
 ];
 
 /**
  * Commands that control flow.
  */
-export const flowControlCommands: readonly string[] = ["goto", "gosub", "goto_scene", "gosub_scene", "return"];
+export const flowControlCommands: readonly string[] = [
+    "goto",
+    "gosub",
+    "goto_scene",
+    "gosub_scene",
+    "return",
+];
 
 /**
  * Sub-commands under a *stat_chart command.
  */
-export const statChartCommands: readonly string[] = ["text", "percent", "opposed_pair"];
+export const statChartCommands: readonly string[] = [
+    "text",
+    "percent",
+    "opposed_pair",
+];
 
 /**
  * Sub-commands under a *stat_chart command that have at least one indented line after.
@@ -114,27 +270,70 @@ export const statChartBlockCommands: readonly string[] = ["opposed_pair"];
 /**
  * Commands to auto-complete in startup.txt only
  */
-export const startupCommandsCompletions: CompletionItem[] = ["create", "scene_list", "title", "author", "achievement"].map(x => ({
-	label: x,
-	kind: CompletionItemKind.Keyword,
-	data: "command"
+export const startupCommandsCompletions: CompletionItem[] = [
+    "create",
+    "scene_list",
+    "title",
+    "author",
+    "achievement",
+].map((x) => ({
+    label: x,
+    kind: CompletionItemKind.Keyword,
+    data: "command",
 }));
 
 /**
  * Commands to auto-complete
  */
 export const validCommandsCompletions: CompletionItem[] = [
-	"comment", "goto", "label", "finish", "choice", "temp", "delete", "set", "if", "rand", "page_break", "line_break",
-	"script", "else", "elseif", "goto_scene", "fake_choice", "input_text", "ending", "stat_chart",
-	"gosub", "return", "hide_reuse", "disable_reuse", "allow_reuse", "save_game", "image", "link", "input_number",
-	"goto_random_scene", "restart", "achieve", "bug", "sound", "gosub_scene", "check_achievements", "redirect_scene",
-	"text_image", "params", "delay_break", "delay_ending", "save_checkpoint", "restore_checkpoint"
-].map(x => ({
-	label: x,
-	kind: CompletionItemKind.Keyword,
-	data: "command"
+    "comment",
+    "goto",
+    "label",
+    "finish",
+    "choice",
+    "temp",
+    "delete",
+    "set",
+    "if",
+    "rand",
+    "page_break",
+    "line_break",
+    "script",
+    "else",
+    "elseif",
+    "goto_scene",
+    "fake_choice",
+    "input_text",
+    "ending",
+    "stat_chart",
+    "gosub",
+    "return",
+    "hide_reuse",
+    "disable_reuse",
+    "allow_reuse",
+    "save_game",
+    "image",
+    "link",
+    "input_number",
+    "goto_random_scene",
+    "restart",
+    "achieve",
+    "bug",
+    "sound",
+    "gosub_scene",
+    "check_achievements",
+    "redirect_scene",
+    "text_image",
+    "params",
+    "delay_break",
+    "delay_ending",
+    "save_checkpoint",
+    "restore_checkpoint",
+].map((x) => ({
+    label: x,
+    kind: CompletionItemKind.Keyword,
+    data: "command",
 }));
-
 
 /* RESERVED WORDS */
 
@@ -142,56 +341,64 @@ export const validCommandsCompletions: CompletionItem[] = [
  * ChoiceScript built-in functions
  */
 export const functions: readonly string[] = [
-	"not", "round", "timestamp", "log", "length", "auto"
+    "not",
+    "round",
+    "timestamp",
+    "log",
+    "length",
+    "auto",
 ];
 
 /**
  * ChoiceScript functions that take numbers
  */
 export const numberFunctions: readonly string[] = [
-	"round", "length", "log", "timestamp"
+    "round",
+    "length",
+    "log",
+    "timestamp",
 ];
 
 /**
  * ChoiceScript functions that take booleans
  */
-export const booleanFunctions: readonly string[] = [
-	"not"
-];
+export const booleanFunctions: readonly string[] = ["not"];
 
 /**
  * ChoiceScript built-in variables
  */
-const choiceVariableAppNames = [ "ios", "ipad", "android", "omnibus", "amazon" ];
+const choiceVariableAppNames = ["ios", "ipad", "android", "omnibus", "amazon"];
 const choiceVariableIsNames = [
-	"web",
-	"steam(_deck)?",
-	"(" + choiceVariableAppNames.join("|") + ")_app",
-	"advertising_supported",
-	"trial"
+    "web",
+    "steam(_deck)?",
+    "(" + choiceVariableAppNames.join("|") + ")_app",
+    "advertising_supported",
+    "trial",
 ];
 const choiceVariableNames = [
-	"(subscribe|register|restore_purchases|save)_allowed",
-	"registered",
-	"is_(" + choiceVariableIsNames.join("|") + ")",
-	"release_date",
-	"prerelease",
-	"kindle",
-	"(random|quick)test",
-	"linenum",
-	"scene",
-	"time_stamp",
-	"nightmode",
-	"title",
-	"saved_checkpoint(_[a-zA-Z0-9_]+)?",
-	"reuse",
-	"user_restored",
-	"restore_name",
-	"just_restored_checkpoint",
-	"purchase_supported",
-	"purchased_adfree"
+    "(subscribe|register|restore_purchases|save)_allowed",
+    "registered",
+    "is_(" + choiceVariableIsNames.join("|") + ")",
+    "release_date",
+    "prerelease",
+    "kindle",
+    "(random|quick)test",
+    "linenum",
+    "scene",
+    "time_stamp",
+    "nightmode",
+    "title",
+    "saved_checkpoint(_[a-zA-Z0-9_]+)?",
+    "reuse",
+    "user_restored",
+    "restore_name",
+    "just_restored_checkpoint",
+    "purchase_supported",
+    "purchased_adfree",
 ];
-export const builtinVariables = new RegExp(`^${choiceVariableNames.join("|")}$`);
+export const builtinVariables = new RegExp(
+    `^${choiceVariableNames.join("|")}$`,
+);
 
 /**
  * ChoiceScript param variables
@@ -202,55 +409,60 @@ export const paramValues = new RegExp("^param_(count|\\d+)$");
  * Math operators
  */
 export const mathOperators: readonly string[] = [
-	"+", "-", "*", "/", "%", "^", "%+", "%-",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "^",
+    "%+",
+    "%-",
 ];
 
 /**
  * Comparison operators
  */
 export const comparisonOperators: readonly string[] = [
-	"=", "<", ">", "<=", ">=", "!="
+    "=",
+    "<",
+    ">",
+    "<=",
+    ">=",
+    "!=",
 ];
 
 /**
  * String operators
  */
-export const stringOperators: readonly string[] = [
-	"&", "#"
-];
+export const stringOperators: readonly string[] = ["&", "#"];
 
 /**
  * Numeric named operators
  */
-export const numericNamedOperators: readonly string[] = [
-	"modulo"
-];
+export const numericNamedOperators: readonly string[] = ["modulo"];
 
 /**
  * ChoiceScript named operators
  */
-export const booleanNamedOperators: readonly string[] = [
-	"and", "or"
-];
+export const booleanNamedOperators: readonly string[] = ["and", "or"];
 
 /**
  * ChoiceScript named values
  */
-export const booleanNamedValues: readonly string[] = [
-	"true", "false"
-];
-
+export const booleanNamedValues: readonly string[] = ["true", "false"];
 
 /* PATTERNS */
 
 /**
  * Pattern to find legal commands.
  */
-export const commandPattern = "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
+export const commandPattern =
+    "(?<commandPrefix>(\\n|^)[ \t]*?)\\*(?<command>\\w+)((?<commandSpacing>[ \t]*)(?<commandLine>.+))?";
 /**
  * Pattern to find commands that aren't on a line by themselves.
  */
-export const incorrectCommandPattern = "(?<=\\S)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
+export const incorrectCommandPattern =
+    "(?<=\\S)(?<commandPrefix>[ \t]+)\\*(?<command>\\w+)";
 /**
  * Pattern to find the start of a multireplace.
  */
@@ -262,7 +474,8 @@ export const replacementStartPattern = "(?<replacement>\\$!?!?{)";
 /**
  * Pattern to find a choice option line, along with allowed commands.
  */
-export const optionPattern = "(\\n|^)(?<optionPrefix>[ \t]*?)(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?(?<option>#(?<optionContents>.*))";
+export const optionPattern =
+    "(\\n|^)(?<optionPrefix>[ \t]*?)(\\*(disable|enable|hide)_reuse\\s+)?(\\*(selectable_)?if\\s+[^#*]+?)?(?<option>#(?<optionContents>.*))";
 /**
  * Pattern to find a markup element like bold or italic.
  */
@@ -270,8 +483,8 @@ export const markupPattern = "\\[\\/?(i|b)\\]";
 /**
  * Pattern to find elements that go against Choice of Games style guide.
  */
-export const stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
-
+export const stylePattern =
+    "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))";
 
 /* FUNCTIONS */
 
@@ -283,25 +496,23 @@ export const stylePattern = "(?<styleGuide>(?<!\\.)\\.{3}(?!\\.)|(?<!-)--(?!-))"
  * @returns The symbol.
  */
 export function extractSymbolAtIndex(text: string, index: number): string {
-	const symbolCharacter = /\w/;
-	let start = index;
-	while (start >= 0 && symbolCharacter.test(text[start]))
-		start--;
-	let end = index;
-	while (end < text.length && symbolCharacter.test(text[end]))
-		end++;
+    const symbolCharacter = /\w/;
+    let start = index;
+    while (start >= 0 && symbolCharacter.test(text[start])) start--;
+    let end = index;
+    while (end < text.length && symbolCharacter.test(text[end])) end++;
 
-	const symbol = text.slice(start + 1, end);
-	return symbol;
+    const symbol = text.slice(start + 1, end);
+    return symbol;
 }
 
 const wordCharGlobalRegex = /\w+/g;
 
 /**
  * Extract a token from a string.
- * 
+ *
  * The token must be at the given index, or else `undefined` is returned.
- * 
+ *
  * Returns `undefined` if an opening delimiter is matched with no maching close delimiter found.
  * @param text Text to extract a token from.
  * @param index Index into the text from which to extract the token.
@@ -309,38 +520,42 @@ const wordCharGlobalRegex = /\w+/g;
  * @param symbolChars Characters that are considered to make up a symbol. Uses \w by default.
  */
 export function extractTokenAtIndex(
-	text: string,
-	index: number,
-	delimiters = "{}",
-	symbolChars = "\\w"
+    text: string,
+    index: number,
+    delimiters = "{}",
+    symbolChars = "\\w",
 ): string | undefined {
-	if (delimiters.length % 2) {
-		throw Error(`Delimiters ${delimiters} are not paired`);
-	}
-	for (let i = 0; i < delimiters.length; i += 2) {
-		if (text[index] == delimiters[i]) {
-			const match = extractToMatchingDelimiter(text, delimiters[i], delimiters[i + 1], index + 1);
-			if (match !== undefined) {
-				return delimiters[i] + match + delimiters[i + 1];
-			}
-			return undefined;
-		}
-	}
+    if (delimiters.length % 2) {
+        throw Error(`Delimiters ${delimiters} are not paired`);
+    }
+    for (let i = 0; i < delimiters.length; i += 2) {
+        if (text[index] == delimiters[i]) {
+            const match = extractToMatchingDelimiter(
+                text,
+                delimiters[i],
+                delimiters[i + 1],
+                index + 1,
+            );
+            if (match !== undefined) {
+                return delimiters[i] + match + delimiters[i + 1];
+            }
+            return undefined;
+        }
+    }
 
-	let pattern: RegExp;
-	if (symbolChars == "\\w") {
-		pattern = wordCharGlobalRegex;
-	}
-	else {
-		pattern = RegExp(`[${symbolChars}]+`, 'g');
-	}
-	pattern.lastIndex = index;
-	const m = pattern.exec(text);
-	if (m !== null && m.index == index) {
-		return m[0];
-	}
+    let pattern: RegExp;
+    if (symbolChars == "\\w") {
+        pattern = wordCharGlobalRegex;
+    } else {
+        pattern = RegExp(`[${symbolChars}]+`, "g");
+    }
+    pattern.lastIndex = index;
+    const m = pattern.exec(text);
+    if (m !== null && m.index == index) {
+        return m[0];
+    }
 
-	return undefined;
+    return undefined;
 }
 
 /**
@@ -349,16 +564,23 @@ export function extractTokenAtIndex(
  * @param achievements Index of achievements.
  * @returns The achievement codename, or undefined if it's not an achievement variable.
  */
-export function variableIsAchievement(variable: string, achievements: ReadonlyAchievementIndex): string | undefined {
-	let codename: string | undefined = undefined;
+export function variableIsAchievement(
+    variable: string,
+    achievements: ReadonlyAchievementIndex,
+): string | undefined {
+    let codename: string | undefined = undefined;
 
-	const achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
-	const m = achievementVariablePattern.exec(variable);
-	if (m !== null && m.groups !== undefined && achievements.has(m.groups.codename)) {
-		codename = m.groups.codename;
-	}
+    const achievementVariablePattern = /^choice_achieved_(?<codename>\w+)$/;
+    const m = achievementVariablePattern.exec(variable);
+    if (
+        m !== null &&
+        m.groups !== undefined &&
+        achievements.has(m.groups.codename)
+    ) {
+        codename = m.groups.codename;
+    }
 
-	return codename;
+    return codename;
 }
 
 /**
@@ -367,7 +589,7 @@ export function variableIsAchievement(variable: string, achievements: ReadonlyAc
  * @returns The achievement variable related to the codename.
  */
 export function convertAchievementToVariable(achievement: string): string {
-	return `choice_achieved_${achievement}`;
+    return `choice_achieved_${achievement}`;
 }
 
 /**
@@ -375,7 +597,7 @@ export function convertAchievementToVariable(achievement: string): string {
  * @param variable Variable name.
  */
 export function variableIsPossibleParameter(variable: string): boolean {
-	return /^param_\d+$/.test(variable);
+    return /^param_\d+$/.test(variable);
 }
 
 /**
@@ -383,31 +605,30 @@ export function variableIsPossibleParameter(variable: string): boolean {
  * @param uri URI to the scene file.
  */
 export function sceneFromUri(uri: string): string | undefined {
-	const m = /([\w-]+).txt$/.exec(uri);
-	if (m == null) {
-		return undefined;
-	}
-	else {
-		return m[1];
-	}
+    const m = /([\w-]+).txt$/.exec(uri);
+    if (m == null) {
+        return undefined;
+    } else {
+        return m[1];
+    }
 }
 
 /**
  * Determine if a URI points to a ChoiceScript startup file.
- * 
+ *
  * @param uriString URI to see if it refers to the startup file.
  * @returns True if the URI is to the startup file, false otherwise.
  */
 export function uriIsStartupFile(uriString: string): boolean {
-	return (getFilenameFromUri(uriString) == "startup.txt");
+    return getFilenameFromUri(uriString) == "startup.txt";
 }
 
 /**
  * Determine if a URI points to a ChoiceScript stats file.
- * 
+ *
  * @param uriString URI to see if it refers to the stats file.
  * @returns True if the URI is to the stats file, false otherwise.
  */
 export function uriIsChoicescriptStatsFile(uriString: string): boolean {
-	return (getFilenameFromUri(uriString) == "choicescript_stats.txt");
+    return getFilenameFromUri(uriString) == "choicescript_stats.txt";
 }
