@@ -17,6 +17,7 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
+		"@types/uuid": "^10.0.0",
 		"@types/vscode": "^1.75.0"
 	}
 }
