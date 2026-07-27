@@ -310,7 +310,8 @@
         "package": "npm-run-all2 check-types \"esbuild -- --production\"",
         "test": "cross-env nyc mocha",
         "coverage": "cross-env nyc mocha && nyc report --reporter=text-lcov > coverage.lcov",
-        "lint": "eslint ./client/src ./server/src"
+        "lint": "eslint ./client/src ./server/src",
+        "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
