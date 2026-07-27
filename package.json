@@ -304,14 +304,13 @@
         "check-types": "tsc -b --noEmit",
         "esbuild": "node esbuild.js",
         "minify-cs": "node utilities/minify-cs.mjs",
-        "watch": "npm-run-all -p watch:*",
+        "watch": "npm-run-all2 -p watch:*",
         "watch:esbuild": "node esbuild.js --watch",
         "watch:tsc": "tsc -b --noEmit --watch",
-        "package": "npm-run-all check-types \"esbuild -- --production\"",
+        "package": "npm-run-all2 check-types \"esbuild -- --production\"",
         "test": "cross-env nyc mocha",
-        "coverage": "nyc report --reporter=text-lcov > coverage.lcov",
-        "lint": "eslint ./client/src ./server/src",
-        "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+        "coverage": "cross-env nyc mocha && nyc report --reporter=text-lcov > coverage.lcov",
+        "lint": "eslint ./client/src ./server/src"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
