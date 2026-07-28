@@ -1,11 +1,9 @@
 # ChoiceScript VS Code
 
-![Build Status](https://github.com/sgranade/choicescript_vscode/workflows/build/badge.svg)
+[![Build Status](https://github.com/sgranade/choicescript_vscode/actions/workflows/node-ci.yml/badge.svg)](https://github.com/sgranade/choicescript_vscode/actions/workflows/node-ci.yml)
 [![Coverage](https://codecov.io/gh/sgranade/choicescript_vscode/branch/main/graph/badge.svg)](https://codecov.io/gh/sgranade/choicescript_vscode)
 
-
 A VS Code plugin for [ChoiceScript], a language for writing choose-your-own-path text games.
-
 
 ## Features
 
@@ -23,18 +21,15 @@ A VS Code plugin for [ChoiceScript], a language for writing choose-your-own-path
 - Word count that counts only what the player will see
 - Generate stats about your stats
 
-
 ## Installation
 
 [Install from the VSCode extension marketplace][marketplace].
-
 
 ## Getting Started
 
 Open your ChoiceScript folder, often named `mygame`, and the language server will index the entire project.
 
 Note that, since ChoiceScript files are just text files, the extension treats all `.txt` files as ChoiceScript files. To avoid that, only enable the extension for workspaces that contain your ChoiceScript game.
-
 
 ## Running Your Game
 
@@ -43,7 +38,6 @@ To run the game, press the Run Game button on the left side of the bottom status
 ![Run Game](https://raw.githubusercontent.com/sgranade/choicescript_vscode/main/images/cs-run-game-button.png)
 
 The game will open in a separate tab in Visual Studio Code. To restart the game, close that tab and then press the Run Game button again. The game will update with any changes you've made to your files.
-
 
 ## Testing Your Game
 
@@ -60,7 +54,6 @@ Quicktest results will appear in the Output window at the bottom of VS Code. If 
 Randomtest requires more steps. When you run Randomtest, the extension will prompt you for how many times to run randomtest, whether to show the game's text, and more. To skip that step, you can set default Randomtest settings in the [extension's settings][settings].
 
 If you run Randomtest without it printing the game's text, the results will appear in the Output window. If it prints the game's text, the results will open in a separate editor window that you can save. However, Randomtest can produce larger files than VS Code will allow the extension to open. In that case, it will save the results to a text file in your workspace. You can then open the file yourself.
-
 
 ## Generate Statistics About Your Stats
 
@@ -112,7 +105,6 @@ This will be hidden.
 This will also be shown.
 ```
 
-
 ## Settings
 
 To use the style snippets that turn `...` into an ellipsis and `--` into an em-dash, [enable snippet tab completion][snippets]. Then type three periods and hit tab to turn them into an ellipsis.
@@ -123,6 +115,7 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 - Type in `Preferences: Configure Language Specific Settings...` and run that command
 - Select "ChoiceScript" from the dropdown
 - Add the following text to the `settings.json` file that VS Code opens
+
 ```
 {
     "[choicescript]": {
@@ -135,16 +128,13 @@ For writing ChoiceScript games, VS Code's auto-word suggestions can be annoying.
 }
 ```
 
-
 ## Showing Images When Running Your Game
 
 The ChoiceScript [`*image`][image] command displays remote and local image. For the extension to show your local images when you run your game, put those image files either in the same directory as your scene files (such as `startup.txt`) or in the directory above it.
 
-
 ## Currently Unsupported Features
 
 - [Array notation]. Right now it ignores arrays entirely.
-
 
 ## Release Notes
 
@@ -156,11 +146,9 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 - `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
 - Updated Choicescript to latest version (c9b1a39).
 
-
 ### [3.1.0]
 
 - Games are now opened in a VS Code tab instead of opening a browser window. (Courtesy Carey Williams).
-
 
 ### [3.0.0]
 
@@ -171,7 +159,6 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 - Images can now either be in the same directory as scene files or one directory up (the `mygame` directory).
 - Minor bug fixes.
 
-
 ### [2.6.0]
 
 - Ability to turn on showing text for only parts of a randomtest run using `*comment text off` and `*comment text on`.
@@ -180,12 +167,10 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 - Randomtest settings are now updated properly, even when a test fails.
 - Fixed a handful of bugs around `*param` and array variables.
 
-
 ### [2.5.0]
 
 - The extension now disables auto-complete for text. To get the old behavior back, uncheck the "Disable Quick Suggestions" option in Settings.
 - Added support for the [`*ifid`][ifid] command.
-
 
 ### [2.4.0]
 
@@ -195,7 +180,6 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 - Re-ordered randomtest options in the context menu.
 - Fixed numerous syntax highlighting, parsing, and error-marking bugs.
 
-
 ### [2.3.0]
 
 - You can now re-run Randomtest using the previous run's settings, to make it easier to repeat Randomtest runs with custom settings.
@@ -203,24 +187,19 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 - Improved Quicktest error message handling to properly identify what file the error occurred in.
 - Several fixes to syntax highlighting and parsing `#options` and their associated `*if`s.
 
-
 ### [2.2.0]
 
 - To support [workspace trust], the extension disables running, quicktesting, or randomtesting games in workspaces you haven't marked as trusted.
 - No longer incorrectly flags multireplaces like `@{var dashed-word adjective|}` as potentially missing parentheses.
-
 
 ### [2.1.0]
 
 - When running Quicktest or Randomtest, all open files are saved so that your latest code is used.
 - Better error messages for using negative numbers in comparisons (like `*if var < -2`), which aren't allowed.
 
-
 ### [2.0.0]
 
 This update brings big new features: the ability to run your game in a browser for live-testing, and a way to run ChoiceScript Quicktest and Randomtest utilities from VS Code without having to download ChoiceScript.
-
-
 
 [Array notation]: https://forum.choiceofgames.com/t/new-choicescript-features-for-programmers/8423
 [Choicescript]: https://github.com/dfabulich/choicescript/

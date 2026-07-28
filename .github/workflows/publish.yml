@@ -1,0 +1,72 @@
+name: Publish Extension
+
+on:
+    release:
+        types: [published]
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: "Dry run w/o publishing"
+                type: boolean
+                default: true
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Set Up Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: "24.x"
+                  cache: "npm"
+            - name: Install Packages
+              run: npm ci
+            - name: Compile
+              run: npm run compile
+            - name: Package
+              run: npx vsce package --out extension.vsix
+            - name: Upload VSIX
+              uses: actions/upload-artifact@v7
+              with:
+                  name: extension-vsix
+                  path: extension.vsix
+
+    publish-vscode:
+        needs: build
+
+        runs-on: ubuntu-latest
+
+        environment: marketplace-publish
+
+        steps:
+            - name: Download VSIX
+              uses: actions/download-artifact@v8
+              with: { name: extension-vsix }
+            - name: Publish to Visual Studio Marketplace
+              uses: HaaLeo/publish-vscode-extension@v2
+              with:
+                  pat: ${{ secrets.VSCE_PAT }}
+                  extensionFile: extension.vsix
+                  dryRun: ${{ inputs.dry_run || false }}
+
+    publish-openvsx:
+        needs: build
+
+        runs-on: ubuntu-latest
+
+        environment: marketplace-publish
+
+        steps:
+            - name: Download VSIX
+              uses: actions/download-artifact@v8
+              with: { name: extension-vsix }
+            - name: Publish to Open VSX
+              uses: HaaLeo/publish-vscode-extension@v2
+              with:
+                  pat: ${{ secrets.OVSX_PAT }}
+                  extensionFile: extension.vsix
+                  registryUrl: https://open-vsx.org
+                  dryRun: ${{ inputs.dry_run || false }}
