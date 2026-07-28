@@ -138,6 +138,14 @@ The ChoiceScript [`*image`][image] command displays remote and local image. For 
 
 ## Release Notes
 
+### [3.2.0]
+
+- Added `@{}` multireplace snippet.
+- Now optionally allows `*script` commands to execute. By default the command is blocked, but you can change that through the new "Allow Unsafe Script" setting. (MR #34, courtesy Carey Williams.)
+- Game panel no longer says "Loading..." if there's no `*title` command. (MR #35, courtesy Carey Williams.)
+- Syntax highlighting: `*comment`, `*label`, `TODO`, `true`, `false`, `and`, and `or` are no longer highlighted unless they're semantically correct (i.e. "todolist" no longer highlights "todo"). (Courtesy Vadim Rychkov.)
+- Updated Choicescript to latest version (60a6c3e).
+
 ### [3.1.1]
 
 - Creating a variable that starts with `choice_` is now properly flagged as an error.

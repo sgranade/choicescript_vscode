@@ -2,7 +2,7 @@
 
 Changes to the plugin.
 
-## Unreleased
+## [3.2.0] - 2026-07-27
 
 ### Added
 
@@ -30,7 +30,6 @@ Changes to the plugin.
 - `*save_checkpoint` and `*restore_checkpoint` now don't give an error when they don't include a slot's name.
 - `*save_checkpoint` and `*restore_checkpoint` now autocomplete properly.
 - `choice_just_restored_checkpoint` and `choice_saved_checkpoint` are now properly treated as built-in variables.
-
 
 ## [3.1.0] - 2024-07-21
 
@@ -204,9 +203,9 @@ This update brings big new features: the ability to run your game in a browser f
 - Warn when a `*temp` variable has the same name as an earlier-created one.
 - `*create`, `*temp`, `*gosub`, and `*gosub_scene` now properly provide variable completions.
 - More error catching.
-  - #Options outside of a `*choice` command are flagged as an error.
-  - #Options in a `*choice` command must have contents.
-  - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
+    - #Options outside of a `*choice` command are flagged as an error.
+    - #Options in a `*choice` command must have contents.
+    - Multireplaces with no space between the parentheses and the options, like `@{(true)one|two}`, are now properly flagged as an error.
 
 ### Fixed
 
@@ -238,8 +237,8 @@ This update brings big new features: the ability to run your game in a browser f
 ### Added
 
 - More error catching.
-  - Flags any arguments to an `*if` before an `#Option` that aren't in parentheses.
-  - Flags `*label` names with spaces in them.
+    - Flags any arguments to an `*if` before an `#Option` that aren't in parentheses.
+    - Flags `*label` names with spaces in them.
 
 ### Fixed
 
@@ -256,11 +255,11 @@ This update brings big new features: the ability to run your game in a browser f
 
 - Word count appears in the status bar.
 - More error catching.
-  - Properly checks the use of `*disable/enable/hide_reuse`, and `*if`/`*selectable_if` commands before #options.
-  - Catches `*create` commands used after `*temp` commands.
-  - Flags `*else` and `*elseif` used outside of an `*if` block.
-  - Catches `*if`, `*elseif`, and `*if` commands with no contents.
-  - Catches a switch from spaces to tabs (or vice versa)
+    - Properly checks the use of `*disable/enable/hide_reuse`, and `*if`/`*selectable_if` commands before #options.
+    - Catches `*create` commands used after `*temp` commands.
+    - Flags `*else` and `*elseif` used outside of an `*if` block.
+    - Catches `*if`, `*elseif`, and `*if` commands with no contents.
+    - Catches a switch from spaces to tabs (or vice versa)
 
 ### Fixed
 
@@ -286,17 +285,17 @@ This update brings big new features: the ability to run your game in a browser f
 
 - The document outline lets you see the flow of choices, labels, and variables in your game.
 - Error catching expanded.
-  - Parentheses' contents are now inspected for errors.
-  - Problems with `*set` commands.
-  - Problems with `*if` and `*elseif` commands.
-  - Errors with comparisons like `1 < 2`.
-  - Errors with values passed to functions like `not()`.
-  - Commands with arguments that don't allow them.
-  - Incorrectly-indented choices.
-  - Choices with text in front of them.
+    - Parentheses' contents are now inspected for errors.
+    - Problems with `*set` commands.
+    - Problems with `*if` and `*elseif` commands.
+    - Errors with comparisons like `1 < 2`.
+    - Errors with values passed to functions like `not()`.
+    - Commands with arguments that don't allow them.
+    - Incorrectly-indented choices.
+    - Choices with text in front of them.
 - Warnings expanded.
-  - Any text after commands that ignore that text.
-  - Multireplaces that may need parentheses.
+    - Any text after commands that ignore that text.
+    - Multireplaces that may need parentheses.
 
 ### Fixed
 
@@ -318,11 +317,11 @@ This update brings big new features: the ability to run your game in a browser f
 - Rename achievements.
 - Choices with more than 15 words are now flagged for review.
 - Error catching greatly expanded.
-  - Local `*temp` variables with the same name as `*create`d global variables now generate a warning.
-  - Re-creating variables or labels are now flagged.
-  - `*stat_chart` commands are now parsed and errors flagged.
-  - Nested multireplaces are now flagged.
-  - Invalid operators are now flagged.
+    - Local `*temp` variables with the same name as `*create`d global variables now generate a warning.
+    - Re-creating variables or labels are now flagged.
+    - `*stat_chart` commands are now parsed and errors flagged.
+    - Nested multireplaces are now flagged.
+    - Invalid operators are now flagged.
 
 ### Fixed
 

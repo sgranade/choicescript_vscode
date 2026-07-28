@@ -1,24 +1,24 @@
 {
-	"name": "choicescript-lsp-client",
-	"description": "ChoiceScript language client",
-	"author": "Stephen Granade",
-	"license": "MIT",
-	"version": "3.1.1",
-	"publisher": "StephenGranade",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/sgranade/choicescript_vscode"
-	},
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"dependencies": {
-		"urijs": "^1.19.11",
-		"vscode-languageclient": "^10.1.0",
-		"vscode-languageserver": "^10.1.0"
-	},
-	"devDependencies": {
-		"@types/uuid": "^10.0.0",
-		"@types/vscode": "^1.90.0"
-	}
+    "name": "choicescript-lsp-client",
+    "description": "ChoiceScript language client",
+    "author": "Stephen Granade",
+    "license": "MIT",
+    "version": "3.2.0",
+    "publisher": "StephenGranade",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sgranade/choicescript_vscode"
+    },
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "dependencies": {
+        "urijs": "^1.19.11",
+        "vscode-languageclient": "^10.1.0",
+        "vscode-languageserver": "^10.1.0"
+    },
+    "devDependencies": {
+        "@types/uuid": "^10.0.0",
+        "@types/vscode": "^1.90.0"
+    }
 }
