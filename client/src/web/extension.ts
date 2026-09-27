@@ -9,7 +9,7 @@ import { startClient } from "../common/client";
 let client: BaseLanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
-    const serverFile = `${context.extensionUri}/server/dist/web/server.js`;
+    const serverFile = `${context.extensionUri}/dist/server/web/server.js`;
 
     try {
         const serverWorker = new Worker(serverFile);

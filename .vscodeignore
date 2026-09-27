@@ -1,34 +1,64 @@
-.vscode/**
-.github/**
-.nyc_output/**
+# Ignore everything
+*
+*/
 
-**/*.ts
-**/*.map
-utilities/**
+# And these directories if they appear in subdirectories
+.vscode
+node_modules
 
-**/tsconfig.json
-**/tsconfig.base.json
+# Except these files
+!CHANGELOG.md
+!language-configuration.json
+!License.txt
+!package.json
+!README.md
+!snippets.json
 
-.gitignore
-.git-blame-ignore-revs
-contributing.md
-CHANGELOG.md
+# Note that the following are the actual extension files
+!dist/client/node/extension.js
+!dist/client/web/extension.js
+!dist/server/node/server.js
+!dist/choicescript/
+!dist/choicescript/**
+!images/icon.png
 
-.mocharc.json
-esbuild.mjs
-eslint.config.mjs
-coverage.lcov
+# And these directories
+!images
+!images/**
+!syntaxes
+!syntaxes/**
 
-TODO.md
-private-notes.txt
+# .vscode/**
+# .github/**
+# .nyc_output/**
 
-client/**
-!client/dist
-!client/dist/**/*
+# **/*.ts
+# **/*.map
+# utilities/**
 
-server/**
-!server/dist
-!server/dist/**/*
+# **/tsconfig.json
+# **/tsconfig.base.json
 
-choicescript/**
-!choicescript/out
+# .gitignore
+# .git-blame-ignore-revs
+# contributing.md
+# CHANGELOG.md
+
+# .mocharc.json
+# esbuild.mjs
+# eslint.config.mjs
+# coverage.lcov
+
+# TODO.md
+# private-notes.txt
+
+# client/**
+# !client/dist
+# !client/dist/**/*
+
+# server/**
+# !server/dist
+# !server/dist/**/*
+
+# choicescript/**
+# !choicescript/out

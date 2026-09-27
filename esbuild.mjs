@@ -1,6 +1,4 @@
 import * as esbuild from "esbuild";
-import * as fs from "fs/promises";
-import * as path from "path";
 
 const production = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
@@ -58,23 +56,23 @@ const builds = [
     {
         ...nodeOptions,
         entryPoints: ["client/src/node/extension.ts"],
-        outfile: "client/dist/node/extension.js",
+        outfile: "dist/client/node/extension.js",
     },
     {
         ...webOptions,
         entryPoints: ["client/src/web/extension.ts"],
-        outfile: "client/dist/web/extension.js",
+        outfile: "dist/client/web/extension.js",
         format: "cjs",
     },
     {
         ...nodeOptions,
         entryPoints: ["server/src/node/server.ts"],
-        outfile: "server/dist/node/server.js",
+        outfile: "dist/server/node/server.js",
     },
     {
         ...webOptions,
         entryPoints: ["server/src/web/server.ts"],
-        outfile: "server/dist/web/server.js",
+        outfile: "dist/server/web/server.js",
         format: "iife", // maybe? need to check
         globalName: "serverExportVar",
     },

@@ -7,7 +7,7 @@ import * as terser from "terser";
 
 // All paths relative to this file
 const REL_SRC = "../choicescript/src";
-const REL_OUT = "../choicescript/out";
+const REL_OUT = "../dist/choicescript";
 
 const srcPath = path.resolve(import.meta.dirname, REL_SRC);
 const outPath = path.resolve(import.meta.dirname, REL_OUT);

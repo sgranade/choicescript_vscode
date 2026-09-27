@@ -7,24 +7,41 @@
 			"request": "launch",
 			"name": "Launch Client (Node)",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceFolder}/client/dist/node/extension.js",
+				"${workspaceFolder}/dist/**/*.js",
 			],
+			"autoAttachChildProcesses": true,
+			// This preLaunchTask doesn't use the full "watch" task because that one spawns
+			// two separate watch sub-tasks (tsc to find type errors + esbuild), and problem
+			// detection doesn't properly handle two separate sub-tasks, leaving the launch 
+			// task to decide that the pre-launch task is never ready for the launch task
+			// to kick off.
+			//
+			// Turns out that that's okay b/c VS Code will warn the user if there are type errors
+			// separately from this preLaunchTask.
+			"preLaunchTask": {
+				"type": "npm",
+				"script": "watch:esbuild"
+			}
 		},
 		{
 			"type": "extensionHost",
 			"request": "launch",
 			"name": "Launch Client (Node, Break on Server Start)",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
 			"sourceMaps": true,
 			"env": {
 				"DEBUG_WAIT_FOR_SERVER": "1"
 			},
 			"outFiles": [
-				"${workspaceFolder}/client/dist/node/extension.js",
+				"${workspaceFolder}/dist/client/node/extension.js",
 			],
 		},
 		{
@@ -46,22 +63,8 @@
 			],
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceFolder}/client/dist/web/extension.js"
+				"${workspaceFolder}/dist/client/web/extension.js"
 			]
 		}
-	],
-	"compounds": [
-		{
-			"name": "Client + Server",
-			"configurations": ["Launch Client (Node)", "Attach to Server"]
-		},
-		{
-			"name": "Client + Server (Break on Server Start)",
-			"configurations": ["Launch Client (Node, Break on Server Start)", "Attach to Server"],
-		}
-	],
-	"resolveSourceMapLocations": [
-		"${workspaceFolder}/**",
-		"!**/node_modules/**"
 	]
 }

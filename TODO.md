@@ -20,5 +20,7 @@
 
 ## Infrastructure
 
+- Create a shared library for client and server
+    - See the`twine-twee-language` repo for an example
 - Node 22 build task is failing.
 - `globby` v14+ is ESM-only, which doesn't play nice with VS Code extensions. See [this discussion](https://github.com/chaijs/chai/issues/1568) for more info. Once we can handle ESM in VS Code extensions, upgrade to `globby` v14+.

@@ -51,8 +51,8 @@
         "color": "#C80000",
         "theme": "dark"
     },
-    "main": "./client/dist/node/extension",
-    "browser": "./client/dist/web/extension",
+    "main": "./dist/client/node/extension",
+    "browser": "./dist/client/web/extension",
     "contributes": {
         "languages": [
             {
@@ -298,20 +298,23 @@
             }
         }
     },
+    "workspaces": [
+        "client",
+        "server"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run package",
-        "compile": "npm-run-all2 check-types esbuild minify-cs",
+        "build": "npm-run-all2 check-types esbuild minify-cs",
         "check-types": "tsc -b --noEmit",
         "esbuild": "node esbuild.mjs",
         "minify-cs": "node utilities/minify-cs.mjs",
         "watch": "npm-run-all2 -p watch:*",
-        "watch:esbuild": "node esbuild.js --watch",
+        "watch:esbuild": "node esbuild.mjs --watch",
         "watch:tsc": "tsc -b --noEmit --watch",
         "package": "npm-run-all2 check-types \"esbuild -- --production\" minify-cs",
         "test": "cross-env nyc mocha",
         "coverage": "cross-env nyc mocha && nyc report --reporter=text-lcov > coverage.lcov",
-        "lint": "eslint ./client/src ./server/src",
-        "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+        "lint": "eslint ./client/src ./server/src"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
@@ -347,6 +350,6 @@
         "vscode-uri": "^3.0.8"
     },
     "allowScripts": {
-        "esbuild@0.28.1": true
+        "esbuild@0.28.2": true
     }
 }

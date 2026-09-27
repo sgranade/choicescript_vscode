@@ -24,8 +24,8 @@ export class GameWebViewManager {
     ) {
         this.runIndexHtmlUri = vscode.Uri.joinPath(
             extContext.extensionUri,
+            "dist",
             "choicescript",
-            "out",
             "index.html",
         );
     }
@@ -51,6 +51,7 @@ export class GameWebViewManager {
             const localResourceRoots = [
                 vscode.Uri.joinPath(
                     this.extContext.extensionUri,
+                    "dist",
                     "choicescript",
                 ),
             ];
@@ -105,12 +106,12 @@ export class GameWebViewManager {
             content = content.replace(
                 /src="([\w\-.]+\.js)"/g,
                 (_match, fileName) =>
-                    `src="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, "choicescript", "out", fileName)).toString()}"`,
+                    `src="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, "dist", "choicescript", fileName)).toString()}"`,
             );
             content = content.replace(
                 /href="([\w.]+\.css)"/g,
                 (_match, fileName) =>
-                    `href="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, "choicescript", "out", fileName)).toString()}"`,
+                    `href="${view.asWebviewUri(vscode.Uri.joinPath(this.extContext.extensionUri, "dist", "choicescript", fileName)).toString()}"`,
             );
         }
         // Add our compiled game content, this will be automatically picked up by Scene.js.

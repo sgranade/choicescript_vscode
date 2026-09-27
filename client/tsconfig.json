@@ -1,13 +1,11 @@
 {
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "module": "commonjs",
-        "target": "es2023",
-        "lib": ["es2023", "webworker"], // TODO: Exclude es2023 build?
-        "sourceMap": true,
+        "composite": true,
+        "declaration": true,
         "strict": true,
         "outDir": "out",
-        "rootDir": "src",
-        "types": ["node"]
+        "rootDir": "src"
     },
     "include": ["src", "../choicescript"],
     "exclude": ["node_modules", ".vscode-test", "**/*.test.ts"]

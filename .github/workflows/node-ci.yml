@@ -26,8 +26,8 @@ jobs:
                   cache: "npm"
             - name: Install Packages
               run: npm ci
-            - name: Compile
-              run: npm run compile --if-present
+            - name: Build
+              run: npm run build --if-present
             - name: Test
               run: npm test
 

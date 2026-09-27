@@ -1,5 +1,5 @@
 {
-    "name": "choicescript-lsp-client",
+    "name": "@choicescript-lsp/client",
     "description": "ChoiceScript language client",
     "author": "Stephen Granade",
     "license": "MIT",

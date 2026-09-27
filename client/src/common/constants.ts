@@ -71,9 +71,9 @@ export type AllowUnsafeScriptOption = "never" | "warn" | "allow";
 
 // Paths relative to the extension
 export const RelativePaths = {
-    Choicescript: joinPath("choicescript", "out"),
-    GameIndex: joinPath("choicescript", "out", "index.html"),
-    Quicktest: joinPath("choicescript", "out", "autotest.js"),
-    Randomtest: joinPath("choicescript", "out", "randomtest.js"),
-    VSCodeExtensionServer: joinPath("server", "dist/node", "server.js"),
+    Choicescript: joinPath("dist", "choicescript"),
+    GameIndex: joinPath("dist", "choicescript", "index.html"),
+    Quicktest: joinPath("dist", "choicescript", "autotest.js"),
+    Randomtest: joinPath("dist", "choicescript", "randomtest.js"),
+    VSCodeExtensionServer: joinPath("dist", "server", "node", "server.js"),
 };
