@@ -1,4 +1,9 @@
 import * as esbuild from "esbuild";
+import * as fs from "fs/promises";
+import * as path from "path";
+
+const csSrcDir = path.resolve(import.meta.dirname, "choicescript/src");
+const csOutDir = path.resolve(import.meta.dirname, "dist/choicescript");
 
 const production = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
@@ -79,6 +84,10 @@ const builds = [
 ];
 
 async function main() {
+    // We're going to build ChoiceScript once and not
+    // watch it, since it's very static
+    await buildChoiceScript();
+
     if (watch) {
         const contexts = await Promise.all(
             builds.map((opts) => esbuild.context(opts)),
@@ -87,6 +96,29 @@ async function main() {
     } else {
         await Promise.all(builds.map((opts) => esbuild.build(opts)));
     }
+}
+
+async function buildChoiceScript() {
+    await fs.mkdir(csOutDir, { recursive: true });
+    const files = await fs.readdir(csSrcDir);
+
+    const jsFiles = files.filter((f) => f.endsWith(".js"));
+    const otherFiles = files.filter((f) => !f.endsWith(".js"));
+
+    await Promise.all([
+        jsFiles.length
+            ? esbuild.build({
+                  entryPoints: jsFiles.map((f) => path.join(csSrcDir, f)),
+                  outdir: csOutDir,
+                  bundle: false,
+                  minify: production,
+                  logLevel: "silent",
+              })
+            : Promise.resolve(),
+        ...otherFiles.map((f) =>
+            fs.copyFile(path.join(csSrcDir, f), path.join(csOutDir, f)),
+        ),
+    ]);
 }
 
 main().catch((e) => {
